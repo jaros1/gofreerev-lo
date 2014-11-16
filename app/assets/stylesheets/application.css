@@ -457,38 +457,3 @@ form {
     background-color:rgba(255,255,255,1);
     background-image: url('/images/betatest.png');
 }
-
-/* about/ad1 - competition running until 31/12-2014 */
-@media screen and (max-width: 767px) {
-    .about-ad1-4-lines {
-        display: table-cell;
-    }
-    .about-ad1-2-lines {
-        display: none;
-    }
-}
-@media screen and (min-width: 768px) {
-    .about-ad1-4-lines {
-        display: none;
-    }
-    .about-ad1-2-lines {
-        display: table-cell;
-    }
-}
-
-@media screen and (max-width: 767px) {
-    .about-ad1-portrait {
-        display: table-cell;
-    }
-    .about-ad1-landscape {
-        display: none;
-    }
-}
-@media screen and (min-width: 768px) {
-    .about-ad1-portrait {
-        display: none;
-    }
-    .about-ad1-landscape {
-        display: table-cell;
-    }
-}

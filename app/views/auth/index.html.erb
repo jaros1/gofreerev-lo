@@ -84,11 +84,6 @@
   <hr>
 </div>
 
-<%# ad1 - competition running until 31 dec 2014 -%>
-<% if Time.now < Time.new('2015-01-10') -%>
-    <%= render :partial => 'about/ad1' %>
-<% end -%>
-
 <script>
   // fix opera < 12.16 bug (app started in an iFrame). Redirect to full html page outside FB
   if (inIframe()) window.top.location.href = window.self.location ;

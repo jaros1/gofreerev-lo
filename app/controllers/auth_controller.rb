@@ -60,11 +60,6 @@ class AuthController < ApplicationController
 
     @providers = @providers.sort_by { |a| provider_camelize(a) }
 
-    # ad1 running until 31 dec 2014
-    language = session[:language] || 'en'
-    @image = "ad_1_#{language}.jpg"
-    @image_landscape = "ad_1_#{language}_landscape.jpg"
-
   end # index
 
   # omniauth callback on success (login was started from rails)

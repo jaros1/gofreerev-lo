@@ -99,11 +99,6 @@ en:
         title_friend: "%{username}/%{apiname}. Balance %{balance}."
         title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."
         title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info."
-        # todo: remove - competition running until 31-dec-2014 - see about/ad1
-        title_non_friend_ad1: "%{username}/%{apiname}."
-        title_friend_ad1: "%{username}/%{apiname}. %{points} points. Balance %{balance}."
-        title_non_friend_click_ad1: "%{username}/%{apiname}. Click here to see user info."
-        title_friend_click_ad1: "%{username}/%{apiname}. %{points} points. Balance %{balance}. Click here to see user info."
      invite_friend:
         invite_friend_prompt: "Invite"
         invite_friend_title: "%{username} is not using %{appname}. Use link to send a %{appname} invitation to %{username}."
@@ -271,15 +266,6 @@ en:
         email_not_found: "Sorry. Email with this id was not found. Cannot unsubscribe email notifications. Either error in link or an old link."
         ok1: "Email notificationer has been unsubscribed. sorry about any inconvenience."
         ok2: "Email notificationer has been unsubscribed for selected users. sorry about any inconvenience."
-     ad1:
-        header_html: "Vind a %{fairphone_url}. Competition ends 31 dec 2014 :"
-        text1_html: "Read competitive conditions below (0 point)"
-        text2_html: "%{login_url} in %{appname} (3 point)"
-        text3_html: "Create %{share_url} in %{appname} (2 point)"
-        text4_html: "Comment friends %{share_url} in %{appname} (5 point)"
-        log_in_link_text: "Log in"
-        share_url_text: "post"
-        footer_html: "Competition Terms. All the fine print that you probably don't bother reading :<br><br>The purpose of this competition is to provide test data and test users for a green app Gofreerev (shared economics) that I am currently developning as a spare time project. The aim is to gather experience, correct errors and make the app better. The app is running in beta testing on a very small web server. There are to be expected poor response times and there is no guarantee that the app is running 24/7. There will be no day-to-day support at errors, but serious errors will be tackled as soon as possible. Serious errors will be reported automatically. In addition there is the option to create \"issues\" on %{github_url} where the source code for this app is hosted.<br><br>The following information is stored in Gofreerev when you log in:<br>Your user id, name, links to profiles and profile picture, language, country, number of friends and friends list.<br>From your friends list is retrieved user id, name, link to profiles and profile photo and number of friends.<br>If you regret participating in the competition you can use the following %{delete_url} to delete your information. Select Edit and Delete Account.<br><br>The app should be self-explanatory with mouseover texts from a computer. The app is not yet 100% tailored for smartphones. On the smartphone is no mouseover help text and there are small problems with the layout and dialogs.<br><br>Each user can get up to 10 points per account. In early January 2015 lots are drawn for 2 pcs fair phones. Winners will be published on this page %{this_page_url} and will be contacted via social networks, email or the like."
 
   # comments controller
   comments:

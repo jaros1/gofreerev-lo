@@ -79,11 +79,4 @@ class AboutController < ApplicationController
     redirect_to :controller => :auth, :action => :index
   end
 
-  # ads - fairphone competition deadline 31/12-2014 (getting test data and test users for this app)
-  def ad1
-    language = session[:language] || 'en'
-    @image = "ad_1_#{language}.jpg"
-    @image_landscape = "ad_1_#{language}_landscape.jpg"
-  end
-
 end

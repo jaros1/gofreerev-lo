@@ -100,11 +100,6 @@ da:
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."
         title_non_friend_click: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
         title_friend_click: "%{username}/%{apiname}. Saldo %{balance}. Klik her for at se brugeroplysninger."
-        # todo: remove - competition running until 31-dec-2014 - see about/ad1
-        title_non_friend_ad1: "%{username}/%{apiname}."
-        title_friend_ad1: "%{username}/%{apiname}. %{points} point. Saldo %{balance}."
-        title_non_friend_click_ad1: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
-        title_friend_click_ad1: "%{username}/%{apiname}. %{points} point. Saldo %{balance}. Klik her for at se brugeroplysninger."
      invite_friend:
         invite_friend_prompt: "Inviter"
         invite_friend_title: "%{username} anvender endnu ikke %{appname}. Brug link til at invitere %{username} til at bruge %{appname}."
@@ -274,15 +269,6 @@ da:
         email_not_found: "Beklager. Email med dette id findes ikke. Kan ikke fravælge email notifikationer. Enten fejl i link eller link fra en gammel mail."
         ok1: "Email notifikationer er afmeldt. Beklager ulejligheden."
         ok2: "Email notifikationer er afmeldt for udvalgte brugere. Beklager ulejligheden."
-     ad1:
-        header_html: "Vind en %{fairphone_url}. Konkurrence slutter 31/12-2014 :"
-        text1_html: "Læs konkurrence betingelser nedenfor (0 point)"
-        text2_html: "%{login_url} i %{appname} (3 point)"
-        text3_html: "Opret %{share_url} i %{appname} (2 point)"
-        text4_html: "Kommenter vens %{share_url} i %{appname} (5 point)"
-        log_in_link_text: "Log ind"
-        share_url_text: "opslag"
-        footer_html: "<br>Konkurrencebetingelser. Alt det med småt som du sandsynligvis alligevel ikke gider læse :<br><br>Formålet med denne konkurrence er at skaffe test data og test brugere til en grønt app Gofreerev (deleøkonomi) som jeg er i færd med at lave som et fritidsprojekt. Formålet er at opsamle erfaringer, rette fejl og gøre appen bedre. Appen kører i betatest på en meget lille webserver, der må forventes dårlige svartider og der er ingen garanti for at appen kører 24/7. Der vil ikke være dag til dag support ved fejl, men alvorlige fejl vil blive forsøgt løst hurtigst muligt. Alvorlige fejl vil blive rapporteret automatisk. Derudover er der mulighed for at oprette \"issues\" på %{github_url} hvor kildekoden til denne app ligger. <br><br>Der hentes følgende oplysninger fra det eller de sociale netværk som du anvender til at logge ind med:<br>Dit brugerid, navn, links til profil og profilbillede, sprog, land, antal venner og venneliste.<br>Fra dine vennelister hentes brugerid, navn, link til profiler og profilbillede samt antal venner.<br>Hvis du fortryder deltagelse i konkurrencen kan du bruge følgende %{delete_url} til at slette dine oplysninger. Vælg Rediger og Slet konto.<br><br>Appen skulle være selvforklarende med mouseover tekster fra en computer. Appen er endnu ikke 100% tilpasset til smartphones. På smartphone er ingen mouseover hjælpetekster og der er små problemer med layout og dialoger.<br><br>Hver bruger kan få op til 10 point per konto. I begyndelsen af januar 2015 trækkes der lod om 2 stk fairphones. Vindere offentliggøres på denne side %{this_page_url} og forsøges kontaktet via socialt netværk, email eller lignende.<br><br>"
 
   # comments controller
   comments:

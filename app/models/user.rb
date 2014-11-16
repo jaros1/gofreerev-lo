@@ -2566,53 +2566,6 @@ class User < ActiveRecord::Base
   end
 
 
-
-  # todo: remove - competition running until 31-dec-2014 - see about/ad1
-
-  # calculate number of points
-  def ad1_points (login_users = [])
-    if login_users == []
-      # called from User.ad1_points with empty login_users array - just return points for current user
-      points = 0
-      points += 3 if last_login_at # 2 : Log in (3 point)
-      points += 2 if ApiGift.where('user_id_giver = ? or user_id_receiver = ?', self.user_id, self.user_id).first # Create post (2 point)
-      # check user comments. 5 points if user has commented other posts
-      acs = ApiComment.where(:user_id => self.user_id).includes(:gift)
-      return points if acs.size == 0
-      acs.each do |ac|
-        g = ac.gift
-        if !g
-          logger.warn2 "api comment #{ac.id} without a gift"
-          next
-        end
-        return (points+5) if g.direction == 'both' # ok - 5 point - comment to accepted deal
-        ag = g.api_gifts.find { |ag| ag.provider == self.provider }
-        if ag
-          return (points+5) if ag.user_id_giver    and ag.user_id_giver !=    self.user_id
-          return (points+5) if ag.user_id_receiver and ag.user_id_receiver != self.user_id
-        end
-      end
-      # no comments to other users posts was found
-      return points
-    end
-    return nil unless User.logged_in?(login_users)
-    friend = self.friend?(login_users)
-    return nil if friend > 2 # hide points - not a Gofreerev friend
-    return User.ad1_points(login_users) if friend == 1 # user is a login user
-    # user is a friend
-    User.ad1_points([self])
-  end
-
-  # return ad1 points for an array of users
-  # for example current login users or a friend
-  def self.ad1_points (login_users = [])
-    return 0 unless User.logged_in?(login_users)
-    # add shared accounts before calculation points
-    login_users = User.add_shared_accounts(login_users, [1,2,3,4])
-    login_users.collect { |u| u.ad1_points }.sum
-  end # self.ad1_points
-
-
   # return user array including disconnected shared accounts
   # auth/index page - show information about share levels and accounts
   # find friends - also show friends from not connected API's

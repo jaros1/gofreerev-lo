@@ -24,7 +24,7 @@ end # OmniAuth
 #     one gem for omniauth authorization and one gem for client API operations (get friends, post on wall)
 #  2) get API_ID and API_SECRET for new provider. Register and add environment variables with API_ID and API_SECRET.
 #     environment variable names "GOFREEREV_<env>_APP_ID_<provider>" and "GOFREEREV_<env>_APP_SECRET_<provider>"
-#     for example GOFREEREV_DEV_APP_ID_FACEBOOK and GOFREEREV_DEV_APP_SECRET_FACEBOOK for facebook / development
+#     for example GOFREEREV_LO_DEV_APP_ID_FACEBOOK and GOFREEREV_LO_DEV_APP_SECRET_FACEBOOK for facebook / development
 #     see A) and B)
 #     http://developers.gigya.com/010_Developer_Guide/82_Socialize_Setup/005_Opening_External_Applications
 #  3) add provider to OmniAuth::Builder setup in this file. options are different for each provider. see C)

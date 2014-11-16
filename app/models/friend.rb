@@ -93,7 +93,7 @@ class Friend < ActiveRecord::Base
   end # app_friend_was
 
   # cache friend when sortering users - used in sort_by_user_name
-  # sort on dev1 server took 5 seconds for a relative little sort with 74 users without cache
+  # sort on dev2 server took 5 seconds for a relative little sort with 74 users without cache
   attr_accessor :cache_friend_id
   attr_accessor :cache_friend_user_name
 

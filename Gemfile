@@ -70,7 +70,7 @@ gem 'httparty' # used in vkontakte
 gem 'vkontakte', '0.0.3' , :path => 'vendor/gems/vkontakte-0.0.3' # http://rubygems.org/gems/vkontakte (*)
 gem 'rest_client' # for post multipart in vkontakte_api uploads
 
-gem 'mysql2' # laptop and dev1 server
+gem 'mysql2' # laptop and dev2 server
 
 # Use SCSS for stylesheets
 gem 'sass-rails', '~> 4.0.0'
@@ -180,7 +180,7 @@ gem 'exception_notification'
 # https://github.com/embedly/embedly-ruby
 # http://embedly.github.io/jquery-preview/demo/
 # http://embed.ly/
-# used on dev1 server where there is an issue with nokogiri dependencies
+# used on dev2 server where there is an issue with nokogiri dependencies
 gem 'embedly'
 
 # https://github.com/huyha85/opengraph_parser

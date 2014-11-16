@@ -1319,7 +1319,7 @@ class User < ActiveRecord::Base
 
       # development environment - special filter - notifications is only send to selected users
       if !FORCE_SSL and !FIND_FRIENDS_DEV_USERIDS.index(notification_user.user_id)
-        # raise "cannot send friends suggestion to #{notification_user.debug_info} in development environment. check ENV['GOFREEREV_DEV_EN_USERIDS'])"
+        # raise "cannot send friends suggestion to #{notification_user.debug_info} in development environment. check ENV['GOFREEREV_LO_DEV_EN_USERIDS'])"
         return ['.not_dev_user', {:user => notification_user.debug_info}]
       end
 

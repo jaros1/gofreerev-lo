@@ -997,7 +997,7 @@ en:
         not_allowed: "Sorry. You are not allowed to share this gift. Please refresh page."
         exception: "System error. Could not share gift. %{error}. More information in server log."
      find_friends_batch:
-        not_dev_user: "Cannot send friends suggestion to %{user} in development environment. Please check environment variable ENV['GOFREEREV_DEV_EN_USERIDS'])"
+        not_dev_user: "Cannot send friends suggestion to %{user} in development environment. Please check environment variable ENV['GOFREEREV_LO_DEV_EN_USERIDS'])"
         fb_error: "Cannot send friends suggestions to facebook. %{type} %{message}"
         fb_other: "Cannot send friends suggestions to facebook. Unexpected error %{response}"
      open_graph:

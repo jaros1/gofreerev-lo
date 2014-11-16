@@ -1,9 +1,9 @@
 # appname - used in views and messages
 
 # prefix for environment variables for this project
-ENV_APP_NAME = 'GOFREEREV' # app name used in environment variables
+ENV_APP_NAME = 'GOFREEREV_LO' # app name used in environment variables
 ENV_RAILSENV = case Rails.env when 'development' then 'DEV' when 'test' then 'TEST' when 'production' then 'PROD' end
-ENV_PREFIX = "#{ENV_APP_NAME}_#{ENV_RAILSENV}_" # GOFREEREV_DEV_
+ENV_PREFIX = "#{ENV_APP_NAME}_#{ENV_RAILSENV}_" # GOFREEREV_LO_DEV_
 
 # name and url for this project
 APP_NAME     = 'Gofreerev'     # app name used in views and error messages
@@ -22,7 +22,7 @@ CVS_URL = 'https://github.com/jaros1/gofreerev-fb'
 
 # OS environment constants for attribute encryption (crypt_keeper + improvements)
 # You can use ruby script /lib/generate_keys to generate keys and this ruby array constant
-# note that ENCRYPT_KEYS[1] == ENV["GOFREEREV_DEV_KEY_2"] etc. sorry about that.
+# note that ENCRYPT_KEYS[1] == ENV["GOFREEREV_LO_DEV_KEY_2"] etc. sorry about that.
 encrypt_keys = []
 1.upto(60).each do |keyno|
   encrypt_keys << ENV["#{ENV_PREFIX}KEY_#{keyno}"]

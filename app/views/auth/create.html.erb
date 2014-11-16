@@ -1,0 +1,8 @@
+auth_hash:<br />
+<%= debug @auth_hash %><br />
+
+session:<br />
+<% session.keys.each do |key| -%>
+<%= "session[:#{key}] = #{debug(session[key])}" %>
+<br />
+<% end -%>

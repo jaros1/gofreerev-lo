@@ -1,0 +1,1 @@
+class TextToImage < StandardError ; end

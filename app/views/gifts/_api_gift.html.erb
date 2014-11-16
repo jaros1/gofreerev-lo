@@ -1,0 +1,135 @@
+<% gift = api_gift.gift
+   if gift.deleted_at -%>
+    <%# include dummy row so that post ajax function insert_update_gifts will delete gift from html page.
+        see util_controller.new_messages_count and JS function start_check_new_messages (my.js)
+        called from new_messages_count_link remote link in page header once every 15, 60 or 300 seconds
+     -%>
+    <tr style="display: none" id="<%= "gift-#{gift.id}-deleted" %>">
+      <td></td>
+    </tr>
+<% else -%>
+    <tr style="vertical-align: top" id="<%= "gift-#{gift.id}-header" %>">
+      <td>
+        <% if api_gift.giver -%>
+            <%= @size = 'small'; render '/shared/user_div', :user_div => api_gift.giver %>
+        <% elsif @first_gift -%>
+            <img src="/images/invisible-picture.gif" class="small_profile_picture"/>
+            <% @first_gift = false -%>
+        <% end -%>
+      </td>
+      <td>
+        <% if api_gift.receiver -%>
+            <%= @size = 'small'; render '/shared/user_div', :user_div => api_gift.receiver %>
+        <% elsif @first_gift -%>
+            <img src="/images/invisible-picture.gif" class="small_profile_picture"/>
+            <% @first_gift = false -%>
+        <% end -%>
+      </td>
+      <td colspan="2" class="wrapword" style="vertical-align: top;">
+        <table>
+          <tr>
+            <td>
+              <div style="max-height: 150px; overflow: hidden" class="overflow" id="<%= "gift-#{gift.id}-overflow-text" %>">
+                <%= link_to t('.gift_link_text', format_gift_param(api_gift)), url_for(gift), :title => (t '.gift_link_title') %>
+                <%= t('.gift_text_html', format_gift_param(api_gift)) %>
+              </div>
+            </td>
+          </tr>
+          <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%>
+              <tr>
+                <td style="text-align: center">
+                  <div id="<%= "gift-#{gift.id}-overflow-link" %>" class="overflow" style="display: none; float: none">
+                    <%= link_to t('.show_more_text'), "#", :onclick => "return show_overflow(this)" %>
+                  </div>
+                </td>
+              </tr>
+          <% end -%>
+          <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
+              <tr>
+                <td>
+                    <%= image_tag api_gift.api_picture_url, :onload => "imgonload(this)", :onerror => "imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
+                </td>
+              </tr>
+          <% end -%>
+          <% if gift.open_graph_image.to_s != '' -%>
+              <tr>
+                <td>
+                  <a href="<%= gift.open_graph_url %>" target="_blank">
+                    <%= image_tag gift.open_graph_image, :onload => "imgonload(this)", :onerror => "imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
+                  </a>
+                </td>
+              </tr>
+          <% end -%>
+          <% if gift.open_graph_title.to_s != '' -%>
+              <tr>
+                <td>
+                  <b><%= sanitize gift.open_graph_title %></b>
+                </td>
+              </tr>
+          <% end -%>
+          <% if gift.open_graph_description.to_s != '' -%>
+              <tr>
+                <td>
+                  <%= sanitize gift.open_graph_description %>
+                </td>
+              </tr>
+          <% end -%>
+        </table>
+        <%# logger.debug2 "api_gift.provider = #{api_gift.provider}, api_gift.picture? = #{api_gift.picture?}, api_gift.api_picture_url_on_error_at = #{api_gift.api_picture_url_on_error_at}" -%>
+      </td>
+    </tr>
+
+    <%# render gift links and gift comments -%>
+    <%= render :partial => 'comments/api_comments3',
+               :locals => {:api_comments3 => gift.api_comments_with_filter(@users, nil), :gift => gift, :api_gift => api_gift} %>
+
+    <tr id='<%= "gift-#{gift.id}-comment-new" %>'>
+      <td colspan="2" style="text-align: right; vertical-align: top">
+        <% if gift.show_new_deal_checkbox?(@users) -%>
+            <div id="<%= "gift-#{gift.id}-comment-new-status" %>"
+                 title="<%= t '.new_proposal_title', :username => (api_gift.user_id_giver ? api_gift.giver.short_user_name : api_gift.receiver.short_user_name) %>">
+              <table>
+                <tr>
+                  <td><%= t '.new_deal_check_box_prompt' %></td>
+                  <td><%= check_box_tag "gift-#{gift.id}-new-deal-check-box", 'x', false, :onclick => "check_uncheck_new_deal_checkbox(this,#{gift.id})" %></td>
+                </tr>
+              </table>
+            </div>
+        <% end -%>
+      </td>
+      <td colspan="2">
+        <%# remote form for new comment. Sent to comments/create. Inserted in gift-<gift.id>-comments table.
+        Post ajax processing done in my.js / add_post_ajax_comment_handler
+    -%>
+        <% comment = Comment.new ; comment.gift_id = gift.gift_id -%>
+        <%= form_for comment,
+                     :remote => true, :data => { :type => :script }, :format => :js,
+                     :html => {:id => "gift-#{gift.id}-new-comment-form", :class => 'new_comment' } do |f| %>
+            <%= f.hidden_field :gift_id, :id => "gift-#{gift.id}-comment-gift-id" %>
+            <%= f.hidden_field :new_deal_yn, :id => "gift-#{gift.id}-comment-new-deal-yn" %>
+
+            <table style="border-spacing: 0;">
+              <tr id="<%= "gift-#{gift.id}-comment-new-price-tr" %>" style="display: none">
+                <td colspan="2">
+                  <%= f.text_field :price, :size => 10, :id => "gift-#{gift.id}-comment-new-price", :placeholder => t('.price_prompt') %>
+                  <%= t '.price_free' %> <%= @users.first.currency %>
+                </td>
+              </tr>
+              <tr>
+                <td><%= f.text_area :comment, :size => '60x1', :placeholder => t('.enter_comment'), :onfocus => 'autoresize_text_field(this)', :id => "gift-#{gift.id}-comment-new-textarea", :class => "new_com_text" %></td>
+                <td><%= f.submit 'Gem', :onclick => "return csv_comment(#{gift.id})", :id => "gift-#{gift.id}-comment-new-submit-1", :class => "submit_comment_large" %></td>
+              </tr>
+              <tr class="submit_comment_small">
+                <td colspan="2"><%= f.submit 'Gem', :onclick => "return csv_comment(#{gift.id})", :id => "gift-#{gift.id}-comment-new-submit-2" %></td>
+              </tr>
+            </table>
+        <% end -%>
+      </td>
+    </tr>
+
+    <tr id="<%= "gift-#{gift.id}" %>-footer-1">
+      <td colspan="4">
+        <hr/>
+      </td>
+    </tr>
+<% end -%>

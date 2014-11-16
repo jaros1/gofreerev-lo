@@ -1,0 +1,45 @@
+<% gift = api_gift.gift -%>
+<% if gift.deleted_at -%>
+    <tr style="display: none" id="<%= "gift-#{gift.id}-deleted" %>">
+      <td></td>
+    </tr>
+<% else -%>
+    <tr style="vertical-align: top" id="<%= "gift-#{gift.id}" %>-header">
+      <td class="user-balance-col-1">
+        <% if api_gift.giver -%>
+            <%= @size = 'small' ; render '/shared/user_div', :user_div => api_gift.giver %>
+        <% end -%>
+      </td>
+      <td class="user-balance-col-2">
+        <% if api_gift.receiver -%>
+            <%= @size = 'small' ; render '/shared/user_div', :user_div => api_gift.receiver %>
+        <% end -%>
+      </td>
+      <td>
+        <%= format_date(gift.received_at || gift.created_at) %>
+      </td>
+      <td></td>
+      <td style="text-align: right">
+        <%= t '.optional_price', :price => "#{format_price(gift.price)} #{gift.currency}" if gift.price %>
+      </td>
+      <td></td>
+      <td style="text-align: right" title="<%= gift_balance_calculation_doc(gift, @user2) %>">
+        <%= format_price gift.balance(@user2, @users.first) %>
+      </td>
+      <td></td>
+      <td class="wrapword" style="height: 52px; vertical-align: top">
+        <div style="max-height: 75px; overflow:hidden" class="overflow" id="<%= "gift-#{gift.id}-overflow-text" %>">
+        <%= link_to t('.gift_link_text', format_gift_param(api_gift)), url_for(gift), :title => (t '.gift_link_title') %>
+        <%= t('.gift_text_html', format_gift_param(api_gift)) %>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="8"></td>
+      <td style="text-align: center">
+        <div id="<%= "gift-#{gift.id}-overflow-link" %>" class="overflow" style="display: none; float: none">
+          <%= link_to t('.show_more_text'), "#", :onclick => "return show_overflow(this)" %>
+        </div>
+      </td>
+    </tr>
+<% end -%>

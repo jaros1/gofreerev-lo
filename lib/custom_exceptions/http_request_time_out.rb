@@ -1,0 +1,1 @@
+class HttpRequestTimeOut < StandardError ; end

@@ -1,0 +1,7 @@
+<%# just comments without any extra functionality -%>
+<%#
+   logger.debug2 "api_comments1 = #{api_comments1}"
+-%>
+<% for api_comment in api_comments1 do loop -%>
+    <%= render :partial => 'comments/api_comment', :locals => { :api_comment => api_comment } %>
+<% end -%>

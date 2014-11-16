@@ -1,0 +1,1 @@
+class NoApiAccessToken < StandardError ; end

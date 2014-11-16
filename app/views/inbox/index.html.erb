@@ -1,0 +1,55 @@
+<p>
+  <%= t '.page_header_html' %>
+</p>
+
+<table>
+  <tr>
+    <th><%= t '.from_column_heading_html' %></th>
+    <th><%= t '.to_column_heading_html' %></th>
+    <th><%= t '.created_at_column_heading_html' %></th>
+    <th><%= t '.message_column_heading_html' %></th>
+  </tr>
+  <% for noti in @notifications do loop
+     postfix = login_user_ids.index(noti.to_user_id) ? 'to' : 'from'
+     # write any translate errors to log
+     options = my_sanitize_hash(noti.noti_options)
+     options_with_raise = options.clone
+     options_with_raise[:raise] = I18n::MissingTranslationData
+     [".#{noti.noti_key}_#{postfix}_url", ".#{noti.noti_key}_#{postfix}_msg"].each do |key|
+         begin
+           dummy = t key, options_with_raise
+         rescue I18n::MissingTranslationData => e
+           logger.error2 "\n\nmissing translate key. key #{key}, noti.id #{noti.id},\noptions #{options},\nerror #{e.message}\n"
+         rescue I18n::MissingInterpolationArgument => e
+           logger.error2 "\n\nmissing translate data. key #{key}, noti.id #{noti.id},\noptions #{options},\nerror #{e.message}\n"
+         end
+     end # each key
+   -%>
+      <tr>
+        <td>
+          <% if noti.from_user -%>
+              <%= render '/shared/user_div', :user_div => noti.from_user %>
+          <% end -%>
+        </td>
+        <td>
+          <% if noti.to_user -%>
+              <%= render '/shared/user_div', :user_div => noti.to_user %>
+          <% end -%>
+        </td>
+        <td>
+          <%= link_to l(noti.created_at.localtime, format: :short),
+                      "/#{I18n.locale}" + t(".#{noti.noti_key}_#{postfix}_url", my_sanitize_hash(noti.noti_options)) %>
+        </td>
+        <td><%= t(".#{noti.noti_key}_#{postfix}_msg", my_sanitize_hash(noti.noti_options)) %></td>
+      </tr>
+  <% end -%>
+</table>
+
+<br>
+<hr>
+
+<script>
+    // no client side checks before changing currency in this page
+    pre_update_currency = default_pre_update_currency;
+</script>
+

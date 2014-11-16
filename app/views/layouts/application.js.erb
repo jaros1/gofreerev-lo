@@ -1,0 +1,12 @@
+<%# clear any previous "Warning. There should be 3.0 seconds between each show more rows request. Waited for x seconds." message
+    key: shared.show_more_rows.invalid_interval
+    see app. controller.get_next_set_of_rows_error?
+ %>
+clear_ajax_errors('show-more-rows-errors') ;
+<%# generic return ajax errors and messages to browser. See add_error_xxx and format_response_xxx methods -%>
+<% if @errors.size > 0 -%>
+$('#tasks_errors2').append('<%= j render('shared/ajax_errors') %>');
+move_tasks_errors2();
+<% end -%>
+<%# the js.erb page -%>
+<%= yield %>

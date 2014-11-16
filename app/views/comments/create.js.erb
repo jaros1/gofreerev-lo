@@ -1,0 +1,4 @@
+<% if @api_comment %>
+<%# puts j(render("api_comment", :api_comment => @api_comment)) -%>
+$('#gifts_tbody').append('<%= j render("api_comment", :api_comment => @api_comment) %>');
+<% end %>

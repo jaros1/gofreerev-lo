@@ -1,0 +1,7 @@
+<td><%= t '.api_user_filter_prompt' %></td>
+<td>
+  <% @users.sort_by_provider.each do |login_user| -%>
+      <u><%= api_user_link(login_user.provider, @page_values) %></u>
+  <% end -%>
+  <u><%= api_user_link('all', @page_values) %></u>
+</td>

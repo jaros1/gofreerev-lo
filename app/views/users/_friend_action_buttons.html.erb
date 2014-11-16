@@ -1,0 +1,27 @@
+<% if defined?(edit) and edit == true -%>
+<%# user/edit page - no not show edit user link -%>
+<% elsif login_user_ids.index(friend_action_buttons.user_id) -%>
+    <%= link_to t('.edit_user'), edit_user_path(friend_action_buttons) %>
+<% else -%>
+    <% for friendship_action in friend_action_buttons.friend_status_actions(@users) do-%>
+      <%= friendship_action_downcase = friendship_action.downcase
+          button_text = t ".#{friendship_action_downcase}", friend_action_buttons.app_and_apiname_hash
+          # first letter uppercase => confirm box
+          if friendship_action[0] == friendship_action_downcase[0]
+            confirm = nil
+          else
+            confirm = "#{button_text}?"
+          end
+          # second letter uppercase => new window
+          if friendship_action[1] == friendship_action_downcase[1]
+            target = nil
+          else
+            target = '_blank'
+          end
+          button_to button_text,
+                    {:controller => :users, :action => :update, :id => @users.first.id,
+                     :friend_id => friend_action_buttons.id, :friend_action => friendship_action_downcase,
+                     :return_to => @request_fullpath } ,
+                    { :form => { :target => target }, :method=>:put, :data => { :confirm => confirm } } %>
+    <% end -%>
+<% end -%>

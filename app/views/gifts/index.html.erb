@@ -1,0 +1,168 @@
+<%= hidden_field_tag :newest_gift_id, @newest_gift_id, :id => "newest-gift-id" %>
+<%= hidden_field_tag :newest_status_update_at, @newest_status_update_at, :id => "newest-status-update-at" %>
+
+<script>
+    last_user_ajax_comment_at = null;
+    <%=
+      # recheck invalid picture urls with owner permissions
+      @missing_api_picture_urls
+    %>
+
+</script>
+
+
+<script>
+</script>
+
+
+
+<a href="#" id="share_gift" style="display: none">share gift</a>
+
+
+<%# create new gift form -%>
+<div style="width: 100%"><%= t '.create_gift_header_line' %></div>
+<div style="width: 100%">
+  <%= form_for @gift, :html => {:enctype => 'multipart/form-data', :id => 'new_gift'}, :data => { :type => :script }, :format => :js do |f| -%>
+      <table>
+        <tr title="<%= t '.price_title', :min_interest => NEG_INT_POS_BALANCE_PER_YEAR, :max_interest => NEG_INT_NEG_BALANCE_PER_YEAR %>">
+          <td><%= t '.price_prompt' %></td>
+          <td>
+            <%= f.text_field(:price, :size => 10, :maxlength => 10, :placeholder => t('.price_placeholder')) %>
+            <%= t '.price_free' %>
+            <%= @users.first.currency %>
+            &nbsp;&nbsp;&nbsp;
+            <div style="text-wrap: none">
+              <%= t '.direction_giver_prompt' %> <%= f.radio_button :direction, 'giver' %>&nbsp;&nbsp;
+              <%= t '.direction_receiver_prompt' %> <%= f.radio_button :direction, 'receiver' %>
+            </div>
+          </td>
+        </tr>
+        <tr title="<%= t '.description_title' %>">
+          <td style="vertical-align: top"><%= t '.description_prompt' %></td>
+          <td><%= f.text_area :description, :size => '60x2', :placeholder => t('.description_placeholder'), :onfocus => 'autoresize_text_field(this)', :class => 'new_gift_text' %>
+            <%= f.submit t('.gift_submit_button_text'), :onclick => '{return csv_gift()}', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
+        </tr>
+        <tr title="<%= t ".file_title_#{post_image_allowed?()}", :appname => APP_NAME %>">
+          <td>
+            <div class="fileupload bottom">
+              <%= t '.file_prompt' %>
+              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload",
+                                 :onchange => '{document.getElementById("disp_gift_file").value = this.value}' %>
+            </div>
+          </td>
+          <td>
+            <table>
+              <tbody>
+              <tr>
+                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => t('.file_placeholder'), :disabled => "disabled", :style => "line-height:16px;" %></td>
+                <td>
+                  <table class="new_gift_link_large">
+                    <tbody>
+                    <tr>
+                      <td><%= t '.link_prompt' %></td>
+                      <td><%= f.text_field(:open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', :oninput=>"gift_open_graph_url_sync(this)") %></td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <tr class="new_gift_link_small">
+          <td><%= t '.link_prompt' %></td>
+          <td><%= f.text_field(:open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url2", :class => 'gift_open_graph_url', :oninput=>"gift_open_graph_url_sync(this)") %></td>
+        </tr>
+        <tr>
+          <td id="open_graph_url_preview" colspan="2"></td>
+        </tr>
+        <tr class="new_gift_submit_small">
+          <td></td>
+          <td><%= f.submit t('.gift_submit_button_text'), :onclick => '{return csv_gift()}', :name => 'commit_gift' %></td>
+        </tr>
+      </table>
+  <% end # form   -%>
+</div>
+<%# Modernizr.progressbar is required -%>
+<div class="demo-wrapper html5-progress-bar" id="progressbar-div" style="display: none">
+  <div class="progress-bar-wrapper">
+    <progress id="progressbar" value="0" max="100"></progress>
+    <span class="progress-value">0%</span>
+  </div>
+</div>
+<div style="width: 100%">
+  <hr>
+</div>
+
+<%# special messages to new users how to get started -%>
+<% if @api_gifts.size == 0
+     hr = true
+-%>
+    <div id="no-gifts-div" style="width: 100%">
+      <%= t '.no_gifts_was_found_html', :appname => APP_NAME %>
+    </div>
+<% end -%>
+<% if User.no_app_friends(@users) == 0 -%>
+    <%= hr = true ; render :partial => 'shared/no_app_friends' %>
+<% end -%>
+<% if hr -%>
+    <div style="width: 100%">
+      <hr>
+    </div>
+<% end -%>
+
+<%# gifts table -%>
+<div style="width: 100%">
+  <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>">
+    <thead>
+    <%= render :partial => 'table_header_row' %>
+    </thead>
+    <tbody id="gifts_tbody">
+    <%= render :partial => 'api_gifts' %>
+    </tbody>
+    <tfoot>
+    <tr id="show-more-rows-spinner">
+      <td colspan="4">
+        <img src="/images/ajax-loading-64.gif"/>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <table>
+          <tbody id='show-more-rows-errors' class="ajax_errors">
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    </tfoot>
+  </table>
+</div>
+<br/>
+
+<%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows. set DEBUG_AJAX to true in initializers/constraints.rb to get more ajax debug information -%>
+<%= link_to "show-more-rows", "/gifts?last_row_id=#{@last_row_id}",
+            :remote => true, :data => { :type => :script }, :format => :js,
+            :id => "show-more-rows-link", :style => "display: none" %>
+<%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
+
+<script>
+    // add page specific version of pre_update_currency function.
+    // That is confirm popup before leaving page with unsaved data.
+    pending_gift_msg = '<%= t '.pending_gift_popup_msg' %>';
+    pre_update_currency = gifts_pre_update_currency;
+</script>
+
+<script>
+  // new gift. check for /gifts?url=..&text==.. share link
+  // ajax get open graph meta tags in 2 seconds and display open graph preview under link
+  (function () {
+      var url = document.getElementById('gift_open_graph_url1') ;
+      if (url.value) gift_open_graph_url_sync(url) ;
+  })();
+</script>
+
+
+
+
+

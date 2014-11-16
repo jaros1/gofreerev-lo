@@ -1,0 +1,19 @@
+
+<div style="width: 100%" id="share_accounts_div" title="<%= t '.title', :appname => APP_NAME %>">
+  <br>
+  <%= t '.lov_prompt' %>
+  <%= hidden_field_tag :old_share_level_lov, share_level() %>
+  <%= select_tag :share_level_lov, options_for_select(share_levels(share_level()), share_level()),
+                 :readonly => shared_accounts_disabled?, :disabled => shared_accounts_disabled?,
+                 :onchange => 'share_accounts_ajax(false,"")' %>
+  <br>
+  <%= t '.shared_accounts_prompt' %>
+  <%= shared_accounts_list %>
+  <br>
+  <% if show_find_friends_link? -%>
+      <%= link_to t('.find_friends_link_text'), users_path(:friends => 'find') %>
+  <% else -%>
+      <u><%= t '.find_friends_link_text' %></u>
+  <% end -%>
+</div>
+

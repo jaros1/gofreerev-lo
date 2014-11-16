@@ -1,0 +1,40 @@
+<h1>
+  Welcome to <%= APP_NAME %>
+</h1>
+<p>
+  <%= APP_NAME %> plays with some of the concepts that
+  <%= link_to_charles_eisenstein %> presents in his book <%= link_to_sacred_economics %>.<br />
+  I have in this game chosen facebook as community and national free money with negative interest.
+  Negative Interest per year <%= NEG_INT_POS_BALANCE_PER_YEAR.round(1) %>% for positive balance
+  and <%= NEG_INT_NEG_BALANCE_PER_YEAR.round(1) %>% for negative balance.
+  Ie both assets and liabilities diminish with time.
+  <br />
+  <br />
+  You share the things you have in surplus and your friends might enjoy.
+  Things can be for free or you can set a price at start or when the deal is closed.
+  It is a game with free money and everyone has an unlimited credit.<br />
+  Your balance reflects how much you have sold / purchased (delivered / received),
+  is a measure for your investment in connections and
+  is a measure of gratitude toward friends and community,
+  but does not reflect how rich or poor your are in reality.<br />
+  Free money is money with a history.
+  Free money and things are closely linked and free money is not anonymous.
+  E.g.. is the 300 free money from the sale of a used bike subsequently been used to buy a pair of skates.
+  Now the 300 free money, two stories about a used bike and a pair of roller skates and 3 different people linked together.
+  Keep the money alive, update the stories and keep in contact.
+  <br />
+  <br />
+  <%= APP_NAME %> make postings on your wall with your offers and their story.
+  Set application rights for wall stories so your community (eg your friends) can see what you offer.
+  It's FB rights that determine who can see what.<br />
+  <%= APP_NAME %> stores information about your balance and links to <%= APP_NAME %>'s postings on your wall,
+  but not the content of the messages.
+  When or if you delete the offers from your wall the connection between your balance in free money
+  and your offers is lost and your free money will be boring anonymous money without history.
+</p>
+
+<%= link_to 'Allow ' + APP_NAME + ' to access my basic info!', "javascript: {top.location.href='" + @auth_url + "'}" %>
+<br />
+<br />
+
+Your basic info

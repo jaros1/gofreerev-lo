@@ -1,0 +1,31 @@
+<% comment = api_comment.comment -%>
+<% if comment.deleted_at or comment.partial_deleted?(@users) -%>
+    <tr id="<%= comment.table_row_id %>" style="display: none">
+      <td></td>
+    </tr>
+<% else -%>
+    <tr id="<%= comment.table_row_id %>">
+      <td colspan="2" style="text-align: right; vertical-align: top">
+        <%= @comment = comment ; render 'comments/api_comment_status' %>
+      </td>
+      <td style="vertical-align: top;"><%= render '/shared/user_div', :user_div => api_comment.user %></td>
+      <td class="wrapword" style="text-align: left; vertical-align: top">
+        <table>
+          <tr>
+            <td>
+              <div style="max-height: 150px; overflow: hidden" class="overflow" id="<%= "comment-#{comment.id}-overflow-text" %>">
+                <%= t format_comment_key(comment), format_comment_param(comment) %>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align: center">
+              <div id="<%= "comment-#{comment.id}-overflow-link" %>" class="overflow" style="display: none; float: none">
+                <%= link_to t('.show_more_text'), "#", :onclick => "return show_overflow(this)" %>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+<% end -%>

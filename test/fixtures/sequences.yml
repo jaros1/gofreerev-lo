@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+status_update_at_seq:
+  name: status_update_at_seq
+  value: 201
+  created_at: <%= Time.new %>
+  updated_at: <%= Time.new %>
+
+last_exchange_rate_date:
+  name: last_exchange_rate_date
+  value: <%= Date.today.to_yyyymmdd %>
+  created_at: <%= Time.new %>
+  updated_at: <%= Time.new %>

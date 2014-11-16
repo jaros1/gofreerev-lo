@@ -1,0 +1,81 @@
+There is also this guide: http://robmclarty.com/blog/how-to-setup-a-production-server-for-rails-4
+
+===================================================================================================
+
+Hardware: dreamplug multiboot
+OS: debian squeeze - 4 gb image from newit
+Software: ruby 2.0 - rails 4 - sqlite3 - apache2 - passenger
+
+ 1) Download image from
+    http://www.downloadsnewit.co.uk/SD-images/Dreamplug/NewIT-Dreamplug-v0901-v1001-multibootSD-Squeeze/Dream-Squeeze-344-4Gb-24Jul12.img.gz
+ 2) gunzip image
+ 3) dd copy image to sd card: dd if=Dream-Squeeze-344-4Gb-24Jul12.img of=/dev/mmcblk0
+ 4) insert sd image in dreamplug
+ 5) start dreamplug
+ 6) find dreamplug in lan
+ 7) ssh to dreamplug: root/nosoup4u
+ 8) change root password
+ 9) apt-get update
+10) install vim: apt-get install vim
+11) set static ip address:
+    http://www.cyberciti.biz/faq/linux-configure-a-static-ip-address-tutorial/
+12) create new user xxx
+    useradd -d /home/username -s /bin/bash -c "Name FamilyName" username
+    mkdir /home/username && chown username /home/username && passwd username
+13) setup ssh private/public key authorization for new user xxx
+    http://www.debian.org/devel/passwordlessssh
+14) disable password login
+    http://www.linux.org/threads/how-to-force-ssh-login-via-public-key-authentication.4253/
+
+ruby:
+
+15) apt-get install gcc
+16) apt-get install make
+17) download ruby and unzip
+    https://www.ruby-lang.org/en/downloads/
+18) apt-get install libssl-dev
+19) apt-get install libreadline-dev
+20) apt-get install zlib1g-dev
+21) ./configure
+22) make
+23) make install
+
+rails:
+
+24) gem install rails
+
+deploy - server
+
+25) apt-get install git
+26) apt-get install libsqlite3-dev
+27) gem install execjs
+28) apt-get install g++
+29) javascript runtime
+    a) could not compile from source http://nodejs.org/download/
+       error: "For thumb inter-working we require an architecture which supports blx"
+       problem with armv5t - tried several suggestions found on internet without success
+30) b) solved with http://www.nodejs-news.com/nodejs-tech/nodejs-armv5-debian/
+       wget https://github.com/itwars/nodejs-ARM/raw/master/nodejs_0.8.14~squeeze_armel.deb
+       dpkg -i /path/nodejs_0.8.14~squeeze_armel.deb
+31) add environment variables to .bashrc
+    todo: add full list of required environment variables
+
+deploy - capistrano from client
+
+31) cap deploy:check
+32) cap deploy
+
+deploy - server
+
+33) create db: run schema.rb from console
+34) test: rails server --port=80
+35) http://url-to-app/
+
+post install
+
+36) move sqlite3 db to shared area or switch to mysql
+37) http://www.justkez.com/phantomjs-on-debian-6-squeeze/ (text to image)
+
+
+
+

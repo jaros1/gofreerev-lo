@@ -1,0 +1,6 @@
+// inject some ruby constants to be used in client side javascript
+
+// max text length used in share gift links. One max length for each share link provider. Used in share_gift
+// See documentation for ruby constant API_POST_MAX_TEXT_LENGTHS in /config/initializers/omniauth.rb
+var SHARE_GIFT_MAX_TEXT_LENGTHS = JSON.parse('<%= SHARE_GIFT_MAX_TEXT_LENGTHS.to_json %>');
+

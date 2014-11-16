@@ -1,0 +1,12 @@
+<% # comments with start/end lines, gift links, show older comments link and comments -%>
+<% if @first_comment_id -%>
+<tr id="<%= "gift-#{gift.id}-older-comments-block-start-#{@first_comment_id}" %>">
+  <td colspan="4"></td>
+</tr>
+<% end -%>
+<%= render :partial => 'comments/api_comments2', :locals => { :api_comments2 => api_comments3, :gift => gift, :api_gift => api_gift }  %>
+<% if @first_comment_id -%>
+<tr id="<%= "gift-#{gift.id}-older-comments-block-end-#{@first_comment_id}" %>">
+  <td colspan="4"></td>
+</tr>
+<% end -%>

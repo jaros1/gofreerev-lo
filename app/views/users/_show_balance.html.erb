@@ -1,0 +1,29 @@
+<%= t ".balance_tab_header_text_html", :username => @user2.short_or_full_user_name(@users) %>
+<br/>
+<% if (@user2.friend?(@users) <= 2) and @api_gifts.size > 0 -%>
+    <div style="width: 100%">
+      <table id="gifts" style="border-spacing: 0;">
+        <thead>
+        <%= render :partial => 'show_balance_header' %>
+        </thead>
+        <tbody>
+        <%= render :partial => 'api_gifts' %>
+        </tbody>
+        <tfoot>
+        <tr id="show-more-rows-spinner">
+          <td colspan="9">
+            <img src="/images/ajax-loading-64.gif"/>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="9">
+            <table>
+              <tbody id='show-more-rows-errors' class="ajax_errors">
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        </tfoot>
+      </table>
+<% end -%>
+</div>

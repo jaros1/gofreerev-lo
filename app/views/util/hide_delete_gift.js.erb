@@ -1,0 +1,16 @@
+<% if @gift_id -%>
+<%# ok response - hide all rows with format gift-<gift_id>- %>
+<% logger.debug2 "ok response - remove gift #{@gift_id} rows" -%>
+(function () {
+    var re = new RegExp("^gift-<%= @gift_id %>-");
+    var gifts = document.getElementById('gifts');
+    var trs = gifts.rows;
+    var lng = trs.length;
+    var tr;
+    for (var i = 0; i < lng; i++) {
+        tr = trs[i];
+        if (tr.id && tr.id.match(re)) tr.style.display = 'None';
+    } ;
+    show_more_rows_scroll() ;
+})();
+<% end -%>

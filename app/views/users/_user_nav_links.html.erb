@@ -1,0 +1,14 @@
+<%#
+    render user nav links for from an array of valid link values
+    object/user_nav_links is an hash with;
+    - :prefix: tabs, deal_status or deal_direction
+    - :array_values: @tabs, @statuses or @directions
+    - :page_values: hash with current page values
+-%>
+
+<td><%= t ".#{user_nav_links[:prefix]}_prompt" %></td>
+<% user_nav_links.delete(:array_values).each do |array_value| -%>
+    <td style="text-decoration:underline;">
+      <%= user_nav_link user_nav_links.merge({:array_value => array_value}) %>
+    </td>
+<% end -%>

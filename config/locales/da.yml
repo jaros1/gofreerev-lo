@@ -1,0 +1,1113 @@
+# encoding: utf-8
+# Files in the config/locales directory are used for internationalization
+# and are automatically loaded by Rails. If you want to use locales other
+# than English, add the necessary files in this directory.
+#
+# To use the locales, use `I18n.t`:
+#
+#     I18n.t 'hello'
+#
+# In views, this is aliased to just `t`:
+#
+#     <%= t('hello') %>
+#
+# To use a different locale, set it with `I18n.locale`:
+#
+#     I18n.locale = :es
+#
+# This would use the information in config/locales/es.yml.
+#
+# To learn more, please read the Rails Internationalization guide
+# available at http://guides.rubyonrails.org/i18n.html.
+
+da:
+
+  ##########
+  # models #
+  ##########
+
+  activerecord:
+    attributes:
+      gift:
+        direction: "Tilbyder/Søger"
+        description: "Tekst"
+        currency: "Valuta"
+        price: "Pris"
+        user_id_giver: "Sælger/giver"
+        user_id_receiver: "Køber/modtager"
+      comment:
+        price: "Pris"
+    attribute_values:
+      gift:
+        direction:
+          giver: "Tilbyder: "
+          receiver: "Søger: "
+          both: "Afsluttet: "
+    errors:
+      models:
+        gift:
+          attributes:
+            base:
+              giver_or_receiver_must_be_blank: "Et nyt opslag kan ikke både have en sælger/giver og en køber/modtager"
+              giver_or_receiver_is_required: "Et nyt opslag skal have en sælger/giver eller en køber/modtager"
+            user_id_giver:
+              readonly: "må ikke opdateres"
+            user_id_receiver:
+              readonly: "må ikke opdateres"
+            currency:
+              readonly: "kan ikke ændres for et lukket opslag"
+            price:
+              readonly: "kan ikke ændres for et lukket opslag"
+
+  #########
+  # views #
+  #########
+
+
+  # application layout with page header and footer
+  layouts:
+     application:
+        cookie_note_title: "%{appname} anvender temporære cookies i forbindelse med log in. I temporær session cookie gemmes information om starttidspunkt, login API adgangsoplysninger, sprog, tidszone. Temporære cookies slettes, når browseren lukkes. Eneste cookie, der gemmes blivende, er accept af anvendelse af cookies."
+        cookie_note_text_html: "%{appname} anvender cookies som en del af tjenesten. Se <a href=\"%{url}\">cookies</a>."
+        cookie_accept_text: "Ok"
+        cookie_reject_text: "Afvis"
+        cookie_ignore_text: "Ignorer"
+        page_footer_html: "%{appname} er et open source projekt. Kildekoden til %{appname} er offentlig tilgængelig på %{csv_link} og kan under MIT Licens anvendes af andre udviklere i deres open source projekter. Open source betyder, at der ingen hemmeligheder er omkring, hvordan denne app fungerer, og hvad der gemmes af oplysninger.<br /><br />Det er mit håb, at der udvikles meget mere grøn gratis open source teknologi. %{charles_eisenstein_link}'s bog %{sacred_economics_link} kan købes (engelsk) eller læses gratis online bl.a. i en svensk oversættelse."
+     page_header:
+        header_currency_title: "Saldo. Brug valuta valgliste, hvis du ønsker din saldo vist i en anden valuta. Ens saldo i frie penge viser, hvor meget man har investeret i venner og fællesskab og er et mål for taknemmelighedsgæld. Hvem har givet/modtaget mest? Hvis tur er det til at modtage/give? En positiv saldo betyder, at man er god til at hjælpe andre, og at ens hjælp er blevet værdsat. En negativ saldo betyder, at man er god til at tage imod hjælp, og at man har sat pris på hjælpen. Der er ingen sammenhæng imellem, hvem der er rige/fattige i frie penge herinde, og hvem der er rige/fattige i den virkelige verden."
+        header_balance_prompt: "Saldo:"
+        header_balance_free: 'frie'
+        header_home_link_title: ''
+        header_home_link_text: 'Del'
+        header_inbox_link_title: ''
+        header_inbox_link_text: 'Beskeder'
+        header_friends_link_title: ''
+        header_friends_link_text: 'Venner'
+        header_api_link_title: "Returner til %{apiname} UDEN at logge ud af %{appname}"
+        header_log_in_link_text: 'Log ind'
+        header_log_in_link_title: 'Log ind'
+        header_log_out_link_text: 'Log ud'
+        header_log_out_link_title: "Log ud af %{appname}"
+
+  # shared partials
+  shared:
+     not_logged_in:
+        redirect_flash: "Siden kan desværre ikke vises. Du er ikke logget på. Brug nedenstående links til at logge ind."
+        ajax_get: "Forespørgsel blev afvist. Du er ikke logget på. Opdater venligst siden."
+        ajax_post: "Opdatering blev afvist. Du er ikke logget på. Opdater venligst siden."
+     user_div:
+        title_non_friend: "%{username}/%{apiname}."
+        title_friend: "%{username}/%{apiname}. Saldo %{balance}."
+        title_non_friend_click: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
+        title_friend_click: "%{username}/%{apiname}. Saldo %{balance}. Klik her for at se brugeroplysninger."
+        # todo: remove - competition running until 31-dec-2014 - see about/ad1
+        title_non_friend_ad1: "%{username}/%{apiname}."
+        title_friend_ad1: "%{username}/%{apiname}. %{points} point. Saldo %{balance}."
+        title_non_friend_click_ad1: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
+        title_friend_click_ad1: "%{username}/%{apiname}. %{points} point. Saldo %{balance}. Klik her for at se brugeroplysninger."
+     invite_friend:
+        invite_friend_prompt: "Inviter"
+        invite_friend_title: "%{username} anvender endnu ikke %{appname}. Brug link til at invitere %{username} til at bruge %{appname}."
+        invite_friend_link_text: "link"
+        invite_friend_mailto_link_text: "mail"
+        invite_friend_mailto_email: "x"
+        invite_friend_mailto_subject: "%{appname} spil invitation"
+        invite_friend_mailto_body: "Kære %{to_username}\n\nJeg vil gerne inviterer dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}"
+     invite_friends:
+        no_friends_was_found_html: "<p>Der blev ikke fundet nogle %{appname} venner. Du skal invitere en eller flere af dine gode<br />venner til at bruge %{appname}. Enten ved at sende en invitation med nedenstående link<br />eller ved at sende en personlig invitation til at bruge %{appname}. En personlig invitation<br />er det bedste, da mange mennesker vil afvise uopfordrede spil-invitationer.</p>"
+        invite_friends_prompt: "Inviter venner:"
+        invite_friends_link_title: "Brug dette link til at inviterer dine %{apiname} venner til at bruge %{appname}"
+        invite_friends_message_title: "Inviter dine venner til %{appname}"
+        invite_friends_message_body: "Prøv et spil om at hjælpe hinanden og dele hinandens ressourcer på en ny anderledes måde og et spil med en ny slags penge, der kan forandre vores verden, inspireret af ideer fra Charles Eisensteins bog Sacred Economics"
+
+        invite_friends_mailto_email: "x"
+        invite_friends_mailto_subject: "%{appname} spil invitation"
+        invite_friends_mailto_body: "Kære ven\n\nJeg vil gerne invitere dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}"
+        invalid_call: "ugyldigt kald - login bruger manglede i kald af invite_friends_url"
+        not_implemented: "inviter %{apiname} venner er endnu ikke implementeret"
+     providers:
+        blank: "login udbyder" # not logged in or generic text used in provider_downcase and provider_camelize methods
+     show_more_rows:
+        last_row_id_missing: "Systemfejl. Kan ikke vise flere rækker. Fandt ikke last_row_id i sessions info."
+        last_row_at_missing: "Systemfejl. Kan ikke vise flere rækker. Fandt ikke last_row_at i sessions info."
+        last_row_id_invalid: "Fejl. Kan ikke vise flere rækker. Ugyldigt last_row_id. Forventede %{expected}. Faldt %{found}."
+        invalid_interval: "Advarsel. Der skal være %{interval} sekunder imellem hvert vis flere rækker kald. Ventede i %{sleep} sekunder."
+     languages:
+        da: "Dansk"
+        en: "Engelsk"
+        title: "Vælg sprog. I øjeblikket kun dansk og engelsk. Modtager gerne hjælp til oversættelse til andre sprog. Se FAQ og kontakt information på GitHub."
+        prompt: "Sprog"
+     share_accounts:
+        title: "Brug valgliste hvis du ønsker at samle dine konti på tværs af login udbydere til en fælles konto. Du kan vælge imellem 4 forskellige niveauer af deling på tværs af konti. Laveste niveauer er deling af saldo og dine nuværende vennelister. Her gemmes autorisationsoplysninger i en cookie i din browser. Højeste niveauer er deling af saldo og opdaterede vennelister og evt. fælles login for login udbydere. Her gemmes autorisationsoplysninger krypteret på serveren hvis du giver tilladelse til dette. Autorisationsoplysninger er såkaldt access token / adgangsbillet til API og er altså ikke brugernavn og kodeord. Deling af saldo indebærer en fælles saldo på tværs af login udbydere for de gaver du har givet og modtaget. Deling af vennelister giver dig og dine venner mulighed for at sammenligne vennelister på tværs login udbydere og finde evt. manglede venner. Fælles login er delt login i %{appname} med begrænset adgang til API funktioner hos dine login udbydere."
+        checkbox_prompt: "Saml konti?"
+        shared_accounts_prompt: "Delte konti: "
+        no_shared_accounts_text: "Ingen delte konti"
+        not_logged_in_note: "*=ikke forbundet"
+        expired_token_note: "#=adgangsbillet ikke længere gyldig"
+        find_friends_link_text: "Find venner"
+        lov_prompt: "Saml konti?"
+        lov_text_0: "Ingen deling på tværs af API'er"
+        lov_text_1: "Del saldo på tværs af API'er"
+        lov_text_2: "Del saldo og statiske vennelister"
+        lov_text_3: "Del saldo og dynamiske vennelister"
+        lov_text_4: "Fælles login på tværs af API'er"
+        lov_text_5: "Blandet deling. Se nedenstående tekst"
+     share_accounts_dialog:
+        dialog_title: "Sikkerhedsspørgsmål!"
+        dialog_title_text_true: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er."
+        dialog_title_text_false: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er. Du kan indtaste din e-mail, hvis du ønsker at modtage email med venneforslag en gang hver fjortende dag. Brug venligst korrekte e-mail-adresse. Dine kontaktoplysninger vil blive inkluderet i email for at forhindre at venneforslag bliver anvendt til spam."
+        dialog_text: "Gem API autorisation på server?"
+
+  # omniauth controllers (auth, facebook and linkedin):
+
+  # auth controller
+  auth:
+     oauth_failure:
+        authentication_failure: "%{provider} login fejlede! %{type}: %{message}"
+        login_cancelled: '%{provider} login blev afbrudt'
+        linkedin_rw_nus_cancelled: '%{appname} fik ikke lov til at lave opslag på din linkedin væg'
+     create:
+        provider_missing: "Login fejlede. Modtog ikke navn på login-udbyder."
+        unknown_provider: "Login fejlede. Modtog ukendt login-udbyder %{provider}."
+        invalid_state_login: "Login fra %{apiname} fejlede. Muligt \"Cross-site Request Forgery\" problem."
+        access_token_missing: "Login fejlede. Modtog ikke %{provider} adgangsbillet."
+        expires_at_missing: "Login fejlede. Modtog ikke udløb tidsstempel for %{provider} adgangsbillet."
+        expires_at_invalid: "Login fejlede. Modtog ugyldigt udløb tidsstempel for %{provider} adgangsbillet."
+        uid_missing: "Login fejlede. Modtog ikke bruger-id fra %{provider}."
+        reserved_uid: "Login fejlede. uid gofreerev kan desværre ikke benyttes"
+        user_name_missing_google: "Login fejlede. Modtog ikke brugernavn fra google. Evt. mangler scope userinfo.profile for provider opsætning."
+        user_name_missing: "Login fejlede. Modtog ikke brugernavn fra %{provider}."
+        find_or_create_from_auth_hash: "Systemfejl. Ugyldigt svar fra brugeropdatering efter login."
+        login_ok: "%{apiname} log ind ok."
+        login_ok_expired3: "%{apiname} log ind ok. Bemærk at adgangsbillet er udløbet for %{expired_apinames} og at en eller flere vennelister derfor ikke længere opdateres dynamisk. Log ind for at løse dette problem eller opdater \"Saml konti?\" på denne side."
+        login_ok4: "Fælles log ind for %{apinames} ok."
+        login_ok_expired4: "Fælles log ind for %{apinames} ok. Bemærk at adgangsbillet er udløbet for %{expired_apinames} og at fælles login derfor ikke fungerer for en eller flere login udbydere. Log ind for at løse dette problem eller opdater \"Saml konti?\" på denne side."
+        login_ok_new_user: "%{apiname} log ind ok. Velkommen til %{appname}. Din venneliste er ved at blive hentet og vil være klar til brug lige om lidt."
+     index:
+        visit_th: "Besøg"
+        visit_title: "Gå til %{apiname} uden at logge ind / ud. Link åbnes i et nyt faneblad i din browser. Bemærk, at %{appname} stadigvæk vil være åben i dette faneblad. Husk at logge ud, når du er færdig med at bruge %{appname}."
+        connect_th: "Forbind"
+        connect_th_title: "Brug links i denne kolonne til at oprette / afbryde forbindelse til login-udbyder. Bemærk, at du godt kan være forbundet til flere login-udbydere på samme tid, men højst en gang for hver login-udbyder."
+        log_in_link_text: "log ind"
+        log_out_link_text: "log ud"
+        log_in_out_title0: "Opret adgang til %{appname} ved hjælp af din %{apiname} konto."
+        log_in_out_title1: "Afbryd adgang til %{appname} og returner til %{apiname}"
+        log_in_out_title2: "Afbryd adgang til %{appname} ved hjælp af din %{apiname} konto. Bemærk, at du har adgang til %{appname} med flere login-udbydere, og at du efter %{apiname} \"log ud\" stadigvæk vil kunne bruge %{appname}. Bemærk desuden, at %{apiname} \"log ud\" her IKKE logger dig ud af %{apiname}. Brug \"log ud\" funktionalitet i %{apiname}, hvis du også ønsker at logge ud af %{apiname}."
+        access_th: "Adgang"
+        access_th_title: "Du kan i denne kolonne se en opsummering af, hvilken adgang du har givet %{appname}. Du kan bruge nedenstående links til at kontroller app adgangsinformationer hos din login-provider."
+        access_title_0: "Ukendt adgang. Du er i øjeblikket ikke forbundet til %{appname} vha. en %{apiname} konto. Brug dette link til at kontrollere, hvilken adgang du evt. har givet %{appname}. Side åbnes i et nyt faneblad i din browser."
+        access_title_1: "%{appname} har i øjeblikket læseadgang til dine %{apiname} profiloplysninger. Brug dette link til at kontrollere, hvilken adgang du har givet %{appname}. Side åbnes i et nyt faneblad i din browser."
+        access_title_2: "%{appname} kan lave opslag på dine vegne og har læseadgang til dine %{apiname} profiloplysninger. Brug dette link til at kontrollere, hvilken adgang du har givet %{appname}. Side åbnes i et nyt faneblad i din browser."
+        access_title_3: "%{appname} har læseadgang til dine %{apiname} profil oplysninger. %{appname} har også skriveadgang til din %{apiname} væg, men denne adgang vil ikke blive benyttet, før du giver tilladelse til dette. Brug dette link til at kontrollere, hvilken adgang du har givet %{appname}. Side åbnes i et nyt faneblad i din browser."
+        access_link_text_0: "ukendt"
+        access_link_text_1: "læs"
+        access_link_text_2: "læs+skriv"
+        access_link_text_3: "(skriv)"
+        post_th: "Opslag?"
+        post_th_title: "Brug tjek-bokse i denne kolonne til at tillade eller forhindre opslag på væg hos din login-udbyder. Du kan senere blive bedt om yderligere rettigheder, hvis du vælger at sige ja til opslag på væg hos din login-udbyder."
+        description_html: "Brug <u>log ind</u> links i denne side til at oprette forbindelse til %{appname}. Jo flere log ind, jo flere venner kan du dele med.<br>Brug <u>log ud</u> links i denne side til at logge ud af enkelte netværk eller brug <u>log ud</u> link i menu til at logge ud af alle netværk på en gang."
+        remove_cookies_link_text: "Fjern cookies"
+     destroy:
+        logged_off: "Adgang til %{appname} vha. %{apiname} er blevet afbrudt. Husk at bruge log ud funktion i %{apiname}, hvis du også ønsker at logge ud af %{apiname}. Vær opmærksom på, at du stadigvæk har adgang til %{appname} via en eller flere andre login-udbydere. Brug \"Log ud\" i hovedmenu hvis du ønsker at afbryde forbindelse til %{appname} for alle dine login-udbydere på en gang."
+        already_logged_off: "Du var allerede logget ud. Brug nedenstående link til at logge ind igen. Luk browseren for at fjerne session cookie."
+        unknown_provider: "Systemfejl. Ukendt login udbyder ved log ud"
+        refresh_token_error1: "Kunne ikke forny %{apiname} adgangsbillet."
+        refresh_token_error2: "Kunne ikke forny %{apiname} adgangsbillet. %{error}."
+        expired_access_token: "Adgang til %{appname} vha. %{apiname} er blevet afbrudt. Adgangsbillet er ikke længere gyldig. Opdater siden. Log venligst ind igen."
+
+  # facebook controller - login started from facebook and asking for more privs.
+  facebook:
+     autologin:
+        autologin_header: "Login er i gang - vent venligst"
+     index:
+        invalid_state_login: "Login fra facebook fejlede. Muligt \"Cross-site Request Forgery\" problem."
+        invalid_state_publish_actions: "Muligt \"Cross-site Request Forgery\" problem ved anmodning om skriveadgang til facebook væg."
+        invalid_state_read_stream: "Muligt \"Cross-site Request Forgery\" problem ved anmodning om læseadgang til facebook væg."
+        invalid_state_other: "Muligt \"Cross-site Request Forgery\" problem."
+        find_or_create_from_auth_hash: "Systemfejl. Ugyldigt svar fra brugeropdatering efter login."
+        user_denied_login: "Systemfejl. Login fra facebook fejlede."
+        user_denied_publish_actions: "%{appname} fik ikke tilladelse til at lave opslag på din facebook-væg."
+        user_denied_read_stream: "%{appname} fik ikke tilladelse til at læse opslag på din facebook-væg."
+        user_denied_other: "Systemfejl. Ukendt facebook-anmodning blev afvist."
+        auth_code_expired: "Midlertidig fejl. Autorisationskode er udløbet. Prøv en gang til."
+        auth_code_error: "Uventet fejl ved login. %{error}. Prøv en gang til."
+        publish_actions_failed: "%{appname} fik ikke tilladelse til at lave opslag på din facebook-væg. %{error}"
+        read_stream_failed: "%{appname} fik ikke tilladelse til at læse opslag på din facebook-væg. %{error}"
+        ok_login: "Facebook-login ok."
+        ok_friends_find: "Facebook-login ok."
+        ok_login_new_user: "Facebook login ok. Velkommen til %{appname}. Din venneliste er ved at blive hentet og vil være klar til brug lige om lidt."
+        ok_publish_actions: "%{appname} fik tilladelse til at lave opslag på din %{apiname} væg."
+        ok_publish_actions_skip: "Du gav ikke %{appname} tilladelse at lave opslag på din %{apiname} væg."
+        ok_read_stream: "%{appname} fik tilladelse til at læse opslag på din %{apiname} væg."
+        ok_read_stream_skip: "Du gav ikke %{appname} tilladelse at læse opslag på din %{apiname} væg. Billeder vil blive uploaded til %{apiname}, men kan ikke vises i %{appname}."
+        ok_other: "Ukendt facebook anmodning ok."
+
+  flickr:
+     index:
+        no_client: "Systemfejl. Kunne ikke åbne %{apiname} API klient. %{appname} fik ikke tilladelse til at lave opslag på din %{apiname} væg."
+        auth_failed: "Systemfejl. Kunne ikke autorisere %{apiname} API klient. %{appname} fik ikke tilladelse til at lave opslag på din %{apiname} væg. Fejlmeddelelse \"%{error}\"."
+        find_or_create_from_auth_hash: "Systemfejl. Ugyldigt svar fra brugeropdatering efter login."
+        ok_write: "%{appname} fik tilladelse til at lave opslag på din %{apiname} væg."
+
+  linkedin:
+     index:
+        no_client: "Systemfejl. Kunne ikke åbne %{apiname} API klient. %{appname} fik ikke tilladelse til at lave opslag på din %{apiname} væg."
+        auth_failed: "Systemfejl. Kunne ikke autorisere %{apiname} API klient. %{appname} fik ikke tilladelse til at lave opslag på din %{apiname} væg. Fejlmeddelelse \"%{error}\"."
+        find_or_create_from_auth_hash: "Systemfejl. Ugyldigt svar fra brugeropdatering efter login."
+        ok_rw_nus: "%{appname} fik tilladelse til at lave opslag på din %{apiname} væg."
+
+  # about controller
+  about:
+     index:
+        about_header: "Om %{appname}"
+        about_text_html: "%{appname} er en demo app med bud på centrale begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisenstein's bog Sacred Economics. %{appname} er \"grønt\" software i den forstand, at det kører på en lille 7w plugcomputer og prøver at mindske miljøbelastningen ved at fremme genbrug. %{appname} er open source og er frit tilgængelig under MIT license på Github. Det er mit håb, at andre kan bruge og forbedre mine ideer i dette og i andre open source projekter."
+        betatest_header: "%{appname} betatest"
+        betatest_text_html: "%{appname} er i betatest, men alle funktioner er endnu ikke fuldt implementeret. Under betatest er der en grænse på %{max_users} aktive brugere. Feedback er meget velkommen på <a href='https://github.com/jaros1/gofreerev-fb/issues' target='_blank'>GitHub</a> eller <a href=\"mailto:dev1@gofreerev.com\">email</a>."
+        cookies_header: "Cookies"
+        cookies_text_html: "%{appname} anvender en krypteret cookie, hvis funktion er at holde styr på ind-loggede brugere. Den krypterede cookie indeholder brugerid og adgangs \"token\" til login udbyder(e) samt nogle interne variable, der anvendes til at forbedre brugeroplevelsen (fx tidszone, evt. advarsel eller fejlbesked m.m.). %{appname} cookie anvendes ikke til reklamer eller sporing på tværs af websites. Adgangsoplysninger fjernes ved tryk på log ud, og cookie fjernes, når browseren lukkes."
+        disclaimer_header: "Ansvarsfraskrivelse"
+        disclaimer_text_html: "MIT License ansvarsfraskrivelse. Softwaren leveres \"som den er\", uden garanti af nogen art, udtrykkelige eller stiltiende, herunder, men ikke begrænset til garantier for salgbarhed, egnethed til et bestemt formål og ikke-krænkelse. Under ingen omstændigheder skal %{appname} være ansvarlig for ethvert krav, skader eller andet ansvar, enten i en aktion af kontrakten, tort eller andet, der skyldes, ud af eller i forbindelse med %{appname} eller brug eller andre transaktioner i %{appname}."
+        privacy_header: "Datapolitik"
+        privacy_text_html: "Følgende oplysninger downloades til brug i %{appname}. Fra bruger-profil hos din login-udbyder hentes brugerid, navn, links til profil og profilbillede, sprog, land, antal venner og venneliste. Fra venneliste hentes brugerid, navn, link til profiler og profilbillede samt antal venner for hver af dine venner. Fra browser hentes aktuel tidszone. I spillet gemmes oprettede opslag, kommentarer og din løbende saldo i frie penge. Alle oplysninger download eller indtastet i %{appname} opbevares krypteret, anvendes ikke til reklamer eller personalisering og vidergives ikke til trediepart.<br><br>I %{appname} er vennelister bestemmende for, hvem der kan se hvad. Man kan se opslag og løbende saldo i frie penge for ens venner. I opslag fra ens venner vil man kunne se kommentarer fra venners venner. Det eneste man kan se om venners venner er deres navn, profilbillede og link til deres profil hos loginudbyder. Der er ikke noget, der hedder offentligt i %{appname}. Opslag, der oprettes på tværs af flere loginudbydere på en gang, følger ovenstående regler. Det betyder dog, at man i et sådan opslag fra en ven kan se kommentarer fra ens vens venner hos en anden login udbyder.<br><br>Oprettede opslag og kommentarer kan til enhver tid slettes enten enkelvis eller ved at lukke din %{appname} konto. Vær opmærksom på, at downloadede og indtastede data ikke slettes automatisk, forbi du fjerner eller blokkerer %{appname} hos din login udbyder. Luk derfor først <a href='/users?friends=me'>din konto</a> i %{appname} og fjern eller blokkér dernæst %{appname} hos din loginudbyder."
+     unsubscribe:
+        email_no_id: "Beklager. Fejl i link. Kan ikke fravælge email notifikationer uden et email id."
+        email_not_found: "Beklager. Email med dette id findes ikke. Kan ikke fravælge email notifikationer. Enten fejl i link eller link fra en gammel mail."
+        ok1: "Email notifikationer er afmeldt. Beklager ulejligheden."
+        ok2: "Email notifikationer er afmeldt for udvalgte brugere. Beklager ulejligheden."
+     ad1:
+        header_html: "Vind en %{fairphone_url}. Konkurrence slutter 31/12-2014 :"
+        text1_html: "Læs konkurrence betingelser nedenfor (0 point)"
+        text2_html: "%{login_url} i %{appname} (3 point)"
+        text3_html: "Opret %{share_url} i %{appname} (2 point)"
+        text4_html: "Kommenter vens %{share_url} i %{appname} (5 point)"
+        log_in_link_text: "Log ind"
+        share_url_text: "opslag"
+        footer_html: "<br>Konkurrencebetingelser. Alt det med småt som du sandsynligvis alligevel ikke gider læse :<br><br>Formålet med denne konkurrence er at skaffe test data og test brugere til en grønt app Gofreerev (deleøkonomi) som jeg er i færd med at lave som et fritidsprojekt. Formålet er at opsamle erfaringer, rette fejl og gøre appen bedre. Appen kører i betatest på en meget lille webserver, der må forventes dårlige svartider og der er ingen garanti for at appen kører 24/7. Der vil ikke være dag til dag support ved fejl, men alvorlige fejl vil blive forsøgt løst hurtigst muligt. Alvorlige fejl vil blive rapporteret automatisk. Derudover er der mulighed for at oprette \"issues\" på %{github_url} hvor kildekoden til denne app ligger. <br><br>Der hentes følgende oplysninger fra det eller de sociale netværk som du anvender til at logge ind med:<br>Dit brugerid, navn, links til profil og profilbillede, sprog, land, antal venner og venneliste.<br>Fra dine vennelister hentes brugerid, navn, link til profiler og profilbillede samt antal venner.<br>Hvis du fortryder deltagelse i konkurrencen kan du bruge følgende %{delete_url} til at slette dine oplysninger. Vælg Rediger og Slet konto.<br><br>Appen skulle være selvforklarende med mouseover tekster fra en computer. Appen er endnu ikke 100% tilpasset til smartphones. På smartphone er ingen mouseover hjælpetekster og der er små problemer med layout og dialoger.<br><br>Hver bruger kan få op til 10 point per konto. I begyndelsen af januar 2015 trækkes der lod om 2 stk fairphones. Vindere offentliggøres på denne side %{this_page_url} og forsøges kontaktet via socialt netværk, email eller lignende.<br><br>"
+
+  # comments controller
+  comments:
+     create:
+        invalid_request_no_comment_form: "Ugyldigt kald. Systemfejl. Kommentar-form ej fundet."
+        invalid_request_unknown_gift: "Ugyldigt kald. Systemfejl. Ukendt id for opslag."
+        not_logged_in: "Du er ikke logget ind og kan ikke oprette nye kommentarer. Opdater venligst siden."
+        invalid_request_invalid_gift: "Ugyldigt kald. Du har ikke adgang til dette opslag. Opdater venligst siden."
+        deleted_user: "Din konto er ved at blive slettet, og du kan ikke oprette nye kommentarer"
+        no_providers: "Kunne ikke oprette kommentar. Ingen fælles loginudbydere. Kan evt. være en systemfejl."
+        comment_error: "Kunne ikke oprette kommentar. %{error}."
+        exception: "Systemfejl. Kunne ikke oprette kommentar. %{error}. Se mere information i log."
+     index:
+        gift_id_is_missing: "Ugyldigt kald. Opslagsnr. mangler."
+        gift_not_found: "Ugyldigt kald. Opslag blev ikke fundet."
+        not_logged_in: "Kan ikke vise ældre kommentarer. Du er ikke logget ind. Opdater venligst siden."
+        gift_not_friends: "Ugyldigt kald. Du må ikke se dette opslag."
+        first_comment_id_is_missing: "Ugyldig kald. Kommentarnr. mangler."
+        first_comment_not_found: "Ugyldigt kald. Kommentar blev ikke fundet."
+        gift_comment_mismatch: "Ugyldigt kald. Opslag og kommentar passer ikke sammen."
+        exception: "Systemfejl. Kunne ikke hente ældre kommentarer. %{error}. Mere information i server log."
+     api_comment: # 4 types of comments: comment, deal proposal, rejected deal proposal and accepted deal proposal
+        optional_price: "/ %{price}"
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        proposal_text: "%{date} %{optional_price} : %{text} (forslag)" # new_deal_yn == Y, accepted_yn == nil
+        rejected_text: "%{date} %{optional_price} : %{text} (afvist)" # new_deal_yn == Y, accepted_yn == N
+        accepted_text: "%{date} %{optional_price} : %{text} (accepteret)" # new_deal_yn == Y, accepted_yn == Y
+     api_comments2:
+        show_more_text: "Vis mere tekst"
+        like_gift: "Synes om"
+        unlike_gift: "Synes ikke længere om"
+        follow_gift: "Følg opslag"
+        unfollow_gift: "Følg ikke længere"
+        hide_gift: "Skjul opslag"
+        confirm_hide_gift: "Skjul opslag?"
+        share_gift: "Del opslag"
+        delete_gift: "Slet opslag"
+        confirm_delete_gift_1: "Slet opslag? Bemærk at %{user_name} og din saldo vil blive ændret med %{price} %{currency}, hvis dette opslag slettes" # currency, price and user_name. user_name is short user name for other user in closed deal
+        confirm_delete_gift_2: "Slet opslag?"
+        show_older_comment: "Vis ældre kommentar"
+        show_older_comments: "Vis %{no_older_comments} ældre kommentarer"
+     api_comment_status:
+        cancel_new_deal: "Fortryd"
+        confirm_cancel_new_deal: "Fortryd forslag?"
+        accept_new_deal: "Godkend"
+        confirm_accept_new_deal: "Godkend forslag?"
+        reject_new_deal: "Afvis"
+        confirm_reject_new_deal: "Afvis forslag?"
+        delete_comment: "Slet"
+        confirm_delete_comment: "Slet kommentar?"
+     destroy:
+        unknown_comment: "Kan ikke slette kommentar. Kommentar blev ikke fundet. Opdater venligst siden."
+        not_logged_in: "Kan ikke slette kommentar. Du er ikke logget ind. Opdater venligst siden."
+        invalid_comment: "Kan ikke slette kommentar. Opdater venligst siden."
+        deleted_user: "Kan ikke slette kommentar. Din konto er ved at blive slettet."
+        exception: "Systemfejl. Kan ikke slette kommentar. %{error}. Se mere information i log."
+
+  cookie:
+     decline_cookies:
+        page_header_html: "%{appname} anvender temporære cookies i forbindelse med login. I temporær session cookie gemmes information om starttidspunkt, login API adgangsoplysninger, sprog, tidszone. Temporære cookies slettes, når browseren lukkes. Eneste cookie, der gemmes permanent, er accept af anvendelse af cookies.<br><br>Du har valgt at sige nej tak til cookies. Alle cookies er blevet slettet, og du kan forlade siden sikkert. Tak for besøget."
+
+  # gift controller - general texts
+  gifts:
+     create:
+        not_logged_in: "Du er ikke logget ind og kan ikke oprette nye opslag. Opdater venligst siden."
+        deleted_user: "Din konto er ved at blive slettet, og du kan ikke oprette nye opslag"
+        post_on_wall_deauthorized: "%{appname} har ikke længere tilladelse til at lave opslag på din %{apiname} væg."
+        file_upload_not_allowed: "Fil upload ej tilladt. %{appname} mangler adgang til at skrive på din %{apiname} væg."
+        unsupported_filetype: "Usupporteret filtype %{filetype} i fil upload. Supporterede filtyper er jpg, gif, png og bmp."
+        file_is_too_big: "Fil er for stor. Højst tilladte størrelse på billede er %{maxsize}."
+        file_mv_error: "Opslag oprettet uden billede. Fil upload fejlede. Fejl: \"%{error}\"."
+        # gift_not_posted_<n> is used if gift was not saved in gifts table - should never happen
+        gift_not_posted_1: "Opslag blev ikke oprettet på din %{apiname} væg (%{error})." # unhandled error message
+        gift_not_posted_2: "Opslag blev oprettet på din %{apiname} væg."
+        gift_not_posted_3: "Opslag blev ikke oprettet på din %{apiname} væg." # missing privileges
+        gift_not_posted_4: "Opslag findes allerede på %{apiname} væg."
+        gift_not_posted_5: "Opslag på %{apiname} væg er endnu ikke implementeret."
+        no_api_walls: "Opslag blev oprettet herinde, men ikke på nogen loginudbyders væg. Dit opslag vil kun set af venner, der benytter %{appname}. Gå evt. til \"Log ind\" siden og tjek læse/skriveadgang til loginudbyder væg, og om du har tilladt opslag på login udbyder væg."
+        exception: "Systemfejl. Kunne ikke oprette opslag. %{error}. Se mere information i log."
+     index:
+        not_logged_in: "Kan ikke vise flere rækker. Du er ikke logget ind. Opdater venligst siden."
+        welcome_msg_after_login: "Velkommen %{username} til %{appname}"
+        create_gift_header_line: "Hjælp hinanden og miljøet. Del jeres ressourcer. Giv, lån/lej ud, sælg etc."
+        price_title: "Pris i virtuelle frie penge. Valgfri. Kan sættes nu eller senere. Bedst, hvis køber/modtager sætter pris, der så bliver et mål for, hvor meget pris vedkommende satte på den modtagne ting/hjælp. Der anvendes frie virtuelle nationale penge herinde med en negativ rente. %{min_interest}% om året for en positiv saldo og %{max_interest}% om året for en negativ saldo. Et formål med den negative rente er at sikre, at penge og ressourcer cirkulerer. Den negative rente gør det muligt med et samfund uden vækst, uden overforbrug og med mere fritid."
+        price_prompt: "Pris:"
+        price_placeholder: "Pris forslag"
+        price_free: "frie"
+        direction_giver_prompt: "Tilbyder: "
+        direction_receiver_prompt: "Søger: "
+        description_title: "Tekst. Skal udfyldes. Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp. Du bestemmer selv, om du vil sælge, udleje, udlåne eller forære ting væk. Da der handles i virtuelle frie penge, forærer man i praksis altid ting væk, men ens saldo i frie penge vokser. Opslag laves på din væg og vises til dine venner, eller hvem du har valgt skal se opslag fra denne app. Dine venner kan kommenterer dit opslag på din væg. Aftalen bør sluttes herinde, så din saldo i frie penge opdateres."
+        description_prompt: "Tekst:"
+        description_placeholder: "Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp."
+        file_title_true: "Vedlæg gerne et foto af det, som du deler eller leder efter. Billeder er en effektiv måde at blive set på af ens venner. Upload kan godt tage lidt tid, da billedet uploades i 2 trin. Først til %{appname} og dernæst videre til din væg hos din loginudbyder. Vent venligst."
+        file_title_false: "Der kan ikke vedlægges foto af det, som du deler eller leder efter. Billeder uploades til din væg hos din loginudbyder, og %{appname} mangler tilladelse til at skrive på din væg. Billeder er en effektiv måde at blive set på af ens venner. Benyt link øverst i denne side, hvis du ønsker at give %{appname} lov til at lave opslag på din væg. Gå til \"Log ind\" siden og sæt hak i \"Opslag?\" tjekbox ud for en eller flere loginudbydere, hvis du ønsker at %{appname} skal lave opslag hos din loginudbyder."
+        file_prompt: "Vedlæg:"
+        file_placeholder: "Vælg fil"
+        link_prompt: "eller link:"
+        link_placeholder: "kopier/indsæt url"
+        gift_submit_button_text: "Opret opslag"
+        pending_gift_popup_msg: "Ret valuta? Svar Cancel for at vende tilbage og lave opslag færdig. Svar OK for at kassere det indtastede og opdatere valuta."
+        description_required_text: "Tekst skal udfyldes."
+        price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
+        no_gifts_was_found_html: "<p>Der blev ikke fundet nogle opslag. Hverken du eller dine venner har endnu oprettet<br />nogle opslag herinde i %{appname}. For at komme i gang bør du nu oprette et eller flere opslag<br />med noget, du gerne vil dele med dine venner eller med noget, du søger eller mangler<br />, og som du tror dine venner måske kan hjælpe dig med.</p>"
+        comment_comment_required_text: "Kommentar felt skal udfyldes"
+        comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
+        http_invalid_last_row_id: "Systemfejl. last_row_id skal være tom ved første http kald. last_row_id = %{last_row_id}."
+        ajax_invalid_last_row_id: "Systemfejl. Ugyldigt eller blank last_row_id i ajax kald. last_row_id = %{last_row_id}."
+        share_gift_error: "Kunne ikke dele opslag din %{apiname} væg. %{error}"
+     table_header_row:
+        giver_column_heading_html: "Fra:"
+        receiver_column_heading_html: "Til:"
+        received_at_column_heading_html : "Dato:"
+        price_column_heading_html: "Pris:"
+        received_at_and_pice_heading_html: "Dato og pris:"
+        new_price_column_heading_html: "Værdi<nr>nu:"
+        balance_column_heading_html: "Saldo:"
+        link_and_text_column_heading_html: "Tekst:"
+     api_gifts:
+     api_gift:
+        # 4 translate keys to format gift text with link and text.
+        direction_giver: "%{username} tilbyder"
+        direction_receiver: "%{username} søger"
+        direction_giver_and_receiver: "fra %{givername} til %{receivername}"
+        gift_link_title: "Klik på link for flere informationer om opslag"
+        gift_picture_title: "Klik på billede for flere informationer om opslag"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
+        optional_price: "/ %{price}"
+        show_more_text: "Vis mere tekst"
+        like_gift: "Synes om"
+        unlike_gift: "Synes ikke længere om"
+        follow_gift: "Følg opslag"
+        unfollow_gift: "Følg ikke længere"
+        share_lov_text: "Del på:"
+        enter_comment: "Skriv en kommentar..."
+        new_deal_check_box_prompt: "Foreslå aftale"
+        price_prompt: "Pris"
+        price_free: "frie"
+        new_proposal_title: "Anvend \"Foreslå aftale\" tjekboks, hvis du ønsker at foreslå %{username} en aftale. Indtast en pris i frie penge, hvis du ønsker at anvende frie penge i denne aftale. %{username} vil få besked om dit tilbud og kan accepterer eller afvise dit forslag."
+     show:
+        invalid_gift_id: "Ugyldigt kald. Ukendt opslagsnr."
+        no_access: "Ugyldigt kald. Du har ikke adgang til at se dette opslag"
+        invalid_deep_link_id_logged_in: "Dette opslag er desværre blevet slettet."
+        invalid_deep_link_id_not_logged_in: "Dette opslag er desværre blevet slettet. Brug browserens tilbageknap eller log ind for at se andre opslag"
+        og_def_desc_facebook: "Giv, lån/lej ud, hjælp, byt, sælg. Del jeres ressourcer. Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics. Læs bogen gratis på nettet." # optimal size 255 characters
+        og_def_desc_google_oauth2: "Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics."
+        og_def_desc_linkedin: "Giv, lån/lej ud, sælg. Hjælp hinanden og miljøet. Del jeres ressourcer. %{appname} leger med nogle af begreber (frie penge, negativ rente og gavenetværk) fra Charles Eisensteins bog Sacred Economics. Kan læses nettet." # optimal size 220 characters
+        og_def_desc_twitter: "Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics."
+
+  # inbox controller
+  inbox:
+     index:
+        page_header_html: "Meddelelser"
+        from_column_heading_html: "Fra"
+        to_column_heading_html: "Til"
+        created_at_column_heading_html: "Dato"
+        message_column_heading_html: "Meddelelse"
+        # there must be 4 keys for each notification.noti_key (*_from_msg, *_from_url, *_to_msg and *_to_url)
+        request_for_app_friendship_v1_from_msg: "%{appname} venneanmodning blev sendt til %{to_user}"
+        request_for_app_friendship_v1_from_url: "/users/%{to_id}"
+        request_for_app_friendship_v1_to_msg: "%{from_user} vil gerne være din %{appname} ven"
+        request_for_app_friendship_v1_to_url: "/users/%{from_id}"
+        app_friendship_accepted_v1_from_msg: "Du accepterede venneanmodning fra %{to_user}. Du og %{to_user} er nu %{appname} venner"
+        app_friendship_accepted_v1_from_url: "/users/%{to_id}"
+        app_friendship_accepted_v1_to_msg: "%{from_user} accepterede din venneanmodning. Du og %{from_user} er nu %{appname} venner"
+        app_friendship_accepted_v1_to_url: "/users/%{from_id}"
+        # there must be 8 keys for each comment notification - no users (1, 2, 3, n) * (url, msg)
+        new_comment_giver_1_v1_from_url: "/gifts/%{giftid}"
+        new_comment_giver_1_v1_from_msg: 'Du kommenterede %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_1_v1_to_msg: '%{username1} har kommenteret dit tilbud "%{gifttext} ..."'
+        new_comment_giver_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_2_v1_to_msg: '%{username1} og %{username2} har kommenteret dit tilbud "%{gifttext} ..."'
+        new_comment_giver_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har kommenteret dit tilbud "%{gifttext} ..."'
+        new_comment_giver_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_n_v1_to_msg: '%{username1}, %{username2} or %{no_other_users} andre har kommenteret dit tilbud "%{gifttext} ..."'
+        new_comment_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_1_v1_to_msg: '%{username1} har kommenteret dit ønske "%{gifttext} ..."'
+        new_comment_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_2_v1_to_msg: '%{username1} og %{username2} har kommenteret dit ønske "%{gifttext} ..."'
+        new_comment_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har kommenteret dit ønske "%{gifttext} ..."'
+        new_comment_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har kommenteret dit ønske "%{gifttext} ..."'
+        new_comment_giver_and_receiver_1_v1_from_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_1_v1_from_msg: 'Du kommenterede aftalen imellem %{givername} og %{receivername} "%{gifttext} ..."'
+        new_comment_giver_and_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_1_v1_to_msg: '%{username1} har kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_2_v1_to_msg: '%{username1} og %{username2} har kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_n_v1_to_msg: '%{username1}, %{username2} or %{no_other_users} andre har kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_other_1_v1_from_url: "/gifts/%{giftid}"
+        new_comment_giver_other_1_v1_from_msg: 'Du kommenterede %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_1_v1_to_msg: '%{username1} har også kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_2_v1_to_msg: '%{username1} og %{username2} har også kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har også kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har også kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_1_v1_to_msg: '%{username1} har også kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_2_v1_to_msg: '%{username1} og %{username2} har også kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har også kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har også kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_giver_and_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_1_v1_to_msg: '%{username1} har også kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_2_v1_to_msg: '%{username1} og %{username2} har også kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har også kommenteret aftale "%{gifttext} ..." imellem %{givername} og %{receivername}'
+        new_comment_giver_and_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_n_v1_to_msg: '%{username1}, %{username2} or %{no_other_users} andre har også kommenteret aftale "%{gifttext} ..." imellem %{givername} og %{receivername}'
+        new_comment_giver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_1_v1_to_msg: '%{username1} har kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_2_v1_to_msg: '%{username1} og %{username2} har kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_giver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har kommenteret %{givername}-s tilbud "%{gifttext} ..."'
+        new_comment_receiver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_1_v1_to_msg: '%{username1} har kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_receiver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_2_v1_to_msg: '%{username1} og %{username2} har kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_receiver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_receiver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har kommenteret %{receivername}-s ønske "%{gifttext} ..."'
+        new_comment_giver_and_receiver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_1_v1_to_msg: '%{username1} har kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_2_v1_to_msg: '%{username1} og %{username2} har kommenteret aftale "%{gifttext} ..."'
+        new_comment_giver_and_receiver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har kommenteret aftale "%{gifttext} ..." imellem %{givername} og %{receivername}'
+        new_comment_giver_and_receiver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_n_v1_to_msg: '%{username1}, %{username2} or %{no_other_users} andre har kommenteret aftale "%{gifttext} ..."  imellem %{givername} og %{receivername}'
+        new_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        new_proposal_giver_1_v1_from_msg: 'Du oprettede et bud på %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_1_v1_to_msg: '%{username1} vil gerne benytte dit tilbud "%{gifttext} ..."'
+        new_proposal_giver_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_2_v1_to_msg: '%{username1} og %{username2} vil gerne benytte dit tilbud "%{gifttext} ..."'
+        new_proposal_giver_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} vil gerne benytte dit tilbud "%{gifttext} ..."'
+        new_proposal_giver_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_n_v1_to_msg: '%{username1}, %{username2} or %{no_other_users} andre vil gerne benytte dit tilbud "%{gifttext} ..."'
+        new_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_1_v1_to_msg: '%{username1} har et bud på dit ønske "%{gifttext} ..."'
+        new_proposal_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_2_v1_to_msg: '%{username1} og %{username2} har bud på dit ønske "%{gifttext} ..."'
+        new_proposal_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har bud på dit ønske "%{gifttext} ..."'
+        new_proposal_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har bud på dit ønske "%{gifttext} ..."'
+        new_proposal_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_1_v1_to_msg: '%{username1} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_2_v1_to_msg: '%{username1} og %{username2} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_1_v1_to_msg: '%{username1} har et bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_2_v1_to_msg: '%{username1} og %{username2} har bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_giver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_1_v1_to_msg: '%{username1} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_2_v1_to_msg: '%{username1} og %{username2} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_3_v1_to_msg: '%{username1}, %{username2} og %{username3} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_giver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} vil gerne benytte %{givername}-s tilbud "%{gifttext} ..."'
+        new_proposal_receiver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_1_v1_to_msg: '%{username1} har et bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_receiver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_2_v1_to_msg: '%{username1} og %{username2} har bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_receiver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har bud på %{receivername}-s ønske "%{gifttext} ..."'
+        new_proposal_receiver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har bud på %{receivername}-s ønske "%{gifttext} ..."'
+        cancelled_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_1_v1_from_msg: 'Du fortrød dit bud på %{givername}-s tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_1_v1_to_msg: '%{username1} vil alligevel ikke bruge dit tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_2_v1_to_msg: '%{username1} og %{username2} vil alligevel ikke bruge dit tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} vil alligevel ikke bruge dit tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre vil alligevel ikke bruge dit tilbud "%{gifttext} ..."'
+        cancelled_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_1_v1_to_msg: '%{username1} har alligevel ikke et bud på dit ønske "%{gifttext} ..."'
+        cancelled_proposal_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_2_v1_to_msg: '%{username1} og %{username2} har alligevel ikke et bud på dit ønske "%{gifttext} ..."'
+        cancelled_proposal_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har alligevel ikke et bud på dit ønske "%{gifttext} ..."'
+        cancelled_proposal_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har alligevel ikke et bud på dit ønske "%{gifttext} ..."'
+        cancelled_proposal_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_1_v1_to_msg: '%{username1} vil heller ikke bruge %{givername}-s tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_other_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_2_v1_to_msg: '%{username1} og %{username2} vil heller ikke bruge %{givername}-s tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_other_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} vil heller ikke bruge %{givername}-s tilbud "%{gifttext} ..."'
+        cancelled_proposal_giver_other_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} vil heller ikke bruge %{givername}-s tilbud "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_1_v1_to_msg: '%{username1} har heller ikke et bud på %{receivername}-s ønske "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_2_v1_to_msg: '%{username1} og %{username2} har heller ikke et bud på %{receivername}-s ønske "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_3_v1_to_msg: '%{username1}, %{username2} og %{username3} har heller ikke et bud på %{receivername}-s ønske "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_n_v1_to_msg: '%{username1}, %{username2} og %{no_other_users} andre har heller ikke et bud på %{receivername}-s ønske "%{gifttext} ..."'
+        rejected_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        rejected_proposal_giver_1_v1_from_msg: 'Du afslog %{receivername}-s bud på dit tilbud "%{gifttext} ..."'
+        rejected_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        rejected_proposal_giver_1_v1_to_msg: '%{givername} afslog dit bud på sit tilbud "%{gifttext} ..."'
+        rejected_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        rejected_proposal_receiver_1_v1_to_msg: '%{receivername} afslog dit bud på sit ønske "%{gifttext} ..."'
+        accepted_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        accepted_proposal_giver_1_v1_from_msg: 'Du accepterede %{receivername}-s bud på dit tilbud "%{gifttext} ..."'
+        accepted_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        accepted_proposal_giver_1_v1_to_msg: '%{givername} accepterede dit bud på sit tilbud "%{gifttext} ..."'
+        accepted_proposal_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        accepted_proposal_giver_other_1_v1_to_msg: '%{givername} accepterede %{receivername}-s bud på sit tilbud "%{gifttext} ..."'
+        accepted_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        accepted_proposal_receiver_1_v1_to_msg: '%{receivername} accepterede dit bud på sit ønske "%{gifttext} ..."'
+        deleted_account_v1_to_url: "/users/%{userid}?tab=balance"
+        deleted_account_v1_to_msg: "Din saldo er blevet opdateret, fordi %{username} har slettet sin %{apiname} konto her hos %{appname}, og en eller flere af dine aftaler med %{username} er blevet slettet."
+        deleted_account_v2_to_url: "/users/%{userid}?tab=balance"
+        deleted_account_v2_to_msg: "Din saldo er blevet opdateret, fordi %{username} har slettet sin %{apiname} konto her hos %{appname}, og %{no_gifts} aftale(r) med %{username} er blevet slettet. Din saldo er blevet ændret med %{amount} excl. negative renter."
+        friends_find_1_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_1_v1_to_msg: "Venneforslag: %{username1}"
+        friends_find_2_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_2_v1_to_msg: "Venneforslag: %{username1} og %{username2}"
+        friends_find_3_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_3_v1_to_msg: "Venneforslag: %{username1}, %{username2} og %{username3}"
+        friends_find_n_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_n_v1_to_msg: "Venneforslag: %{username1}, %{username2} og %{no_other_users} andre venneforslag"
+
+  # user controller
+  users:
+     update:
+        invalid_request: "Ugyldigt kald. Brugerindstillinger blev ikke ændret."
+        invalid_currency: "Valuta blev ikke ændret. Ingen valutakurser fundet."
+        send_app_friend_request_ok: "%{appname} venneanmodning er blevet sendt til %{username}"
+        send_app_friend_request_error: "Kunne ikke sende %{appname} venneanmodning til %{username}"
+        cancel_app_friend_request_ok: "%{appname} venneanmodning til %{username} er blevet annulleret"
+        cancel_app_friend_request_error: "Kunne ikke annullerer %{appname} venneanmodning til %{username}"
+        accept_app_friend_request_ok: "Venneanmodning blev accepteret. Du og %{username} er nu %{appname} venner"
+        accept_app_friend_request_error: "Accept af %{appname} venneanmodning fra %{username} fejlede"
+        remove_app_friend_ok: "Du er ikke længere %{appname} ven med %{username}"
+        remove_app_friend_error: "Kunne ikke fjerne %{appname} ven %{username}"
+        ignore_app_friend_request_ok: "%{appname} venneanmodning fra %{username} blev ignoreret"
+        ignore_app_friend_request_error: "Kunne ikke ignorerer %{appname} venneanmodning fra %{username}"
+        block_app_user_ok: "%{appname} venneanmodninger fra %{username} vil fremover blive ignoreret"
+        block_app_user_error: "Kunne ikke blokerer for %{appname} venneanmodninger fra %{username}"
+        unblock_app_user_ok: "Blokering er blevet ophævet, og %{username} kan nu igen sende nye %{appname} venneanmodninger"
+        unblock_app_user_error: "Kunne ikke ophæve blokering af %{appname} venneanmodninger fra %{username}"
+     show:
+        invalid_request: "Ugyldigt kald."
+        page_header_text_html: "<p>Brugeroplysninger</p>"
+        not_a_friend: "Der vises kun detaljerede brugeroplysninger om dine venner"
+        top_text_friend_html: "%{username} saldo oplysninger."
+        top_text_non_friend_html: "Detaljerede brugeroplysninger vises kun for dine venner. Brugeroplysninger for %{username} kan ikke vises. Brug ovenstående knapper, hvis du ønsker at tilføje %{username} som ven."
+        api_profile_link_text: "profile"
+     user_nav_links:
+        tabs_prompt: "Vælg faneblad:"
+        tabs_friends: "Venner"
+        tabs_balance: "Saldo"
+        tabs_gifts: "Delt"
+        deal_status_prompt: "Vælg status:"
+        deal_status_open: "Åbne"
+        deal_status_closed: "Lukkede"
+        deal_status_all: "Alle"
+        deal_direction_prompt: "Vælg retning:"
+        deal_direction_giver: "Fra"
+        deal_direction_receiver: "Til"
+        deal_direction_both: "Begge"
+     show_balance:
+        balance_tab_header_text_html: "%{username}-s saldo:<br />"
+     show_friends:
+        friends_tab_header_text_html: "%{username}-s venner:<br />"
+     show_balance_header:
+        giver_column_heading_html: "Fra:"
+        receiver_column_heading_html: "Til:"
+        received_at_column_heading_html : "Dato:"
+        price_column_heading_html: "Pris:"
+        received_at_and_pice_heading_html: "Dato og pris:"
+        new_price_column_heading_html: "Værdi<nr>nu:"
+        balance_column_heading_html: "Saldo:"
+        link_and_text_column_heading_html: "Tekst:"
+     api_gift:
+        gift_link_title: "Klik på link for flere informationer om opslag"
+        gift_link_text: "%{direction}"  # nested translate
+        optional_price: "%{price}"
+        direction_giver: "%{username} tilbyder"
+        direction_receiver: "%{username} søger"
+        direction_giver_and_receiver: "Fra %{givername} til %{receivername}"
+        gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
+        show_more_text: "Vis mere tekst"
+        # 12 balance title keys. Documentation for balance calculation.
+        # variables: new_balance, old_balance, sign_price, price, exchange_rate, sign_negative_interest, negative_interest,
+        #            sign_currency_gain_loss, currency_gain_loss, new_currency, old_currency and number_of_days
+        balance_title: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price}."
+        balance_title_gain: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{sign_currency_gain_loss} %{currency_gain_loss}. Valutagevinst på %{number_of_days} dage var %{currency_gain_loss}."
+        balance_title_loss: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{sign_currency_gain_loss} %{currency_gain_loss}. Valutatab på %{number_of_days} dage var %{currency_gain_loss}."
+        balance_title_exchange_rate: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} ."
+        balance_title_exchange_rate_gain: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_currency_gain_loss} %{currency_gain_loss}. Valutagevinst på %{number_of_days} dage var %{currency_gain_loss}."
+        balance_title_exchange_rate_loss: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_currency_gain_loss} %{currency_gain_loss}. Valutatab på %{number_of_days} dage var %{currency_gain_loss}."
+        balance_title_negative_interest: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{sign_negative_interest} %{negative_interest}. Negativ rente af %{old_balance} i %{number_of_days} dage var %{negative_interest}."
+        balance_title_negative_interest_gain: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negativ rente af %{old_balance} i %{number_of_days} dage var %{negative_interest}. Valutagevinst for same periode var %{currency_gain_loss}."
+        balance_title_negative_interest_loss: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negativ rente af %{old_balance} i %{number_of_days} dage var %{negative_interest}. Valutatab for same periode var %{currency_gain_loss}."
+        balance_title_exchange_rate_negative_interest: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_negative_interest} %{negative_interest}. Negativ rente af %{old_balance} i %{number_of_days} dage var %{negative_interest}."
+        balance_title_exchange_rate_negative_interest_gain: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negativ rente af %{old_balance} i %{number_of_days} dage var %{negative_interest}. Valutagevinst for same periode var %{currency_gain_loss}."
+        balance_title_exchange_rate_negative_interest_loss: "Ny saldo %{new_balance} = gl. saldo %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negativ rente af %{old_balance} i %{number_of_days} dage var %{negative_interest}. Valutatab for same periode var %{currency_gain_loss}."
+     user:
+        user_name_prompt: "Navn"
+        user_name_title: "Brug dette link til at se %{username}'s profil på %{apiname} (nyt faneblad i browser)"
+        friend_status_prompt: "Status"
+        user_balance_prompt: "Saldo"
+        friend_status_text_m: "Min %{apiname} konto"
+        friend_status_text_d: "Din slettede %{apiname} konto "
+        friend_status_text_y: "Venner (%{apiname})"
+        friend_status_text_f: "Følger"
+        friend_status_text_s: "Følges"
+        friend_status_text_n: "Ikke venner"
+        friend_status_text_a: "%{apiname} venner, men ikke %{appname} venner"
+        friend_status_text_g: "%{appname} venner, men ikke %{apiname} venner"
+        friend_status_text_h: "%{appname} venner og følger %{apiname} ven"
+        friend_status_text_i: "%{appname} venner og følges af %{apiname} ven"
+        friend_status_text_r: "Du afventer accept af venneanmodning"
+        friend_status_text_p: "%{username} afventer accept af venneanmodning"
+        friend_status_text_b: "Venneanmodninger fra %{username} ignoreres"
+        last_login_prompt: "Sidst set"
+        last_login_text: "%{days} dag(e) siden"
+     friend_action_buttons:
+        add_api_friend: "Tilføj %{apiname} ven"
+        remove_api_friend: "Fjern %{apiname} ven"
+        send_app_friend_request: "Tilføj %{appname} ven"
+        cancel_app_friend_request: "Annuller %{appname} venneanmodning"
+        accept_app_friend_request: "Accepter %{appname} venneanmodning"
+        ignore_app_friend_request: "Ignorer %{appname} venneanmodning"
+        remove_app_friend: "Fjern %{appname} ven"
+        block_app_user: "Blokkér %{appname} bruger"
+        unblock_app_user: "Ophæv blokkering"
+        edit_user: "Rediger"
+     index:
+        page_header_text_html: "Tilføj/fjern venner<br /><br />"
+        api_profile_link_not_implemented: "link til %{apiname} brugerprofil er ikke implementeret"
+        find_friends_not_allowed: "Find venner kan desværre ikke benyttes. Find venner laver venneforslag ved at sammenligne dine venner fra flere login udbydere med dine venners venner for de samme login udbydere. For at bruge find venner skal du være logget ind med flere login udbydere på en gang og du skal have valgt \"Saml konti\" i login side."
+        find_friends_no_rows: "Desværre endnu ingen venneforslag. Du kan øge chancen for venneforslag ved at logge ind med flere login udbydere, ved at sætte X i \"Saml konti?\" i log ind siden og ved at opfordre dine venner til at gøre det tilsvarende."
+        fb_friend_list_false: "%{appname} har desværre ikke adgang til din %{apiname} venneliste og dine %{apiname} venner vises derfor ikke i %{appname}."
+        fb_friend_list_true: "Kun %{apiname} venner der også anvender %{appname} vises in %{appname}."
+     menu_friends_yes_no_links:
+        friends_filter_prompt: "Venner:" # appname, appname_camelized
+        friends_yes_link_text: "ja"
+        friends_no_link_text: "nej"
+        friends_all_link_text: "alle"
+        friends_find_link_text: "find"
+        friends_me_link_text: "mig"
+     menu_app_user_yes_no_links:
+        app_user_filter_prompt: "App bruger:"
+        app_user_yes_link_text: "ja"
+        app_user_no_link_text: "nej"
+        app_user_all_link_text: "alle"
+     menu_api_user_links:
+        api_user_filter_prompt: "API brugere:"
+        api_user_all_link_text: "alle"
+     edit:
+        invalid_request: "Ugyldigt kald."
+        page_header_text_html: "<p>Opdater brugeroplysninger</p>"
+        currency_title: "Vælg, hvilken valuta du ønsker at bruge for priser og saldo  (intern gemmes alle beløb i USD)."
+        currency_prompt: "Valuta"
+        post_on_wall_title: "Brug denne tjekboks til at slå opslag på %{apiname} til og fra."
+        post_on_wall_prompt: "Opslag på væg?"
+        share_balance_title: "Brug denne tjekboks til at slå fælles saldo på tværs af login udbydere til og fra. Du bør være logget ind med samtlige de login udbydere, du anvender i %{appname}, når du opdaterer dette valg."
+        share_balance_prompt: "Fælles saldo?"
+        log_out_title: "Afbryd adgang til %{appname} ved hjælp af din %{apiname} konto. Husk også at bruge \"log ud\" funktionalitet i %{apiname}, hvis du ligeledes ønsker at logge ud af %{apiname}."
+        log_out_prompt: "Log ud"
+        log_out_link_text: "log ud"
+        access_title: "Brug dette link til at kontrollere, hvilken adgang du har givet %{appname}. Side åbnes i et nyt faneblad i din browser."
+        access_prompt: "Adgang"
+        delete_account_title: "Slet alle downloadede og indtastede oplysninger for din %{apiname} konto hos %{appname}. Kan tage et stykke tid, hvis det drejer sig om mange oplysninger og opslag. Det er kun dine data hos %{appname}, der vil blive slettet. Evt. opslag, som %{appname} har lavet på din %{apiname} væg, vil ikke blive slettet. Når sletning er færdig, bør du gå til %{apiname} og fjerne %{appname} fra listen over tilladte apps. Tak for besøget."
+        delete_account_prompt: "Slet konto"
+        delete_account_link_text: "slet"
+        delete_account_link_confirm: "Slet konto! Alle dine opslag, kommentarer og downloadede oplysninger i %{appname} vil blive slettet. Fortsæt?"
+     destroy:
+        not_logged_in: "Kan ikke slette konto. Du er ikke logget ind. Opdater venligst siden."
+        invalid_request: "Ugyldigt kald. Kunne ikke slette konto."
+        delete_user_id_not_found: "Kan ikke slette brugerkonto. Brugerkonto blev ikke fundet. Kontoen er evt. allerede blevet slettet."
+        delete_user_invalid_id: "Ugyldigt kald. Kan ikke slette brugerkonto, da den ikke er blevet slet- markeret."
+        ok1_html: "Dine data for din %{apiname} konto her hos %{appname} er ved at blive slettet. Sletning vil ske inden for de næste 5-10 minutter. Tak for besøget. Brug <a href=\"%{url}\">link</a> for også at fjerne %{appname} adgang hos %{apiname}."
+        ok2_html: "Dine data for din %{apiname} konto her hos %{appname} er ved at blive slettet. Sletning vil ske inden for de næste 5-10 minutter. Bemærk, at du er logget ind med flere loginudbydere, og du ønsker evt. at gentage \"Slet konto\" for disse. Tak for besøget. Brug <a href=\"%{url}\">link</a> for også at fjerne %{appname} adgang hos %{apiname}."
+        pending_html: "Dine data for din %{apiname} konto her hos %{appname} er ved at blive slettet. Vent venligst. Brug <a href=\"%{url}\">link</a> for også at fjerne %{appname} adgang hos %{apiname}."
+        completed_html: "Dine data for din %{apiname} konto her hos %{appname} er blevet slettet. Forbindelse til %{appname} vha. din %{apiname} konto er blevet afbrudt. Brug <a href=\"%{url}\">link</a> for også at fjerne %{appname} adgang hos %{apiname}."
+        exception: "Systemfejl ved sletning af konto. %{error}. Flere oplysninger i server log."
+
+  user_mailer:
+     friends_suggestions:
+        subject: "Gofreerev venneforslag"
+        mail_header: "Service mail fra %{appname}: %{url}"
+        friends_suggestions_header_line: "Venneforslag:"
+        login_users_header_line: "Denne notifikationsmail er blevet bestilt af følgende Gofreerev brugere:"
+        interval_text: "Denne service mail med venneforslag sendes en gang hver %{days} hvis der er nogle."
+        unsubscribe_header_line: "Du kan fravælge notifikation mails på en af følgende måder:"
+        unsubscribe_text_1: "a) Nej tak. Fravælg alle mails from %{appname}: %{url}"
+        unsubscribe_text_2: "b) Det er vist en fejl. Fravælg mails fra %{users}: %{url}"
+        unsubscribe_text_3: "c) Log ind i %{appname} %{url}, ret \"Saml konti?\" valg og/eller blankstil email."
+        noreply_text: "Bemærk venligst at der ikke kan svares på denne email."
+        mail_footer: "Med venlig hilsen, %{appname}, %{url}"
+
+  # util controller
+  util:
+     missing_api_picture_urls:
+        mis_api_pic_exception: "Systemfejl ved tjek af flyttede eller slettede billeder. Fejl \"%{error}\". Mere information i log."
+        mis_api_pic_no_param: "Systemfejl ved tjek af flyttede eller slettede billeder. Modtag ingen liste med billed id'er."
+        mis_api_pic_no_tokens: "Systemfejl ved tjek af flyttede eller slettede billeder. Fandt ikke login-oplysninger."
+        mis_api_pic_no_token: "Systemfejl ved tjek af flyttede eller slettede billeder. Advarsel. Modtag id for et %{apiname} billede, men bruger er ikke logget ind med %{apiname}."
+        mis_api_pic_not_implemented1: "Tjek for flyttede eller slettede billeder er ikke implementeret for %{apiname}."
+        mis_api_pic_not_implemented2: "Tjek for flyttede eller slettede billeder er ikke implementeret for %{apiname}."
+        mis_api_pic_file_exists: "Advarsel. Browser fandt ikke billede %{rel_path}, men billede findes på serveren."
+        # mis_api_pic_url_exists: "Advarsel. Browser fandt ikke billede %{url}, men billede findes på serveren."
+        mis_api_pic_deauth: "Forbindelse til %{appname} med %{provider} er udløbet. Opdater venligst siden eller log in igen."
+     do_tasks:
+        do_tasks_exception: "Systemfejl ved afvikling af baggrundsopgave. %{error}. Mere information i server log."
+        do_task_exception: "Systemfejl for opgave \"%{task}\". %{error}. Mere information i server log." # task, exception
+        unknown_timezone: "Advarsel. Ukendt tidszone %{timezone}."
+        too_few_exchange_rates: "Advarsel. Opslag af dagens valuta kurser fra %{bank} fejlede. Forventede >= %{expected} kurser. Modtag %{found} kurser"
+        login_user_id_not_found: "Opgave %{task} kunne ikke udføres. Intet gyldigt %{apiname} log ind fundet. Opdater venligst siden."
+        login_user_id_unknown: "Systemfej. Opgave %{task} kunne ikke udføres. Ukendt %{provider} bruger-id."
+        login_token_not_found: "Systemfejl. Opgave %{task} kunne ikke udføres. Fandt ikke %{provider} adgangs \"billet\"."
+        init_api_client_missing: "Systemfejl. Kan ikke kommunikerer med #{provider} da privat metode init_api_client_%{provider} mangler i app. controller."
+        # profile image
+        profile_image_invalid_user: "Systemfejl. Ugyldigt bruger id. %{user_id} ved download af profilbillede" # user_id
+        profile_image_blank: "Intet profilbillede modtaget fra %{provider}" # provider
+        profile_image_invalid_url: "Ugyldig profilbillede url \"%{image}\" modtaget fra %{provider}" # image and provider - image must be an url (http or https)
+        profile_image_not_found: "Ugyldig profilbillede url \"%{image}\" modtaget fra %{provider}"
+        profile_image_invalid_type: "Advarsel. profilbillede type \"%{image_type}\" modtaget fra %{provider} er ikke understøttet. Url til profilbillede var \"%{image}\""
+        profile_image_unsupported_store: "Systemfejl. Tjek venligst API_PROFILE_PICTURE_STORE for %{provider}."
+        profile_image_wget_failed: "Download af profilbillede fra %{provider} fejlede: \"%{error}\". Url til profilbillede var \"%{image}\""
+        profile_image_count_failed: "Systemfejl. Download af profilbillede fra %{provider} fejlede. Forventede et profilbillede. Fandt %{count} profilbilleder. Url var \"%{image}\""
+        profile_image_mv_failed: "Systemfejl. Kunne ikke indsætte nyt profilbillede fra %{provider}: \"%{error}\""
+        profile_image_cp1_failed: "Systemfejl. Kunne ikke indsætte nyt profilbillede fra %{provider}: \"%{error}\""
+        profile_image_cp2_failed: "Systemfejl. Kunne ikke indsætte nyt profilbillede fra %{provider}: \"%{error}\""
+        profile_image_exception: "Systemfejl. Kunne ikke opdaterer %{provider} profilbillede: \"%{error}\". Mere information i server log."
+        # friend list
+        api_client_gofreerev_get_friends: "Systemfejl. Kan ikke downloade venneliste fra %{apiname} da instance metode gofreerev_get_friends mangler for %{apiname} API klient."
+        post_login_fl_missing_field: "Systemfejl. Kan ikke opdaterer %{apiname} venneliste. Felt %{field} mangler for bruger id. %{userid}."
+        post_login_fl_invalid_field: "Systemfejl. Kan ikke opdaterer %{apiname} venneliste. Ukendt felt %{field} for bruger id. %{userid}."
+        post_login_fl_not_authorized: "Kan ikke hente %{apiname} venneliste. Du har fjernet %{appname} fra %{apiname}, og du har derfor ikke længere adgang til %{appname} vha. din %{apiname} konto. Du bør opdatere siden, da adgangsrettigheder er blevet ændret."
+        google_access_not_configured: "Fejl ved hentning af venneliste fra Google+ API. Access Not Configured. Tjek-liste ved API opsætning: 1) Tjek log for mere information. 2) Tjek at application_name og application_version sættes, når Google::APIClient initialiseres. 3) Tjek at status er ON for Google+ API i Google Cloud Console"
+        google_insufficient_permission: "Fejl ved hentning af venneliste fra Google+ API. Manglende adgang. Tjek liste ved API opsætning: 1) scope plus.login mangler i provider opsætning for google"
+        google_other_errors: "Fejl ved hentning af venneliste fra Google+ API. \"%{error}\""
+        linkedin_access_denied: "Fejl ved hentning af connections fra LinkedIn API. Access to connections denied. Tjek liste ved API opsætning. 1) scope r_network mangler i provider opsætning for linkedin"
+        post_login_new_user: "Din venneliste er klar til brug. Opdater siden, så du kan se eventuelle opslag fra dine venner."
+        post_login_no_friends: "Din %{apiname} venneliste er tom eller %{appname} har ikke adgang til at se din %{apiname} venneliste. I %{appname} vises derfor ingen %{apiname} venner eller opslag fra %{apiname} venner."
+        # post on wall
+        grant_write_link_missing: "Systemfejl. Kan ikke indsætte link til at give skrive skrivetilladelse til %{apiname} væg. Enten mangler privat metode grant_write_link_%{provider} i application controller eller også skal API_GIFT_PICTURE_STORE[:%{provider}] ændres til nil hvis %{apiname} API ikke understøtter opslag på %{apiname} væg."
+        confirm_grant_write: "Tillad opslag på din %{apiname} væg?"
+        api_client_gofreerev_post_on_wall: "Systemfejl. Kan ikke lave opslag på %{apiname} væg da instance metode gofreerev_post_on_wall for %{apiname} API klient."
+        post_on_api_unknown_gift_id: "Systemfejl. Ukendt opslag-id %{id} ved opslag på %{provider} væg."
+        post_on_api_invalid_gift_id: "Ugyldigt opslag-id %{id} ved opslag på %{provider} væg (1)."
+        post_on_api_old_gift: "Systemfejl. Gammelt opslag-id %{id} ved opslag på %{provider} væg."
+        post_on_api_deleted_gift: "Id %{id} for slettet opslag ved opslag på %{provider} væg."
+        gift_posted_1_html: "Opslag oprettet her, men ikke på din %{apiname} væg (%{error})." # unhandled error message
+        gift_posted_2_html: "Opslag oprettet her og på din %{apiname} væg."
+        gift_posted_2b_html: "Opslag oprettet her og på din %{apiname} væg. Bemærk venligst at tekst er blevet beskåret i %{apiname} opslag."
+        gift_posted_3_html: "<div title='%{appname} mangler adgang til at skrive på din %{apiname} væg. Du kan godt dele dine ressourcer med dine venner herinde, men opslag vil kun blive vist her og ikke på din %{apiname} væg. Dvs. dine opslag vil sandsynligvis kun blive set af få venner. Du kan give %{appname} tilladelse til at skrive på din %{apiname} væg. %{appname} laver kun de opslag, du selv beder om. Billeder gemmes kun hos din login udbyder (i dette tilfælde %{apiname}). Uden adgang til at skrive på mindst en væg kan der ikke vedlægges billeder i forbindelse med opslag herinde. Vælg skjul, hvis du ikke ønsker at se denne meddelelse.' id='grant_write_div_%{provider}'>Kan ikke lave opslag på din %{apiname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv %{appname} lov til at lave opslag på min %{apiname} væg!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(skjul)</a></div>" # missing privileges
+        gift_posted_3b_html: "<div title='%{appname} mangler adgang til at skrive på din %{apiname} væg. Du kan godt dele dine ressourcer med dine venner herinde, men opslag vil kun blive vist her og ikke på din %{apiname} væg. Dvs. dine opslag vil sandsynligvis kun blive set af få venner. Du kan give %{appname} tilladelse til at skrive på din %{apiname} væg. %{appname} laver kun de opslag, du selv beder om. Billeder gemmes kun hos din login udbyder (i dette tilfælde %{apiname}). Uden adgang til at skrive på mindst en væg kan der ikke vedlægges billeder i forbindelse med opslag herinde. Vælg skjul, hvis du ikke ønsker at se denne meddelelse.' id='grant_write_div_%{provider}'>Kan ikke lave opslag på din %{apiname} væg. <a href=\"%{url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\" data-confirm=\"%{confirm}\" class=\"grant_write_ajax_link\">Giv %{appname} lov til at lave opslag på min %{apiname} væg!</a>  <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(skjul)</a></div>" # missing privileges
+        gift_posted_3c_html: "<div title='%{appname} mangler adgang til at skrive på din %{apiname} væg. Du kan godt dele dine ressourcer med dine venner herinde, men opslag vil kun blive vist her og ikke på din %{apiname} væg. Dvs. dine opslag vil sandsynligvis kun blive set af få venner. Du kan give %{appname} tilladelse til at skrive på din %{apiname} væg. %{appname} laver kun de opslag, du selv beder om. Billeder gemmes kun hos din login udbyder (i dette tilfælde %{apiname}). Uden adgang til at skrive på mindst en væg kan der ikke vedlægges billeder i forbindelse med opslag herinde. Vælg skjul, hvis du ikke ønsker at se denne meddelelse.' id='grant_write_div_%{provider}'>Kan ikke lave opslag på din %{apiname} væg lige nu, men adgang til at lave opslag på din %{apiname} væg er blevet givet i en anden browser session. Brug %{apiname} <a href=\"%{url}\">log ud + log ind</a> til at opdatere din rettigheder  og giv %{appname} mulighed for lave opslag på din %{apiname} i også denne browser session! <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(skjul)</a></div>" # changed privileges (facebook)
+        gift_posted_3d_html: "<div title='%{appname} mangler adgang til at skrive på din %{apiname} væg. Du kan godt dele dine ressourcer med dine venner herinde, men opslag vil kun blive vist her og ikke på din %{apiname} væg. Dvs. dine opslag vil sandsynligvis kun blive set af få venner. Du kan give %{appname} tilladelse til at skrive på din %{apiname} væg. %{appname} laver kun de opslag, du selv beder om. Billeder gemmes kun hos din login udbyder (i dette tilfælde %{apiname}). Uden adgang til at skrive på mindst en væg kan der ikke vedlægges billeder i forbindelse med opslag herinde. Vælg skjul, hvis du ikke ønsker at se denne meddelelse.' id='grant_write_div_%{provider}'>Kan ikke lave opslag på din %{apiname} væg lige nu, men adgang til at lave opslag på din %{apiname} væg er blevet givet i en anden browser session. <a href=\"%{url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\" data-confirm=\"%{confirm}\" class=\"grant_write_ajax_link\">Giv %{appname} lov til at lave opslag på min %{apiname} væg også i denne browser session!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(skjul)</a></div>" # changed privileges (flickr and linkedin)
+        gift_posted_4_html: "Opslag oprettet her, men ikke på din %{apiname} væg. Opslag findes allerede på %{apiname} væg"
+        gift_posted_5_html: "Opslag oprettet her, men ikke på din %{apiname} væg. Opslag på %{apiname} væg er endnu ikke implementeret"
+        gift_posted_6_html: "Opslag med billede kunne ikke oprettes på din %{apiname} væg. Intern systemfejl. Fandt ikke billede."
+        gift_posted_7_html: "Opslag kunne ikke oprettes på din %{apiname} væg. Fejl i dybt <a href='%{link}'>link</a>. Fejlmeddelelse \"%{error}\"."
+        gift_posted_8_html: "Opslag oprettet her, men ikke på din %{apiname} væg. Du har fjernet %{appname} fra %{apiname}, og du har derfor ikke længere adgang til %{appname} vha. din %{apiname} konto. Du bør opdatere siden, da adgangsrettigheder er blevet ændret."
+        gift_posted_9_html: "Opslag oprettet her, men ikke på din %{apiname} væg. Opslag på %{apiname} kræver et vedhæftet billede eller at tekst til billede konvertering er slået til (API_TEXT_TO_PICTURE)."
+        gift_posted_10_html: "Opslag oprettet her, men ikke på din %{apiname} væg. Autorisation gælder ikke længere. Log venligst ind igen."
+        gift_posted_11_html: "Opslag oprettet her, men ikke på din %{apiname} væg. Opslag på %{apiname} kræver et vedhæftet billede eller at tekst til billede konvertering fungerer. Tekst til billede konverteringsprogrammet phantomjs er tilsyneladende ikke installeret på server. Installerer phantomjs eller slå tekst til billede konvertering fra (API_TEXT_TO_PICTURE)."
+        get_api_picture_url_missing: "Systemfejl. Opslag på %{apiname} væg, men fandt ikke metode get_api_picture_%{provider}. Foto kan ikke vises i %{appname}."
+        no_api_picture_url: "Foto blev uploaded, men ingen URL til foto blev modtaget fra %{apiname}."
+        fb_pic_post_declined_permission_html: "Opslag blev oprettet på din %{apiname} væg, men foto kan ikke vises på din %{appname} væg. Gofreerev har ikke tilladelse til at læse opslag på din %{apiname} væg."
+        fb_pic_check_declined_permission_html: "Dine %{apiname} foto kan ikke vises på din %{appname} væg. Gofreerev har ikke tilladelse til at læse opslag på din %{apiname} væg."
+        fb_pic_post_missing_permission_html: "<div title='Foto blev uploaded til din %{apiname} væg, men %{appname} mangler rettigheder til at se billedet på din %{apiname} væg og kan derfor ikke vise foto på din %{appname} væg. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg. %{appname} vil kun anvende læseadgang til opslag på din %{apiname} væg at vise de uploadede foto i %{appname}'>Opslag blev oprettet på din %{apiname} væg, men foto kan ikke vises på din %{appname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv Gofreerev lov til at læse opslag på min væg!</a></div>"
+        fb_msg_post_missing_permission_html: "<div title='Opslag blev oprettet på din %{apiname} væg, men %{appname} mangler rettigheder til at se opslaget på din %{apiname}. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg.'>Opslag oprettet på din %{apiname} væg, men %{appname} mangler læseadgang til din %{apiname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv %{apiname} lov til at læse opslag på din væg!</a></div>"
+        fb_pic_check_missing_permission_html: "<div title='Et eller flere foto er tidligere blevet uploaded til din %{apiname} væg, men %{appname} mangler rettigheder til at se din %{apiname} væg og kan derfor ikke vise foto herinde på din %{appname} væg. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg.'>Dine %{apiname} foto kan ikke vises på din %{appname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv Gofreerev lov til at læse opslag på min væg!</a></div>"
+        fb_msg_check_missing_permission_html: "<div title='Et eller flere opslag er tidligere blevet oprettet på din %{apiname} væg, men %{appname} mangler rettigheder til at se opslag på din %{apiname}. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg.'>%{appname} mangler adgang til at se opslag på din %{apiname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv %{apiname} lov til at læse opslag på din væg!</a></div>"
+        fb_pic_post_unknown_problem: "Opslag oprettet her og på din %{apiname} væg. Foto blev uploaded til din %{apiname} væg, men %{appname} mangler rettigheder til at se billedet på din %{apiname} væg og kan derfor ikke vise foto herinde. Måske du har ændret rettighedsindstillinger for %{appname}."
+        fb_msg_post_unknown_problem: "Opslag oprettet her og på din %{apiname} væg, men %{appname} mangler rettigheder til at se opslaget på din %{apiname} væg. Måske du har ændret rettighedsindstillinger for %{appname}."
+        no_local_picture: "Systemfejl. Ugyldigt opslag id %{id} ved opslag på %{provider} væg (2)."
+        local_picture_not_found: "Systemfejl. Ugyldigt opslag id %{id} ved opslag på %{provider} væg (3)."
+     like_gift:
+        invalid_action: "Systemfejl. Kan ikke \"synes om\" opslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke \"synes om\" opslag. Du er ikke logget ind. Opdater venligst siden."
+        gift_deleted: "Kan ikke \"synes om\" opslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kan ikke \"synes om\" opslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke \"synes om\" opslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke \"synes om\" opslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "\"synes om\" opslag er desværre ikke længere muligt. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke \"synes om\" opslag. %{error}. Mere information i server log."
+     unlike_gift:
+        invalid_action: "Systemfejl. Kan ikke fjerne \"synes om\" opslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke fjerne \"synes om\" opslag. Du er ikke logget ind. Opdater venligst siden."
+        gift_deleted: "Kan ikke fjerne \"synes om\" opslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kan ikke fjerne \"synes om\" opslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke fjerne \"synes om\" opslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke fjerne \"synes om\" opslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Fjern \"synes om\" opslag er desværre ikke længere muligt. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke fjerne \"synes om\" opslag. %{error}. Mere information i server log."
+     follow_gift:
+        invalid_action: "Systemfejl. Kan ikke \"følge\" opslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke \"følge\" opslag. Du er ikke logget ind. Opdater venligst siden."
+        gift_deleted: "Kan ikke \"følge\" opslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kan ikke \"følge\" opslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke \"følge\" opslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke \"følge\" opslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "\"følg\" opslag er desværre ikke længere muligt. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke \"følge\" opslag. %{error}. Mere information i server log."
+     unfollow_gift:
+        invalid_action: "Systemfejl. Kan ikke fjerne \"følg\" opslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke fjerne \"følg\" opslag. Du er ikke logget ind. Opdater venligst siden."
+        gift_deleted: "Kan ikke fjerne \"følg\" opslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kan ikke fjerne \"følg\" opslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke fjerne \"følg\" opslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke fjerne \"følg\" opslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Fjern \"følg\" opslag er desværre ikke længere muligt. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke fjerne \"følg\" opslag. %{error}. Mere information i server log."
+     hide_gift:
+        invalid_action: "Systemfejl. Kan ikke skjule opslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke skjule opslag. Du er ikke logget ind. Opdater venligst siden."
+        gift_deleted: "Kan ikke skjule opslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kan ikke skjule opslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke skjule opslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke skjule opslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Skjul opslag er desværre ikke længere muligt. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke skjule opslag. %{error}. Mere information i server log."
+     delete_gift:
+        invalid_action: "Systemfejl. Kan ikke slette opslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke slette opslag. Du er ikke logget ind. Opdater venligst siden."
+        gift_deleted: "Kan ikke slette opslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kan ikke slette opslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke slette opslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke slette opslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Slet opslag er desværre ikke længere muligt. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke slette opslag. %{error}. Mere information i server log."
+     cancel_new_deal:
+        invalid_action: "Systemfejl. Kan ikke fortryde forslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke fortryde forslag. Du er ikke logget ind. Opdater venligst siden."
+        comment_not_found: "Systemfejl. Kunne ikke fortryde forslag. Forslag ej fundet."
+        gift_deleted: "Kan ikke fortryde forslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kunne ikke fortryde forslag. Der er ikke (længere) adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke fortryde forslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke fortryde forslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Fortryd forslag er desværre ikke længere muligt. Opdater venligst siden."
+        ok: "Forslag er blevet annuleret."
+        exception: "Systemfejl. Kunne ikke fortryde forslag. %{error}. Mere information i server log."
+     reject_new_deal:
+        invalid_action: "Systemfejl. Kan ikke afvise forslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke afvise forslag. Du er ikke logget ind. Opdater venligst siden."
+        comment_not_found: "Systemfejl. Kunne ikke afvise forslag. Forslag ej fundet."
+        gift_deleted: "Kan ikke afvise forslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kunne ikke afvise forslag. Der er ikke adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke afvise forslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke afvise forslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Afvis forslag er desværre ikke længere muligt. Opdater venligst siden."
+        ok: "Forslag er blevet afvist."
+        exception: "Systemfejl. Kunne ikke afvise forslag. %{error}. Mere information i server log."
+     accept_new_deal:
+        invalid_action: "Systemfejl. Kan ikke godkende forslag. Ugyldig aktion. Mere information i server log."
+        not_logged_in: "Kan ikke godkende forslag. Du er ikke logget ind. Opdater venligst siden."
+        comment_not_found: "Systemfejl. Kunne ikke godkende forslag. Forslag ej fundet."
+        gift_deleted: "Kan ikke godkende forslag. Opslag er blevet slettet. Opdater venligst siden."
+        not_authorized: "Systemfejl. Kunne ikke godkende forslag. Der er ikke adgang til opslag. Opdater venligst siden."
+        deleted_user: "Kan ikke godkende forslag. Din konto er ved at blive slettet."
+        comment_deleted: "Kan ikke godkende forslag, da forslaget er blevet slettet. Opdater venligst siden."
+        not_allowed: "Det er desværre ikke længere muligt at godkende forslag. Opdater venligst siden."
+        invalid_updated_by: "Systemfejl. Fandt ingen lovlige \"opdateret af\" brugere."
+        ok: "Forslag er blevet godkendt."
+        exception: "Systemfejl. Kunne ikke godkende forslag. %{error}. Mere information i server log."
+     grant_write:
+        ok: "%{appname} fik tilladelse til at lave opslag på din %{apiname} væg."
+        invalid_provider: "Ugyldigt kald. Kunne ikke give skriveadgang til din API væg. Ugyldig login udbyder."
+        not_allowed: "%{appname} fik ikke skriveadgang til din %{apiname} væg. Opdater venligst siden."
+        exception: "Systemfejl. Kunne ikke give skriveadgang til din %{apiname} væg. %{error}. Mere information i server log."
+#     grant_write_twitter:
+#        ok: "%{appname} fik tilladelse til at lave opslag på din %{apiname} væg."
+#        exception: "Systemfejl. Kunne ikke give skriveadgang til din %{apiname} væg. %{error}. Mere information i server log."
+#     grant_write_vkontakte:
+#        ok: "%{appname} fik tilladelse til at lave opslag på din %{apiname} væg."
+#        exception: "Systemfejl. Kunne ikke give skriveadgang til din %{apiname} væg. %{error}. Mere information i server log."
+     hide_grant_write:
+        unknown_provider: "Systemfejl. Kan ikke skjule link med %{provider} skriveadgang. Ukendt login provider %{provider}."
+        ok: "%{appname} vil fremover ikke bede om tilladelse til at lave opslag på din %{apiname} væg. Du kan på et senere tidspunkt give %{appname} lov til at lave opslag på din %{apiname} væg ved at sætte hak i Opslag? tjekbox på \"Log ind\" siden."
+        exception: "Systemfejl. Kan ikke skjule link med %{apiname} skriveadgang. %{error}. Mere information i server log."
+     post_on_wall_yn:
+        unknown_provider: "Systemfejl. Ukendt login udbyder %{apiname}. Ændring af \"Opslag?\" er ikke blevet gemt."
+        unknown_post_on_wall: "Systemfejl. Ukendt valg ved ændring af \"Opslag?\" for %{apiname}. Valg er ikke blevet gemt."
+        exception: "Systemfejl. Kunne ikke ændre \"Opslag?\" valg. %{error}. Mere information i server log."
+     share_accounts:
+        not_logged_in: "Kan ikke ændre \"Saml konti?\" valg. Du er ikke logget ind. Opdater venligst siden."
+        unknown_share_accounts: "Systemfejl. Ukendt valg ved ændring af \"Saml konti?\". Valg er ikke blevet gemt."
+        no_access_token: "Systemfejl. Kan ikke ændre \"Saml konti?\" valg. Adgangsbillet blev ikke fundet for %{apiname}."
+        no_expires_at: "Systemfejl. Kan ikke ændre \"Saml konti?\" valg. Tidsstempel for udløb af adgangsbillet blev ikke fundet for %{apiname}."
+        reconnect_required: "Beklager. Del dynamiske vennelister og fælles login valg er pt. ikke mulige for %{apinames}. Nyt log ind er påkrævet. Log ud og Log ind igen for %{apinames} og vælg dernæst igen \"Saml konti?\"."
+        exception: "Systemfejl. Kunne ikke ændre \"Saml konti?\" valg. %{error}. Mere information i server log."
+     share_gift:
+        no_gift_id: "Systemfejl. Ugyldigt kald. Opslag id mangler."
+        invalid_gift_id: "Systemfejl. Ugyldigt kald. Opslag id er ugyldig."
+        unknown_gift_id: "Kan ikke dele opslag. Ukendt eller slettet opslag. Opdater venligst siden."
+        not_logged_in: "Kan ikke dele opslag. Du er ikke logget ind. Opdater venligst siden."
+        no_provider: "Systemfejl. Ugyldigt kald. Navn på \"del link\" udbyder mangler"
+        unknown_provider: "Systemfejl. Ugyldigt kald. Ukendt \"del link\" udbyder."
+        not_allowed: "Du har desværre ikke adgang til at dele dette opslag. Opdater venligst siden."
+        exception: "Systemfejl. Kan ikke dele opslag. %{error}. Mere information i server log."
+     find_friends_batch:
+        not_dev_user: "Kan ikke sende venneforslag til %{user} i udviklingsmiljøet. Tjek venligst environment variable ENV['GOFREEREV_DEV_EN_USERIDS'])"
+        fb_error: "Kan ikke sende venneforslag til facebook. %{type} %{message}"
+        fb_other: "Kan ikke sende venneforslag til facebook. Ukendt fejl %{response}"
+     open_graph:
+        not_logged_in: "Kan ikke tjekke link. Du er ikke logget ind. Opdater venligst siden."
+        exception: "Systemfejl. Kunne ikke tjekke link. %{error}. Mere information i server log."
+
+  # translation keys used in javascript (error) messages
+  js:
+     general:
+        ajax_leave_page: "Afslutter igangværende opgave. Vent venligst."
+        tasks_errors2_missing: "Systemfejl. Skjult html tabel tasks_errors2 mangler."
+        tasks_errors2_invalid: "System error. Forkert antal kolonner i html tabel tasks_errors2 række %{row}. Forventede %{expected} kolonner. Fandt %{found} kolonner."
+     gifts:
+        description_required_text: "Tekst skal udfyldes."
+        price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
+        comment_comment_required_text: "Kommentar felt skal udfyldes"
+        comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
+     new_messages_count:
+        ajax_error: "Fejl ved tjek for nye beskeder. %{error}. Mere information i server log."
+        js_error: "Javascript fejl ved tjek for nye beskeder. %{error} (%{location},%{debug})."
+     insert_new_comments:
+        js_error: "Javascript fejl ved indsættelse af nye kommentarer. %{error} (%{location},%{debug})."
+     insert_update_gifts:
+        js_error: "Javascript fejl ved indsættelse af nye opslag. %{error} (%{location},%{debug})."
+     missing_api_picture_urls:
+        ajax_error: "Fejl ved tjek af flyttede eller slettede billeder. %{error}. Mere information i server log."
+     new_gift:
+        ajax_error: "Fejl ved oprettelse af nyt opslag. %{error}. Mere information i server log."
+        js_error: "Mindre javascript fejl efter oprettelse af opslag. %{error} (%{location},%{debug})."
+     gift_actions:
+        like_gift_ajax_error: "Kan ikke \"synes om\" opslag. %{error}. Mere information i server log."
+        unlike_gift_ajax_error: "Kan ikke fjerne \"synes om\" opslag. %{error}. Mere information i server log."
+        follow_gift_ajax_error: "Kan ikke \"følge\" opslag. %{error}. Mere information i server log."
+        unfollow_gift_ajax_error: "Kan ikke fjerne \"følg\". %{error}. Mere information i server log."
+        delete_gift_ajax_error: "Kan ikke slette opslag. %{error}. Mere information i server log."
+        hide_gift_ajax_error: "Kan ikke skjule opslag. %{error}. Mere information i server log."
+        comments_ajax_error: "Kan ikke hente ældre kommentarer. %{error}. Mere information i server log."
+        ajax_error: "Fejl \"%{error}\" for ugyldigt opslag link %{url}. Mere information i klient og server log."
+        js_error: "Javascript fejl for opslag link. %{error} (%{location},%{debug}). Mere information i klient og server log."
+        click_js_error: "Mindre javascript fejl for opslag link. %{error} (%{location},%{debug})."
+     new_comment:
+        ajax_error: "Fejl ved oprettelse af kommentar. %{error}. Mere information i server log."
+        ajax_error2: "Fejl ved oprettelse af kommentar. %{error} (%{location},%{debug}). Mere information i klient og server log."
+        js_error: "Mindre javascript fejl efter oprettelse af kommentar. %{error} (%{location},%{debug})."
+     comment_actions:
+        delete_comment_ajax_error: "Kan ikke slette kommentar. %{error}. Mere information i server log."
+        cancel_new_deal_ajax_error: "Kan ikke fortryde forslag. %{error}. Mere information i server log."
+        reject_new_deal_ajax_error: "Kan ikke afvise forslag. %{error}. Mere information i server log."
+        accept_new_deal_ajax_error: "Kan ikke godkende forslag. %{error}. Mere information i server log."
+        ajax_error: "Fejl \"%{error}\" for ugyldig kommentar link %{url}. %{error}. Mere information i server log."
+        js_error: "Javascript fejl for kommentar link. %{error} (%{location},%{debug}). Mere information i klient og server log."
+        click_js_error: "Mindre javascript fejl for kommentar link. %{error} (%{location},%{debug})."
+     post_on_wall:
+        ajax_error: "Fejl ved ændring af \"Opslag?\" valg. %{error}. Mere information i server log."
+     grant_write:
+        vkontakte_ajax_error: "Kan ikke give skriveadgang til vkontakte væg. %{error}. Mere information i server log."
+        twitter_ajax_error: "Kan ikke give skriveadgang til twitter væg. %{error}. Mere information i server log."
+        ajax_error: "Kan ikke give skriveadgang til væg. Fejl \"%{error}\" for ugyldig link %{url}. %{error}. Mere information i server log."
+        js_error: "Kan ikke give skriveadgang til væg. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
+     share_accounts:
+        lov_not_found: "Systemfejl ved ændring af \"Saml konti?\" valg. Element share_level_lov blev ikke fundet."
+        ajax_error: "Kan ikke ændre \"Saml konti?\" valg. %{error}. Mere information i server log."
+        js_error: "Kan ikke ændre \"Saml konti?\" valg. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
+     share_accounts_dialog:
+        accept: "Ja"
+        reject: "Nej"
+        email: "Email"
+        invalid_length: "%{field} skal bestå af mindst %{min} og højst %{max} tegn"
+        invalid_email: "fx. ui@jquery.com"
+     share_gift:
+        invalid_id: "Systemfejl. Kan ikke dele opslag. Ugyldig id for LOV."
+        missing_translation: "Systemfejl. Kan ikke dele opslag. Link definition mangler for %{provider}."
+        js_error: "Kan ikke dele opslag. Javascript fejl. %{error} (%{location},%{debug})."
+        ajax_error: "Kan ikke dele opslag på %{provider}. \"%{error}\". Mere information i server log."
+        # href_* keys. See /config/locales/en.yml
+        href_appnet:
+        href_arto:
+        href_blogger:
+        href_buffer:
+        href_delicious:
+        href_digg:
+        href_facebook:
+        href_google_oauth2:
+        href_linkedin:
+        href_myspace:
+        href_odnoklassniki:
+        href_pinterest:
+        href_reddit:
+        href_sonico:
+        href_stumbleupon:
+        href_tumblr:
+        href_twitter:
+        href_vkontakte:
+     open_graph:
+        ajax_error: "Kan ikke tjekke link. %{error}. Mere information i server log."

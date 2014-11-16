@@ -1,0 +1,9 @@
+<% if @og -%>
+(function () {
+    var url = '<%= @og.url %>' ;
+    var title = '<%= sanitize(@og.title) %>' ;
+    var description = '<%= sanitize(@og.description) %>' ;
+    var image = '<%= @og.image %>' ;
+    gift_open_graph_url_preview(url, title, description, image) ;
+})();
+<% end -%>

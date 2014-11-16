@@ -1,0 +1,151 @@
+<script>
+    <%=
+      # recheck invalid picture urls with owner permissions
+      @missing_api_picture_urls
+    %>
+</script>
+
+<%# t '.page_header_text_html' %>
+
+<%# responsive user filter menu. 4 lines on small display, 2 lines on medium display and 1 line on big display %>
+<br/>
+<div style="width: 100%" class="friends-filter-1-line">
+  <table>
+    <tr>
+      <%= render :partial => 'menu_friends_yes_no_links' %>
+      <% if @page_values[:friends] != 'me' -%>
+          <td>&nbsp;&nbsp;</td>
+          <%= render :partial => 'menu_app_user_yes_no_links' %>
+      <% end -%>
+      <% if @page_values[:friends] != 'me' -%>
+          <td>&nbsp;&nbsp;</td>
+          <%= render :partial => 'menu_api_user_links' %>
+      <% end -%>
+      <td>&nbsp;&nbsp;</td>
+      <%= render :partial => 'shared/invite_friends_links' %>
+    </tr>
+    </tr>
+  </table>
+</div>
+
+<div style="width: 100%" class="friends-filter-2-lines">
+  <table>
+    <tr>
+      <td>
+        <table>
+          <tr>
+            <%= render :partial => 'menu_friends_yes_no_links' %>
+          </tr>
+          <% if @page_values[:friends] != 'me' -%>
+              <tr>
+                <%= render :partial => 'menu_app_user_yes_no_links' %>
+              </tr>
+          <% end -%>
+        </table>
+      </td>
+      <td>&nbsp;&nbsp;</td>
+      <td>
+        <table>
+          <% if @page_values[:friends] != 'me' -%>
+              <tr>
+                <%= render :partial => 'menu_api_user_links' %>
+              </tr>
+          <% end -%>
+          <tr>
+            <%= render :partial => 'shared/invite_friends_links' %>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div style="width: 100%" class="friends-filter-4-lines">
+  <table>
+    <tr>
+      <%= render :partial => 'menu_friends_yes_no_links' %>
+    </tr>
+<% if @page_values[:friends] != 'me' -%>
+    <tr>
+      <%= render :partial => 'menu_app_user_yes_no_links' %>
+    </tr>
+<% end -%>
+<% if @page_values[:friends] != 'me' -%>
+    <tr>
+      <%= render :partial => 'menu_api_user_links' %>
+    </tr>
+<% end -%>
+    <tr>
+      <%= render :partial => 'shared/invite_friends_links' %>
+    </tr>
+  </table>
+</div>
+<br/>
+
+<%= render :partial => 'shared/language_table' %>
+<% if @page_values[:friends] == 'me' -%>
+    <%= render :partial => 'shared/share_accounts_dialog' %>
+    <%= render :partial => 'shared/share_accounts' %>
+    <table width="100%"><tbody id="share_accounts_errors" class="ajax_errors"></tbody></table>
+<% end -%>
+
+<% if User.no_app_friends(@users) == 0 -%>
+    <%= hr = true ; render :partial => 'shared/no_app_friends' %>
+<% end -%>
+<% if (@page_values[:apiname] == 'facebook') or (@users.size == 1 and @users.first.provider == 'facebook') -%>
+    <div style="width: 100%"><br /></div>
+    <div style="width: 100%"><%= t ".fb_friend_list_#{facebook_friend_list}", :apiname => provider_downcase(:facebook), :appname => APP_NAME %></div>
+<% end -%>
+<div style="width: 100%">
+  <table style="width: 100%">
+    <thead>
+    <tr>
+      <td width="1px"></td>
+      <td width="1px"></td>
+      <td width="1px"></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <hr>
+      </td>
+    </tr>
+    </thead>
+    <tbody id="users">
+    <% for user in @users2 do -%>
+        <%= render :partial => 'user', :locals => {:user => user} %>
+    <% end -%>
+    </tbody>
+    <tfoot>
+    <tr id="show-more-rows-spinner">
+      <td colspan="4">
+        <img src="/images/ajax-loading-64.gif"/>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <table>
+          <tbody id='show-more-rows-errors' class="ajax_errors">
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    </tfoot>
+  </table>
+</div>
+
+<br/>
+<%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows. set DEBUG_AJAX to true in initializers/constraints.rb to get more ajax debug information -%>
+<%= link_to "show-more-rows",
+            users_path(@page_values.merge(:last_row_id => @last_row_id)),
+            :remote => true, :data => { :type => :script }, :format => :js,
+            :id => "show-more-rows-link", :style => "display: none" %>
+<%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'users'} %>
+
+<hr>
+
+<script>
+    // no client side checks before changing currency in this page
+    pre_update_currency = default_pre_update_currency;
+</script>
+

@@ -1,0 +1,25 @@
+<div style="width: 100%">
+  <table id="gifts" style="border-spacing: 0;">
+    <thead>
+    <%= render :partial => 'gifts/table_header_row' %>
+    </thead>
+    <tbody>
+    <%= render :partial => 'gifts/api_gifts' %>
+    </tbody>
+    <tfoot>
+    <tr id="show-more-rows-spinner">
+      <td colspan="4">
+        <img src="/images/ajax-loading-64.gif"/>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <table>
+          <tbody id='show-more-rows-errors' class="ajax_errors">
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    </tfoot>
+  </table>
+</div>

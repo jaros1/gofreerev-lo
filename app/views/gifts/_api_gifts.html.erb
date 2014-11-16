@@ -1,0 +1,14 @@
+<% for api_gift in @api_gifts do
+     loop -%>
+    <%= render :partial => 'gifts/api_gift', :locals => {:api_gift => api_gift} %>
+<% end -%>
+<%# ajax: dummy row - placeholder for object id for last row in html table. Used in ajax request for next set of rows -%>
+<% if @last_row_id -%>
+    <tr style="display: none" id='<%= "last-row-id-#{@last_row_id}" %>'>
+      <td></td>
+    </tr>
+<% else -%>
+    <tr style="display: none">
+      <td></td>
+    </tr>
+<% end -%>

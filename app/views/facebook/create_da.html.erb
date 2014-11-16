@@ -1,0 +1,39 @@
+<h1>
+  Velkommen til <%= APP_NAME %>
+</h1>
+<p>
+  <%= APP_NAME %> leger med nogle af begreber fra <%= link_to_charles_eisenstein %>'s bog <%= link_to_sacred_economics %>,
+  fx. fællesskab, frie penge, negativ rente og gavenetværk.<br />
+  Som fællesskab i dette spil er valgt ens facebook venner,
+  frie penge er danske frie kr. med negativ rente.
+  Negativ rente pr. år <%= NEG_INT_POS_BALANCE_PER_YEAR.round(1) %>% for positiv saldo
+  og <%= NEG_INT_NEG_BALANCE_PER_YEAR.round(1) %>% for negativ saldo.
+  Dvs. både formue og gæld vil blive mindre med tiden.
+  <br />
+  <br />
+  Du deler de ting (eller tjenester) du har i overskud og som dine vemner kan have glæde af.
+  Ting kan være gratis eller du kan sætte en pris når du opretter opslag eller efterfølgende. <br />
+  Dette er et spil med frie danske kr. og alle har ubegrænset kredit.<br />
+  Din saldo i dette spil afspejler hvor meget du har solgt/købt (givet/modtaget),
+  er et mål for hvor du har investeret i fællesskabet/venner og er et mål for taknemmelighedsgæld,
+  hvem har givet/modtaget mest.<br />
+  Frie penge er penge med en historie.
+  Frie penge og ting (eller tjenester) er bundet tæt sammen og frie penge er ikke anonyme.
+  Tag fx. de 300 frie danske kr. fra salget af en brugt cykel der efterfølgende er blevet brugt til at købe et par rulleskjøter.
+  Nu er de 300 frie danske kr., de 2 historier om cyklen og rulleskøjterne og de 3 personer forbundne.
+  Hold pengene i live, opdater historierne og hold forbindelsen.
+  <br />
+  <br />
+  <%= APP_NAME %> opretter opslag på din væg med dine tilbud.
+  Sæt rettigheder for applikationen så dine venner kan se hvad du tilbyder.
+  Det er FB rettigheder der bestemmer hvem der kan se dine opslag.
+  <br />
+  <%= APP_NAME %> gemmer information om din saldo, tekst og links til dine opslag, men ikke billeder i opslag.
+  Når og hvis du sletter <%= APP_NAME %> tilbud fra din væg
+  tabes forbindelsen imellem din saldo og hvad du har givet/modtaget fra fællesskabet
+  og dine frie penge er blot kedelige anonyme penge uden historie.
+</p>
+
+<%= link_to 'Giv ' + APP_NAME + ' adgang til mine grundlæggende oplysninger!', "javascript: {top.location.href='" + @auth_url + "'}" %>
+<br />
+<br />

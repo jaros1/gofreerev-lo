@@ -1,0 +1,73 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+usd_dkk_0:
+  id: 1
+  date: <%= Date.today.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: DKK
+  exchange_rate: 5.6477073132162
+  created_at: <%= Time.now %>
+  updated_at: <%= Time.now %>
+
+usd_sek_0:
+  id: 2
+  date: <%= Date.today.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: SEK
+  exchange_rate: 6.51145473644974
+  created_at: <%= Time.now %>
+  updated_at: <%= Time.now %>
+
+usd_dkk_20:
+  id: 3
+  date: <%= 20.days.ago.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: DKK
+  exchange_rate: 5.930092678877011
+  created_at: <%= 20.days.ago %>
+  updated_at: <%= 20.days.ago %>
+
+usd_sek_20:
+  id: 4
+  date: <%= 20.days.ago.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: SEK
+  exchange_rate: 6.185881999627252
+  created_at: <%= 20.days.ago %>
+  updated_at: <%= 20.days.ago %>
+
+usd_dkk_50:
+  id: 5
+  date: <%= 50.days.ago.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: DKK
+  exchange_rate: 6.226597312820862
+  created_at: <%= 50.days.ago %>
+  updated_at: <%= 50.days.ago %>
+
+usd_sek_50:
+  id: 6
+  date: <%= 50.days.ago.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: SEK
+  exchange_rate: 5.876587899645889
+  created_at: <%= 50.days.ago %>
+  updated_at: <%= 50.days.ago %>
+
+usd_dkk_100:
+  id: 7
+  date: <%= 100.days.ago.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: DKK
+  exchange_rate: 6.537927178461905
+  created_at: <%= 100.days.ago %>
+  updated_at: <%= 100.days.ago %>
+
+usd_sek_100:
+  id: 8
+  date: <%= 100.days.ago.to_yyyymmdd %>
+  from_currency: USD
+  to_currency: SEK
+  exchange_rate: 5.582758504663595
+  created_at: <%= 100.days.ago %>
+  updated_at: <%= 100.days.ago %>

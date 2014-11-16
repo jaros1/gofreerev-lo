@@ -1,0 +1,46 @@
+<div class="user-menu-1-line" style="width: 100%">
+  <table>
+    <tr>
+      <% 0.upto(@user_nav_links.size-1) do |i|
+        prefix, array_values = @user_nav_links[i]
+      -%>
+          <% if @user_nav_links.size > 1 and i > 0 -%>
+              <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+          <% end -%>
+          <%= render :partial => 'user_nav_links', :object => {:prefix => prefix, :array_values => array_values, :page_values => @page_values} %>
+      <% end -%>
+    </tr>
+  </table>
+</div>
+<div class="user-menu-2-lines" style="width: 100%">
+  <table>
+    <% if @user_nav_links.size > 0
+         prefix, array_values = @user_nav_links[0] -%>
+        <tr>
+          <%= render :partial => 'user_nav_links', :object => {:prefix => prefix, :array_values => array_values, :page_values => @page_values} %>
+        </tr>
+    <% end -%>
+    <% if @user_nav_links.size > 1 -%>
+        <% 1.upto(@user_nav_links.size-1) do |i|
+          prefix, array_values = @user_nav_links[i]
+        -%>
+            <% if @user_nav_links.size > 2 and i > 1 -%>
+                <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+            <% end -%>
+            <%= render :partial => 'user_nav_links', :object => {:prefix => prefix, :array_values => array_values, :page_values => @page_values} %>
+        <% end -%>
+    <% end -%>
+  </table>
+</div>
+<div class="user-menu-3-lines" style="width: 100%">
+  <table>
+    <% 0.upto(@user_nav_links.size-1) do |i|
+      prefix, array_values = @user_nav_links[i]
+    -%>
+        <tr>
+          <%= render :partial => 'user_nav_links', :object => {:prefix => prefix, :array_values => array_values, :page_values => @page_values} %>
+        </tr>
+    <% end -%>
+  </table>
+</div>
+<div style="width: 100%"><br /></div>

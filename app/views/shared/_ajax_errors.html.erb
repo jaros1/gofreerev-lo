@@ -1,0 +1,6 @@
+<% for error2 in @errors do -%>
+    <tr>
+      <td><%= error2[:msg].html_safe %></td>
+      <td><%= error2[:id] %></td>
+    </tr>
+<% end -%>

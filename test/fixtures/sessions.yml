@@ -1,0 +1,11 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  session_id: MyString
+  last_row_id: 1
+  last_row_at: 1.5
+
+two:
+  session_id: MyString
+  last_row_id: 1
+  last_row_at: 1.5

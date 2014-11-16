@@ -1,0 +1,21 @@
+<%= t '.mail_header', :appname => APP_NAME, :url => SITE_URL %>
+
+<%= t '.friends_suggestions_header_line' %>
+<% @friends_proposals.each do |proposal| -%>
+<%= proposal.user_name %> <%= api_profile_url(proposal) %>
+<% end -%>
+
+<%= t '.login_users_header_line' %>
+<% @login_users.each do |login_user| -%>
+<%= login_user.user_name %> <%= api_profile_url(login_user) %>
+<% end -%>
+
+<%= t '.interval_text', :days => (FIND_FRIENDS_LAST_NOTI / 1.day).round %>
+<%= t '.noreply_text' %>
+
+<%= t '.unsubscribe_header_line' %>
+<%= t '.unsubscribe_text_1', :url => @link1, :appname => APP_NAME %>
+<%= t '.unsubscribe_text_2', :url => @link2, :appname => APP_NAME, :users =>  @login_users.collect { |u| u.user_name }.join(', ') %>
+<%= t '.unsubscribe_text_3', :url => @link3, :appname => APP_NAME %>
+
+<%= t '.mail_footer', :appname => APP_NAME, :url => SITE_URL %>

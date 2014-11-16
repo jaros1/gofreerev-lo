@@ -1,0 +1,1 @@
+class ImageNotFound < StandardError ; end

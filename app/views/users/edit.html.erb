@@ -1,0 +1,68 @@
+<script>
+    // error callback for delete-account - write to debug log + page header
+    $(document).ready(function() {
+        $("#delete-account").unbind("click") ;
+        $("#delete-account").unbind("ajax:error") ;
+        $("#delete-account").bind("click", function(xhr, settings){
+            // clear page header error messages if any
+            clear_flash_and_ajax_errors() ;
+        })
+        $("#delete-account").bind("ajax:error", function(jqxhr, textStatus, errorThrown){
+            add2log('#delete-account::ajax:error');
+            add2log('jqxhr = ' + jqxhr);
+            add2log('jqxhr.target = ' + jqxhr.target);
+            add2log('textStatus = ' + textStatus);
+            add2log('errorThrown = ' + errorThrown);
+            // inject ajax error message in page header
+            add_to_tasks_errors('Error when deleting account: ' + errorThrown + '. check server log for more information.') ;
+        })
+    })
+</script>
+
+<%= t '.page_header_text_html' %>
+
+<table>
+  <%= render :partial => 'user', :locals => {:user => @user2, :edit => true} %>
+</table>
+<br/>
+<table>
+  <%= render :partial => 'shared/language_tr' %>
+  <tr title="<%= t '.currency_title', @user2.app_and_apiname_hash %>">
+    <td><%= t '.currency_prompt', @user2.app_and_apiname_hash %></td>
+    <td>:</td>
+    <td><%= select_tag :user_currency_new2, options_for_select(selected_currency, [@users.first.currency]), {:class => 'user_currency_new', :onchange => 'update_currency(this)'} %></td>
+  </tr>
+  <tr title="<%= t '.share_balance_title', :appname => APP_NAME %>">
+    <td><%= t '.share_balance_prompt', :appname => APP_NAME %></td>
+    <td>:</td>
+    <td>x</td></tr>
+  <tr title="<%= t '.log_out_title', @user2.app_and_apiname_hash %>">
+    <td><%= t '.log_out_prompt', @user2.app_and_apiname_hash %></td>
+    <td>:</td>
+    <td><%= link_to t('.log_out_link_text'), auth_destroy_path(:id => @user2.provider, :return_to => users_path(:friends => 'me')), :method => :delete %></td>
+  </tr>
+  <tr title="<%= t '.post_on_wall_title', @user2.app_and_apiname_hash %>">
+    <td><%= t '.post_on_wall_prompt', @user2.app_and_apiname_hash %></td>
+    <td>:</td>
+    <td><%= post_on_wall_checkbox(@user2.provider, @post_on_wall) %></td>
+  </tr>
+  <tr title="<%= t '.access_title', @user2.app_and_apiname_hash %>">
+    <td><%= t '.access_prompt' %></td>
+    <td>:</td>
+    <td><%= link_to @user2.apiname, API_APP_SETTING_URL[@user2.provider] || '#', :target => '_blank' %></td>
+  </tr>
+  <tr title="<%= t '.delete_account_title', @user2.app_and_apiname_hash %>">
+    <td><%= t '.delete_account_prompt', @user2.app_and_apiname_hash %></td>
+    <td>:</td>
+    <td>
+      <%= link_to t('.delete_account_link_text'), user_path(:id => @user2.id), :id => 'delete-account',
+                  :remote => true, :format => :js, :method => :delete,
+                  :data => { :confirm => t('.delete_account_link_confirm', @user2.app_and_apiname_hash),
+                             :type => :script } %>
+    </td>
+  </tr>
+</table>
+<br>
+<div style="width: 100%"><hr></div>
+
+

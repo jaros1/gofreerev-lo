@@ -1,0 +1,1 @@
+class DupPostOnWall < StandardError ; end

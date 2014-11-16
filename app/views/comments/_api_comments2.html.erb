@@ -1,0 +1,31 @@
+<%# comments with an "show older comments link (ajax) -%>
+<% first_comment = api_comments2.first
+   no_older_comments = first_comment ? first_comment.no_older_comments : 0
+-%>
+
+<tr id='<%= "gift-#{gift.id}-links" %>'>
+  <td colspan="2"></td>
+  <td colspan="2">
+    <% unless ((api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '')) -%>
+        <div id="<%= "gift-#{gift.id}-overflow-link" %>" class="overflow" style="display: none">
+          <%= link_to t('.show_more_text'), "#", :onclick => "return show_overflow(this)" %> -&nbsp;
+        </div>
+    <% end -%>
+    <%= link_to_gift_like_unlike(gift) %>
+    - <%= link_to_gift_follow_unfollow(gift) %>
+    <% if gift.show_delete_gift_link?(@users) -%>
+        - <%= lov_to_share_gift(gift) %>
+        - <%= link_to_delete_gift(gift) %>
+    <% else -%>
+        - <%= link_to_gift_hide(gift) %>
+    <% end -%>
+    <% if no_older_comments > 0 -%>
+        - <%= link_to (no_older_comments == 1 ? t('.show_older_comment') : t('.show_older_comments', :no_older_comments => no_older_comments)),
+                      comments_path(:gift_id => gift.id, :first_comment_id => first_comment.comment.id),
+                      :remote => true, :data => { :type => :script }, :format => :js,
+                      :id => "gift-#{gift.id}-show-older-comments-link-#{first_comment.comment.id}",
+                      :class => "gift-action-link" %>
+    <% end -%>
+  </td>
+</tr>
+<%= render :partial => 'comments/api_comments1', :locals => {:api_comments1 => api_comments2} %>

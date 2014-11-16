@@ -1,0 +1,95 @@
+<script>
+</script>
+
+<div style="width: 100%"><br/></div>
+
+<div style="width: 100%">
+  <table>
+    <tr>
+      <td>
+        <table>
+          <tr>
+            <th title="<%= t ".visit_title", :appname => APP_NAME, :apiname => provider_downcase(nil) %>"><%= t ".visit_th" %></th>
+            <th style="width: 10px"></th>
+            <th title="<%= t ".connect_th_title", :appname => APP_NAME %>">
+              <%= t '.connect_th' %>
+            </th>
+            <th style="width: 10px"></th>
+            <th title="<%= t ".access_th_title", :appname => APP_NAME %>">
+              <%= t '.access_th' %>
+            </th>
+            <th style="width: 10px"></th>
+            <th title="<%= t ".post_th_title", :appname => APP_NAME %>">
+              <%= t '.post_th' %>
+            </th>
+          </tr>
+          <% @providers.each do |x| ; provider, logged_in, access, post_on_wall = x -%>
+              <tr>
+                <td title="<%= t ".visit_title", :appname => APP_NAME, :apiname => provider_downcase(provider) %>">
+                  <%= link_to provider_camelize(provider), API_URL[provider], :target => '_blank' %>
+                </td>
+                <td></td>
+                <td title="<%= t ".log_in_out_title#{logged_in}", :appname => APP_NAME, :apiname => provider_downcase(provider) %>">
+                  <% if logged_in == 0 -%>
+                      <%= link_to t(".log_in_link_text"), "/auth/#{provider}" %>
+                  <% else -%>
+                      <%= link_to t(".log_out_link_text"), auth_destroy_path(:id => provider), :method => :delete %>
+                  <% end -%>
+                </td>
+                <td></td>
+                <%# access_id_<provider> and access_a_<provider> are being used in util.grant_write.js.erb (ajax replace text and title) -%>
+                <td id="access_td_<%= provider %>" title="<%= t ".access_title_#{access}", :appname => APP_NAME, :apiname => provider_downcase(provider) %>">
+                  <%= link_to t(".access_link_text_#{access}"), API_APP_SETTING_URL[provider] || '#', :target => '_blank', :id => "access_a_#{provider}" %>
+                </td>
+                <td></td>
+                <td style="text-align: center"><%= post_on_wall_checkbox(provider, post_on_wall) %></td>
+              </tr>
+          <% end -%>
+<% if false -%>
+          <tr class="auth-desc-small">
+            <td colspan="7">
+              <br><%= t '.description_html', :appname => APP_NAME %>
+            </td>
+          </tr>
+<% end -%>
+        </table>
+      </td>
+      <td class="auth-desc-large" style="vertical-align: middle"><%= t '.description_html', :appname => APP_NAME %></td>
+    </tr>
+  </table>
+</div>
+
+<div class="auth-desc-small" style="width: 100%">
+  <br>
+  <%= t '.description_html', :appname => APP_NAME %>
+</div>
+
+<%= render :partial => 'shared/language_table' %>
+
+<%= render :partial => 'shared/share_accounts_dialog' %>
+<%= render :partial => 'shared/share_accounts' %>
+<table width="100%"><tbody id="share_accounts_errors" class="ajax_errors"></tbody></table>
+
+<div style="width: 100%"><br/></div>
+<%= link_to t('.remove_cookies_link_text'), cookie_decline_cookies_path %>
+<div style="width: 100%"><br/></div>
+
+<% if false -%>
+    <% for key in session.keys do -%>
+        <%= "session[:#{key}] = #{debug session[key]}" %><br />
+    <% end -%>
+<% end -%>
+
+<div style="width: 100%">
+  <hr>
+</div>
+
+<%# ad1 - competition running until 31 dec 2014 -%>
+<% if Time.now < Time.new('2015-01-10') -%>
+    <%= render :partial => 'about/ad1' %>
+<% end -%>
+
+<script>
+  // fix opera < 12.16 bug (app started in an iFrame). Redirect to full html page outside FB
+  if (inIframe()) window.top.location.href = window.self.location ;
+</script>

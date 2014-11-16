@@ -1,0 +1,1 @@
+class VkontakteUploadserver < StandardError ; end

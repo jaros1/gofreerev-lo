@@ -1,0 +1,1 @@
+class InvalidImageType < StandardError ; end

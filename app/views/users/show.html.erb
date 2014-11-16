@@ -1,0 +1,40 @@
+<script>
+    <%=
+      # recheck invalid picture urls with owner permissions
+      @missing_api_picture_urls
+    %>
+</script>
+
+<%= t '.page_header_text_html' %>
+
+<table>
+  <%= render :partial => 'user', :locals => {:user => @user2 } %>
+</table>
+<br/>
+
+<% if @page_values[:tab] -%>
+
+    <%= render :partial => 'user_nav_menu' %>
+
+    <% if @page_values[:tab] == 'friends' -%>
+        <%= render :partial => 'show_friends' %>
+    <% elsif @page_values[:tab] == 'balance' -%>
+        <%= render :partial => 'show_balance' %>
+    <% elsif @page_values[:tab] == 'gifts' -%>
+        <%= render :partial => 'show_gifts' %>
+    <% end -%>
+
+<%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows -%>
+    <%= link_to "show-more-rows",
+                user_path(:id => @user2.id, :last_row_id => @last_row_id, :tab => @page_values[:tab],
+                          :status => @page_values[:status], :direction => @page_values[:direction]),
+                :remote => true, :data => { :type => :script }, :format => :js,
+                :id => "show-more-rows-link", :style => "display: none" if @last_row_id %>
+    <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => (@page_values[:tab] == 'friends' ? 'users' : 'gifts')} %>
+
+<% end -%>
+
+<script>
+    // no client side checks before changing currency in this page
+    pre_update_currency = default_pre_update_currency;
+</script>

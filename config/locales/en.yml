@@ -1,0 +1,1111 @@
+# encoding: utf-8
+# Files in the config/locales directory are used for internationalization
+# and are automatically loaded by Rails. If you want to use locales other
+# than English, add the necessary files in this directory.
+#
+# To use the locales, use `I18n.t`:
+#
+#     I18n.t 'hello'
+#
+# In views, this is aliased to just `t`:
+#
+#     <%= t('hello') %>
+#
+# To use a different locale, set it with `I18n.locale`:
+#
+#     I18n.locale = :es
+#
+# This would use the information in config/locales/es.yml.
+#
+# To learn more, please read the Rails Internationalization guide
+# available at http://guides.rubyonrails.org/i18n.html.
+
+en:
+
+  ##########
+  # models #
+  ##########
+
+  activerecord:
+    attributes:
+      gift:
+        direction: "Offers/Seeks"
+        description: "Text"
+        currency: "Currency"
+        price: "Price"
+        user_id_giver: "Seller/giver"
+        user_id_receiver: "Buyer/receiver"
+      comment:
+        price: "Price"
+    attribute_values:
+      gift:
+        direction:
+          giver: "Offers: "
+          receiver: "Seeks: "
+          both: "Closed: "
+    errors:
+      models:
+        gift:
+          attributes:
+            base:
+              giver_or_receiver_must_be_blank: "A new post cannot have a seller/giver and a buyer/receiver"
+              giver_or_receiver_is_required: "A new post must have a seller/giver or a buyer/receiver"
+            user_id_giver:
+              readonly: "cannot be updated"
+            user_id_receiver:
+              readonly: "cannot be updated"
+            currency:
+              readonly: "cannot be changed for a closed post"
+            price:
+              readonly: "cannot be changed for a closed post"
+
+  #########
+  # views #
+  #########
+
+  # application layout with page header and footer
+  layouts:
+     application:
+        cookie_note_title: "%{appname} uses temporary cookies for log in. In temporary session cookie is stored information about start time, login API authorization, language, timezone. Temporary cookies are removed when the browser is closed. Cookie acceptance is the only information stored in a permanent cookie."
+        cookie_note_text_html: "%{appname} uses cookies as part of the service. See <a href=\"%{url}\">cookies</a>."
+        cookie_accept_text: "Accept"
+        cookie_reject_text: "Reject"
+        cookie_ignore_text: "Ignore"
+        page_footer_html: "%{appname} is an open source project. Source to this app is available at %{csv_link} under MIT licence and can be used by other developers in their open source projects. Open source also means that there are no secrets about how this app works and what information is saved about you and your friends.<br /><br />I hope for the development of much more green free open source technology. %{charles_eisenstein_link}'s book %{sacred_economics_link} can be purchased (english) or is available online for free in several languages."
+     page_header:
+        header_currency_title: "Balance. Use currency selection list if you want your balance shown in a different currency. Your balance of free money shows how much you have invested in community and friends and is a measure of gratitude. Who has given / received most? Whose turn is it to receive / give? A positive balance means that you are good at helping others and that your help has been appreciated. A negative balance means that you are good at accepting help and that you appreciated the help. There is no correlation between who is rich / poor in free money here and who is rich / poor in the real world."
+        header_balance_prompt: "Balance:"
+        header_balance_free: "free"
+        header_home_link_title: ''
+        header_home_link_text: 'Share'
+        header_inbox_link_title: ''
+        header_inbox_link_text: 'Inbox'
+        header_friends_link_title: ''
+        header_friends_link_text: 'Friends'
+        header_api_link_title: "Retur to %{apiname} WITHOUT logging out of %{appname}"
+        header_log_in_link_text: 'Log in'
+        header_log_in_link_title: 'Log in'
+        header_log_out_link_text: 'Log out'
+        header_log_out_link_title: "Log out of %{appname}."
+
+  # shared partials
+  shared:
+     not_logged_in:
+        redirect_flash: "Sorry. Page not available. Not logged in. Use links in this page to log in."
+        ajax_get: "Sorry. Request was rejected. Not logged in. Please refresh page."
+        ajax_post: "Sorry. Action was rejected. Not logged in. Please refresh page."
+     user_div:
+        title_non_friend: "%{username}/%{apiname}."
+        title_friend: "%{username}/%{apiname}. Balance %{balance}."
+        title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."
+        title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info."
+        # todo: remove - competition running until 31-dec-2014 - see about/ad1
+        title_non_friend_ad1: "%{username}/%{apiname}."
+        title_friend_ad1: "%{username}/%{apiname}. %{points} points. Balance %{balance}."
+        title_non_friend_click_ad1: "%{username}/%{apiname}. Click here to see user info."
+        title_friend_click_ad1: "%{username}/%{apiname}. %{points} points. Balance %{balance}. Click here to see user info."
+     invite_friend:
+        invite_friend_prompt: "Invite"
+        invite_friend_title: "%{username} is not using %{appname}. Use link to send a %{appname} invitation to %{username}."
+        invite_friend_link_text: "link"
+        invite_friend_mailto_link_text: "mail"
+        invite_friend_mailto_email: "x"
+        invite_friend_mailto_subject: "%{appname} game invitation"
+        invite_friend_mailto_body: "Hi %{to_username}\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards %{from_username}"
+     invite_friends:
+        no_friends_was_found_html: "<p>There was not found any %{appname} friends. Invite some of your friends to use %{appname}.<br />Either by sending a personal message or by using the link below to invite your friends to use %{appname}.<br>A personal message is to prefere as many people will ignore or reject game invitations.</p>"
+        invite_friends_prompt: "Invite friends:"
+        invite_friends_link_title: "Use this link to invite your %{apiname} friends to use %{appname}"
+        invite_friends_message_title: "Invite your friends to play %{appname}" # facebook
+        invite_friends_message_body: "Try a game about helping each other and sharing each others resources in a new different way and a game with a new kind of money that will change our world inspired by the ideas of Charles Eisenstein's book Sacred Economics" # facebook
+        invite_friends_mailto_email: "x"
+        invite_friends_mailto_subject: "%{appname} game invitation"
+        invite_friends_mailto_body: "Dear friend\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards\n%{from_username}"
+        invalid_call: "invalid call - login_user was missing in invite_friends_url call"
+        not_implemented: "invite %{apiname} friends is not implemented"
+     providers:
+        blank: "login provider" # not logged in or generic text used in provider_downcase and provider_camelize methods
+     show_more_rows:
+        last_row_id_missing: "System error. Cannot show more rows. last_row_id was not found in session data."
+        last_row_at_missing: "System error. Cannot show more rows. last_row_at was not found in sessions info."
+        last_row_id_invalid: "Error. Cannot show more rows. Invalid last_row_id. Expected %{expected}. Found %{found}."
+        invalid_interval: "Warning. There should be %{interval} seconds between each show more rows request. Waited for %{sleep} seconds."
+     languages:
+        da: "Danish"
+        en: "Engelsk"
+        title: "Select language. Currently only English and Danish. Happy to receive help with translation into other languages. See FAQ and contact information on GitHub."
+        prompt: "Language"
+     share_accounts:
+        title: "Use this check box if you want to gather your accounts across login providers to a joint account. If you select X you get a total balance with the sum of the value of the gifts you have given and received across all your login providers. Select X to allow cross login provider friends lists compare. You can get a list of the friends you are missing and your friends can get a list of the friends they are missing. That is, people who are your friends at one login provider and who is your friend's friend at an other login provider. Your friends get fewer friends proposals without X in check box as your friend lists are not used in friends proposals. Use link \"Find friends\" to get friends proposals. X in the check box is NOT single sign-on for all access providers. You'll still need to log in each login provider where you want to view, create or comment posts."
+        checkbox_prompt: "Share accounts?"
+        shared_accounts_prompt: "Details: "
+        no_shared_accounts_text: "No shared accounts"
+        not_logged_in_note: "*=not connected"
+        expired_token_note: "#=access token expired"
+        find_friends_link_text: "Find friends"
+        lov_prompt: "Share accounts?"
+        lov_text_0: "no sharing across APIs"
+        lov_text_1: "share balance across APIs"
+        lov_text_2: "share bal. and static friend lists"
+        lov_text_3: "share bal. and dynamic friend lists"
+        lov_text_4: "single sign-on"
+        lov_text_5: "mixed sharing. See text below"
+     share_accounts_dialog:
+        dialog_title: "Security alert!"
+        dialog_title_text_true: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs."
+        dialog_title_text_false: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs. Optional you can enter your email if you wish to receive email with friend suggestions once every fortnight. Please use correct email address. IP-address and your API contact information will be included in email to prevent spam."
+        dialog_text: "Save access tokens on server?"
+
+  # omniauth controllers (auth, facebook and linkedin):
+
+  # auth controller
+  auth:
+     oauth_failure:
+        authentication_failure: "%{provider} authentication failure! %{type}: %{message}"
+        login_cancelled: '%{provider} login was cancelled'
+        linkedin_rw_nus_cancelled: '%{appname} was not granted permission to post on your LinkedIn wall'
+     create:
+        provider_missing: "Login failed. Did not receive name for login provider."
+        unknown_provider: "Login failed. Received unknown login provider %{provider}."
+        invalid_state_login: "Login from %{apiname} failed. Possible \"Cross-site Request Forgery\" problem."
+        access_token_missing: "Login failed. Did not receive %{provider} access token."
+        expires_at_missing: "Login failed. Did not receive expire timestamp for %{provider} access token."
+        expires_at_invalid: "Login failed. Received invalid expire timestamp for %{provider} access token."
+        uid_missing: "Login failed. Did not receive user id from %{provider}."
+        reserved_uid: "Login failed. uid gofreerev cannot be used."
+        user_name_missing_google: "Login failed. Did not receive username from google. Maybe scope userinfo.profile is missing for provider."
+        user_name_missing: "Login failed. Did not receive username from %{provider}."
+        find_or_create_from_auth_hash: "System error. Invalid response from user update after login."
+        login_ok: "%{apiname} log in ok."
+        login_ok_expired3: "%{apiname} log in ok. Note that access token is expired for %{expired_apinames} and that one or more friend lists are not longer being updated dynamically. Please reconnect to fix this problem or update \"Share accounts?\" LOV in this page."
+        login_ok4: "%{apinames} single sign-on ok."
+        login_ok_expired4: "%{apinames} log in ok. Note that access token is expired for %{expired_apinames} and that single sign-on are not working 100%. Please reconnect to fix this problem or update \"Share accounts?\" LOV in this page."
+        login_ok_new_user: "%{apiname} log in ok. Welcome to %{appname}. Your friends list is being downloaded and will be ready for use in a few moments."
+     index:
+        visit_th: "Visit API"
+        visit_title: "Go to %{apiname} without logging in / out. Opens in a new browser tab. Note that %{appname} will still be open in this tab. Remember to log out when out are finish using %{appname}."
+        connect_th: "Connect"
+        connect_th_title: "Use links in this column to connect / disconnect from login providers. Note that you can be connected with multiple login providers at the same time but only with one connection for each login provider."
+        log_in_link_text: "log in"
+        log_out_link_text: "log out"
+        log_in_out_title0: "Connect to %{appname} with your %{apiname} account"
+        log_in_out_title1: "Disconnect from %{appname} and return to %{apiname}"
+        log_in_out_title2: "Close your %{apiname} connection to %{appname}. Note that your are connected to %{appname} with another login provider and that after %{apiname} \"log out\" you can still use %{appname}. Note also that \"log out\" here does NOT log you out of %{apiname}. Use \"log out\" function at %{apiname} if your also wish to log out of %{apiname}."
+        access_th: "Access"
+        access_th_title: "You can in this column see a summary of the access you have given %{appname}. Use the links below to review app settings at your login provider."
+        access_title_0: "Unknown access. You are not connected to %{appname} with a %{apiname} account. Use this link to review what access you may have given %{appname}. Opens in a new browser tab."
+        access_title_1: "%{appname} has read access to your %{apiname} profile information. Use this link to review what access you have given %{appname}. Opens in a new browser tab."
+        access_title_2: "%{appname} can make post on your %{apiname} wall and can read your profile information. Use this link to review what access you have given %{appname}. Opens in a new browser tab."
+        access_title_3: "%{appname} has read access to your %{apiname} profile information. %{appname} also has write access to your twitter wall, but this access will not be used until you allow it. Use this link to review what access you have given %{appname}. Opens in a new browser tab."
+        access_link_text_0: "unknown"
+        access_link_text_1: "read"
+        access_link_text_2: "read+write"
+        access_link_text_3: "(write)"
+        post_th: "Post?"
+        post_th_title: "Use check boxes in this column to allow or prevent post on login provider walls. You might later be asked for more permissions if you select to allow post on your login providers wall."
+        description_html: "Use <u>log in</u> links in this page to connect to %{appname}. The more logs in, the more friends you can share with.<br>Use <u>log out</u> links i this page to disconnect from selected network or use <u>log out</u> link i page header to disconnect from all networks."
+        remove_cookies_link_text: "Remove cookies"
+     destroy:
+        logged_off: "Connection with %{apiname} has been closed. Remember also to log out function at %{apiname} if you are finished using %{apiname}. Note that you are still connected to %{appname} with another login provider. Use \"Log out\" in menu if you wish to terminate connection to %{appname} for all your login providers in one step."
+        already_logged_off: "Already logged out. Use links on this page to log in or to return to login API. Close browser to remove session cookie."
+        unknown_provider: "System error. Unknown login provider when logging off"
+        refresh_token_error1: "Could not renew %{apiname} access token."
+        refresh_token_error2: "Could not renew %{apiname} access token. %{error}."
+        expired_access_token: "Connection to %{appname} with %{apiname} has closed. Access token has expired. Please refresh page. Please reconnect."
+
+  facebook:
+     autologin:
+        autologin_header: "Login in progress - please wait"
+     index:
+        invalid_state_login: "Login from facebook failed. Possible \"Cross-site Request Forgery\" problem."
+        invalid_state_publish_actions: "Possible \"Cross-site Request Forgery\" problem when asking for write access to facebook wall."
+        invalid_state_read_stream: "Possible \"Cross-site Request Forgery\" problem when asking for read access to facebook wall."
+        invalid_state_other: "Possible \"Cross-site Request Forgery\" problem."
+        find_or_create_from_auth_hash: "System error. Invalid response from user update after login"
+        user_denied_login: "System error. Login from facebook failed."
+        user_denied_publish_actions: "%{appname} was not granted access to write on your facebook wall."
+        user_denied_read_stream: "%{appname} was not granted access to read posts on your facebook wall."
+        user_denied_other: "System error. Unknown facebook request was rejected."
+        auth_code_expired: "Temporary error. This authorization code has expired. Please try again."
+        auth_code_error: "Unexpected error at log in. %{error}. Please try again."
+        publish_actions_failed: "%{appname} was not granted access to write on your facebook wall. %{error}"
+        read_stream_failed: "%{appname} was not granted access to read posts on your facebook wall. %{error}"
+        ok_login: "Facebook log in ok."
+        ok_friends_find: "Facebook log in ok."
+        ok_login_new_user: "Facebook log in ok. Welcome to %{appname}. Your friends list is being downloaded and will be ready for use in a minute."
+        ok_publish_actions: "You have granted %{appname} permission to write on your %{apiname} wall."
+        ok_publish_actions_skip: "You did not grant %{appname} permission to write on your %{apiname} wall."
+        ok_read_stream: "%{appname} was granted access to read posts on your %{apiname} wall."
+        ok_read_stream_skip: "You did not grant %{appname} access to read posts on your %{apiname} wall. Photos will be uploaded to %{apiname} but can not be displayed in %{appname}."
+        ok_other: "System error. Unknown facebook request was accepted."
+
+  flickr:
+     index:
+        no_client: "System failure. Could not open %{apiname} API client. %{appname} was not granted access to write on your %{apiname} wall."
+        auth_failed: "System failure. Could not authorize %{apiname} API client. %{appname} was not granted access to write on your %{apiname} wall. Error: \"%{error}\"."
+        find_or_create_from_auth_hash: "System error. Invalid response from user update after login"
+        ok_write: "%{appname} was granted access to write on your %{apiname} wall."
+
+  linkedin:
+     index:
+        no_client: "System failure. Could not open %{apiname} API client. %{appname} was not granted access to write on your %{apiname} wall."
+        auth_failed: "System failure. Could not authorize %{apiname} API client. %{appname} was not granted access to write on your %{apiname} wall. Error: \"%{error}\"."
+        find_or_create_from_auth_hash: "System error. Invalid response from user update after login"
+        ok_rw_nus: "%{appname} was granted access to write on your %{apiname} wall."
+
+  # about controller
+  about:
+     index:
+        about_header: "About %{appname}"
+        about_text_html: "%{appname} is a demo app with bid on key concepts (gift network, free money and negative rate) from Charles Eisenstein's book Sacred Economics. %{appname} is \"green\" software in that way that it runs on a small 7w plug computer and try to reduce the environmental impact by promoting recycling. %{appname} is open source and is freely available under the MIT license on Github. It is my hope that others can use and improve my ideas in this and in other open source projects."
+        betatest_header: "%{appname} betatest"
+        betatest_text_html: "%{appname} is in beta testing, but all functions are not yet fully implemented. There is a limit of %{max_users} active users during the beta test. Feedback is very welcome on <a href='https://github.com/jaros1/gofreerev-fb/issues' target='_blank'>GitHub</a> or by <a href=\"mailto:dev1@gofreerev.com\">email</a>."
+        cookies_header: "Cookies"
+        cookies_text_html: "%{appname} uses an encrypted cookie whose function is to keep track of logged in users. The encrypted cookie contains the login provider user ID and access token as well as some internal variables used to improve the user experience (eg, time zone, warning or error message). %{appname} cookie is not used for advertising or tracking across web sites. Login information is removed at \"log out\" and cookie is removed when the browser is closed."
+        disclaimer_header: "Disclaimer"
+        disclaimer_text_html: "MIT License disclaimer. The software is provided \"as is\", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall %{appname} be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with %{appname} or the use or other dealings in %{appname}."
+        privacy_header: "Privacy"
+        privacy_text_html: "The following information is downloaded to %{appname}. From your login provider user profile are downloaded user ID, name, links to profile and profile picture, language, country, friends and friends list. From friends list is downloaded user ID, name, link to profiles and profile picture and number of friends for each of your friends. From the browser is uploaded current time zone. In the game %{appname} are saved posts, comments, and your current balance in free money. All information download or entered in %{appname} is stored encrypted, is not used for advertising or personalization and is not given to third parties.<br><br>In %{appname} friends lists determine who can see what. You can see posts and current balance in free money for your friends. In posts from your friends, you can see comments from friends of friends. The only thing you can see for friends of friends is their name, profile picture and link to their login provider profile. There is no such thing as public in %{appname}. Posts created across multiple login providers at the same time follow the above rules. Notice that in such a post you can see comments from your friends' friends from another login provider.<br><br>Created posts and comments can be deleted at any time, either one by one or by closing your %{appname} account. Please note that downloaded and entered data is not deleted when you remove or block %{appname} at your login provider. Therefore do first close <a href='/users?friends=me'>your account</a> in %{appname} and then remove or block %{appname} at your login provider."
+     unsubscribe:
+        email_no_id: "Sorry. Error in link. annot unsubscribe email notifications without an email id."
+        email_not_found: "Sorry. Email with this id was not found. Cannot unsubscribe email notifications. Either error in link or an old link."
+        ok1: "Email notificationer has been unsubscribed. sorry about any inconvenience."
+        ok2: "Email notificationer has been unsubscribed for selected users. sorry about any inconvenience."
+     ad1:
+        header_html: "Vind a %{fairphone_url}. Competition ends 31 dec 2014 :"
+        text1_html: "Read competitive conditions below (0 point)"
+        text2_html: "%{login_url} in %{appname} (3 point)"
+        text3_html: "Create %{share_url} in %{appname} (2 point)"
+        text4_html: "Comment friends %{share_url} in %{appname} (5 point)"
+        log_in_link_text: "Log in"
+        share_url_text: "post"
+        footer_html: "Competition Terms. All the fine print that you probably don't bother reading :<br><br>The purpose of this competition is to provide test data and test users for a green app Gofreerev (shared economics) that I am currently developning as a spare time project. The aim is to gather experience, correct errors and make the app better. The app is running in beta testing on a very small web server. There are to be expected poor response times and there is no guarantee that the app is running 24/7. There will be no day-to-day support at errors, but serious errors will be tackled as soon as possible. Serious errors will be reported automatically. In addition there is the option to create \"issues\" on %{github_url} where the source code for this app is hosted.<br><br>The following information is stored in Gofreerev when you log in:<br>Your user id, name, links to profiles and profile picture, language, country, number of friends and friends list.<br>From your friends list is retrieved user id, name, link to profiles and profile photo and number of friends.<br>If you regret participating in the competition you can use the following %{delete_url} to delete your information. Select Edit and Delete Account.<br><br>The app should be self-explanatory with mouseover texts from a computer. The app is not yet 100% tailored for smartphones. On the smartphone is no mouseover help text and there are small problems with the layout and dialogs.<br><br>Each user can get up to 10 points per account. In early January 2015 lots are drawn for 2 pcs fair phones. Winners will be published on this page %{this_page_url} and will be contacted via social networks, email or the like."
+
+  # comments controller
+  comments:
+     create:
+        invalid_request_no_comment_form: "Invalid request. System error. Comment form was not found."
+        invalid_request_unknown_gift: "Invalid request. System error. Unknown id for gift."
+        not_logged_in: "You are not logged in and you cannot create comments. Please refresh web page."
+        invalid_request_invalid_gift: "Invalid request. You have no access to this post. Please refresh web page."
+        deleted_user: "You account is being deleted and you cannot create comments"
+        no_providers: "Comment was not created. No shared login providers. May be a system error."
+        comment_error: "Comment was not created. %{error}."
+        exception: "System error. Comment was not created. %{error}. More information available in log."
+     index:
+        gift_id_is_missing: "Invalid request. Gift id is missing."
+        gift_not_found: "Invalid request. Gift was not found."
+        not_logged_in: "Cannot show older comments. You are not logged in. Please refresh web page."
+        gift_not_friends: "Invalid request. You are not allowed to see this gift."
+        first_comment_id_is_missing: "Invalid request. Comment id is missing."
+        first_comment_not_found: "Invalid request. Comment was not found."
+        gift_comment_mismatch: "Invalid request. Gift and comment do not match."
+        exception: "System error. Cannot get older comments. %{error}. More information in server log."
+     api_comment: # 4 types of comments: comment, deal proposal, rejected deal proposal and accepted deal proposal
+        optional_price: "/ %{price}"
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        proposal_text: "%{date} %{optional_price} : %{text} (proposal)" # new_deal_yn == Y, accepted_yn == nil
+        rejected_text: "%{date} %{optional_price} : %{text} (rejected)" # new_deal_yn == Y, accepted_yn == N
+        accepted_text: "%{date} %{optional_price} : %{text} (accepted)" # new_deal_yn == Y, accepted_yn == Y
+     api_comments2:
+        show_more_text: "Show more text"
+        like_gift: "Like"
+        unlike_gift: "Unlike"
+        follow_gift: "Follow"
+        unfollow_gift: "Don't follow"
+        hide_gift: "Hide post"
+        confirm_hide_gift: "Hide post?"
+        share_gift: "Share post"
+        delete_gift: "Delete post"
+        confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # currency, price and user_name. user_name is short user name for other user in closed deal
+        confirm_delete_gift_2: "Delete post?"
+        show_older_comment: "Show older comment"
+        show_older_comments: "Show %{no_older_comments} older comments"
+     api_comment_status:
+        cancel_new_deal: "Cancel"
+        confirm_cancel_new_deal: "Cancel proposal?"
+        accept_new_deal: "Accept"
+        confirm_accept_new_deal: "Accept proposal?"
+        reject_new_deal: "Reject"
+        confirm_reject_new_deal: "Reject proposal?"
+        delete_comment: "Delete"
+        confirm_delete_comment: "Delete comment?"
+     destroy:
+        unknown_comment: "Cannot delete comment. Comment was not found. Please refresh page."
+        not_logged_in: "Delete comment was not allowed. You are not logged in. Please refresh page."
+        invalid_comment: "Delete comment was not allowed. Please refresh page."
+        deleted_user: "Could not delete comment. Your account is being deleted."
+        exception: "System error. Could not delete comment. %{error}. More information available in log."
+
+  cookie:
+     decline_cookies:
+        page_header_html: "%{appname} uses temporary cookies for log in. In temporary session cookie are stored information about start time, login API authorization, language, timezone. Temporary cookies are removed when the browser is closed. Cookie acceptance is the only information stored in a resident cookie.<br><br>You have rejected to use cookies for this web site. All cookies have been removed and it is secure to leave this web site. Thank you for visiting %{appname}."
+
+  # gift controller
+  gifts:
+     create:
+        not_logged_in: "You are not logged in and you cannot create new posts. Please refresh web page."
+        deleted_user: "You account is being deleted and you cannot create new posts"
+        post_on_wall_deauthorized: "%{appname}'s write permission to your %{apiname} wall has been removed."
+        file_upload_not_allowed: "File upload not allowed. %{appname} lack access to write on your %{apiname} wall."
+        unsupported_filetype: "Unsupported filetype %{filetype} in file upload. Supported filetypes are jpg, gif, png and bmp."
+        file_is_too_big: "File is too big. Max allowed picture size is %{maxsize}."
+        file_mv_error: "Post was created without picture. Picture upload failed. Error: \"%{error}\"."
+        # gift_not_posted_<n> is used if gift was not saved in gifts table - should never happen
+        gift_not_posted_1: "Gift was not posted on your %{apiname} wall (%{error})" # unhandled error message
+        gift_not_posted_2: "Gift was posted on your %{apiname} wall"
+        gift_not_posted_3: "Gift was not posted on your %{apiname} wall" # missing privileges
+        gift_not_posted_4: "Duplicate status message on %{apiname} wall"
+        gift_not_posted_5: "Posting on %{apiname} has not yet been implemented"
+        no_api_walls: "Post was created here but not on any login provider wall. Your post will been seen only by friends that also uses %{appname}. You may go to \"Log in\" page and check read/write permissions to login provider wall and check if you have allowed post to login provider wall."
+        exception: "System error. Gift was not created. %{error}. More information available in log."
+     index:
+        not_logged_in: "Cannot show more rows. You are not logged in. Please refresh web page."
+        welcome_msg_after_login: "Welcome %{username} to %{appname}"
+        create_gift_header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell."
+        price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all."
+        price_prompt: "Price:"
+        price_placeholder: "Price proposal"
+        price_free: "free"
+        direction_giver_prompt: "Offers: "
+        direction_receiver_prompt: "Seeks: "
+        description_title: "Text. Required. Describe what you offer or what you are looking for whether it is things or help. You decide whether you want to sell, buy, rent, lend or give things away for free. We are trading in virtuel free money. Since we are trading in virtuel money you are in practive always giving  your things away or receiving help for free. But your balance in free money changes. Posts are made on your wall and displayed to your friends or whom you have selected to view posts by this app. Your friends can comment on your post on your wall. The agreement should be finalized in here so your balance in free cash is being updated."
+        description_prompt: "Text:"
+        description_placeholder: "Describe what you offer or what you are looking for whether it is things or help."
+        file_title_true: "Optional picture. Photos are an effective way to be seen by your friends. Picture upload takes some time as the picture is uploaded in 2 steps. First upload to %{appname} and then upload to your login provider wall. Please wait."
+        file_title_false: "Sorry. Picture upload is not possible. Pictures are uploaded to your login provider wall and %{appname} lack permission to write on your wall. Photos are an effective way to be seen by your friends. You can use link in top of this page if you wish to give %{appname} access to write on your wall. You can go to \"Log in\" page and select \"Post?\" for one or more login providers if you wish that %{appname} should post on your login provider wall."
+        file_prompt: "Picture:"
+        file_placeholder: "Choose File"
+        link_prompt: "or link:"
+        link_placeholder: "copy/paste url"
+        gift_submit_button_text: "Create post"
+        pending_gift_popup_msg: "Change currency? Select Cancel if you wish to complete your wall posting. Select OK to ignore the not saved post and change currency."
+        description_required_text: "Text is required."
+        price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
+        no_gifts_was_found_html: "<p>There was not found any posts. Neither you nor your friends have yet created<br />any posts here in %{appname}. To get started, you must now create a few posts<br />with something you want to share with your friends or with something you are looking<br />for or are missing, and with which you think your friends might be able to help you.</p>"
+        comment_comment_required_text: "Comment is required"
+        comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
+        http_invalid_last_row_id: "System error. last_row_id must be blank in first http request. last_row_id = \"%{last_row_id}\"."
+        ajax_invalid_last_row_id: "System error. Invalid or empty last_row_id in ajax request. last_row_id = \"%{last_row_id}\"."
+        share_gift_error: "Could not share post on your %{apiname} wall. %{error}"
+     table_header_row:
+        giver_column_heading_html: "From:"
+        receiver_column_heading_html: "To:"
+        received_at_column_heading_html : "Date:"
+        price_column_heading_html: "Price:"
+        received_at_and_pice_heading_html: "Date and price:"
+        new_price_column_heading_html: "Value<br />today:"
+        balance_column_heading_html: "Balance"
+        link_and_text_column_heading_html: "Text:"
+     api_gifts:
+     api_gift:
+        # 4 translate keys to format gift text with link and text.
+        gift_link_title: "Click on link for more information"
+        gift_picture_title: "Click on picture for more information"
+        direction_giver: "%{username} offers"
+        direction_receiver: "%{username} seeks"
+        direction_giver_and_receiver: "from %{givername} to %{receivername}"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
+        optional_price: "/ %{price}"
+        show_more_text: "Show more text"
+        like_gift: "Like"
+        unlike_gift: "Unlike"
+        follow_gift: "Follow"
+        unfollow_gift: "Don't follow"
+        share_lov_text: "Share at:"
+        enter_comment: "Enter a comment ..."
+        new_deal_check_box_prompt: "Agreement proposal"
+        price_prompt: "Price"
+        price_free: "free"
+        new_proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
+     show:
+        invalid_gift_id: "Invalid request. Unknown post id"
+        no_access: "Invalid request. You are not allowed to see this post"
+        invalid_deep_link_id_logged_in: "Sorry. This post has been removed."
+        invalid_deep_link_id_not_logged_in: "Sorry. This post has been removed. Use back button in browser or log in to see other posts."
+        og_def_desc_facebook: "Give, rent, loan, sell, buy. Share resources with your friends. Help each other and help the environment. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics." # optimal size 255 characters
+        og_def_desc_google_oauth2: "Help each other and the environment. Share your resources. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics."
+        og_def_desc_linkedin: "Give, rent, loan, sell, buy. Share each others resources and help the environment. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics." # optimal size 220 characters.
+        og_def_desc_twitter: "Help each other and the environment. Share your resources. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics."
+
+  # inbox controller
+  inbox:
+     index:
+        page_header_html: "Messages"
+        from_column_heading_html: "From"
+        to_column_heading_html: "To"
+        created_at_column_heading_html: "Date"
+        message_column_heading_html: "Message"
+        # there must be 4 keys for each notification.noti_key (*_from_msg, *_from_url, *_to_msg and *_to_url)
+        request_for_app_friendship_v1_from_msg: "%{appname} friend request was sent to %{to_user}"
+        request_for_app_friendship_v1_from_url: "/users/%{to_id}"
+        request_for_app_friendship_v1_to_msg: "%{from_user} would like to be your %{appname} friend"
+        request_for_app_friendship_v1_to_url: "/users/%{from_id}"
+        app_friendship_accepted_v1_from_msg: "You accepted friend request from %{to_user}. You and %{to_user} are now %{appname} friends"
+        app_friendship_accepted_v1_from_url: "/users/%{to_id}"
+        app_friendship_accepted_v1_to_msg: "%{from_user} accepted your friend request. You and %{from_user} are now %{appname} friends"
+        app_friendship_accepted_v1_to_url: "/users/%{from_id}"
+        new_comment_giver_1_v1_from_url: "/gifts/%{giftid}"
+        new_comment_giver_1_v1_from_msg: 'You commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_1_v1_to_msg: '%{username1} commented your offer "%{gifttext} ..."'
+        new_comment_giver_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_2_v1_to_msg: '%{username1} and %{username2} commented your offer "%{gifttext} ..."'
+        new_comment_giver_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} commented your offer "%{gifttext} ..."'
+        new_comment_giver_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons commented your offer "%{gifttext} ..."'
+        new_comment_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_1_v1_to_msg: '%{username1} commented your wish "%{gifttext} ..."'
+        new_comment_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_2_v1_to_msg: '%{username1} and %{username2} commented your wish "%{gifttext} ..."'
+        new_comment_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} commented your wish "%{gifttext} ..."'
+        new_comment_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons commented your wish "%{gifttext} ..."'
+        new_comment_giver_and_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_1_v1_to_msg: '%{username1} commented deal "%{gifttext} ..."'
+        new_comment_giver_and_receiver_1_v1_from_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_1_v1_from_msg: 'You commented the deal between %{givername} and %{receivername} "%{gifttext} ..."'
+        new_comment_giver_and_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_2_v1_to_msg: '%{username1} and %{username2} commented deal "%{gifttext} ..."'
+        new_comment_giver_and_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} commented deal "%{gifttext} ..."'
+        new_comment_giver_and_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons commented deal "%{gifttext} ..."'
+        new_comment_giver_other_1_v1_from_url: "/gifts/%{giftid}"
+        new_comment_giver_other_1_v1_from_msg: 'You commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_1_v1_to_msg: '%{username1} also commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_2_v1_to_msg: '%{username1} and %{username2} also commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_1_v1_to_msg: '%{username1} also commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_2_v1_to_msg: '%{username1} and %{username2} also commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_giver_and_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_1_v1_to_msg: '%{username1} also commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_and_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_2_v1_to_msg: '%{username1} and %{username2} also commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_and_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_and_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_1_v1_to_msg: '%{username1} commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_2_v1_to_msg: '%{username1} and %{username2} commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_3_v1_to_msg: '%{username1}, %{username2} and %{username3} commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_giver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_follow_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons commented %{givername}-s offer "%{gifttext} ..."'
+        new_comment_receiver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_1_v1_to_msg: '%{username1} commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_receiver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_2_v1_to_msg: '%{username1} and %{username2} commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_receiver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_3_v1_to_msg: '%{username1}, %{username2} and %{username3} commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_receiver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_receiver_follow_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons commented %{receivername}-s wish "%{gifttext} ..."'
+        new_comment_giver_and_receiver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_1_v1_to_msg: '%{username1} commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_and_receiver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_2_v1_to_msg: '%{username1} and %{username2} commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_and_receiver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_3_v1_to_msg: '%{username1}, %{username2} and %{username3} commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_comment_giver_and_receiver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_comment_giver_and_receiver_follow_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons commented deal "%{gifttext} ..." between %{givername} and %{receivername}'
+        new_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        new_proposal_giver_1_v1_from_msg: 'You made a bid for %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_1_v1_to_msg: '%{username1} wants to use your offer "%{gifttext} ..."'
+        new_proposal_giver_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_2_v1_to_msg: '%{username1} and %{username2} want to use your offer "%{gifttext} ..."'
+        new_proposal_giver_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} want to use your offer "%{gifttext} ..."'
+        new_proposal_giver_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons want to use your offer "%{gifttext} ..."'
+        new_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_1_v1_to_msg: '%{username1} has a bid on your wish "%{gifttext} ..."'
+        new_proposal_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_2_v1_to_msg: '%{username1} and %{username2} have bids on your wish "%{gifttext} ..."'
+        new_proposal_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} have bids on your wish "%{gifttext} ..."'
+        new_proposal_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons have bids on your wish "%{gifttext} ..."'
+        new_proposal_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_1_v1_to_msg: '%{username1} also wants to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_2_v1_to_msg: '%{username1} and %{username2} also want to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also want to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also want to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_1_v1_to_msg: '%{username1} also has a bid on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_2_v1_to_msg: '%{username1} and %{username2} also have bids on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also have bids on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also have bids on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_giver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_1_v1_to_msg: '%{username1} wants to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_2_v1_to_msg: '%{username1} and %{username2} want to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_3_v1_to_msg: '%{username1}, %{username2} and %{username3} want to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_giver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_giver_follow_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons want to use %{givername}-s offer "%{gifttext} ..."'
+        new_proposal_receiver_follow_1_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_1_v1_to_msg: '%{username1} has a bid on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_receiver_follow_2_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_2_v1_to_msg: '%{username1} and %{username2} have bids on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_receiver_follow_3_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_3_v1_to_msg: '%{username1}, %{username2} and %{username3} have bids on %{receivername}-s wish "%{gifttext} ..."'
+        new_proposal_receiver_follow_n_v1_to_url: "/gifts/%{giftid}"
+        new_proposal_receiver_follow_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons have bids on %{receivername}-s wish "%{gifttext} ..."'
+        cancelled_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_1_v1_to_msg: '%{username1} no longer wants to use your offer "%{gifttext} ..."'
+        cancelled_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_1_v1_from_msg: 'You cancelled your proposal for %{givername}-s offer "%{gifttext} ..."'
+        cancelled_proposal_giver_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_2_v1_to_msg: '%{username1} and %{username2} no longer want to use your offer "%{gifttext} ..."'
+        cancelled_proposal_giver_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} no longer want to use your offer "%{gifttext} ..."'
+        cancelled_proposal_giver_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons no longer want to use your offer "%{gifttext} ..."'
+        cancelled_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_1_v1_to_msg: '%{username1} no longer has a bid on your wish "%{gifttext} ..."'
+        cancelled_proposal_receiver_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_2_v1_to_msg: '%{username1} and %{username2} no longer have bids on your wish "%{gifttext} ..."'
+        cancelled_proposal_receiver_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_3_v1_to_msg: '%{username1}, %{username2} and %{username3} no longer have bids on your wish "%{gifttext} ..."'
+        cancelled_proposal_receiver_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons no longer have bids on your wish "%{gifttext} ..."'
+        cancelled_proposal_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_1_v1_to_msg: '%{username1} also no longer wants to use %{givername}-s offer "%{gifttext} ..."'
+        cancelled_proposal_giver_other_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_2_v1_to_msg: '%{username1} and %{username2} also no longer want to use %{givername}-s offer "%{gifttext} ..."'
+        cancelled_proposal_giver_other_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also no longer want to use %{givername}-s offer "%{gifttext} ..."'
+        cancelled_proposal_giver_other_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_giver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also no longer want to use %{givername}-s offer "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_1_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_1_v1_to_msg: '%{username1} also no longer has a bid on %{receivername}-s wish "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_2_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_2_v1_to_msg: '%{username1} and %{username2} also no longer have bids on %{receivername}-s wish "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_3_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_3_v1_to_msg: '%{username1}, %{username2} and %{username3} also no longer have bids on %{receivername}-s wish "%{gifttext} ..."'
+        cancelled_proposal_receiver_other_n_v1_to_url: "/gifts/%{giftid}"
+        cancelled_proposal_receiver_other_n_v1_to_msg: '%{username1}, %{username2} and %{no_other_users} other persons also have bids on %{receivername}-s wish "%{gifttext} ..."'
+        rejected_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        rejected_proposal_giver_1_v1_from_msg: 'You rejected %{receivername}-s bid on your "%{gifttext} ..."'
+        rejected_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        rejected_proposal_giver_1_v1_to_msg: '%{givername} rejected your bid on his/her offer "%{gifttext} ..."'
+        rejected_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        rejected_proposal_receiver_1_v1_to_msg: '%{receivername} rejected your bid on his/her wish "%{gifttext} ..."'
+        accepted_proposal_giver_1_v1_from_url: "/gifts/%{giftid}"
+        accepted_proposal_giver_1_v1_from_msg: 'You accepted %{receivername}-s bid on your offer "%{gifttext} ..."'
+        accepted_proposal_giver_1_v1_to_url: "/gifts/%{giftid}"
+        accepted_proposal_giver_1_v1_to_msg: '%{givername} accepted your bid on his/her offer "%{gifttext} ..."'
+        accepted_proposal_giver_other_1_v1_to_url: "/gifts/%{giftid}"
+        accepted_proposal_giver_other_1_v1_to_msg: '%{givername} accepted %{receivername}-s bid on his/her offer "%{gifttext} ..."'
+        accepted_proposal_receiver_1_v1_to_url: "/gifts/%{giftid}"
+        accepted_proposal_receiver_1_v1_to_msg: '%{receivername} accepted your bid on his/her wish "%{gifttext} ..."'
+        deleted_account_v1_to_url: "/users/%{userid}?tab=balance"
+        deleted_account_v1_to_msg: "Your balance has been updated because %{username} has deleted his/hers %{appname} %{apiname} account and one or more of your deals with %{username} have been deleted."
+        deleted_account_v2_to_url: "/users/%{userid}?tab=balance"
+        deleted_account_v2_to_msg: "Your balance has been updated because %{username} has deleted his/hers %{appname} %{apiname} account and %{no_gifts} deal(s) with %{username} have been deleted. Your balance has been changed with %{amount} excl. negative interest."
+        friends_find_1_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_1_v1_to_msg: "Friend suggestions: %{username1}"
+        friends_find_2_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_2_v1_to_msg: "Friend suggestions: %{username1} and %{username2}"
+        friends_find_3_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_3_v1_to_msg: "Friend suggestions: %{username1}, %{username2} and %{username3}"
+        friends_find_n_v1_to_url: "/users?apiname=all&appuser=all&friends=find"
+        friends_find_n_v1_to_msg: "Friend suggestions: %{username1}, %{username2} and %{no_other_users} friend suggestions"
+
+  # user controller
+  users:
+     update:
+        invalid_request: "Invalid call. User settings was not changed."
+        invalid_currency: "Currency was not changed. No currency rates was found."
+        send_app_friend_request_ok: "%{appname} friend request was sent to %{username}"
+        send_app_friend_request_error: "Could not send %{appname} friend request to %{username}"
+        cancel_app_friend_request_ok: "%{appname} friend request to %{username} was cancelled"
+        cancel_app_friend_request_error: "Could not cancel %{appname} friend request to %{username}"
+        accept_app_friend_request_ok: "%{appname} friend request from %{username} was accepted"
+        accept_app_friend_request_error: "Accept of %{appname} friend request from %{username} failed"
+        remove_app_friend_ok: "%{appname} friend %{username} was removed"
+        remove_app_friend_error: "Could not remove %{appname} friend %{username}"
+        ignore_app_friend_request_ok: "%{appname} friend request from %{username} was ignored"
+        ignore_app_friend_request_error: "Could not ignore %{appname} friend request from %{username}"
+        block_app_user_ok: "User was blocked. You will not get any more %{appname} friend requests from %{username}"
+        block_app_user_error: "Could not block for %{appname} friend requests from %{username}"
+        unblock_app_user_ok: "%{username} has been unblocked and can send new %{appname} friend requests"
+        unblock_app_user_error: "Could not unblock for %{appname} friend requests from %{username}"
+     show:
+        invalid_request: "Invalid call."
+        page_header_text_html: "<p>User information</p>"
+        not_a_friend: "You can only see user information for your friends."
+        top_text_friend_html: "%{username} balance information"
+        top_text_non_friend_html: "Detailed user information is only displayed to your friends. User info for %{username} cannot be displayed. Use the above buttons if you want to add %{username} as a friend."
+        api_profile_link_text: "profile"
+     user_nav_links:
+        tabs_prompt: "Select tab:"
+        tabs_friends: "Friends"
+        tabs_balance: "Balance"
+        tabs_gifts: "Shared"
+        deal_status_prompt: "Select status:"
+        deal_status_open: "Open"
+        deal_status_closed: "Closed"
+        deal_status_all: "All"
+        deal_direction_prompt: "Select direction:"
+        deal_direction_giver: "From"
+        deal_direction_receiver: "To"
+        deal_direction_both: "Both"
+     show_balance:
+        balance_tab_header_text_html: "%{username}-s balance:<br />"
+     show_friends:
+        friends_tab_header_text_html: "%{username}-s friends:<br />"
+     show_balance_header:
+        giver_column_heading_html: "From:"
+        receiver_column_heading_html: "To:"
+        received_at_column_heading_html : "Date:"
+        price_column_heading_html: "Price:"
+        received_at_and_pice_heading_html: "Date and price:"
+        new_price_column_heading_html: "Value<br />today:"
+        balance_column_heading_html: "Balance"
+        link_and_text_column_heading_html: "Text:"
+     api_gift:
+        gift_link_title: "Click on link for more information"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        optional_price: "/ %{price}"
+        direction_giver: "%{username} offers"
+        direction_receiver: "%{username} seeks"
+        direction_giver_and_receiver: "from %{givername} to %{receivername}"
+        gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
+        show_more_text: "Show more text"
+        # 12 balance title keys. Documentation for balance calculation.
+        # variables: new_balance, old_balance, sign_price, price, exchange_rate, sign_negative_interest, negative_interest,
+        #            sign_currency_gain_loss, currency_gain_loss, new_currency, old_currency and number_of_days
+        balance_title: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price}."
+        balance_title_gain: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{sign_currency_gain_loss} %{currency_gain_loss}. Currency gain for %{number_of_days} days was %{currency_gain_loss}."
+        balance_title_loss: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{sign_currency_gain_loss} %{currency_gain_loss}. Currency loss for %{number_of_days} days was %{currency_gain_loss}."
+        balance_title_exchange_rate: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate}."
+        balance_title_exchange_rate_gain: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_currency_gain_loss} %{currency_gain_loss}. Currency gain for %{number_of_days} days was %{currency_gain_loss}."
+        balance_title_exchange_rate_loss: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_currency_gain_loss} %{currency_gain_loss}. Currency loss for %{number_of_days} days was %{currency_gain_loss}."
+        balance_title_negative_interest: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{sign_negative_interest} %{negative_interest}. Negative interest of %{old_balance} in %{number_of_days} days was %{negative_interest}."
+        balance_title_negative_interest_gain: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price}% %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negative interest of %{old_balance} in %{number_of_days} days was %{negative_interest}. Currency gain for the same period was %{currency_gain_loss}."
+        balance_title_negative_interest_loss: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price}% %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negative interest of %{old_balance} in %{number_of_days} days was %{negative_interest}. Currency loss for the same period was %{currency_gain_loss}."
+        balance_title_exchange_rate_negative_interest: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_negative_interest} %{negative_interest}. Negative interest of %{old_balance} in %{number_of_days} days was %{negative_interest}."
+        balance_title_exchange_rate_negative_interest_gain: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negative interest of %{old_balance} in %{number_of_days} days was %{negative_interest}. Currency gain for the same period was %{currency_gain_loss}."
+        balance_title_exchange_rate_negative_interest_loss: "New balance %{new_balance} = old balance %{old_balance} %{sign_price} %{price} %{old_currency} * %{exchange_rate} %{sign_negative_interest} %{negative_interest} %{sign_currency_gain_loss} %{currency_gain_loss}. Negative interest of %{old_balance} in %{number_of_days} days was %{negative_interest}. Currency loss for the same period was %{currency_gain_loss}."
+     user:
+        user_name_prompt: "Name"
+        user_name_title: "Use this link to see %{username}'s profile on %{apiname} (new tab in browser)"
+        friend_status_prompt: "Status"
+        user_balance_prompt: "Balance"
+        friend_status_text_m: "My %{apiname} account"
+        friend_status_text_d: "Your deleted %{apiname} account"
+        friend_status_text_y: "Friend (%{apiname})"
+        friend_status_text_n: "Not a friend"
+        friend_status_text_f: "Follows"
+        friend_status_text_s: "Stalker"
+        friend_status_text_a: "%{apiname} friend but not a %{appname} friend"
+        friend_status_text_g: "%{appname} friend but not a %{apiname} friend"
+        friend_status_text_h: "%{appname} friend and follows %{apiname} friend"
+        friend_status_text_i: "%{appname} friend and is stalked by %{apiname} friend"
+        friend_status_text_r: "Pending friend request"
+        friend_status_text_p: "Want to be your friend"
+        friend_status_text_b: "Blocked. Friend requests are ignored"
+        last_login_prompt: "Last seen"
+        last_login_text: "%{days} day(s) ago"
+     friend_action_buttons:
+        add_api_friend: "Add %{apiname} friend"
+        remove_api_friend: "Remove %{apiname} friend"
+        send_app_friend_request: "Add %{appname} friend"
+        cancel_app_friend_request: "Cancel %{appname} friend request"
+        accept_app_friend_request: "Accept %{appname} friend request"
+        ignore_app_friend_request: "Ignore %{appname} friend request"
+        remove_app_friend: "Remove %{appname} friend"
+        block_app_user: "Block %{appname} user"
+        unblock_app_user: "Unblock"
+        edit_user: "Edit"
+     index:
+        page_header_text_html: "Add/remove friends<br /><br />"
+        api_profile_link_not_implemented: "link to %{apiname} user profile not implemented"
+        find_friends_not_allowed: "Find friends function is not available. Find friends make friend suggestions by comparing your friends from multiple access providers with your friends of friends of the same login providers. To use find friends you must be logged with multiple login providers at once and you should have chosen \"Share accounts?\" in the login page."
+        find_friends_no_rows: "Sorry. No friend suggestions. You can increase the chance of friend suggestions by logging in with multiple log providers, with X in \"Share accounts?\" in the login page, and by encouraging your friends to do the same."
+        fb_friend_list_true: "Only your %{apiname} friends that also are using %{appname} are displayed in %{appname}."
+        fb_friend_list_false: "%{appname} are not using your %{apiname} friends list and your %{apiname} friends are not displayed in %{appname}."
+     menu_friends_yes_no_links:
+        friends_filter_prompt: "Friends:" # appname, appname_camelized
+        friends_yes_link_text: "yes"
+        friends_no_link_text: "no"
+        friends_all_link_text: "all"
+        friends_find_link_text: "find"
+        friends_me_link_text: "me"
+     menu_app_user_yes_no_links:
+        app_user_filter_prompt: "App user:"
+        app_user_yes_link_text: "yes"
+        app_user_no_link_text: "no"
+        app_user_all_link_text: "all"
+     menu_api_user_links:
+        api_user_filter_prompt: "API users:"
+        api_user_all_link_text: "all"
+     edit:
+        invalid_request: "Invalid request."
+        page_header_text_html: "<p>Update user information</p>"
+        currency_title: "Select the currency you want to use for prices and balance (internal all amounts are stored in USD)."
+        currency_prompt: "Currency"
+        post_on_wall_title: "Use this checkbox to enable or disable post on %{apiname} wall."
+        post_on_wall_prompt: "Post on wall?"
+        share_balance_title: "Use this checkbox to enable and disable shared balance accross login providers. You should be logged in with all the login providers that you are using in %{appname} when you are updating this choice."
+        share_balance_prompt: "Share balance?"
+        log_out_title: "Close your %{apiname} connection to %{appname}. Remember to use \"log out\" function in %{apiname} if your also wish to log out of %{apiname}."
+        log_out_prompt: "Log out"
+        log_out_link_text: "log out"
+        access_title: "Use this link to review what access you have given %{appname}. Opens in a new browser tab."
+        access_prompt: "Access"
+        delete_account_title: "Delete all downloaded and entered data for your %{appname} %{apiname} account. May take a while if lot of information and posts. Only your data at %{appname} will be deleted. Any post that %{appname} has made on your %{apiname} wall will not be deleted. Go to %{apiname} and remove %{appname} from list of apps when data has been deleted. Thank you for visiting %{appname}."
+        delete_account_prompt: "Delete account"
+        delete_account_link_text: "delete"
+        delete_account_link_confirm: "Delete account! All your posts, comments and downloaded information in %{appname} will be deleted. Continue?"
+     destroy:
+        not_logged_in: "Cannot delete account. You are not logged in. Please refresh web page."
+        invalid_request: "Invalid request. Could not delete user account."
+        delete_user_id_not_found: "Cannot delete user account. User was not found. Maybe user account has already been deleted."
+        delete_user_invalid_id: "Invalid request. Cannot delete user account. User account has not been delete marked."
+        ok1_html: "Your data for your %{apiname} account here at %{appname} is being deleted. Account will be deleted within the next 5-10 minutes. Thank you for visiting %{appname}. Use <a href=\"%{url}\">link</a> to remove %{appname} from your app settings on %{apiname}."
+        ok2_html: "Your data for your %{apiname} account here at %{appname} is being deleted. Account will be deleted within the next 5-10 minutes. Note that you are logged in with multiple login providers and you may want to repeat \"Delete account\" for your other %{appname} accounts. Thank you for visiting %{appname}. Use <a href=\"%{url}\">link</a> to remove %{appname} access at %{apiname}."
+        pending_html: "Your data for your %{apiname} account here at %{appname} is being deleted. Please wait. Use <a href=\"%{url}\">link</a> to remove %{appname} access at %{apiname}."
+        completed_html: "Your data for your %{apiname} account here at %{appname} has been deleted. You are no longer logged in to %{appname} with your %{apiname} account. Use <a href=\"%{url}\">link</a> to remove %{appname} access at %{apiname}."
+        exception: "System error when deleting your account. %{error}. More information in server log."
+
+  user_mailer:
+     friends_suggestions:
+        subject: "Gofreerev friends suggestions"
+        mail_header: "Service mail from %{appname}: %{url}"
+        friends_suggestions_header_line: "Friends suggestions:"
+        login_users_header_line: "This notification mail was requested by the following Gofreerev users:"
+        interval_text: "This service mail with friends suggestions is send once every %{days} day if any."
+        unsubscribe_header_line: "You can unsubscribe from this email in one of the following ways:"
+        unsubscribe_text_1: "a) No thanks. Unsubscribe all mails from %{appname}: %{url}"
+        unsubscribe_text_2: "b) This must be an error. Unsubscribe mails from %{users}: %{url}"
+        unsubscribe_text_3: "c) Log in to %{appname} %{url}, change \"Share accounts?\" choice and/or blank email."
+        noreply_text: "Please note that there is \"no reply\" for this email."
+        mail_footer: "Kinds regards, %{appname}, %{url}"
+
+  # util controller
+  util:
+     missing_api_picture_urls:
+        mis_api_pic_exception: "System error when checking moved or deleted images. Error: \"%{error}\". More information in log."
+        mis_api_pic_no_param: "System error when checking moved or deleted images. Did not receive a list with image ids."
+        mis_api_pic_no_tokens: "System error when checking moved or deleted images. Did not find any login information."
+        mis_api_pic_no_token: "System error when checking moved or deleted images. Warning: Received id for an %{apiname} image but user is not connected to %{apiname}."
+        mis_api_pic_not_implemented1: "Check for moved or deleted images is not implemented for %{apiname}."
+        mis_api_pic_not_implemented2: "Check for moved or deleted images is not implemented for %{apiname}."
+        mis_api_pic_file_exists: "Warning. Browser did not find picture %{rel_path}, but picture exists on the server."
+        # mis_api_pic_url_exists: "Warning. Browser did not find picture %{url}, but picture exists on the server."
+        mis_api_pic_deauth: "Connection to %{appname} with %{provider} has expired. Please refresh page or login in with %{provider}."
+     do_tasks:
+        do_tasks_exception: "System error when executing tasks. %{error}. More information in server log."
+        do_task_exception: "System error for task \"%{task}\". %{error}. More information in server log."
+        unknown_timezone: "Warning. Unknown timezone %{timezone}."
+        too_few_exchange_rates: "Warning. Lookup of exchange rates from google %{bank} failed. Expected >= %{expected} currencies. Received %{found} currencies."
+        login_user_id_not_found: "Task %{task} aborted. No valid %{apiname} log in was found. Please refresh web page."
+        login_user_id_unknown: "System error. Task %{task} aborted. Unknown %{provider} user id."
+        login_token_not_found: "System error. Task %{task} aborted. Could not find %{provider} access token."
+        init_api_client_missing: "System  error. Private method init_api_client_%{provider} is missing in app. controller and cannot communicate with %{provider}."
+        # profile image
+        profile_image_invalid_user: "System error. Invalid user id %{user_id} when downloading profile picture"
+        profile_image_blank: "Profile picture was not received from %{provider}" # provider
+        profile_image_invalid_url: "Invalid profile picture url \"%{image}\" received from %{provider}" # image and provider - image must be an url (http or https)
+        profile_image_not_found: "Invalid profile picture url \"%{image}\" received from %{provider}"
+        profile_image_invalid_type: "Warning. Profile picture type \"%{image_type}\" from %{provider} is not supported. Url to profile picture was \"%{image}\""
+        profile_image_unsupported_store: "System error. Please check API_PROFILE_PICTURE_STORE setup for %{provider}."
+        profile_image_wget_failed: "Profile picture download from %{provider} failed: \"%{error}\". Url was \"%{image}\""
+        profile_image_count_failed: "Profile picture download from %{provider} failed. Expected one profile picture. Found %{count} profile pictures. Url was \"%{image}\""
+        profile_image_mv_failed: "System error. Could not insert new profile picture received from %{provider}: \"%{error}\""
+        profile_image_cp1_failed: "System error. Could not insert new profile picture received from %{provider}: \"%{error}\""
+        profile_image_cp2_failed: "System error. Could not insert new profile picture received from %{provider}: \"%{error}\""
+        profile_image_exception: "System error. Could not update %{provider} profile picture: \"%{error}\". More information in server log."
+        # friend list
+        api_client_gofreerev_get_friends: "System error. Cannot download friend list from %{apiname}. Instance method gofreerev_get_friends is missing for %{apiname} API client."
+        post_login_fl_missing_field: "System error. Cannot update %{apiname} friend list. Field %{field} was not found for user id %{userid}."
+        post_login_fl_invalid_field: "System error. Cannot update %{apiname} friend list. Invalid field %{field} for user id %{userid}."
+        post_login_fl_not_authorized: "Cannot download %{apiname} friend list. You have removed %{appname} from %{apiname} and you no longer have access to %{appname} using your %{apiname} account. You should refresh the page as access rights changed."
+        google_access_not_configured: "Error when fetching friend list from Google+ API. Access Not Configured. Check list: 1) Status is ON for Google+ API in Google Cloud Console"
+        google_insufficient_permission: "Error when fetching friend list from Google+ API. API. Insufficient Permission. Check list: 1) scope plus.login maybe missing in provider setup for google+"
+        google_other_errors: "Error when fetching friend list from Google+ API. \"%{error}\""
+        linkedin_access_denied: "Error when fetching connections from LinkedIn API. Access to connections denied. Check list: 1) scope r_network maybe  missing in provider setup for LinkedIn"
+        post_login_new_user: "Your friend list is ready. Please refresh page to see any posts from your friends."
+        post_login_no_friends: "Your %{apiname} friend list is empty or %{appname} is not authorized to see your %{apiname} friend list. No %{apiname} friends and no post from %{apiname} friends are displayed in %{appname}."
+        # post on wall
+        grant_write_link_missing: "System error. Cannot insert link to grant permission to post on %{apiname} wall. Either private method grant_write_link_%{provider} is missing in application controller or API_GIFT_PICTURE_STORE[:%{provider}] should be set to nil if %{apiname} API does not support post on %{apiname} wall."
+        confirm_grant_write: "Allow post on your %{apiname} wall?" #
+        api_client_gofreerev_post_on_wall: "System error. Cannot post on %{apiname} wall. Instance method gofreerev_post_on_wall is missing for %{apiname} API client."
+        post_on_api_unknown_gift_id: "System error. Unknown post id %{id} when posting on %{provider} wall."
+        post_on_api_invalid_gift_id: "Invalid post id %{id} when posting on %{provider} wall (1)."
+        post_on_api_old_gift: "System error. Old post id %{id} when posting on %{provider} wall."
+        post_on_api_deleted_gift: "Id %{id} for deleted post when posting on %{provider} wall."
+        gift_posted_1_html: "Gift posted in here but not on your %{apiname} wall (%{error})." # unhandled error message
+        gift_posted_2_html: "Gift posted in here and on your %{apiname} wall."
+        gift_posted_2b_html: "Gift posted in here and on your %{apiname} wall. Please note that text has been truncated in %{apiname} post."
+        gift_posted_3_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to post on my behalf!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # missing privileges
+        gift_posted_3b_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall. <a href=\"%{url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\" data-confirm=\"%{confirm}\" class=\"grant_write_ajax_link\">Allow %{appname} to post on my behalf!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # missing privileges
+        gift_posted_3c_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall right now but permission to post updates on your %{apiname} wall has been granted in an other browser session. Use %{apiname} <a href=\"%{url}\">log out + log in</a> to update your permissions and allow %{appname} to post on your behalf also in this browser session! <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # changed privileges (facebook)
+        gift_posted_3d_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall right now but permission to post updates on your %{apiname} wall has been granted in an other browser session. <a href=\"%{url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\" data-confirm=\"%{confirm}\" class=\"grant_write_ajax_link\">Allow %{appname} to post on my behalf also in this browser session!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # changed privileges (flickr and linkedin)
+        gift_posted_4_html: "Gift posted in here but not on your %{apiname} wall. Duplicate status message on %{apiname} wall"
+        gift_posted_5_html: "Gift posted in here but not on your %{apiname} wall. Posting on %{apiname} has not yet been implemented"
+        gift_posted_6_html: "Gift with picture was not posted on your %{apiname} wall. Internal error. Picture was not found."
+        gift_posted_7_html: "Gift was not posted on your %{apiname} wall. Error in deep <a href='%{link}'>link</a>. Error: \"%{error}\"."
+        gift_posted_8_html: "Gift posted here but not on your %{apiname}. You have removed %{appname} from %{apiname} and you no longer have access to %{appname} using your %{apiname} account. You should refresh the page as access rights have changed."
+        gift_posted_9_html: "Gift posted here but not on your %{apiname} wall. Post on %{apiname} requires a photo attachment or that text to image convert is enabled (API_TEXT_TO_PICTURE)."
+        gift_posted_10_html: "Gift posted here but not in your %{apiname} wall. Authorization expired. Please log in again to renew your authorization."
+        gift_posted_11_html: "Gift posted here but not on your %{apiname} wall. Post on %{apiname} requires a photo attachment or that text to image software is working on server. Text to picture convert program phantomjs was not found on server. Please install phantomjs or disable text to picture convert (API_TEXT_TO_PICTURE)."
+        get_api_picture_url_missing: "System error. Posted on %{apiname} wall but did not found method get_api_picture_%{provider}. Photo cannot be displayed in %{appname}."
+        no_api_picture_url: "Picture uploaded, but did not get a picture url from #{apiname}"
+        fb_pic_post_declined_permission_html: "Gift was posted on your %{apiname} wall but picture cannot be displayed on your %{appname} wall. %{appname} do not have permission to read posts on your %{apiname} wall."
+        fb_pic_check_declined_permission_html: "Your %{apiname} pictures can not be displayed on your %{appname} wall. %{appname} do not have permission to read posts on your %{apiname} wall."
+        fb_pic_post_missing_permission_html: "<div title='Picture was uploaded to your %{apiname} but %{appname} lack permission to read posts on your %{apiname} wall and pictures on your %{apiname} wall can not be displayed on your %{appname} wall. You can change visibility for %{appname} posts to public or you could grant %{appname} permission to read posts on your wall. %{appname} will only use read permission to display pictures in %{appname}.'>Gift was posted on your %{apiname} wall but picture cannot be displayed on your %{appname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
+        fb_msg_post_missing_permission_html: "<div title='Gift was posted on your %{apiname} wall but %{appname} lack access to read posts on your %{apiname} wall. You can change visibility for %{appname} posts to public or you could grant %{appname} permission to read posts on your wall.'>Gift was posted on your %{apiname} but %{appname} lacks permission to see post on your %{apiname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
+        fb_pic_check_missing_permission_html: "<div title='One or more pictures have previously been uploaded to your %{apiname} wall but %{appname} lack access to read posts on your %{apiname} wall and pictures can not be displayed on your %{appname} wall. You can change visibility for %{appname} posts to public or you could grant %{appname} permission to read posts on your wall. %{appname} will only use read permission to display pictures in %{appname}.'>Your %{apiname} pictures can not be displayed on your %{appname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
+        fb_msg_check_missing_permission_html: "<div title='One or more gifts have previously been posted on your %{apiname} wall but %{appname} lack access to see posts on your %{apiname} wall. You can change visibility for %{appname} posts to public or you could allow %{appname} to see posts on your wall.'>%{appname} lacks permission to see post on your %{apiname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
+        fb_pic_post_unknown_problem: "Gift was posted in here and on your %{apiname} wall. Picture was uploaded to your %{apiname} wall but %{appname} did not have permission to read the picture on your %{apiname} wall and cannot display the picture in here. Maybe you have changed permissions for %{appname}."
+        fb_msg_post_unknown_problem: "Gift was posted in here and on your %{apiname} wall. Picture was uploaded to your %{apiname} wall but %{appname} did not have permission to read the picture on your %{apiname} wall and cannot display the picture in here. Maybe you have changed permissions for %{appname}."
+        no_local_picture: "System error. Invalid id %{id} when posting on %{provider} wall (2)."
+        local_picture_not_found: "Invalid id %{id} when posting on %{provider} wall (3)."
+     like_gift:
+        invalid_action: "System error. Cannot \"like\" post. Invalid action. More information in server log."
+        not_logged_in: "Cannot \"like\" post. You are not logged in. Please refresh the page."
+        gift_deleted: "Cannot \"like\" post. Post has been deleted. Please refresh the page."
+        not_authorized: "System error. Cannot \"like\" post. You are no longer allowed to see the post. Please refresh the page."
+        deleted_user: "Cannot \"like\" post. Your user account is being deleted."
+        comment_deleted: "Cannot \"like\" post. The post has been deleted. Please refresh the page."
+        not_allowed: "\"like\" post is not longer possible. Please refresh the page."
+        exception: "System error. Cannot \"like\" post. %{error}. More information in server log."
+     unlike_gift:
+        invalid_action: "System error. Cannot remove \"like\" post. Invalid action. More information in server log."
+        not_logged_in: "Cannot remove \"like\" post. You are not logged in. Please refresh the page."
+        gift_deleted: "Cannot remove \"like\" post. Post has been deleted. Please refresh the page."
+        not_authorized: "System error. Cannot remove \"like\" post. You are no longer allowed to see the post. Please refresh the page."
+        deleted_user: "Cannot remove \"like\" post. Your user account is being deleted."
+        comment_deleted: "Cannot remove \"like\" post. The post has been deleted. Please refresh the page."
+        not_allowed: "Remove \"like\" post is not longer possible. Please refresh the page."
+        exception: "System error. Cannot remove \"like\" post. %{error}. More information in server log."
+     follow_gift:
+        invalid_action: "System error. Cannot \"follow\" post. Invalid action. More information in server log."
+        not_logged_in: "Cannot \"follow\" post. You are not logged in. Please refresh the page."
+        gift_deleted: "Cannot \"follow\" post. Post has been deleted. Please refresh the page."
+        not_authorized: "System error. Cannot \"follow\" post. You are no longer allowed to see the post. Please refresh the page."
+        deleted_user: "Cannot \"follow\" post. Your user account is being deleted."
+        comment_deleted: "Cannot \"follow\" post. The post has been deleted. Please refresh the page."
+        not_allowed: "\"follow\" post is not longer possible. Please refresh the page."
+        exception: "System error. Cannot \"follow\" post. %{error}. More information in server log."
+     unfollow_gift:
+        invalid_action: "System error. Cannot remove \"follow\" post. Invalid action. More information in server log."
+        not_logged_in: "Cannot remove \"follow\" post. You are not logged in. Please refresh the page."
+        gift_deleted: "Cannot remove \"follow\" post. Post has been deleted. Please refresh the page."
+        not_authorized: "System error. Cannot remove \"follow\" post. You are no longer allowed to see the post. Please refresh the page."
+        deleted_user: "Cannot remove \"follow\" post. Your user account is being deleted."
+        comment_deleted: "Cannot remove \"follow\" post. The post has been deleted. Please refresh the page."
+        not_allowed: "Remove \"follow\" is not longer possible. Please refresh the page."
+        exception: "System error. Cannot remove \"follow\" post. %{error}. More information in server log."
+     hide_gift:
+        invalid_action: "System error. Cannot hide post. Invalid action. More information in server log."
+        not_logged_in: "Cannot hide post. You are not logged in. Please refresh the page."
+        gift_deleted: "Cannot hide post. Post has been deleted. Please refresh the page."
+        not_authorized: "System error. Cannot hide post. You are no longer allowed to see the post. Please refresh the page."
+        deleted_user: "Cannot hide post. Your user account is being deleted."
+        comment_deleted: "Cannot hide post, The post has been deleted. Please refresh the page."
+        not_allowed: "Hide post is not longer possible. Please refresh the page."
+        exception: "System error. Cannot hide post. %{error}. More information in server log."
+     delete_gift:
+        invalid_action: "System error. Cannot delete post. Invalid action. More information in server log."
+        not_logged_in: "Cannot delete post. You are not logged in. Please refresh the page."
+        gift_deleted: "Cannot delete post. Post has been deleted. Please refresh the page."
+        not_authorized: "System error. Cannot delete post. You are no longer allowed to see the post. Please refresh the page."
+        deleted_user: "Cannot delete post. Your user account is being deleted."
+        comment_deleted: "Cannot delete post. The post has been deleted. Please refresh the page."
+        not_allowed: "Delete post is not longer possible. Please refresh the page."
+        exception: "System error. Cannot delete post. %{error}. More information in server log."
+     cancel_new_deal:
+        invalid_action: "System error. Cannot cancel proposal. Invalid action. More information in server log."
+        not_logged_in: "Cannot cancel proposal. You are not logged in. Please refresh page."
+        comment_not_found: "System error. Cannot cancel proposal. Proposal was not found."
+        gift_deleted: "Cannot cancel proposal. Post has been deleted. Please refresh page."
+        not_authorized: "System error. Cannot cancel proposal. You are not allowed to see post. Please refresh page."
+        deleted_user: "Cannot cancel proposal. Your user account is being deleted."
+        comment_deleted: "Proposal has been deleted and cannot be cancelled. Please refresh page."
+        not_allowed: "Sorry. It is no longer possible to cancel proposal. Please refresh page."
+        ok: "Proposal has been cancelled."
+        exception: "System error. Cannot cancel proposal. %{error}. More information in server log."
+     reject_new_deal:
+        invalid_action: "System error. Cannot reject proposal. Invalid action. More information in server log."
+        not_logged_in: "Cannot reject proposal. You are not logged in. Please refresh page."
+        comment_not_found: "System error. Cannot reject proposal. Proposal was not found."
+        gift_deleted: "Cannot reject proposal. Post has been deleted. Please refresh page."
+        not_authorized: "System error. Cannot reject proposal. You are not allowed to see post. Please refresh page."
+        deleted_user: "Cannot reject proposal. Your user account is being deleted."
+        comment_deleted: "Proposal has been deleted and cannot be rejected. Please refresh page."
+        not_allowed: "Sorry. It is no longer possible to reject proposal. Please refresh page."
+        ok: "Proposal has been rejected."
+        exception: "System error. Cannot reject proposal. %{error}. More information in server log."
+     accept_new_deal:
+        invalid_action: "System error. Cannot accept proposal. Invalid action. More information in server log."
+        not_logged_in: "Cannot accept proposal. You are not logged in. Please refresh page."
+        comment_not_found: "System error. Cannot accept proposal. Proposal was not found."
+        gift_deleted: "Cannot accept proposal. Post has been deleted. Please refresh page."
+        not_authorized: "System error. Cannot accept proposal. You are not allowed to see post. Please refresh page."
+        deleted_user: "Cannot accept proposal. Your user account is being deleted."
+        comment_deleted: "Proposal has been deleted and cannot be accepted. Please refresh page."
+        not_allowed: "Sorry. It is no longer possible to accept proposal. Please refresh page."
+        invalid_updated_by: "System error. Did not find any valid \"updated by\" users."
+        ok: "Proposal has been accepted."
+        exception: "System error. Cannot accept proposal. %{error}. More information in server log."
+     grant_write:
+        ok: "%{appname} was granted permission to write on your %{apiname} wall."
+        invalid_provider: "Invalid request. Could not grant write permission to your API wall. Invalid login provider."
+        not_allowed: "%{appname} not was granted permission to write on your %{apiname} wall. Please refresh page."
+        exception: "System error. Could not grant write permission to your %{apiname} wall. %{error}. More information in server log."
+#     grant_write_twitter:
+#        ok: "%{appname} was granted permission to write on your %{apiname} wall."
+#        exception: "System error. Could not grant write permission to your %{apiname} wall. %{error}. More information in server log."
+#     grant_write_vkontakte:
+#        ok: "%{appname} was granted permission to write on your %{apiname} wall."
+#        exception: "System error. Could not grant write permission to your %{apiname} wall. %{error}. More information in server log."
+     hide_grant_write:
+        unknown_provider: "System error. Could not hide %{provider} grant write link. Unknown login provider."
+        ok: "%{appname} will in future not ask for permission to make postings on your %{apiname} wall. You can later allow %{appname} to make postings on your %{apiname} wall by checking \"Post?\" checkbox in \"Log in\" page."
+        exception: "System error. Could not hide %{apiname} grant write link. %{error}. More information in server log."
+     post_on_wall_yn:
+        unknown_provider: "System error. Unknown login provider %{apiname}. Change in Post? has not been saved."
+        unknown_post_on_wall: "System error. Unknown choice for login provider %{apiname}. Change in Post? has not been saved."
+        exception: "System error. Could not change Post? choice. %{error}. More information in server log."
+     share_accounts:
+        not_logged_in: "Cannot change \"Share accounts?\" choice. You are not logged in. Please refresh page."
+        unknown_share_accounts: "System error. Unknown choice for share accounts. Change in Share accounts? has not been saved."
+        no_access_token: "System error. Cannot change \"Share accounts?\" choice. Access token was not found."
+        no_expires_at: "System error. Cannot change \"Share accounts?\" choice. Expire timestamp for access token was not found."
+        reconnect_required: "Sorry. Share dynamic friend lists and single sign-on choice is currently available for flickr. New log in is required. Log out and log back in flickr and then select again \"Share accounts?\""
+        exception: "System error. Could not change Share accounts? choice. %{error}. More information in server log."
+     share_gift:
+        no_gift_id: "System error. No gift id. in share gift request."
+        invalid_gift_id: "System error. Invalid gift id. in share gift request."
+        unknown_gift_id: "Cannot share gift. Unknown gift id. Please refresh page."
+        not_logged_in: "Cannot share gift. You are not logged in. Please refresh page."
+        no_provider: "System error. No share link provider in share gift request."
+        unknown_provider: "System error. Unknown share link provider."
+        not_allowed: "Sorry. You are not allowed to share this gift. Please refresh page."
+        exception: "System error. Could not share gift. %{error}. More information in server log."
+     find_friends_batch:
+        not_dev_user: "Cannot send friends suggestion to %{user} in development environment. Please check environment variable ENV['GOFREEREV_DEV_EN_USERIDS'])"
+        fb_error: "Cannot send friends suggestions to facebook. %{type} %{message}"
+        fb_other: "Cannot send friends suggestions to facebook. Unexpected error %{response}"
+     open_graph:
+        not_logged_in: "Could not check link. You are not logged in. Please refresh page."
+        exception: "System error. Could not check link. %{error}. More information in server log."
+
+  # translation keys used in javascript (error) messages
+  js:
+     general:
+        ajax_leave_page: "Waiting for some unfinished business to finish. Please wait."
+        tasks_errors2_missing: "System error. Hidden html table tasks_errors2 is missing."
+        tasks_errors2_invalid: "System error. Invalid number of cells in html table tasks_errors2 row %{row}. Expected %{expected} cells. Found %{found} cells."
+     gifts:
+        description_required_text: "Text is required."
+        price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
+        comment_comment_required_text: "Comment is required"
+        comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
+     new_messages_count:
+        ajax_error: "Error when checking for new messages. %{error}. More information in server log."
+        js_error: "Javascript error when checking for new messages. %{error} (%{location},%{debug})."
+     insert_new_comments:
+        js_error: "Javascript error when inserting new comments. %{error} (%{location},%{debug})."
+     insert_update_gifts:
+        js_error: "Javascript error when inserting new posts. %{error} (%{location},%{debug})."
+     missing_api_picture_urls:
+        ajax_error: "Error when checking moved or deleted images. %{error}. More information in server log."
+     new_gift:
+        ajax_error: "Error when creating new post. %{error}. More information in server log."
+        js_error: "Minor javascript error after creating new post. %{error} (%{location},%{debug})."
+     gift_actions:
+        like_gift_ajax_error: "Cannot \"like\" post. %{error}. More information in server log."
+        unlike_gift_ajax_error: "Cannot remove \"like\" post. %{error}. More information in server log."
+        follow_gift_ajax_error: "Cannot \"follow\" post. %{error}. More information in server log."
+        unfollow_gift_ajax_error: "Cannot remove \"follow\" post. %{error}. More information in server log."
+        delete_gift_ajax_error: "Cannot delete post. %{error}. More information in server log."
+        hide_gift_ajax_error: "Cannot hide post. %{error}. More information in server log."
+        comments_ajax_error: "Cannot get older comments. %{error}. More information in server log."
+        ajax_error: "Error \"%{error}\" for unknown url %{url}. More information in client and server logs."
+        js_error: "Javascript error for post link. %{error} (%{location},%{debug})."
+        click_js_error: "Minor javascript error for post link. %{error} (%{location},%{debug})."
+     new_comment:
+        ajax_error: "Error when creating comment. %{error}. More information in server log."
+        ajax_error2: "Error when creating comment. %{error} (%{location},%{debug}). More information in client and server logs."
+        js_error: "Minor javascript error after creating comment. %{error} (%{location},%{debug})."
+     comment_actions:
+        delete_comment_ajax_error: "Cannot delete comment. %{error}. More information in server log."
+        cancel_new_deal_ajax_error: "Cannot cancel proposal. %{error}. More information in server log."
+        reject_new_deal_ajax_error: "Cannot reject proposal. %{error}. More information in server log."
+        accept_new_deal_ajax_error: "Cannot accept proposal. %{error}. More information in server log."
+        ajax_error: "Error \"%{error}\" for unknown url %{url}. More information in server log."
+        js_error: "Javascript error for comment link. %{error} (%{location},%{debug}). More information in client and server logs."
+        click_js_error: "Minor javascript error for comment link. %{error} (%{location},%{debug})."
+     post_on_wall:
+        ajax_error: "Error when changing \"Post?\" choice. %{error}. More information in server log."
+     grant_write:
+        vkontakte_ajax_error: "Cannot grant write access to vkontakte wall. %{error}. More information in server log."
+        twitter_ajax_error: "Cannot grant write access twitter wall. %{error}. More information in server log."
+        ajax_error: "Cannot grant write access wall. Fejl \"%{error}\" for ugyldig link %{url}. %{error}. More information in server log."
+        js_error: "Cannot grant write access wall. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
+     share_accounts:
+        lov_not_found: "System error when changing \"Share accounts?\" choice. Element share_level_lov was not found."
+        ajax_error: "Cannot change \"Share accounts?\" choice. %{error}. More information in server log."
+        js_error: "Cannot change \"Share accounts?\" choice. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
+     share_accounts_dialog:
+        accept: "Yes"
+        reject: "No"
+        email: "email"
+        invalid_length: "Length of %{field} must be between %{min} and %{max}."
+        invalid_email: "eg. ui@jquery.com"
+     share_gift:
+        invalid_id: "System error. Cannot share gift. Invalid id for LOV."
+        missing_translation: "System error. Cannot share gift. Link definition was not found for %{provider}."
+        js_error: "Javascript error for share gift link. %{error} (%{location},%{debug})."
+        ajax_error: "Cannot share gift on %{provider}. \"%{error}\". More information in server log."
+        # href_urls used for all languages
+        href_appnet: "https://account.app.net/intent/post/?url=%{link}&text=%{text}"
+        href_arto: "http://www.arto.com/section/linkshare/default.aspx?lu=%{link}&ln=%{text}"
+        href_blogger: "https://www.blogger.com/blog_this.pyra?u=%{link}&n=%{text}" # google
+        href_buffer: "https://bufferapp.com/add?text=%{text}&url=%{link}"
+        href_delicious: "https://delicious.com/save?v=5&noui&jump=close&url=%{link}&title=%{text}"
+        href_digg: "https://digg.com/submit?url=%{link}&title=%{text}"
+        href_facebook: "https://www.facebook.com/dialog/share?app_id=%{app_id}&display=popup&href=%{link}&redirect_uri=%{redirect_uri}"
+        href_google_oauth2: "https://plus.google.com/share?url=%{link}"
+        href_kaboodle: "http://www.kaboodle.com/za/selectpage?p_pop=true&pa=url&u=%{link}"
+        href_linkedin: "https://www.linkedin.com/shareArticle?url=%{link}"
+        href_livejournal: "https://www.livejournal.com/update.bml?subject=%{text}&event=%{link}"
+        href_myspace: "https://myspace.com/post?u=%{link}&t=%{text}"
+        href_odnoklassniki: "http://www.odnoklassniki.ru/?st.cmd=addShare&st.s=1&st._surl=%{link}"
+        href_pinterest: "https://pinterest.com/pin/create/bookmarklet/?url=%{link}&media=%{image}&description=%{text}"
+        href_reddit: "https://reddit.com/submit?url=%{link}&title=%{text}"
+        href_sonico: "https://www.sonico.com/share.php?url=%{link}/&title=%{text}"
+        href_stumbleupon: "https://www.stumbleupon.com/submit?url=%{link}&title=%{text}"
+        href_tumblr: "https://www.tumblr.com/share/link?url=%{link}&name=%{text}&description=%{text}" # todo: split text in name and description
+        href_twitter: "https://twitter.com/share?url=%{link}&text=%{text}"
+        href_vkontakte: "https://vkontakte.ru/share.php?url=%{link}"
+     open_graph:
+        ajax_error: "Cannot check url. %{error}. More information in server log."

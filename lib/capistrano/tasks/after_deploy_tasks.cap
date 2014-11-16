@@ -1,0 +1,36 @@
+# http://theadmin.org/articles/capistrano-variables/
+
+namespace :deploy do
+
+  namespace :upload do
+
+    # put special config files under /config/deploy/#{stage}/filesystem/#{rails_env} or /config/deploy/#{stage}/rails/#{rails_env}
+    # stage: dev1 or localhost
+    # filesystem is root for filesystem on stage server and rails is current root on stage server
+    # files under filesystem will have to be deployed manual (problem with permissions)
+    # files under rails will be deployed before "deploy:migrate"
+    # rails_env is default, development, test or production
+    # default is used for deploy for all three rails_env
+    desc 'Upload config files'
+    task :config_files do
+      on roles :all do
+        stage = env.fetch(:stage)
+        rails_env = env.fetch(:rails_env)
+        ["default", rails_env].each do |rails_env2|
+          from_dir = "config/deploy/#{stage}/rails/#{rails_env2}/"
+          to_dir = "#{release_path}"
+          exists = File.exists?(from_dir)
+          next unless exists
+          Dir.open(from_dir).each do |file|
+            next if %w(. ..).index(file)
+            upload! "#{from_dir}#{file}", to_dir, :recursive => true if exists
+          end
+        end
+      end
+    end # config_files
+
+  end # upload
+
+end # deploy
+
+before "deploy:migrate", "deploy:upload:config_files"

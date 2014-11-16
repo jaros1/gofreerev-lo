@@ -1,0 +1,27 @@
+<% if @div %>
+(function () {
+    // gifts/index and auth/index pages - remove div with grant write link from page header
+    var div = document.getElementById('<%= @div %>');
+    if (div) {
+        // find and delete div with link
+        var parent = div.parentNode;
+        if (parent.tagName == 'DIV') {
+            // must be notification div in page header - remove div
+            parent.removeChild(div) ;
+        }
+        else {
+            // must be an ajax error table - remove table row
+            var tr = div;
+            while (tr.tagName != 'TR') tr = tr.parentNode;
+            var tbody = tr.parentNode;
+            tbody.removeChild(tr);
+        }
+    }
+    // auth/index page - uncheck "Post?" checkbox
+    var checkbox = document.getElementById('<%= @checkbox %>');
+    if (checkbox) {
+        // auth/index page - uncheck checkbox
+        checkbox.checked = false;
+    }
+})();
+<% end %>

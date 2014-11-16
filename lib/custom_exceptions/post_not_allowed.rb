@@ -1,0 +1,1 @@
+class PostNotAllowed < StandardError ; end

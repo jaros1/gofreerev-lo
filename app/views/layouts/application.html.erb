@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= title %></title>
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track' => true %>
+  <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+  <%= csrf_meta_tags %>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=no">
+  <% if deep_link? -%>
+<%# open graph meta-tags to be used in shared post -%>
+      <% puts "@request_fullpath = #{@request_fullpath}" -%>
+      <meta property="og:title" content="<%= @open_graph[:title] %>"/>
+      <meta property="og:type" content="website"/>
+      <meta property="og:image" content="<%= raw @open_graph[:image] %>"/>
+      <meta property="og:url" content="<%= @open_graph[:url] %>"/>
+      <meta property="og:description" content="<%= @open_graph[:description] %>"/>
+      <meta property="og:site_name" content="<%= APP_NAME %>"/>
+      <% if API_ID[:facebook] %>
+          <meta property="fb:app_id" content="<%= API_ID[:facebook] %>"/>
+      <% end -%>
+      <% if API_ID[:twitter] %>
+          <meta name="twitter:card" content="summary_large_image">
+      <% end -%>
+      <% if @open_graph[:twitter_creator] %>
+          <meta name="twitter:creator" content="<%= @open_graph[:twitter_creator] %>">
+      <% end -%>
+      <% if API_OWNER[:twitter] %>
+          <meta name="twitter:site" content="<%= API_OWNER[:twitter] %>">
+      <% end -%>
+  <% end -%>
+  <script>
+      I18n.defaultLocale = "<%= I18n.default_locale %>";
+      I18n.locale = "<%= I18n.locale %>";
+      <% if @cookie_note -%>
+      <%# display cookie alert in page header in @cookie_note seconds -%>
+      window.setTimeout(hide_cookie_note, <%= (@cookie_note * 1000) %>);
+      <% end -%>
+      <%#
+        copy rails constants to global JS variables. Used in my.js functions
+        get_more_rows_interval - min interval between show-more-rows requests. 3.0 for 3 seconds.
+        debug_ajax - true or false - true - write messages to debug_log table in page footer
+      -%>
+      var get_more_rows_interval = <%=GET_MORE_ROWS_INTERVAL %>;
+      var debug_ajax = <%= debug_ajax? %>;
+      var fb_user = <%= fb_user? %>;
+  </script>
+</head>
+<body>
+<div id="wrapper" style="width: 100%;">
+  <header>
+    <% if @cookie_note -%>
+        <div id="cookie_note" title="<%= t '.cookie_note_title', :appname => APP_NAME %>" style="width: 100%">
+          <%= t '.cookie_note_text_html', :appname => APP_NAME, :url => about_index_path(:anchor => 'cookies') %>
+          <%= button_tag t('.cookie_accept_text'), :onclick => "{$.cookie('cookies','accepted',{path:'/',expires:3650});document.getElementById('cookie_note').style.display = 'none'}" %>
+          <%= button_tag t('.cookie_reject_text'), :onclick => "{top.location.href='" + cookie_decline_cookies_path + "'}" %>
+          <%= button_tag t('.cookie_ignore_text'), :onclick => "{document.getElementById('cookie_note').style.display = 'none'}" %>
+          <hr>
+        </div>
+    <% end -%>
+    <%# Hidden form for ajax task processing (for example downloading profile image after login) -%>
+    <div style="display:none">
+      <%= form_tag url_for(:controller => :util, :action => :do_tasks),
+                   :remote => true, :data => {:type => :script}, :format => :js, :id => 'tasks_form' do %>
+          <%= hidden_field_tag :timezone, "" %>
+      <% end %>
+    </div>
+    <%# Hidden form to update currency => post to /users/:id/ => return to this page after currency has been changed -%>
+    <div id="update_currency_div" style="display:none">
+      <%= form_for @users.first, :class => 'update_currency_form' do |f| %>
+          <%= hidden_field_tag :return_to, @request_fullpath %>
+          <%= f.text_field :new_currency %>
+      <% end %>
+    </div>
+<%# page header -%>
+    <%= render :partial => 'layouts/page_header' %>
+    <div style="width: 100%">
+      <hr>
+    </div>
+    <% if (msg = get_flash) -%>
+        <br/>
+
+        <div id="notification" style="width: 100%"><%= msg.html_safe %></div>
+        <br/>
+    <% end -%>
+<%# tasks_errors is used to display error messages from ajax tasks in page header
+    tasks_errors2 is a hidden ajax error table used when ajax injecting error message into a specific location in actual page
+    for example ajax error messages for gift action links that is ajax injected to row under gifts link
+    or ajax error messages for comment action links that is ajax injected to row under comment
+    js function move_tasks_errors2 moves error messages from tasks_errors2 to specific location
+    tasks_errors table in page header is used if specific location for ajax error message can not be found
+-%>
+    <div style="width: 100%">
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <table>
+              <tbody id="tasks_errors" class="ajax_errors">
+              <%= render :partial => 'shared/ajax_errors' %>
+              </tbody>
+            </table>
+          </td>
+          <td style="width: 20px;">
+            <img src="/images/ajax-loading-18.gif" id="ajax-tasks-spinner" style="display: none"/>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display: none">
+      <table>
+        <tbody id="tasks_errors2"></tbody>
+      </table>
+    </div>
+  </header>
+<%# the page -%>
+  <%= yield %>
+<%# page footer -%>
+  <footer>
+    <div style="width: 100%">
+      <p>
+        <%= t ".page_footer_html", :appname => APP_NAME,
+              :csv_link => link_to_cvs,
+              :charles_eisenstein_link => link_to_charles_eisenstein,
+              :sacred_economics_link => link_to_sacred_economics %>
+      </p>
+    </div>
+    <% if ajax_tasks? -%>
+        <%# post response ajax processing - for example download profile image and friend list from login provider -%>
+        <script>
+            window.setTimeout(function () {
+                start_tasks_form_spinner();
+                $('#tasks_form').trigger('submit.rails');
+            }, 1000);
+        </script>
+    <% end -%>
+  </footer>
+</div>
+<% if debug_ajax? -%>
+    <div style="width: 100%">
+      Show debug
+      log? <%= check_box_tag "show_debug_log_checkbox", 1, false, :onchange => "show_debug_log_checkbox(this)" %>
+      <br/>
+      <br/>
+    </div>
+    <div id="debug_log" style="width: 100%; display: none">
+    </div>
+<% end -%>
+<%= link_to '<div id="betatest"></div>'.html_safe, about_index_path(:anchor => 'betatest') %>
+</body>
+</html>

@@ -1,0 +1,1 @@
+class AppNotAuthorized < StandardError ; end

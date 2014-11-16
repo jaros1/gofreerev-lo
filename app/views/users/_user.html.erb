@@ -1,0 +1,44 @@
+<% edit = false unless edit -%>
+<tr>
+  <td rowspan="<%= user.app_user? ? 5 : 4 %>" style="width: 102px;"><%= @size = 'large' ; render '/shared/user_div', :user_div => user %></td>
+  <td><%= t '.user_name_prompt' %></td>
+  <td>:</td>
+  <td title="<%= t '.user_name_title', :username => user.short_or_full_user_name(@user), :apiname => user.apiname %>">
+    <%= link_to user.camelized_user_name, api_profile_url(user), {:target => '_blank'} %>
+  </td>
+</tr>
+<tr>
+  <td><%= t '.friend_status_prompt' %></td>
+  <td>:</td>
+  <td>
+    <%= t user.friend_status_translate_code(@users), user.app_and_apiname_hash.merge(:username => user.short_user_name) %>
+  </td>
+</tr>
+<% if user.app_user? -%>
+    <tr>
+      <td><%= t '.user_balance_prompt' %></td>
+      <td>:</td>
+      <td><%= format_user_balance(user, @users) if user.friend?(@user) <= 2 %></td>
+    </tr>
+    <tr>
+      <td><%= t '.last_login_prompt' %></td>
+      <td>:</td>
+      <td><%= format_user_last_login(user) %></td>
+    </tr>
+<% else -%>
+    <tr title="<%= t 'shared.invite_friend.invite_friend_title', user.app_and_apiname_hash.merge(:username => user.user_name) %>">
+      <td><%= t 'shared.invite_friend..invite_friend_prompt' %></td>
+      <td>:</td>
+      <td><%= invite_friend(user) %></td>
+    </tr>
+<% end -%>
+<tr>
+  <td colspan="3">
+    <%= render :partial => "friend_action_buttons", :locals => {:friend_action_buttons => user, :edit => edit} %>
+  </td>
+</tr>
+<tr>
+  <td colspan="4">
+    <hr>
+  </td>
+</tr>

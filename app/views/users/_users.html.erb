@@ -1,0 +1,9 @@
+<% for user in @users2 do loop -%>
+    <%= render :partial => 'users/user', :locals => { :user => user } %>
+<% end -%>
+<%# ajax get more rows -%>
+<% if @last_row_id -%>
+<tr style="display: none" id='<%= "last-row-id-#{@last_row_id}" %>'><td></td></tr>
+<% else -%>
+<tr style="display: none"><td></td></tr>
+<% end -%>

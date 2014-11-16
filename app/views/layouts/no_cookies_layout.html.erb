@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= APP_NAME %></title>
+  <%= stylesheet_link_tag 'normalize', media: 'all', 'data-turbolinks-track' => true %>
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track' => true %>
+  <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+  <script src="/javascripts/jquery.cookie.js"></script>
+  <script src="/javascripts/modernizr.js"></script>
+  <%= csrf_meta_tags %>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=no">
+  <script>
+<%#
+      // destroy all rails cookies - cookies are also destroyed in cookie controller
+-%>
+      $(document).ready(function() {
+          $.removeCookie('_gofreerev-fb_session', { path: '/' });
+          $.removeCookie('request_method', { path: '/' });
+          $.removeCookie('cookies', { path: '/' });
+      })
+  </script>
+</head>
+<body>
+<div id="wrapper" style="width: 100%;">
+  <header>
+    <%= render :partial => 'layouts/page_header' %>
+    <div style="width: 100%">
+      <hr>
+    </div>
+  </header>
+  <%= yield %>
+  <div style="width: 100%">
+    <hr>
+  </div>
+<%# page footer -%>
+  <footer>
+    <div style="width: 100%">
+      <p>
+        <%= t "layouts.application.page_footer_html", :appname => APP_NAME,
+              :csv_link => link_to_cvs,
+              :charles_eisenstein_link => link_to_charles_eisenstein,
+              :sacred_economics_link => link_to_sacred_economics %>
+      </p>
+    </div>
+  </footer>
+</div>
+<% if debug_ajax? -%>
+    <div id="debug_log" style="width: 100%">
+    </div>
+<% end -%>
+</body>
+</html>

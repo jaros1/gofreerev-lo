@@ -1,0 +1,6 @@
+<td><%= t 'shared.invite_friends.invite_friends_prompt' %></td>
+<td>
+  <% @users.sort_by_provider.each do |login_user| -%>
+      <%= invite_friends_link(login_user) %>
+  <% end -%>
+</td>

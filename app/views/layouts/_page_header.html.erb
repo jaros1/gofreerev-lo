@@ -1,0 +1,86 @@
+<%#
+  ajax check new messages. Div buffer for new_message_count and used in post ajax processing.
+  number new messages are inserted in menu line and in page title. See update_new_messages_count and update_title in my.js.
+  new comments are inserted in gifts/index page. See insert_new_comments in my.js.
+  todo: insert_new_comments only relevant for gifts/index page
+-%>
+<% user = @users.first -%>
+<div id="new_messages_buffer_div" style="display: none">
+  <div id="new_messages_count_div"><%= @new_messages_count %></div>
+  <div id="new_comments_div"></div>
+</div>
+<%= link_to "new_messages_count",
+            '/util/new_messages_count?request_fullpath=' + CGI::escape(@request_fullpath) + '&newest_gift_id=0&newest_status_update_at=0',
+            :remote => true, :data => { :type => :script }, :format => :js,
+            :id => "new_messages_count_link", :style => "display: none" %>
+
+<div style="width: 100%">
+  <%= @page_header = true ; @size = 'small' ; render '/shared/user_div', :user_div => user %>
+
+  <div class="balance_and_currency_lov">
+    <table height="100%" title="<%= t '.header_currency_title' %>">
+      <tr>
+        <td><%= t '.header_balance_prompt' %> <%= format_price ExchangeRate.exchange(user.balance[BALANCE_KEY], 'USD', user.currency) %> <%= t '.header_balance_free' %> <%= user.currency %></td>
+      </tr>
+      <tr>
+        <td>
+          <%= hidden_field_tag :user_currency_old, user.currency %>
+          <%= select_tag :user_currency_new, options_for_select(selected_currency, [user.currency]), {:class => 'user_currency_new', :onchange => 'update_currency(this)'} %>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <nav>
+
+    <div class="main-menu-2-lines">
+      <table style="width: 100%">
+        <tr>
+          <td title="<%= t '.header_home_link_title', :appname => APP_NAME %>">
+            <%= link_to t('.header_home_link_text'), gifts_path %></td>
+          <td title="<%= t '.header_inbox_link_title', :appname => APP_NAME %>">
+            <%= link_to t('.header_inbox_link_text'), inbox_index_path %>
+            <b>
+              <sup>
+                <span id="new_messages_count1" style="background-color:red; color:white; font-size:x-small"><%= inbox_new_notifications %></span>
+              </sup>
+            </b></td>
+          <td title="<%= t '.header_friends_link_title', :appname => APP_NAME %>">
+            <%= link_to t('.header_friends_link_text'), users_path(:friends => 'yes') %></td>
+        </tr>
+        <tr>
+          <td title="<%= t '.header_log_in_link_title', user.app_and_apiname_hash %>">
+            <%= link_to t('.header_log_in_link_text'), header_log_in_link_url %></td>
+          <td title="<%= t '.header_log_out_link_title', user.app_and_apiname_hash %>">
+            <%= link_to_logout %></td>
+          <td><%= link_to APP_NAME, about_index_path %></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="main-menu-1-line">
+      <table style="width: 100%">
+        <tr>
+          <td title="<%= t '.header_home_link_title', :appname => APP_NAME %>">
+            <%= link_to t('.header_home_link_text'), gifts_path %></td>
+          <td title="<%= t '.header_inbox_link_title', :appname => APP_NAME %>">
+            <%= link_to t('.header_inbox_link_text'), inbox_index_path %>
+            <b>
+              <sup>
+                <span id="new_messages_count2" style="background-color:red; color:white; font-size:x-small"><%= inbox_new_notifications %></span>
+              </sup>
+            </b></td>
+          <td title="<%= t '.header_friends_link_title', :appname => APP_NAME %>">
+            <%= link_to t('.header_friends_link_text'), users_path(:friends => 'yes') %></td>
+          <td title="<%= t '.header_log_in_link_title', user.app_and_apiname_hash %>">
+            <%= link_to t('.header_log_in_link_text'), header_log_in_link_url %></td>
+          <td title="<%= t '.header_log_out_link_title', user.app_and_apiname_hash %>">
+            <%= link_to_logout %></td>
+          <td><%= link_to APP_NAME, about_index_path %></td>
+        </tr>
+      </table>
+    </div>
+
+  </nav>
+
+</div>

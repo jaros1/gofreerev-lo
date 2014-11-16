@@ -1,0 +1,19 @@
+<p>
+  <%= t '.autologin_header' %>
+</p>
+<%= link_to "facebook", "javascript: {top.location.href='#{@auth_url}'}", :id => 'auth-url', :style => 'display: none' %>
+<script>
+  // user has already authorized - auto redirect to https://www.facebook.com/dialog/oauth? to get code
+  $(document).ready(function() {
+      // save timezone in session before redirection to facebook
+      trigger_tasks_form(200);
+      // redirect to facebook
+      window.setTimeout(function(){
+          var auth_url = document.getElementById('auth-url') ;
+          auth_url.click();
+      }, 500);
+      // hide tasks_errors table - empty reply from util/do_tasks = ajax:error
+      var tasks_errors = document.getElementById('tasks_errors') ;
+      if (tasks_errors) tasks_errors.style.display = 'none' ;
+  })
+</script>

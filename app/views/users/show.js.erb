@@ -1,0 +1,9 @@
+<% if @page_values[:tab] == 'friends' -%>
+$('#users').append('<%= j render("users/users", :users => @users, :id => @user2.id, :tab => @page_values[:tab], :last_row_id => @last_row_id) %>');
+<% elsif @page_values[:tab] == 'balance' -%>
+$('#gifts').append('<%= j render("users/api_gifts", :gifts => @api_gifts, :id => @user2.id, :tab => @page_values[:tab], :last_row_id => @last_row_id) %>');
+<% elsif @page_values[:tab] == 'gifts' -%>
+$('#gifts').append('<%= j render("gifts/api_gifts", :gifts => @api_gifts, :id => @user2.id, :tab => @page_values[:tab], :last_row_id => @last_row_id) %>');
+<% else
+     raise "unknown tab #{@page_values[:tab]}"
+   end -%>

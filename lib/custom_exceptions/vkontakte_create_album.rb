@@ -1,0 +1,1 @@
+class VkontakteCreateAlbum < StandardError ; end

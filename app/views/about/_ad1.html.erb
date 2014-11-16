@@ -1,0 +1,77 @@
+<table style="width: 100%">
+  <tbody>
+  <tr>
+    <td><%= t '.header_html',
+              :fairphone_url => link_to('fairphone', 'http://www.fairphone.com/fairphone/', :target => '_blank'),
+              :login_url => link_to(t('.log_in_link_text'), header_log_in_link_url),
+              :share_url => link_to(t('.share_url_text'), gifts_path),
+              :appname => APP_NAME
+    %></td>
+  </tr>
+  <tr>
+    <td>
+      <table class="about-ad1-4-lines">
+        <tbody >
+        <tr>
+          <td>1</td>
+          <td>:</td>
+          <td><%= t '.text1_html', :appname =>APP_NAME %></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>:</td>
+          <td><%= t '.text2_html', :login_url => link_to(t('.log_in_link_text'), header_log_in_link_url), :appname =>APP_NAME %></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>:</td>
+          <td><%= t '.text3_html', :share_url => link_to(t('.share_url_text'), gifts_path), :appname => APP_NAME %></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>:</td>
+          <td><%= t '.text4_html', :share_url => link_to(t('.share_url_text'), gifts_path), :appname => APP_NAME %></td>
+        </tr>
+        </tbody>
+      </table>
+      <table class="about-ad1-2-lines">
+        <tbody >
+        <tr>
+          <td>1</td>
+          <td>:</td>
+          <td><%= t '.text1_html', :appname =>APP_NAME %></td>
+          <td></td>
+          <td>2</td>
+          <td>:</td>
+          <td><%= t '.text2_html', :login_url => link_to(t('.log_in_link_text'), header_log_in_link_url), :appname =>APP_NAME %></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>:</td>
+          <td><%= t '.text3_html', :share_url => link_to(t('.share_url_text'), gifts_path), :appname => APP_NAME %></td>
+          <td></td>
+          <td>4</td>
+          <td>:</td>
+          <td><%= t '.text4_html', :share_url => link_to(t('.share_url_text'), gifts_path), :appname => APP_NAME %></td>
+        </tr>
+        </tbody>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <%= image_tag @image, :width => 250, :class => 'about-ad1-portrait' %>
+      <%= image_tag @image_landscape, :height => 250, :class => 'about-ad1-landscape' %>
+    </td>
+  </tr>
+  <tr>
+    <td><%= t '.footer_html',
+              :appname =>APP_NAME,
+              :delete_url => link_to('link', users_path(:friends => 'me')),
+              :this_page_url => link_to("#{SITE_URL}#{url_for(:controller => :about, :action => :ad1)}".gsub('//', '/'), url_for(:controller => :about, :action => :ad1)),
+              :github_url => link_to_cvs
+    %></td>
+  </tr>
+  </tbody>
+</table>
+<hr>

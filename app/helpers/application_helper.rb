@@ -315,9 +315,9 @@ module ApplicationHelper
   def link_to_logout
     if @request_fullpath.to_s =~ /\/cookie\//
       # problem with log out link and InvalidAuthenticityToken error (no session in cookie controller). redirect to login/logout page
-      link_to t('.header_log_out_link_text'), auth_path
+      link_to t('layouts.page_header..header_log_out_link_text'), auth_path
     else
-      link_to t('.header_log_out_link_text'), header_log_out_link_url, :method => 'delete'
+      link_to t('layouts.page_header..header_log_out_link_text'), header_log_out_link_url, :method => 'delete'
     end
   end
 

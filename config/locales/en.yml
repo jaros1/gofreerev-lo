@@ -252,7 +252,7 @@ en:
   about:
      index:
         about_header: "About %{appname}"
-        about_text_html: "%{appname} is a demo app with bid on key concepts (gift network, free money and negative rate) from Charles Eisenstein's book Sacred Economics. %{appname} is \"green\" software in that way that it runs on a small 7w plug computer and try to reduce the environmental impact by promoting recycling. %{appname} is open source and is freely available under the MIT license on Github. It is my hope that others can use and improve my ideas in this and in other open source projects."
+        about_text_html: "%{appname} is a demo app implementing concepts (gift network, free money and negative rate) from Charles Eisenstein's book Sacred Economics. %{appname} is \"green\" software in that way that it runs on a small 7w plug computer and try to reduce the environmental impact by promoting recycling. %{appname} is open source and is freely available under the MIT license on Github. It is my hope that others can use and improve my ideas in this and in other open source projects."
         betatest_header: "%{appname} betatest"
         betatest_text_html: "%{appname} is in beta testing, but all functions are not yet fully implemented. There is a limit of %{max_users} active users during the beta test. Feedback is very welcome on <a href='https://github.com/jaros1/gofreerev-fb/issues' target='_blank'>GitHub</a> or by <a href=\"mailto:dev1@gofreerev.com\">email</a>."
         cookies_header: "Cookies"

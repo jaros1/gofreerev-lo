@@ -9,6 +9,7 @@
  * compiled file, but it's generally better to create a new file per style scope.
  *
  *= require_self
+ *= require bootstrap_and_overrides
  *= require_tree
 
  max/min-width breakpoints: 320, 360, 480, 533, 600, 640, 768, 800, 1024 and 1280.

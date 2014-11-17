@@ -13,7 +13,8 @@
 //= require i18n
 //= require i18n/translations
 //= require jquery
-//= require jquery.turbolinks
+// require jquery.turbolinks # todo: enable turbolinks - was outcommented in turtual http://www.jackiejohnston.us/blog/bootstrap-your-app/
 //= require jquery.ui.effect
 //= require jquery_ujs
+//= require twitter/bootstrap
 //= require_tree .

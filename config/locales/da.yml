@@ -152,6 +152,11 @@ da:
         dialog_title_text_true: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er."
         dialog_title_text_false: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er. Du kan indtaste din e-mail, hvis du ønsker at modtage email med venneforslag en gang hver fjortende dag. Brug venligst korrekte e-mail-adresse. Dine kontaktoplysninger vil blive inkluderet i email for at forhindre at venneforslag bliver anvendt til spam."
         dialog_text: "Gem API autorisation på server?"
+     client_login_dialog:
+        dialog_title: "Browser log ind (lokalt lager)"
+        dialog_title_text: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er."
+        dialog_text: "Gem API autorisation på server?"
+        password_label: "Kodeord"
 
   # omniauth controllers (auth, facebook and linkedin):
 
@@ -1071,6 +1076,15 @@ da:
         email: "Email"
         invalid_length: "%{field} skal bestå af mindst %{min} og højst %{max} tegn"
         invalid_email: "fx. ui@jquery.com"
+        js_error: "Kan ikke ændre \"Saml konti?\" valg. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
+     client_login_dialog:
+        login: "Log ind"
+        cancel: "Fortryd"
+        password: "Kodeord"
+        invalid_length: "%{field} skal bestå af mindst %{min} og højst %{max} tegn"
+        invalid_password_false: "Forkert kodeord. Prøv igen. Der er ingen glemt kodeord funktion, men du har mulighed for at oprette en ny tom konto med at vælge \"Opret ny\"."
+        invalid_password_true: "Kan desværre ikke oprette ny konto. Du har muligvis slået lokalt lager fra i din browser."
+        js_error: "Kan ikke logge ind. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
      share_gift:
         invalid_id: "Systemfejl. Kan ikke dele opslag. Ugyldig id for LOV."
         missing_translation: "Systemfejl. Kan ikke dele opslag. Link definition mangler for %{provider}."

@@ -74,6 +74,8 @@
 <%= link_to t('.remove_cookies_link_text'), cookie_decline_cookies_path %>
 <div style="width: 100%"><br/></div>
 
+<%= render :partial => 'shared/client_login_dialog' %>
+
 <% if false -%>
     <% for key in session.keys do -%>
         <%= "session[:#{key}] = #{debug session[key]}" %><br />

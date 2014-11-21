@@ -150,6 +150,11 @@ en:
         dialog_title_text_true: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs."
         dialog_title_text_false: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs. Optional you can enter your email if you wish to receive email with friend suggestions once every fortnight. Please use correct email address. IP-address and your API contact information will be included in email to prevent spam."
         dialog_text: "Save access tokens on server?"
+     client_login_dialog:
+        dialog_title: "Browser log in (local storage)"
+        dialog_title_text: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs."
+        dialog_text: "Save access tokens on server?"
+        password_label: "Password"
 
   # omniauth controllers (auth, facebook and linkedin):
 
@@ -1067,6 +1072,15 @@ en:
         email: "email"
         invalid_length: "Length of %{field} must be between %{min} and %{max}."
         invalid_email: "eg. ui@jquery.com"
+        js_error: "Cannot change \"Share accounts?\" choice. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
+     client_login_dialog:
+        login: "Log in"
+        cancel: "Cancel"
+        password: "password"
+        invalid_length: "Length of %{field} must be between %{min} and %{max}."
+        invalid_password_false: "Invalid password. Try again. There is no forgotten password function but you can use \"Create new\" to create a new empty account."
+        invalid_password_true: "Cannot create account. Maybe local storage is disabled in your browser."
+        js_error: "Cannot log in. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
      share_gift:
         invalid_id: "System error. Cannot share gift. Invalid id for LOV."
         missing_translation: "System error. Cannot share gift. Link definition was not found for %{provider}."

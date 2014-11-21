@@ -2467,6 +2467,157 @@ function share_accounts_ajax(accepted, email) {
 
 
 
+
+// client login (password from client-login-dialog-form)
+// 0 = invalid password, > 0 : userid
+// use create_new_account = true to force creation a new user account
+function client_login (password, create_new_account) {
+    var password_sha256, passwords_s, passwords_a, i ;
+    password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
+    if (localStorage.getItem("passwords") === null) {
+        passwords_a = [] ;
+    }
+    else {
+        passwords_a = JSON.parse(localStorage.getItem("passwords")) ;
+    }
+    // check old accounts
+    for (i=0 ; i<passwords_a.length ; i++) {
+        if (password_sha256 == passwords_a[i]) return (i+1) ; // log in ok
+    }
+    // password was not found
+    if ((passwords_a.length == 0) || create_new_account) {
+        // create new account
+        passwords_a.push(password_sha256) ;
+        passwords_s = JSON.stringify(passwords_a) ;
+        localStorage.setItem('passwords', passwords_s) ;
+        return passwords_a.length ;
+    }
+    // invalid password (create_new_account=false)
+    return 0 ;
+} // client_login
+
+
+
+
+// client side login modal form - login to html5 local storage account - password used for login and encryption
+// normally only one client side user account
+$(function() {
+
+    var dialog, form,
+
+    // From http://www.whatwg.org/specs/web-apps/current-work/multipage/states-of-the-type-attribute.html#e-mail-state-%28type=password%29
+        password = $( "#client-login-password" ),
+        allFields = $( [] ).add( password ),
+        tips = $( ".validateTips"),
+        login_text = I18n.t('js.client_login_dialog.login'),
+        cancel_text = I18n.t('js.client_login_dialog.cancel') ;
+
+    function updateTips( t ) {
+        tips
+            .text( t )
+            .addClass( "ui-state-highlight" );
+        setTimeout(function() {
+            tips.removeClass( "ui-state-highlight", 1500 );
+        }, 500 );
+    }
+
+    function checkLength( o, n, min, max ) {
+        if ( o.val().length > max || o.val().length < min ) {
+            o.addClass( "ui-state-error" );
+            updateTips(I18n.t('js.client_login_dialog.invalid_length', {field: n, min: min, max: max}));
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function checkPassword( o, n,  create_new_account) {
+        var userid = client_login(o.val(), create_new_account);
+        if (userid == 0) {
+            o.addClass( "ui-state-error" );
+            updateTips(I18n.t('js.client_login_dialog.invalid_password_' + create_new_account, {field: n}));
+            return false;
+        } else {
+            // login ok - save password temporary in session store for encryption
+            sessionStorage.setItem('password', o.val()) ;
+            sessionStorage.setItem('userid', userid) ;
+            return true;
+        }
+    }
+
+    function login() {
+        var pgm='client-login-dialog-form.login: ';
+        try {
+            var valid = true;
+            allFields.removeClass("ui-state-error");
+            // password exists in dialog form and is not blank
+            valid = valid && checkLength(password, I18n.t('js.client_login_dialog.password'), 10, 50);
+            valid = valid && checkPassword(password, I18n.t('js.client_login_dialog.password'), false);
+            if (valid) dialog.dialog("close") ;
+            return valid
+        }
+        catch (err) {
+            add2log(pgm + 'failed with JS error: ' + err);
+            add_to_tasks_errors2('share_accounts_errors',I18n.t('js.client_login_dialog.js_error', {error: err, location: 19, debug: 2}));
+            return false;
+        }
+    } // login
+
+    function cancel() {
+        dialog.dialog( "close" );
+    } // cancel
+
+    dialog = $( "#client-login-dialog-form" ).dialog({
+        autoOpen: false,
+        height: fb_user ? 225 : 300, // only show password for logins without fb account
+        width: 350,
+        modal: true,
+        buttons:[
+            {
+                text: login_text,
+                click: login
+            },
+            {
+                text: cancel_text,
+                click: cancel
+            }],
+        close: function() {
+            form[ 0 ].reset();
+            allFields.removeClass( "ui-state-error" );
+        }
+    });
+
+    form = dialog.find( "form" ).on( "submit", function( event ) {
+        event.preventDefault();
+        login();
+    });
+
+    // local storage is supported?
+    if (typeof(Storage) == "undefined") {
+        $( "#client-login" ).button().on( "click", function() {
+            alert('Please use a browser when supports html 5 local storage') ;
+        });
+    }
+    else {
+        // ok
+        $( "#client-login" ).button().on( "click", function() {
+            dialog.dialog( "open" );
+        });
+    }
+
+});
+
+
+
+
+
+
+
+
+
+
+
+
 // show/hide ajax debug log checkbox in bottom of page. Only used if debug_ajax? / DEBUG_AJAX is true
 function show_debug_log_checkbox(checkbox) {
     var debug_log = document.getElementById('debug_log') ;

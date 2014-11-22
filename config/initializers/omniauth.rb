@@ -43,13 +43,12 @@ api_id     = {} # A)
 api_secret = {} # B)
 api_token  = {}
 %w(facebook flickr foursquare google_oauth2 instagram linkedin twitter vkontakte).each do |provider|
-  rails_env = case Rails.env when "development" then "DEV" when "test" then "TEST" when "production" then "PROD" end
   # get api_id for provider
-  name = "gofreerev_#{rails_env}_app_id_#{provider}".upcase
+  name = "#{ENV_PREFIX}app_id_#{provider}".upcase
   api_id[provider] = ENV[name]
   puts "Warning: environment variable #{name} was not found" if api_id[provider].to_s == ""
   # get api_secret for provider
-  name = "gofreerev_#{rails_env}_app_secret_#{provider}".upcase
+  name = "#{ENV_PREFIX}app_secret_#{provider}".upcase
   api_secret[provider] = ENV[name]
   puts "Warning: environment variable #{name} was not found" if api_secret[provider].to_s == ""
   # get api_token for provider - only facebook
@@ -57,7 +56,7 @@ api_token  = {}
     # get application token:
     # api_server = Koala::Facebook::RealtimeUpdates.new :app_id => API_ID[:facebook], :secret => API_SECRET[:facebook]
     # api_server.app_access_token
-    name = "gofreerev_#{rails_env}_app_token_#{provider}".upcase
+    name = "#{ENV_PREFIX}app_token_#{provider}".upcase
     api_token[provider] = ENV[name]
     puts "Warning: environment variable #{name} was not found" if api_token[provider].to_s == ""
   end

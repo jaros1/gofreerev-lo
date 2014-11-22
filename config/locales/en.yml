@@ -153,7 +153,7 @@ en:
      client_login_dialog:
         dialog_title: "Browser log in (local storage)"
         dialog_title_text: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs."
-        dialog_text: "Save access tokens on server?"
+        dialog_text: "Enter password to protect your local data. No forgotten password function. Please remember your password."
         password_label: "Password"
 
   # omniauth controllers (auth, facebook and linkedin):

@@ -2467,6 +2467,7 @@ function share_accounts_ajax(accepted, email) {
 
 
 
+// local storage functions ==>
 
 // client login (password from client-login-dialog-form)
 // 0 = invalid password, > 0 : userid
@@ -2607,14 +2608,16 @@ $(function() {
 
 });
 
+// auto trigger client login button
+$(document).ready(function() {
+    var client_login = document.getElementById('client-login') ;
+    if (!client_login) return ; // not a login page
+    if (typeof(Storage) == "undefined") return ; // no html5 local storage support
+    if (sessionStorage.getItem("userid") === null) client_login.click() ; // not logged in
+    // already logged in
+})
 
-
-
-
-
-
-
-
+// local storage functions <==
 
 
 

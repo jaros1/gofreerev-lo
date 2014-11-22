@@ -18,7 +18,7 @@ FORCE_SSL = (Rails.env.production? or (ENV["#{ENV_PREFIX}FORCE_SSL"] == 'true'))
 
 # where can you find source for this open source project?
 CVS_NAME = 'GitHub'
-CVS_URL = 'https://github.com/jaros1/gofreerev-fb'
+CVS_URL = 'https://github.com/jaros1/gofreerev-lo'
 
 # OS environment constants for attribute encryption (crypt_keeper + improvements)
 # You can use ruby script /lib/generate_keys to generate keys and this ruby array constant

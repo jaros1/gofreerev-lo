@@ -155,7 +155,7 @@ da:
      client_login_dialog:
         dialog_title: "Browser log ind (lokalt lager)"
         dialog_title_text: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er."
-        dialog_text: "Gem API autorisation på server?"
+        dialog_text: "Indtast kodeord til beskyttelse af dine lokale data. Ingen glemt kodeord funktionalitet. Husk dit kodeord."
         password_label: "Kodeord"
 
   # omniauth controllers (auth, facebook and linkedin):

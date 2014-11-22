@@ -14,7 +14,7 @@
       // destroy all rails cookies - cookies are also destroyed in cookie controller
 -%>
       $(document).ready(function() {
-          $.removeCookie('_gofreerev-fb_session', { path: '/' });
+          $.removeCookie(Rails.application.config.session_options[:key], { path: '/' });
           $.removeCookie('request_method', { path: '/' });
           $.removeCookie('cookies', { path: '/' });
       })

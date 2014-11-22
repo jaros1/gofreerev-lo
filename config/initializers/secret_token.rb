@@ -9,4 +9,4 @@
 
 # Make sure your secret_key_base is kept private
 # if you're sharing your code publicly.
-GofreerevFb::Application.config.secret_key_base = '234502d24d620b3eb5f9fe7f509060978d2b6e901c121a42fe5ead7a0e7a67141bbc6ea31092d6111c087d7505f3efc57331156cde6ff526b27c785b30b72c72'
+GofreerevFb::Application.config.secret_key_base = '835658f40f1cef3f109985c49a9f0402855e1d9509dc13cf1c2f491ee5cee44d9ed1de992f314e57dd4917538c30b1f25485dd7a120ecc172bc6d31fd3507bca'

@@ -22,11 +22,9 @@ Capfile
 Capfile.1
 /config/deploy
 
-# Ignore database
-/config/database.yml
-
 # Ignore secret config information
 /keys
+/config/initializers/secret_token.rb
 
 # ignore private files
 *betatesters*

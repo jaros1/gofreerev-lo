@@ -35,8 +35,8 @@ class CookieController < ApplicationController
       logger.debug2 "delete cookie #{name}"
       old_cookies.delete(name)
     end
-    logger.debug2 "delete cookie _gofreerev-fb_session"
-    old_cookies.delete('_gofreerev-fb_session')
+    logger.debug2 "delete cookie #{Rails.application.config.session_options[:key]}"
+    old_cookies.delete(Rails.application.config.session_options[:key])
     {}
   end
 

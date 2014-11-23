@@ -2469,11 +2469,13 @@ function share_accounts_ajax(accepted, email) {
 
 // local storage functions ==>
 
+
+
 // client login (password from client-login-dialog-form)
 // 0 = invalid password, > 0 : userid
 // use create_new_account = true to force creation a new user account
 function client_login (password, create_new_account) {
-    var password_sha256, passwords_s, passwords_a, i ;
+    var password_sha256, passwords_s, passwords_a, i, userid, crypt, pubkey, prvkey, prvkey_aes ;
     password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
     if (localStorage.getItem("passwords") === null) {
         passwords_a = [] ;
@@ -2488,10 +2490,21 @@ function client_login (password, create_new_account) {
     // password was not found
     if ((passwords_a.length == 0) || create_new_account) {
         // create new account
+        userid = passwords_a.length + 1 ;
+        // hash password
         passwords_a.push(password_sha256) ;
         passwords_s = JSON.stringify(passwords_a) ;
+        // generate key pair
+        crypt = new JSEncrypt({default_key_size: 1024});
+        crypt.getKey();
+        pubkey = crypt.getPublicKey();
+        prvkey = crypt.getPrivateKey();
+        prvkey_aes = CryptoJS.AES.encrypt(prvkey, password);
+        // save account
         localStorage.setItem('passwords', passwords_s) ;
-        return passwords_a.length ;
+        localStorage.setItem(userid + '_pubkey', pubkey) ;
+        localStorage.setItem(userid + '_prvkey', prvkey_aes) ;
+        return userid ;
     }
     // invalid password (create_new_account=false)
     return 0 ;

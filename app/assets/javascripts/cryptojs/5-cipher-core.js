@@ -584,6 +584,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
                 var wordArray = ciphertext;
             }
 
+            add2log('OpenSSLFormatter. debug 1') ;
             return wordArray.toString(Base64);
         },
 
@@ -601,8 +602,11 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var cipherParams = CryptoJS.format.OpenSSL.parse(openSSLString);
          */
         parse: function (openSSLStr) {
+            add2log('OpenSSLFormatter: start. openSSLStr = ' + openSSLStr) ;
             // Parse base64
+            add2log('OpenSSLFormatter: typeof Base64 = ' + typeof Base64) ;
             var ciphertext = Base64.parse(openSSLStr);
+            add2log('OpenSSLFormatter: start. debug 1. ciphertext = ' + ciphertext) ;
 
             // Shortcut
             var ciphertextWords = ciphertext.words;
@@ -616,6 +620,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
                 ciphertextWords.splice(0, 4);
                 ciphertext.sigBytes -= 16;
             }
+            add2log('OpenSSLFormatter: start. debug 2. salt = ' + salt) ;
 
             return CipherParams.create({ ciphertext: ciphertext, salt: salt });
         }
@@ -722,9 +727,12 @@ CryptoJS.lib.Cipher || (function (undefined) {
          *     var ciphertextParams = CryptoJS.lib.SerializableCipher._parse(ciphertextStringOrParams, format);
          */
         _parse: function (ciphertext, format) {
+            add2log('SerializableCipher.parse: ciphertext = ' + ciphertext + ', format = ' + format) ;
             if (typeof ciphertext == 'string') {
+                add2log('SerializableCipher.parse: debug 1') ;
                 return format.parse(ciphertext, this);
             } else {
+                add2log('SerializableCipher.parse: debug 2') ;
                 return ciphertext;
             }
         }
@@ -843,19 +851,26 @@ CryptoJS.lib.Cipher || (function (undefined) {
          */
         decrypt: function (cipher, ciphertext, password, cfg) {
             // Apply config defaults
+            add2log('PasswordBasedCipher.decrypt: start. cipher = ' + cipher + ', ciphertext = ' + ciphertext + ', password = ' + password + ', cfg.format = ' + cfg.format) ;
             cfg = this.cfg.extend(cfg);
 
             // Convert string to CipherParams
+            add2log('PasswordBasedCipher.decrypt: debug 1. cfg.format = ' + cfg.format) ;
             ciphertext = this._parse(ciphertext, cfg.format);
+            add2log('PasswordBasedCipher.decrypt: debug 2, ciphertext = ' + ciphertext) ;
 
             // Derive key and other params
             var derivedParams = cfg.kdf.execute(password, cipher.keySize, cipher.ivSize, ciphertext.salt);
 
             // Add IV to config
+            add2log('PasswordBasedCipher.decrypt: debug 3.') ;
+            add2log('PasswordBasedCipher.decrypt: debug 4. derivedParams = ' + derivedParams) ;
             cfg.iv = derivedParams.iv;
 
             // Decrypt
+            add2log('PasswordBasedCipher.decrypt: ciphertext = ' + ciphertext) ;
             var plaintext = SerializableCipher.decrypt.call(this, cipher, ciphertext, derivedParams.key, cfg);
+            add2log('PasswordBasedCipher.decrypt: plaintext = ' + plaintext) ;
 
             return plaintext;
         }

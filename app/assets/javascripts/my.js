@@ -2469,6 +2469,21 @@ function share_accounts_ajax(accepted, email) {
 
 // local storage functions ==>
 
+function client_sym_encrypt (text, password) {
+    var x ;
+    x = CryptoJS.AES.encrypt(text, password, { format: CryptoJS.format.OpenSSL }); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    add2log('client_sym_encrypt: x.key = ' + x.key) ;
+    add2log('client_sym_encrypt: x.iv = ' + x.iv) ;
+    add2log('client_sym_encrypt: x.salt = ' + x.salt) ;
+    return x.toString(CryptoJS.format.OpenSSL) ;
+} //
+
+function client_sym_decrypt (text, password) {
+    var x ;
+    x = CryptoJS.AES.decrypt(text, password, { format: CryptoJS.format.OpenSSL }); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    add2log('client_sym_decrypt: typeof x = ' + typeof x) ;
+    return x.toString(CryptoJS.format.OpenSSL) ;
+} //
 
 
 // client login (password from client-login-dialog-form)
@@ -2499,11 +2514,24 @@ function client_login (password, create_new_account) {
         crypt.getKey();
         pubkey = crypt.getPublicKey();
         prvkey = crypt.getPrivateKey();
-        prvkey_aes = CryptoJS.AES.encrypt(prvkey, password);
+        prvkey_aes = client_sym_encrypt(prvkey, password);
+        add2log('pubkey = ' + pubkey) ;
+        add2log('prvkey = ' + prvkey) ;
+        add2log('prvkey_aes = ' + prvkey_aes) ;
+        add2log('') ;
         // save account
         localStorage.setItem('passwords', passwords_s) ;
         localStorage.setItem(userid + '_pubkey', pubkey) ;
         localStorage.setItem(userid + '_prvkey', prvkey_aes) ;
+        // check
+        add2log('check encryption') ;
+        var prvkey2, prvkey_aes2 ;
+        prvkey_aes2 = localStorage.getItem(userid + '_prvkey') ;
+        add2log('prvkey_aes2 = ' + prvkey_aes2) ;
+        if (prvkey_aes != prvkey_aes2) add2log('prvkey_aes != prvkey_aes2') ;
+        prvkey2 = client_sym_decrypt(prvkey_aes2, password);
+        add2log('prvkey2 = ' + prvkey2) ;
+        add2log('') ;
         return userid ;
     }
     // invalid password (create_new_account=false)

@@ -2470,19 +2470,33 @@ function share_accounts_ajax(accepted, email) {
 // local storage functions ==>
 
 function client_sym_encrypt (text, password) {
-    var x ;
-    x = CryptoJS.AES.encrypt(text, password, { format: CryptoJS.format.OpenSSL }); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    add2log('client_sym_encrypt: x.key = ' + x.key) ;
-    add2log('client_sym_encrypt: x.iv = ' + x.iv) ;
-    add2log('client_sym_encrypt: x.salt = ' + x.salt) ;
-    return x.toString(CryptoJS.format.OpenSSL) ;
+    var output_wa ;
+    output_wa = CryptoJS.AES.encrypt(text, password, { format: CryptoJS.format.OpenSSL }); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    //add2log('client_sym_encrypt: typeof output_wa = ' + typeof output_wa) ;
+    //add2log('client_sym_encrypt: output_wa.key = ' + output_wa.key) ;
+    //add2log('client_sym_encrypt: output_wa.iv = ' + output_wa.iv) ;
+    //add2log('client_sym_encrypt: output_wa.salt = ' + output_wa.salt) ;
+    //add2log('client_sym_encrypt: output_wa.ciphertext = ' + output_wa.ciphertext) ;
+    //// return output_wa.key + output_wa.iv + output_wa.salt + output_wa.ciphertext ;
+    return output_wa.toString(CryptoJS.format.OpenSSL) ;
 } //
 
 function client_sym_decrypt (text, password) {
-    var x ;
-    x = CryptoJS.AES.decrypt(text, password, { format: CryptoJS.format.OpenSSL }); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    add2log('client_sym_decrypt: typeof x = ' + typeof x) ;
-    return x.toString(CryptoJS.format.OpenSSL) ;
+    var output_wa ;
+    // array = JSON.parse(text);
+    // input_wa = CryptoJS.lib.CipherParams.create({key: array[0], iv: array[1], salt: array[2], ciphertext: array[3]}) ;
+    //input_wa.key = array[0] ;
+    //input_wa.iv = array[1] ;
+    //input_wa.salt = array[2] ;
+    //input_wa.ciphertext = array[3] ;
+    // input_wa = CryptoJS.format.OpenSSL.parse(text) ;
+    // add2log('client_sym_decrypt: typeof input_wa = ' + typeof input_wa + ', input_wa = ' + input_wa) ;
+    //add2log('client_sym_decrypt: typeof CryptoJS.format.OpenSSL = ' + typeof CryptoJS.format.OpenSSL) ;
+    //add2log('client_sym_decrypt: CryptoJS.format.OpenSSL = ' + CryptoJS.format.OpenSSL) ;
+    //add2log('client_sym_decrypt: CryptoJS.format.JSON.stringify OpenSSL = ' + JSON.stringify(CryptoJS.format.OpenSSL)) ;
+    output_wa = CryptoJS.AES.decrypt(text, password, { format: CryptoJS.format.OpenSSL }); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    //add2log('client_sym_decrypt: typeof output_wa = ' + typeof output_wa + ', output_wa = ' + output_wa) ;
+    return output_wa.toString(CryptoJS.enc.Utf8) ;
 } //
 
 
@@ -2515,10 +2529,10 @@ function client_login (password, create_new_account) {
         pubkey = crypt.getPublicKey();
         prvkey = crypt.getPrivateKey();
         prvkey_aes = client_sym_encrypt(prvkey, password);
-        add2log('pubkey = ' + pubkey) ;
-        add2log('prvkey = ' + prvkey) ;
-        add2log('prvkey_aes = ' + prvkey_aes) ;
-        add2log('') ;
+        //add2log('pubkey = ' + pubkey) ;
+        //add2log('prvkey = ' + prvkey) ;
+        //add2log('prvkey_aes = ' + prvkey_aes) ;
+        //add2log('') ;
         // save account
         localStorage.setItem('passwords', passwords_s) ;
         localStorage.setItem(userid + '_pubkey', pubkey) ;
@@ -2527,9 +2541,13 @@ function client_login (password, create_new_account) {
         add2log('check encryption') ;
         var prvkey2, prvkey_aes2 ;
         prvkey_aes2 = localStorage.getItem(userid + '_prvkey') ;
-        add2log('prvkey_aes2 = ' + prvkey_aes2) ;
+        //add2log('prvkey_aes2 = ' + prvkey_aes2) ;
         if (prvkey_aes != prvkey_aes2) add2log('prvkey_aes != prvkey_aes2') ;
         prvkey2 = client_sym_decrypt(prvkey_aes2, password);
+        //add2log('prvkey2 = ' + prvkey2) ;
+        if (prvkey == prvkey2) add2log('prvkey == prvkey2') ;
+        else add2log('prvkey != prvkey2') ;
+        add2log('prvkey = ' + prvkey) ;
         add2log('prvkey2 = ' + prvkey2) ;
         add2log('') ;
         return userid ;

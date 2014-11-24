@@ -2487,7 +2487,7 @@ function client_sym_decrypt (text, password) {
 // use create_new_account = true to force create a new user account
 // support for more than one user account
 function client_login (password, create_new_account) {
-    var password_sha256, passwords_s, passwords_a, i, userid, crypt, pubkey, prvkey, prvkey_aes ;
+    var password_sha256, passwords_s, passwords_a, i, userid, uid, crypt, pubkey, prvkey, prvkey_aes ;
     password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
     if (localStorage.getItem("passwords") === null) {
         passwords_a = [] ;
@@ -2503,6 +2503,7 @@ function client_login (password, create_new_account) {
     if ((passwords_a.length == 0) || create_new_account) {
         // create new account
         userid = passwords_a.length + 1 ;
+        uid = '' + new Date().getTime() + (Math.random() + 1).toString(10).substring(2,10) ;
         // hash password
         passwords_a.push(password_sha256) ;
         passwords_s = JSON.stringify(passwords_a) ;
@@ -2528,16 +2529,15 @@ function client_login (password, create_new_account) {
             localStorage.removeItem(userid + '_prvkey');
             return 0 ;
         }
-        localStorage.setItem('passwords', passwords_s) ;
+        // save user
+        localStorage.setItem('passwords', passwords_s) ; // array with passwords. size = number of accounts
+        localStorage.setItem(userid + '_uid', uid) ; // uniq client user account id
         localStorage.setItem(userid + '_pubkey', pubkey) ;
         return userid ;
     }
     // invalid password (create_new_account=false)
     return 0 ;
 } // client_login
-
-
-
 
 // client side login modal form - login to html5 local storage account - password used for login and encryption
 // normally only one client side user account

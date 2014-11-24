@@ -2469,40 +2469,23 @@ function share_accounts_ajax(accepted, email) {
 
 // local storage functions ==>
 
+// symmetric encrypt sensitive data in local storage.
+// password is saved in session storage and is cleared when user closes tab in browser
 function client_sym_encrypt (text, password) {
     var output_wa ;
     output_wa = CryptoJS.AES.encrypt(text, password, { format: CryptoJS.format.OpenSSL }); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    //add2log('client_sym_encrypt: typeof output_wa = ' + typeof output_wa) ;
-    //add2log('client_sym_encrypt: output_wa.key = ' + output_wa.key) ;
-    //add2log('client_sym_encrypt: output_wa.iv = ' + output_wa.iv) ;
-    //add2log('client_sym_encrypt: output_wa.salt = ' + output_wa.salt) ;
-    //add2log('client_sym_encrypt: output_wa.ciphertext = ' + output_wa.ciphertext) ;
-    //// return output_wa.key + output_wa.iv + output_wa.salt + output_wa.ciphertext ;
     return output_wa.toString(CryptoJS.format.OpenSSL) ;
 } //
-
 function client_sym_decrypt (text, password) {
     var output_wa ;
-    // array = JSON.parse(text);
-    // input_wa = CryptoJS.lib.CipherParams.create({key: array[0], iv: array[1], salt: array[2], ciphertext: array[3]}) ;
-    //input_wa.key = array[0] ;
-    //input_wa.iv = array[1] ;
-    //input_wa.salt = array[2] ;
-    //input_wa.ciphertext = array[3] ;
-    // input_wa = CryptoJS.format.OpenSSL.parse(text) ;
-    // add2log('client_sym_decrypt: typeof input_wa = ' + typeof input_wa + ', input_wa = ' + input_wa) ;
-    //add2log('client_sym_decrypt: typeof CryptoJS.format.OpenSSL = ' + typeof CryptoJS.format.OpenSSL) ;
-    //add2log('client_sym_decrypt: CryptoJS.format.OpenSSL = ' + CryptoJS.format.OpenSSL) ;
-    //add2log('client_sym_decrypt: CryptoJS.format.JSON.stringify OpenSSL = ' + JSON.stringify(CryptoJS.format.OpenSSL)) ;
     output_wa = CryptoJS.AES.decrypt(text, password, { format: CryptoJS.format.OpenSSL }); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    //add2log('client_sym_decrypt: typeof output_wa = ' + typeof output_wa + ', output_wa = ' + output_wa) ;
     return output_wa.toString(CryptoJS.enc.Utf8) ;
 } //
 
-
 // client login (password from client-login-dialog-form)
 // 0 = invalid password, > 0 : userid
-// use create_new_account = true to force creation a new user account
+// use create_new_account = true to force create a new user account
+// support for more than one user account
 function client_login (password, create_new_account) {
     var password_sha256, passwords_s, passwords_a, i, userid, crypt, pubkey, prvkey, prvkey_aes ;
     password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
@@ -2523,33 +2506,30 @@ function client_login (password, create_new_account) {
         // hash password
         passwords_a.push(password_sha256) ;
         passwords_s = JSON.stringify(passwords_a) ;
-        // generate key pair
+        // generate key pair for user to user encryption
         crypt = new JSEncrypt({default_key_size: 1024});
         crypt.getKey();
         pubkey = crypt.getPublicKey();
         prvkey = crypt.getPrivateKey();
         prvkey_aes = client_sym_encrypt(prvkey, password);
-        //add2log('pubkey = ' + pubkey) ;
-        //add2log('prvkey = ' + prvkey) ;
-        //add2log('prvkey_aes = ' + prvkey_aes) ;
-        //add2log('') ;
-        // save account
-        localStorage.setItem('passwords', passwords_s) ;
-        localStorage.setItem(userid + '_pubkey', pubkey) ;
+        // ready to store new account information.
+        // check prvkey encryption. do not create new user account if encryption does not work
         localStorage.setItem(userid + '_prvkey', prvkey_aes) ;
-        // check
-        add2log('check encryption') ;
         var prvkey2, prvkey_aes2 ;
         prvkey_aes2 = localStorage.getItem(userid + '_prvkey') ;
-        //add2log('prvkey_aes2 = ' + prvkey_aes2) ;
-        if (prvkey_aes != prvkey_aes2) add2log('prvkey_aes != prvkey_aes2') ;
+        if (prvkey_aes != prvkey_aes2) {
+            add2log('client_login. create new user failed. prvkey_aes != prvkey_aes2') ;
+            localStorage.removeItem(userid + '_prvkey');
+            return 0 ;
+        }
         prvkey2 = client_sym_decrypt(prvkey_aes2, password);
-        //add2log('prvkey2 = ' + prvkey2) ;
-        if (prvkey == prvkey2) add2log('prvkey == prvkey2') ;
-        else add2log('prvkey != prvkey2') ;
-        add2log('prvkey = ' + prvkey) ;
-        add2log('prvkey2 = ' + prvkey2) ;
-        add2log('') ;
+        if (prvkey != prvkey2) {
+            add2log('client_login. create new user failed. prvkey == prvkey2') ;
+            localStorage.removeItem(userid + '_prvkey');
+            return 0 ;
+        }
+        localStorage.setItem('passwords', passwords_s) ;
+        localStorage.setItem(userid + '_pubkey', pubkey) ;
         return userid ;
     }
     // invalid password (create_new_account=false)

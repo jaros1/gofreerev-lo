@@ -1081,6 +1081,8 @@ en:
         invalid_length: "Length of %{field} must be between %{min} and %{max}."
         invalid_password_false: "Invalid password. Try again. There is no forgotten password function but you can use \"Create\" to create a new empty account."
         invalid_password_true: "Cannot create account. Maybe local storage is disabled in your browser."
+        invalid_password_1: "Encryption error. Create new account failed. prvkey_aes != prvkey_aes2."
+        invalid_password_2: "Encryption error. Create new account failed. prvkey != prvkey2."
         js_error: "Cannot log in. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
      share_gift:
         invalid_id: "System error. Cannot share gift. Invalid id for LOV."

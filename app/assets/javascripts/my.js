@@ -2522,13 +2522,13 @@ function client_login (password, create_new_account) {
         if (prvkey_aes != prvkey_aes2) {
             add2log('client_login. create new user failed. prvkey_aes != prvkey_aes2') ;
             localStorage.removeItem(userid + '_prvkey');
-            return 0 ;
+            return -1 ;
         }
         prvkey2 = client_sym_decrypt(prvkey_aes2, password);
         if (prvkey != prvkey2) {
-            add2log('client_login. create new user failed. prvkey == prvkey2') ;
+            add2log('client_login. create new user failed. prvkey != prvkey2') ;
             localStorage.removeItem(userid + '_prvkey');
-            return 0 ;
+            return -2 ;
         }
         // save user
         localStorage.setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
@@ -2578,9 +2578,10 @@ $(function() {
         if (userid <= 0) {
             // login not ok - display error and add create account button
             o.addClass( "ui-state-error" );
-            updateTips(I18n.t('js.client_login_dialog.invalid_password_' + create_new_account, {field: n}));
+            var postfix = (userid < 0) ? -userid : create_new_account ;
+            updateTips(I18n.t('js.client_login_dialog.invalid_password_' + postfix, {field: n}));
+            // add create button
             var buttons = dialog.dialog("option", "buttons");
-            add2log('buttons.length = ' + buttons.length) ;
             if (buttons.length == 2) dialog.dialog("option", "buttons", [login_button, create_button, cancel_button]);
             return false;
         } else {

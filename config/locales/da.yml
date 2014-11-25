@@ -1079,10 +1079,11 @@ da:
         js_error: "Kan ikke ændre \"Saml konti?\" valg. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
      client_login_dialog:
         login: "Log ind"
+        create: "Opret"
         cancel: "Fortryd"
         password: "Kodeord"
         invalid_length: "%{field} skal bestå af mindst %{min} og højst %{max} tegn"
-        invalid_password_false: "Forkert kodeord. Prøv igen. Der er ingen glemt kodeord funktion, men du har mulighed for at oprette en ny tom konto med at vælge \"Opret ny\"."
+        invalid_password_false: "Forkert kodeord. Prøv igen. Der er ingen glemt kodeord funktion, men du har mulighed for at oprette en ny tom konto med at vælge \"Opret\"."
         invalid_password_true: "Kan desværre ikke oprette ny konto. Du har muligvis slået lokalt lager fra i din browser."
         js_error: "Kan ikke logge ind. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
      share_gift:

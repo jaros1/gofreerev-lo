@@ -2489,6 +2489,7 @@ function client_sym_decrypt (text, password) {
 function client_login (password, create_new_account) {
     var password_sha256, passwords_s, passwords_a, i, userid, uid, crypt, pubkey, prvkey, prvkey_aes ;
     password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
+    // passwords: array with hashed passwords. size = number of accounts
     if (localStorage.getItem("passwords") === null) {
         passwords_a = [] ;
     }
@@ -2502,8 +2503,8 @@ function client_login (password, create_new_account) {
     // password was not found
     if ((passwords_a.length == 0) || create_new_account) {
         // create new account
-        userid = passwords_a.length + 1 ;
-        uid = '' + new Date().getTime() + (Math.random() + 1).toString(10).substring(2,10) ;
+        userid = passwords_a.length + 1 ; // sequence = number of user accounts in local storage
+        uid = '' + new Date().getTime() + (Math.random() + 1).toString(10).substring(2,10) ; // unique device id
         // hash password
         passwords_a.push(password_sha256) ;
         passwords_s = JSON.stringify(passwords_a) ;
@@ -2515,7 +2516,7 @@ function client_login (password, create_new_account) {
         prvkey_aes = client_sym_encrypt(prvkey, password);
         // ready to store new account information.
         // check prvkey encryption. do not create new user account if encryption does not work
-        localStorage.setItem(userid + '_prvkey', prvkey_aes) ;
+        localStorage.setItem(userid + '_prvkey', prvkey_aes) ; // symmetric encrypted private key
         var prvkey2, prvkey_aes2 ;
         prvkey_aes2 = localStorage.getItem(userid + '_prvkey') ;
         if (prvkey_aes != prvkey_aes2) {
@@ -2530,9 +2531,9 @@ function client_login (password, create_new_account) {
             return 0 ;
         }
         // save user
-        localStorage.setItem('passwords', passwords_s) ; // array with passwords. size = number of accounts
-        localStorage.setItem(userid + '_uid', uid) ; // uniq client user account id
-        localStorage.setItem(userid + '_pubkey', pubkey) ;
+        localStorage.setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
+        localStorage.setItem(userid + '_uid', uid) ; // unique device id
+        localStorage.setItem(userid + '_pubkey', pubkey) ; // public key
         return userid ;
     }
     // invalid password (create_new_account=false)
@@ -2543,13 +2544,14 @@ function client_login (password, create_new_account) {
 // normally only one client side user account
 $(function() {
 
-    var dialog, form,
+    var dialog, form, login_button, create_button, cancel_button,
 
     // From http://www.whatwg.org/specs/web-apps/current-work/multipage/states-of-the-type-attribute.html#e-mail-state-%28type=password%29
         password = $( "#client-login-password" ),
         allFields = $( [] ).add( password ),
         tips = $( ".validateTips"),
         login_text = I18n.t('js.client_login_dialog.login'),
+        create_text = I18n.t('js.client_login_dialog.create'),
         cancel_text = I18n.t('js.client_login_dialog.cancel') ;
 
     function updateTips( t ) {
@@ -2573,9 +2575,13 @@ $(function() {
 
     function checkPassword( o, n,  create_new_account) {
         var userid = client_login(o.val(), create_new_account);
-        if (userid == 0) {
+        if (userid <= 0) {
+            // login not ok - display error and add create account button
             o.addClass( "ui-state-error" );
             updateTips(I18n.t('js.client_login_dialog.invalid_password_' + create_new_account, {field: n}));
+            var buttons = dialog.dialog("option", "buttons");
+            add2log('buttons.length = ' + buttons.length) ;
+            if (buttons.length == 2) dialog.dialog("option", "buttons", [login_button, create_button, cancel_button]);
             return false;
         } else {
             // login ok - save password temporary in session store for encryption
@@ -2585,42 +2591,53 @@ $(function() {
         }
     }
 
-    function login() {
+    function login_or_create_new_account (create_new_account) {
         var pgm='client-login-dialog-form.login: ';
         try {
             var valid = true;
             allFields.removeClass("ui-state-error");
             // password exists in dialog form and is not blank
             valid = valid && checkLength(password, I18n.t('js.client_login_dialog.password'), 10, 50);
-            valid = valid && checkPassword(password, I18n.t('js.client_login_dialog.password'), false);
+            valid = valid && checkPassword(password, I18n.t('js.client_login_dialog.password'), create_new_account);
             if (valid) dialog.dialog("close") ;
             return valid
         }
         catch (err) {
             add2log(pgm + 'failed with JS error: ' + err);
-            add_to_tasks_errors2('share_accounts_errors',I18n.t('js.client_login_dialog.js_error', {error: err, location: 19, debug: 2}));
+            add_to_tasks_errors2('share_accounts_errors',I18n.t('js.client_login_dialog.js_error', {error: err, location: 25, debug: 1}));
             return false;
         }
-    } // login
+    }
 
+    function login() {
+        login_or_create_new_account(false)
+    } // login
+    function create() {
+        login_or_create_new_account(true)
+    } // create
     function cancel() {
         dialog.dialog( "close" );
     } // cancel
+
+    login_button = {
+        text: login_text,
+        click: login
+    }
+    create_button = {
+        text: create_text,
+        click: create
+    }
+    cancel_button = {
+        text: cancel_text,
+        click: cancel
+    }
 
     dialog = $( "#client-login-dialog-form" ).dialog({
         autoOpen: false,
         height: fb_user ? 225 : 300, // only show password for logins without fb account
         width: 350,
         modal: true,
-        buttons:[
-            {
-                text: login_text,
-                click: login
-            },
-            {
-                text: cancel_text,
-                click: cancel
-            }],
+        buttons:[login_button, cancel_button],
         close: function() {
             form[ 0 ].reset();
             allFields.removeClass( "ui-state-error" );
@@ -2639,7 +2656,6 @@ $(function() {
         });
     }
     else {
-        // ok
         $( "#client-login" ).button().on( "click", function() {
             dialog.dialog( "open" );
         });

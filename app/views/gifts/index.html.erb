@@ -46,7 +46,7 @@
           <td>
             <div class="fileupload bottom">
               <%= t '.file_prompt' %>
-              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload",
+              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload", :accept => "image/*;capture=camera",
                                  :onchange => '{document.getElementById("disp_gift_file").value = this.value}' %>
             </div>
           </td>

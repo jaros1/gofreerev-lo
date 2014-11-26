@@ -1058,21 +1058,50 @@ function report_missing_api_picture_urls() {
     missing_api_picture_urls = [];
 } // report_missing_picture_urls
 
+// http://stackoverflow.com/questions/152483/is-there-a-way-to-print-all-methods-of-an-object-in-javascript
+function getMethods(obj) {
+    var result = [];
+    for (var id in obj) {
+        try {
+            if (typeof(obj[id]) == "function") {
+                result.push(id + ": " + obj[id].toString());
+            }
+        } catch (err) {
+            result.push(id + ": inaccessible");
+        }
+    }
+    return result;
+}
+
 // enable ajax submit for new gifts in gifts/index page
 $(document).ready(function () {
     var new_gift = document.getElementById('new_gift');
     if (!new_gift) return; // not gifts/index page
-    // new_gift.action = '/gifts.js'; // ajax request
-    // bind 'myForm' and provide a simple callback function
-    // http://malsup.com/jquery/form/#options-object
+    // client side only fields - not sent to server
+    var disable_enable_ids = ["gift_description", "gift_price", "gift_open_graph_url1", "gift_open_graph_url2"] ;
+    // bind 'myForm' and provide a simple callback function. http://malsup.com/jquery/form/#options-object
     $('#new_gift').ajaxForm({
         type: "POST",
         dataType: 'script',
-        beforeSubmit: function (formData, jqForm, options) {
-            // add2log('#new_gift.beforeSubmit');
+        beforeSerialize: function($form, options) {
+            add2log('#new_gift.beforeSubmit');
+            // get next client side post id.
+
+            // disable submit buttons while submitting new gift to server
             var submit_buttons = document.getElementsByName('commit_gift') ;
-            // add2log('submit_buttons.length = ' + submit_buttons.length) ;
             for (var i=0 ; i< submit_buttons.length ; i++) submit_buttons[i].disabled = true ;
+            // only send direction and image to server
+            var element ;
+            for (var i=0 ; i< disable_enable_ids.length ; i++) {
+                element = document.getElementById(disable_enable_ids[i]) ;
+                if (element) element.disabled = true ;
+            }
+        },
+        beforeSubmit: function (formData, jqForm, options) {
+            add2log('#new_gift.beforeSubmit');
+            // only send gift meta-information to server. disable all fields except: todo
+            //var gift_description = document.getElementById('gift_description') ;
+            //if (gift_description) gift_description.disabled = true ;
         },
         success: function (responseText, statusText, xhr, $form) {
             var debug ;
@@ -1146,6 +1175,12 @@ $(document).ready(function () {
             var submit_buttons = document.getElementsByName('commit_gift') ;
             // add2log('submit_buttons.length = ' + submit_buttons.length) ;
             for (var i=0 ; i< submit_buttons.length ; i++) submit_buttons[i].disabled = false ;
+            // enable gift fields
+            var element ;
+            for (var i=0 ; i< disable_enable_ids.length ; i++) {
+                element = document.getElementById(disable_enable_ids[i]) ;
+                if (element) element.disabled = false ;
+            }
         }
     });
 });

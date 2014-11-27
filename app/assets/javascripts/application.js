@@ -16,5 +16,25 @@
 // require jquery.turbolinks # todo: enable turbolinks - was outcommented in turtual http://www.jackiejohnston.us/blog/bootstrap-your-app/
 //= require jquery.ui.effect
 //= require jquery_ujs
+
+//= require jquery.ui.widget.js
+
 //= require twitter/bootstrap
+
+//= require load-image
+//= require load-image-ios
+//= require load-image-orientation
+//= require load-image-meta
+//= require load-image-exif
+//= require load-image-exif-map
+
+//= require canvas-to-blob
+
+//= require jquery.iframe-transport
+
+//= require jquery.fileupload
+//= require jquery.fileupload-process
+//= require jquery.fileupload-image
+//= require jquery.fileupload-validate.js
+
 //= require_tree .

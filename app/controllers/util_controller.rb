@@ -3028,5 +3028,10 @@ class UtilController < ApplicationController
     end
   end
 
+  public
+  def upload
+    logger.debug2 "params = #{params}"
+  end
+
 
 end # UtilController

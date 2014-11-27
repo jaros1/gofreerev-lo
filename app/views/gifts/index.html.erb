@@ -168,66 +168,14 @@
 </script>
 
 <!--
-  image upload with drag and drop support.
-  from https://blueimp.github.io/jQuery-File-Upload/
+  The File Upload processing plugin
+  https://blueimp.github.io/jQuery-File-Upload/
+  Some scripts have to be included here!
 -->
-
-<!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>-->
-<!--<script src="/assets/jquery.js?body=1"></script>-->
-<!--<script src="/assets/jquery.ui.effect.js?body=1"></script>-->
-<!--<script src="/assets/jquery_ujs.js?body=1"></script>-->
-<!--<script src="/assets/jquery-ui.js?body=1"></script>-->
-<!--<script src="/assets/jquery.cookie.js?body=1"></script>-->
-<!--<script src="/assets/jquery.form.js?body=1"></script>-->
-
-<!-- The jQuery UI widget factory, can be omitted if jQuery UI is already included -->
-<!--<script src="js/vendor/jquery.ui.widget.js"></script>-->
-
-<!-- The Load Image plugin is included for the preview images and image resizing functionality -->
-<!--<script src="//blueimp.github.io/JavaScript-Load-Image/js/load-image.all.min.js"></script>-->
-<script src="/assets/load-image.js"></script>
-<script src="/assets/load-image-ios.js"></script>
-<script src="/assets/load-image-orientation.js"></script>
-<script src="/assets/load-image-meta.js"></script>
-<script src="/assets/load-image-exif.js"></script>
-<script src="/assets/load-image-exif-map.js"></script>
-
-<!-- The Canvas to Blob plugin is included for image resizing functionality -->
-<!--<script src="//blueimp.github.io/JavaScript-Canvas-to-Blob/js/canvas-to-blob.min.js"></script>-->
-<script src="/assets/canvas-to-blob.js"></script>
-
-<!-- Bootstrap JS is not required, but included for the responsive demo navigation -->
-<!--<script src="//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-transition.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-alert.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-modal.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-dropdown.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-scrollspy.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-tab.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-tooltip.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-popover.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-button.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-collapse.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-carousel.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-typeahead.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap/bootstrap-affix.js?body=1"></script>-->
-<!--<script src="/assets/twitter/bootstrap.js?body=1"></script>-->
-<!--<script src="/assets/bootstrap.js?body=1"></script>-->
-
-<!-- The Iframe Transport is required for browsers without support for XHR file uploads -->
-<script src="/assets/jquery.iframe-transport.js"></script>
-<!-- The basic File Upload plugin -->
-<script src="/assets/jquery.fileupload.js"></script>
-<!-- The File Upload processing plugin -->
 <script src="/assets/jquery.fileupload-process.js"></script>
-<!-- The File Upload image preview & resize plugin -->
 <script src="/assets/jquery.fileupload-image.js"></script>
-<!-- The File Upload audio preview plugin -->
-<!--<script src="js/jquery.fileupload-audio.js"></script>-->
-<!-- The File Upload video preview plugin -->
-<!--<script src="js/jquery.fileupload-video.js"></script>-->
-<!-- The File Upload validation plugin -->
 <script src="/assets/jquery.fileupload-validate.js"></script>
+
 <script>
     /*jslint unparam: true, regexp: true */
     /*global window, $ */
@@ -268,19 +216,26 @@
             previewMaxHeight: 100,
             previewCrop: true
         }).on('fileuploadadd', function (e, data) {
-            var filetype = data.originalFiles[0].type ;
-            if (!/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)) return $.last(); // invalid filetype
-            $('#files').empty(); // keep only last image
-            data.context = $('<div/>').appendTo('#files');
-            $.each(data.files, function (index, file) {
-                var node = $('<p/>')
-                        .append($('<span/>').text(file.name));
-                if (!index) {
-                    node
-                            .append('<br>')
-                            .append(uploadButton.clone(true).data(data));
+            $.each(data.files.reverse(), function (index, file) {
+                var filetype = data.originalFiles[index].type ;
+                if (!/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)) {
+                    // invalid filetype - remove from file arrays
+                    data.originalFiles.splice(index,1) ;
+                    data.files.splice(index,1) ;
                 }
-                node.appendTo(data.context);
+                else {
+                    // filetype ok - keep only one file in #files div
+                    $('#files').empty();
+                    data.context = $('<div/>').appendTo('#files');
+                    var node = $('<p/>')
+                            .append($('<span/>').text(file.name));
+                    if (!index) {
+                        node
+                                .append('<br>')
+                                .append(uploadButton.clone(true).data(data));
+                    }
+                    node.appendTo(data.context);
+                }
             });
         }).on('fileuploadprocessalways', function (e, data) {
             var index = data.index,

@@ -3128,6 +3128,10 @@ function gift_open_graph_url_preview(url, title, description, image) {
     while (gift_preview.firstChild) {
         gift_preview.removeChild(gift_preview.firstChild);
     }
+    var gift_file = document.getElementById('gift_file') ;
+    if (gift_file) gift_file.value = '' ;
+    var disp_gift_file = document.getElementById('disp_gift_file') ;
+    if (disp_gift_file) disp_gift_file.value = '' ;
     // insert preview
     gift_preview.appendChild(table) ;
 } // gift_open_graph_url_preview

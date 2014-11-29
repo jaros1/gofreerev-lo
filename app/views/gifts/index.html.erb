@@ -46,8 +46,7 @@
           <td>
             <div class="fileupload bottom">
               <%= t '.file_prompt' %>
-              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload", :accept => "image/*;capture=camera",
-                                 :onchange => '{document.getElementById("disp_gift_file").value = this.value}' %>
+              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
               <%= f.hidden_field :datatype %>
             </div>
           </td>
@@ -225,8 +224,15 @@
                     data.files.splice(index,1) ;
                 }
                 else {
-                    // filetype ok - keep only "last" file in #gift_preview div
+                    // filetype ok - keep only "last" file in gift_preview
                     $('#gift_preview').empty();
+                    // clear any old open graph url
+                    var open_graph_url ;
+                    open_graph_url = document.getElementById('gift_open_graph_url1') ;
+                    if (open_graph_url) open_graph_url.value = '' ;
+                    open_graph_url = document.getElementById('gift_open_graph_url2') ;
+                    if (open_graph_url) open_graph_url.value = '' ;
+                    // preview file
                     data.context = $('<div/>').appendTo('#gift_preview');
                     var node = $('<p/>') ;
                     //        .append($('<span/>').text(file.name));

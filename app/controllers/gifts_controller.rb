@@ -14,6 +14,16 @@ class GiftsController < ApplicationController
   # JS function insert_update_gifts will move new gift from div buffer to gifts table in html page
   def create
     @api_gifts = []
+
+    logger.debug2 "request.format = #{request.format}"
+    logger.debug2 "xhr? = #{xhr?}"
+
+    # File upload plugin support - ignore rails JS post - data has already been send in a json request
+    if xhr? and params[:gift][:datatype] == 'json' and request.format == 'text/javascript'
+      render :nothing => true
+      return
+    end
+
     begin
       return format_response_key '.not_logged_in' unless logged_in?
 

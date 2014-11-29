@@ -697,8 +697,7 @@ class Gift < ActiveRecord::Base
   # psydo attributea
   attr_accessor :file
 
-
-
+  attr_accessor :datatype
 
 
   def before_create

@@ -188,9 +188,31 @@ function csv_gift() {
     // clear any old (error) messages in page header
     clear_flash_and_ajax_errors() ;
 
+    // disable client only fields before submit - send direction and image to server
+    //var disable_enable_ids = ["gift_description", "gift_price", "gift_open_graph_url1", "gift_open_graph_url2"];
+    //var element;
+    //for (var i = 0; i < disable_enable_ids.length; i++) {
+    //    element = document.getElementById(disable_enable_ids[i]);
+    //    if (element) element.disabled = true;
+    //}
+
+    // check for image fil.
+    // no image   - datatype = js   - use normal rails JS remote submit
+    // image file - datatype = json - ignore rails JS remote submit and use the
+    var gift_datatype = document.getElementById('gift_datatype') ;
+    var gift_file_button = document.getElementById('gift_file_button') ;
+    if (gift_file_button) {
+        // File Upload plugin (https://blueimp.github.io/jQuery-File-Upload/)
+        // ignore rails js post and use json post from File Upload plugin
+        gift_datatype.value = 'json' ;
+        gift_file_button.click() ;
+        return false ;
+    }
+    else gift_datatype.value = 'js' ; // normal rails js post
+
     if (!Modernizr.meter) return true; // process bar not supported
-    var progressbar_div = document.getElementById('progressbar-div') ;
-    if (!progressbar_div) return true ; // no progressbar found in page
+    var progressbar_div = document.getElementById('progressbar-div');
+    if (!progressbar_div) return true; // no progressbar found in page
 
     progressbar_div.style.display = 'block';
     // start upload process bar
@@ -1073,6 +1095,7 @@ function getMethods(obj) {
     return result;
 }
 
+/*
 // enable ajax submit for new gifts in gifts/index page
 $(document).ready(function () {
     var new_gift = document.getElementById('new_gift');
@@ -1135,11 +1158,11 @@ $(document).ready(function () {
                 var gift_open_graph_url = document.getElementById('gift_open_graph_url2') ;
                 if (gift_open_graph_url) gift_open_graph_url.value = '' ;
                 debug = 9.3 ;
-                var open_graph_url_preview = document.getElementById('open_graph_url_preview') ;
-                if (open_graph_url_preview) {
+                var gift_preview = document.getElementById('gift_preview') ;
+                if (gift_preview) {
                     debug = 9.4 ;
-                    while (open_graph_url_preview.firstChild) {
-                        open_graph_url_preview.removeChild(open_graph_url_preview.firstChild);
+                    while (gift_preview.firstChild) {
+                        gift_preview.removeChild(gift_preview.firstChild);
                     }
                 }
                 // first gift for a new gofreerev user - show gifts table - hide no api gift found message
@@ -1184,6 +1207,11 @@ $(document).ready(function () {
         }
     });
 });
+*/
+
+
+
+
 
 // auto resize text fields
 // found at http://stackoverflow.com/questions/454202/creating-a-textarea-with-auto-resize
@@ -3062,8 +3090,8 @@ function gift_open_graph_url_sync (field1) {
 // response from /util/open_graph.js ajax request in gift_open_graph_url_done
 function gift_open_graph_url_preview(url, title, description, image) {
     // alert('gift_open_graph_url_preview: url = ' + url + ', title = ' + title + ', description = ' + description + ', image = ' + image);
-    var open_graph_url_preview = document.getElementById('open_graph_url_preview') ;
-    if (!open_graph_url_preview) return ;
+    var gift_preview = document.getElementById('gift_preview') ;
+    if (!gift_preview) return ;
     // create table with image, title (bold) and description
     var table, tbody, tr, td, img, b, t ;
     table = document.createElement('TABLE');
@@ -3097,11 +3125,11 @@ function gift_open_graph_url_preview(url, title, description, image) {
     t = document.createTextNode(description) ;
     td.appendChild(t) ;
     // remove any old preview
-    while (open_graph_url_preview.firstChild) {
-        open_graph_url_preview.removeChild(open_graph_url_preview.firstChild);
+    while (gift_preview.firstChild) {
+        gift_preview.removeChild(gift_preview.firstChild);
     }
     // insert preview
-    open_graph_url_preview.appendChild(table) ;
+    gift_preview.appendChild(table) ;
 } // gift_open_graph_url_preview
 
 

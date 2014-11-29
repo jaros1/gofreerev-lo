@@ -22,7 +22,7 @@
 <%# create new gift form -%>
 <div style="width: 100%"><%= t '.create_gift_header_line' %></div>
 <div style="width: 100%">
-  <%= form_for @gift, :html => {:enctype => 'multipart/form-data', :id => 'new_gift'}, :data => { :type => :script }, :format => :js do |f| -%>
+  <%= form_for @gift, :remote => true, :html => {:enctype => 'multipart/form-data', :id => 'new_gift'}, :data => { :type => :script }, :format => :js do |f| -%>
       <table>
         <tr title="<%= t '.price_title', :min_interest => NEG_INT_POS_BALANCE_PER_YEAR, :max_interest => NEG_INT_NEG_BALANCE_PER_YEAR %>">
           <td><%= t '.price_prompt' %></td>
@@ -48,6 +48,7 @@
               <%= t '.file_prompt' %>
               <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload", :accept => "image/*;capture=camera",
                                  :onchange => '{document.getElementById("disp_gift_file").value = this.value}' %>
+              <%= f.hidden_field :datatype %>
             </div>
           </td>
           <td>
@@ -75,11 +76,8 @@
           <td><%= f.text_field(:open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url2", :class => 'gift_open_graph_url', :oninput=>"gift_open_graph_url_sync(this)") %></td>
         </tr>
         <tr>
-          <td id="open_graph_url_preview" colspan="2"></td>
-        </tr>
-        <tr>
           <td colspan="2">
-            <div id="files" class="files"></div>
+            <div id="gift_preview" class="files"></div>
           </td>
         </tr>
         <tr class="new_gift_submit_small">
@@ -182,10 +180,12 @@
     $(function () {
         'use strict';
         // Change this url to the location of your server-side upload handler:
-        var url = '/util/upload/',
+        var url = '/gifts/',
                 uploadButton = $('<button/>')
                         .addClass('btn btn-primary')
                         .prop('disabled', true)
+                        .prop('id', 'gift_file_button')
+                        .css('display', '')
                         .text('Processing...')
                         .on('click', function () {
                             var $this = $(this),
@@ -200,7 +200,7 @@
                             data.submit().always(function () {
                                 $this.remove();
                             });
-                        });
+                        }) ;
         $('#gift_file').fileupload({
             url: url,
             dataType: 'json',
@@ -216,6 +216,7 @@
             previewMaxHeight: 100,
             previewCrop: true
         }).on('fileuploadadd', function (e, data) {
+            var disp_gift_file = document.getElementById('disp_gift_file');
             $.each(data.files.reverse(), function (index, file) {
                 var filetype = data.originalFiles[index].type ;
                 if (!/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)) {
@@ -224,14 +225,14 @@
                     data.files.splice(index,1) ;
                 }
                 else {
-                    // filetype ok - keep only one file in #files div
-                    $('#files').empty();
-                    data.context = $('<div/>').appendTo('#files');
-                    var node = $('<p/>')
-                            .append($('<span/>').text(file.name));
+                    // filetype ok - keep only "last" file in #gift_preview div
+                    $('#gift_preview').empty();
+                    data.context = $('<div/>').appendTo('#gift_preview');
+                    var node = $('<p/>') ;
+                    //        .append($('<span/>').text(file.name));
+                    if (disp_gift_file) disp_gift_file.value = file.name ;
                     if (!index) {
                         node
-                                .append('<br>')
                                 .append(uploadButton.clone(true).data(data));
                     }
                     node.appendTo(data.context);
@@ -288,9 +289,3 @@
                 .parent().addClass($.support.fileInput ? undefined : 'disabled');
     });
 </script>
-
-
-
-
-
-

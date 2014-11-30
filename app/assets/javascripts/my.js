@@ -2,33 +2,6 @@
 // var debug_ajax, get_more_rows_interval, get_more_rows_table ;
 
 
-// allow running ajax to complete before leaving page / executing new http request
-// http://stackoverflow.com/questions/1906023/jquery-ajaxerror-handler-fires-if-user-leaves-page-before-page-finishes-loadin
-// todo: this solution gives a nice message when user clicks on a http link (leaving page). It could be nice with a solution that also gives a nice message for ajax request (not leaving page).
-var ajaxing ;
-$(document).ajaxStart(function() {
-    ajaxing = true;
-});
-$(document).ajaxStop(function() {
-    ajaxing = false;
-});
-var leaving_page = false ;
-$(document).ready(function () {
-    leaving_page = false ;
-});
-
-// flash message if user is trying to leave page before ajaxing is finished
-window.onbeforeunload = function() {
-    console.log('window.onbeforeunload');
-    if (typeof(ajaxing) != 'undefined' && ajaxing) {
-        // Waiting for some finish some unfinished business to finish. Please wait.
-        // todo: second click re-flash effect not working
-        if (leaving_page) ajax_flash_new_table_rows('tasks_errors', 1) ;
-        else add_to_tasks_errors(I18n.t('js.general.ajax_leave_page', {location: 1, debug: 0})) ;
-    }
-    leaving_page = true;
-}
-
 // fix missing Array.indexOf in IE8
 // http://stackoverflow.com/questions/3629183/why-doesnt-indexof-work-on-an-array-ie8
 if (!Array.prototype.indexOf)
@@ -54,30 +27,92 @@ if (!Array.prototype.indexOf)
     };
 }
 
-//// freeze user_currency when user enters text for new gift (auto submit when currency changes)
-//function gifts_index_disabled_user_currency() {
-//    var currency_id;
-//    currency_id = document.getElementById('user_currency');
-//    alert('gifts_index_disabled_user_currency, isDisabled = ' + currency_id.isDisabled);
-//
-//    currency_id.disabled = true;
-//    var field_id;
-//    field_id = document.getElementById('gift_price');
-//    if (field_id.value != '') {
-//        currency_id.disabled = true;
-//        return
-//    }
-//    field_id = document.getElementById('gift_description');
-//    if (field_id.value != '') {
-//        currency_id.disabled = true;
-//        return
-//    }
-//    field_id = document.getElementById('gift_file');
-//    if (field_id.value != '') {
-//        currency_id.disabled = true
-//    }
-//} // gifts_index_disabled_user_currency
 
+// Gofreerev closure start
+var Gofreerev = (function() {
+
+    // keep track of "ajaxing". allow running ajax to complete before leaving page
+    var ajaxing = false ;
+    var leaving_page = false ;
+    $(document).ajaxStart(function() {
+        ajaxing = true;
+    });
+    $(document).ajaxStop(function() {
+        ajaxing = false;
+    });
+    $(document).ready(function () {
+        leaving_page = false ;
+    });
+
+    // ajax flash for table rows - for example new rows in ajax_task_errors table
+    ajax_flash_new_table_rows = function (tablename, number_of_rows)
+    {
+        var pgm = 'ajax_flash_new_table_rows: ' ;
+        // add2log(pgm + 'table_name = ' + tablename + ', number_of_rows = ' + number_of_rows) ;
+        var table = document.getElementById(tablename) ;
+        if (!table) return ;
+        var rows = table.rows ;
+        if (rows.length < number_of_rows) number_of_rows = rows.length ;
+        var now = (new Date()).getTime() ;
+        var id ;
+        // add2log(pgm + 'number_of_rows = ' + number_of_rows) ;
+        for (i=rows.length-number_of_rows ; i < rows.length ; i++) {
+            id = 'afe-' + now + '-' + i ;
+            rows[i].id = id
+            ajax_flash(id) ;
+        } // for
+    } // ajax_flash_new_table_rows
+
+    // add error to tasks_error table in page header
+    add_to_tasks_errors = function (error) {
+        var pgm = 'add_to_tasks_errors: ' ;
+        var table = document.getElementById('tasks_errors') ;
+        if (!table) {
+            add2log(pgm + 'tasks_errors table was not found.') ;
+            add2log(pgm + 'error: ' + error + '.') ;
+            return ;
+        }
+        delete_old_error(table, error) ;
+        var length = table.length ;
+        var row = table.insertRow(length) ;
+        var cell1 = row.insertCell(0) ;
+        cell1.innerHTML = error ;
+        var cell2 = row.insertCell(1) ;
+        cell2.innerHTML = (new Date).getTime() ;
+        ajax_flash_new_table_rows('tasks_errors', 1);
+    } // add_to_tasks_errors
+
+    // keep track of "ajaxing". allow running ajax to complete before leaving page
+    // this solution gives a nice message when user clicks on a http link (leaving page).
+    // It could be nice with a solution that also gives a message for ajax request (not leaving page).
+    window.onbeforeunload = function() {
+        if (Gofreerev.isAjaxing()) {
+            // Waiting for some finish some unfinished business to finish. Please wait.
+            // todo: second click re-flash effect not working
+            if (leaving_page) ajax_flash_new_table_rows('tasks_errors', 1) ;
+            else add_to_tasks_errors(I18n.t('js.general.ajax_leave_page', {location: 1, debug: 0})) ;
+        }
+        leaving_page = true;
+    }
+
+    // public methods
+    return {
+        // keep track of "ajaxing". allow running ajax to complete before leaving page
+        leaving_page: function() { return leaving_page},
+        // error helpers
+        ajax_flash_new_table_rows: ajax_flash_new_table_rows,
+        add_to_tasks_errors: add_to_tasks_errors
+    };
+})();
+// Gofreerev closure end
+
+
+
+
+// handle user currency - used when posting prices in gifts/index page
+// identical user currency for all logged in @users
+// only load currency user currency at page startup
+// download full currency list when user clicks on currency LOV (onfocus)
 
 // functions used in page header. Update user currency and return to current page
 function default_pre_update_currency() {
@@ -134,6 +169,67 @@ function gifts_pre_update_currency() {
     // confirm box
     return (confirm(pending_gift_msg));
 } // gifts_pre_update_currency()
+
+// only "current user currency" is in currency LOV at page startup
+// download all currencies when user clicks on currency LOV
+// for smaller page and faster startup time
+// minor problem. User has to click twice on currency LOV to change currency. First to get full currency list and second to change currency
+$(document).ready(function() {
+    var id = ".user_currency_new" ;
+    $(id).unbind('focus') ;
+    $(id).bind('focus', function () {
+        // var id_select = document.getElementById("user_currency_new");
+        var id_select = $(this);
+        if (id_select.length > 1) {
+            // list of currencies is already initialised
+            $(id).unbind('focus');
+        }
+        else {
+            // get full list of currencies from server
+            $.ajax({
+                type: 'GET',
+                url: '/util/currencies.js',
+                dataType: "text",
+                success: function (msg) {
+                    $(id).unbind('focus');
+                    var pgm = 'user_currency_new.ajax.success: ' ;
+                    if (msg == 0) {
+                        // Query returned empty.
+                        msg = 'Did not get any currencies from server' ;
+                        add2log(pgm + msg);
+                        add_to_tasks_errors(msg)
+                    } else {
+                        // Query Has values.
+                        add2log(pgm + 'msg = ' + msg) ;
+                        $(id).replaceWith(msg);
+                        $(id).click;
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    $(id).unbind('focus');
+                    var pgm = 'user_currency_new.ajax.error: ' ;
+                    var msg = 'Error when fetching currencies from server. ' + (errorThrown || textStatus) +
+                        '. More information in server log.'
+                    add2log(pgm + msg);
+                    add2log(pgm + 'jqXHR       = ' + jqXHR) ;
+                    add2log(pgm + 'textStatus  = ' + textStatus) ;
+                    add2log(pgm + 'errorThrown = ' + errorThrown) ;
+                    add_to_tasks_errors(msg)
+                }
+            });
+
+        }
+    }); // $(".user_currency_new").bind('focus', function () {
+})
+
+// disable user_currency_new LOV for deep link for not logged in users (gifts/show/<deep_link_id>)
+function disable_user_currency_new_lov() {
+    setInterval(function() {
+        $(".user_currency_new").unbind('focus') ;
+    }, 100) ;
+} // disable_user_currency_new_lov
+
+
 
 
 // Client side validations
@@ -318,20 +414,7 @@ $(document).ready(function () {
 // ajax flash for row table rows - for example new rows in ajax_task_errors table
 function ajax_flash_new_table_rows (tablename, number_of_rows)
 {
-    var pgm = 'ajax_flash_new_table_rows: ' ;
-    // add2log(pgm + 'table_name = ' + tablename + ', number_of_rows = ' + number_of_rows) ;
-    var table = document.getElementById(tablename) ;
-    if (!table) return ;
-    var rows = table.rows ;
-    if (rows.length < number_of_rows) number_of_rows = rows.length ;
-    var now = (new Date()).getTime() ;
-    var id ;
-    // add2log(pgm + 'number_of_rows = ' + number_of_rows) ;
-    for (i=rows.length-number_of_rows ; i < rows.length ; i++) {
-        id = 'afe-' + now + '-' + i ;
-        rows[i].id = id
-        ajax_flash(id) ;
-    } // for
+    Gofreerev.ajax_flash_new_table_rows (tablename, number_of_rows) ;
 } // ajax_flash_new_table_rows
 
 // long gift description is hidden inside div with max-height and overflow
@@ -580,7 +663,7 @@ $(document).ready(function() {
     $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
         pgm = id + '::ajax:error: ' ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
             add_to_tasks_errors(I18n.t('js.new_messages_count.ajax_error', {error: err, location: 2, debug: 0})) ;
         }
@@ -1074,7 +1157,7 @@ function report_missing_api_picture_urls() {
         dataType: 'script',
         data: { api_gifts: {ids: missing_api_picture_urls_local } },
         error: function (jqxhr, textStatus, errorThrown) {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var pgm = 'missing_api_picture_urls.error: ' ;
             var err = add2log_ajax_error('missing_api_picture_urls.ajax.error: ', jqxhr, textStatus, errorThrown) ;
             add_to_tasks_errors(I18n.t('js.missing_api_picture_urls.ajax_error', {error: err, location: 7, debug: 0})) ;
@@ -1191,7 +1274,7 @@ $(document).ready(function () {
             }
         }, // success
         error: function (jqxhr, textStatus, errorThrown) {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             document.getElementById('progressbar-div').style.display = 'none';
             var err = add2log_ajax_error('new_gift.ajax.error: ', jqxhr, textStatus, errorThrown) ;
             add_to_tasks_errors(I18n.t('js.new_gift.ajax_error', {error: err, location: 8, debug: 0})) ;
@@ -1358,63 +1441,6 @@ function check_uncheck_new_deal_checkbox(checkbox, giftid)
 //})
 
 
-// only current currency is in currency LOV at response time
-// download all currencies when user clicks on currency LOV
-// for smaller page and faster startup time
-// todo: minor problem. User has to click twice on currency LOV to change currency. First to get full currency list and second to change currency
-$(document).ready(function() {
-    var id = ".user_currency_new" ;
-    $(id).unbind('focus') ;
-    $(id).bind('focus', function () {
-        var id_select = document.getElementById("user_currency_new");
-        if (id_select.length > 1) {
-            // list of currencies is already initialised
-            $(id).unbind('focus');
-        }
-        else {
-            // get full list of currencies from server
-            $.ajax({
-                type: 'GET',
-                url: '/util/currencies.js',
-                dataType: "text",
-                success: function (msg) {
-                    $(id).unbind('focus');
-                    var pgm = 'user_currency_new.ajax.success: ' ;
-                    if (msg == 0) {
-                        // Query returned empty.
-                        msg = 'Did not get any currencies from server' ;
-                        add2log(pgm + msg);
-                        add_to_tasks_errors(msg)
-                    } else {
-                        // Query Has values.
-                        add2log(pgm + 'msg = ' + msg) ;
-                        $(id).replaceWith(msg);
-                        $(id).click;
-                    }
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    $(id).unbind('focus');
-                    var pgm = 'user_currency_new.ajax.error: ' ;
-                    var msg = 'Error when fetching currencies from server. ' + (errorThrown || textStatus) +
-                              '. More information in server log.'
-                    add2log(pgm + msg);
-                    add2log(pgm + 'jqXHR       = ' + jqXHR) ;
-                    add2log(pgm + 'textStatus  = ' + textStatus) ;
-                    add2log(pgm + 'errorThrown = ' + errorThrown) ;
-                    add_to_tasks_errors(msg)
-                }
-            });
-
-        }
-    }); // $(".user_currency_new").bind('focus', function () {
-})
-
-// disable user_currency_new LOV for deep link for not logged in users (gifts/show/<deep_link_id>)
-function disable_user_currency_new_lov() {
-    setInterval(function() {
-        $(".user_currency_new").unbind('focus') ;
-    }, 100) ;
-} // disable_user_currency_new_lov
 
 
 // for client side debugging - writes JS messages to debug_log div - only used if DEBUG_AJAX = true
@@ -1644,7 +1670,7 @@ function show_more_rows_ajax() {
         var pgm = link + '.ajax.error: ' ;
         add2log(pgm + 'start') ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             show_more_rows_error(jqxhr, textStatus, errorThrown);
             // add2log_ajax_error('', jqxhr, textStatus, errorThrown, 'show-more-rows-errors') ;
             stop_show_more_rows_spinner();
@@ -1744,7 +1770,7 @@ $(document).ready(function() {
     $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
         var pgm = id + '.ajax.error: ' ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             stop_tasks_form_spinner();
             add2log(pgm);
             add2log('jqxhr = ' + jqxhr);
@@ -1772,21 +1798,7 @@ function delete_old_error (table, error) {
 
 // write ajax error to tasks_errors table in page header
 function add_to_tasks_errors (error) {
-    var pgm = 'add_to_tasks_errors: ' ;
-    var table = document.getElementById('tasks_errors') ;
-    if (!table) {
-        add2log(pgm + 'tasks_errors table was not found.') ;
-        add2log(pgm + 'error: ' + error + '.') ;
-        return ;
-    }
-    delete_old_error(table, error) ;
-    var length = table.length ;
-    var row = table.insertRow(length) ;
-    var cell1 = row.insertCell(0) ;
-    cell1.innerHTML = error ;
-    var cell2 = row.insertCell(1) ;
-    cell2.innerHTML = (new Date).getTime() ;
-    ajax_flash_new_table_rows('tasks_errors', 1);
+    Gofreerev.add_to_tasks_errors (error) ;
 } // add_to_tasks_errors
 
 // write ajax error to ajax error table within page - for example ajax error tables under gift links or under each comment
@@ -1912,7 +1924,7 @@ $(document).ready(function() {
         var url ;
         add2log(pgm + 'start') ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm,jqxhr,textStatus,errorThrown) ;
             var error = errorThrown + '. check server log for more information.' ;
             // inject gift action ajax error into page if possible. Otherwise use tasks_errors table in page header
@@ -2101,7 +2113,7 @@ function post_ajax_add_new_comment_handler(giftid) {
     $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
         var pgm = id + '.ajax.error: ' ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
             var table_id = 'gift-' + giftid + '-comment-new-errors' ;
             var table = document.getElementById(table_id) ;
@@ -2231,7 +2243,7 @@ function setup_comment_action_link_ajax ()
         var pgm = id + '.ajax.error: ' ;
         var debug = 0 ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
             var error = err + '. check server log for more information.' ;
             var url = '' + jqxhr.target + '' ;
@@ -2359,7 +2371,7 @@ function post_on_wall_ajax(checkbox) {
 //        }, // success
         error: function (jqxhr, textStatus, errorThrown) {
             var pgm = 'post_on_wall_ajax:error: ' ;
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
             add_to_tasks_errors(I18n.t('js.post_on_wall.ajax_error', {error: err, location: 17, debug: 0}));
         }
@@ -2513,7 +2525,7 @@ function share_accounts_ajax(accepted, email) {
             },
             error: function (jqxhr, textStatus, errorThrown) {
                 var pgm = 'share_accounts_ajax:error: ';
-                if (leaving_page) return;
+                if (Gofreerev.leaving_page()) return;
                 var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown);
                 add_to_tasks_errors(I18n.t('js.share_accounts.ajax_error', {error: err, location: 19, debug: 1}));
             },
@@ -2776,7 +2788,7 @@ $(document).ready(function() {
     $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
         pgm = id + '::ajax:error: ' ;
         try {
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown);
             var url = '' + jqxhr.target + '' ;
             // http://localhost/util/grant_write_vkontakte
@@ -2921,7 +2933,7 @@ function get_share_gift_link (self) {
             data: { provider: provider, gift_id: gift_id },
             error: function (jqxhr, textStatus, errorThrown) {
                 debug = 7 ;
-                if (leaving_page) return;
+                if (Gofreerev.leaving_page()) return;
                 var pgm = pgm + '.error: ';
                 var err = add2log_ajax_error('share_gift.ajax.error: ', jqxhr, textStatus, errorThrown);
                 // inject ajax error message in page header
@@ -3074,7 +3086,7 @@ function gift_open_graph_url_done () {
         data: { url: url },
         error: function (jqxhr, textStatus, errorThrown) {
             var pgm = 'gift_open_graph_url_done: ajax: error: ' ;
-            if (leaving_page) return ;
+            if (Gofreerev.leaving_page()) return ;
             var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
             add_to_tasks_errors(I18n.t('js.open_graph.ajax_error', {error: err, location: 24, debug: 0}));
         }

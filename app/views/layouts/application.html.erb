@@ -79,6 +79,31 @@
   <body>
 
     <div class="navbar navbar-fluid-top">
+
+      <% if @cookie_note -%>
+          <div id="cookie_note" title="<%= t '.cookie_note_title', :appname => APP_NAME %>" style="width: 100%">
+            <%= t '.cookie_note_text_html', :appname => APP_NAME, :url => about_index_path(:anchor => 'cookies') %>
+            <%= button_tag t('.cookie_accept_text'), :onclick => "{$.cookie('cookies','accepted',{path:'/',expires:3650});document.getElementById('cookie_note').style.display = 'none'}" %>
+            <%= button_tag t('.cookie_reject_text'), :onclick => "{top.location.href='" + cookie_decline_cookies_path + "'}" %>
+            <%= button_tag t('.cookie_ignore_text'), :onclick => "{document.getElementById('cookie_note').style.display = 'none'}" %>
+            <hr>
+          </div>
+      <% end -%>
+      <%# Hidden form for ajax task processing (for example downloading profile image after login) -%>
+      <div style="display:none">
+        <%= form_tag url_for(:controller => :util, :action => :do_tasks),
+                     :remote => true, :data => {:type => :script}, :format => :js, :id => 'tasks_form' do %>
+            <%= hidden_field_tag :timezone, "" %>
+        <% end %>
+      </div>
+      <%# Hidden form to update currency => post to /users/:id/ => return to this page after currency has been changed -%>
+      <div id="update_currency_div" style="display:none">
+        <%= form_for @users.first, :class => 'update_currency_form' do |f| %>
+            <%= hidden_field_tag :return_to, @request_fullpath %>
+            <%= f.text_field :new_currency %>
+        <% end %>
+      </div>
+
       <div class="navbar-inner">
         <div class="container-fluid">
           <a class="btn btn-navbar" data-target=".nav-collapse" data-toggle="collapse">
@@ -87,23 +112,23 @@
             <span class="icon-bar"></span>
           </a>
           <%= @page_header = true ; @size = 'small' ; render '/shared/user_div', :user_div => user %>
-          <a class="brand" href="<%= gifts_path %>"><%= APP_NAME %></a>
+          <%= text = APP_NAME ; link_to text, gifts_path, :class => "brand", data: { disable_with: text } %>
           <div class="container-fluid nav-collapse">
             <table>
               <tbody>
               <tr>
                 <td>
                   <ul class="nav">
-                    <li><%= link_to t('layouts.page_header.header_home_link_text'), gifts_path %></li>
-                    <li><%= link_to t('layouts.page_header.header_inbox_link_text'), inbox_index_path  %></li>
-                    <li><%= link_to t('layouts.page_header.header_friends_link_text'), users_path(:friends => 'yes')  %></li>
+                    <li><%= text = t('layouts.page_header.header_home_link_text') ; link_to text, gifts_path, data: { disable_with: text } %></li>
+                    <li><%= text = t('layouts.page_header.header_inbox_link_text') ; link_to text, inbox_index_path, data: { disable_with: text } %></li>
+                    <li><%= text = t('layouts.page_header.header_friends_link_text') ; link_to text, users_path(:friends => 'yes'), data: { disable_with: text }  %></li>
                   </ul>
                 </td>
                 <td>
                   <ul class="nav">
-                    <li><%= link_to t('layouts.page_header.header_log_in_link_text'), header_log_in_link_url  %></li>
+                    <li><%= text = t('layouts.page_header.header_log_in_link_text') ; link_to text, header_log_in_link_url, data: { disable_with: text }  %></li>
                     <li><%= link_to_logout  %></li>
-                    <li><%= link_to 'About', about_index_path  %></li>
+                    <li><%= text = 'About' ; link_to text, about_index_path, data: { disable_with: text }  %></li>
                   </ul>
                 </td>
               </tr>
@@ -119,6 +144,38 @@
       <div class="row-fluid">
         <div class="span9">
           <%= bootstrap_flash %>
+
+<%# tasks_errors is used to display error messages from ajax tasks in page header
+    tasks_errors2 is a hidden ajax error table used when ajax injecting error message into a specific location in actual page
+    for example ajax error messages for gift action links that is ajax injected to row under gifts link
+    or ajax error messages for comment action links that is ajax injected to row under comment
+    js function move_tasks_errors2 moves error messages from tasks_errors2 to specific location
+    tasks_errors table in page header is used if specific location for ajax error message can not be found
+-%>
+          <div style="width: 100%">
+            <table>
+              <tbody>
+              <tr>
+                <td>
+                  <table>
+                    <tbody id="tasks_errors" class="ajax_errors">
+                    <%= render :partial => 'shared/ajax_errors' %>
+                    </tbody>
+                  </table>
+                </td>
+                <td style="width: 20px;">
+                  <img src="/images/ajax-loading-18.gif" id="ajax-tasks-spinner" style="display: none"/>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display: none">
+            <table>
+              <tbody id="tasks_errors2"></tbody>
+            </table>
+          </div>
+
           <%= yield %>
         </div>
       </div><!--/row-->

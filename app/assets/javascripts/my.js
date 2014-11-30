@@ -16,7 +16,10 @@ var leaving_page = false ;
 $(document).ready(function () {
     leaving_page = false ;
 });
+
+// flash message if user is trying to leave page before ajaxing is finished
 window.onbeforeunload = function() {
+    console.log('window.onbeforeunload');
     if (typeof(ajaxing) != 'undefined' && ajaxing) {
         // Waiting for some finish some unfinished business to finish. Please wait.
         // todo: second click re-flash effect not working
@@ -2550,7 +2553,7 @@ function client_sym_decrypt (text, password) {
 // use create_new_account = true to force create a new user account
 // support for more than one user account
 function client_login (password, create_new_account) {
-    var password_sha256, passwords_s, passwords_a, i, userid, uid, crypt, pubkey, prvkey, prvkey_aes ;
+    var password_sha256, passwords_s, passwords_a, i, userid, uid, crypt, pubkey, prvkey, prvkey_aes, giftid_key ;
     password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
     // passwords: array with hashed passwords. size = number of accounts
     if (localStorage.getItem("passwords") === null) {
@@ -2561,7 +2564,14 @@ function client_login (password, create_new_account) {
     }
     // check old accounts
     for (i=0 ; i<passwords_a.length ; i++) {
-        if (password_sha256 == passwords_a[i]) return (i+1) ; // log in ok
+        if (password_sha256 == passwords_a[i]) {
+            // log in ok - account exists
+            userid = i+1 ;
+            // add new local storages keys to old accounts
+            giftid_key = userid + '_giftid' ;
+            if (localStorage.getItem(giftid_key) === null) localStorage.setItem(giftid_key, '0') ;
+            return userid ;
+        }
     }
     // password was not found
     if ((passwords_a.length == 0) || create_new_account) {
@@ -2597,6 +2607,7 @@ function client_login (password, create_new_account) {
         localStorage.setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
         localStorage.setItem(userid + '_uid', uid) ; // unique device id
         localStorage.setItem(userid + '_pubkey', pubkey) ; // public key
+        localStorage.setItem(userid + '_giftid', '0') ; // giftid sequence
         return userid ;
     }
     // invalid password (create_new_account=false)

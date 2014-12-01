@@ -1,0 +1,8 @@
+<% if @currency -%>
+(function () {
+    // remember currency
+    var old = document.getElementById('user_currency_old') ;
+    if (!old) return ;
+    old.value = '<%= @currency %>' ;
+})();
+<% end -%>

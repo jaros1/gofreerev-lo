@@ -33,8 +33,3 @@
     <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => (@page_values[:tab] == 'friends' ? 'users' : 'gifts')} %>
 
 <% end -%>
-
-<script>
-    // no client side checks before changing currency in this page
-    pre_update_currency = default_pre_update_currency;
-</script>

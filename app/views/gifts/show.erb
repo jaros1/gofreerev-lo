@@ -4,8 +4,3 @@
   <%= render :partial => 'table_header_row' %>
   <%= render :partial => 'api_gift', :locals => {:api_gift => @gift} %>
 </table>
-<% if User.dummy_users?(@users) -%>
-    <script>
-        $(document).ready(function() {disable_user_currency_new_lov()})
-    </script>
-<% end -%>

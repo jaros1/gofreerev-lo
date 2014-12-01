@@ -45,7 +45,7 @@ var Gofreerev = (function() {
     });
 
     // ajax flash for table rows - for example new rows in ajax_task_errors table
-    ajax_flash_new_table_rows = function (tablename, number_of_rows)
+    var ajax_flash_new_table_rows = function (tablename, number_of_rows)
     {
         var pgm = 'ajax_flash_new_table_rows: ' ;
         // add2log(pgm + 'table_name = ' + tablename + ', number_of_rows = ' + number_of_rows) ;
@@ -64,7 +64,7 @@ var Gofreerev = (function() {
     } // ajax_flash_new_table_rows
 
     // add error to tasks_error table in page header
-    add_to_tasks_errors = function (error) {
+    var add_to_tasks_errors = function (error) {
         var pgm = 'add_to_tasks_errors: ' ;
         var table = document.getElementById('tasks_errors') ;
         if (!table) {
@@ -81,6 +81,18 @@ var Gofreerev = (function() {
         cell2.innerHTML = (new Date).getTime() ;
         ajax_flash_new_table_rows('tasks_errors', 1);
     } // add_to_tasks_errors
+
+    // functions used in user/edit page. ajax Update user currency
+    var update_currency = function (self) {
+        // check if submit is ok (are there other unsaved data in page?)
+        var user_currency_old_id;
+        user_currency_old_id = document.getElementById('user_currency_old');
+        if ((user_currency_old_id) && (user_currency_old_id.value == self.value)) return ;
+        var currency_submit = document.getElementById('currency_submit');
+        if (currency_submit) currency_submit.click() ; // ok rails ajax submit
+        else self.form.submit() ; // error forms submit with js text response
+    } // update_currency
+
 
     // keep track of "ajaxing". allow running ajax to complete before leaving page
     // this solution gives a nice message when user clicks on a http link (leaving page).
@@ -101,7 +113,8 @@ var Gofreerev = (function() {
         leaving_page: function() { return leaving_page},
         // error helpers
         ajax_flash_new_table_rows: ajax_flash_new_table_rows,
-        add_to_tasks_errors: add_to_tasks_errors
+        add_to_tasks_errors: add_to_tasks_errors,
+        update_currency: update_currency
     };
 })();
 // Gofreerev closure end
@@ -109,125 +122,6 @@ var Gofreerev = (function() {
 
 
 
-// handle user currency - used when posting prices in gifts/index page
-// identical user currency for all logged in @users
-// only load currency user currency at page startup
-// download full currency list when user clicks on currency LOV (onfocus)
-
-// functions used in page header. Update user currency and return to current page
-function default_pre_update_currency() {
-    // use this function to check for other pending changes in currency page before submit
-    // eg a confirm popup or maybe copy not saved information to hidden variables in update_currency_form before submit
-    return true; // continue
-    return false; // stop
-} // default_pre_update_currency
-pre_update_currency = default_pre_update_currency ;
-function update_currency(self) {
-    // check if submit is ok (are there other unsaved data in page?)
-    var user_currency_old_id;
-    user_currency_old_id = document.getElementById('user_currency_old');
-    if (!pre_update_currency()) {
-        // unsaved pending data - abort currency change
-        self.value = user_currency_old_id.value ;
-        return;
-    }
-    // get selected currency
-    var user_currency_new;
-    var update_currency_div_id;
-    var update_currency_form_id;
-    var user_currency_id;
-    user_currency_new = self.value;
-    // copy selected currency to hidden form and submit
-    update_currency_div_id = document.getElementById('update_currency_div');
-    update_currency_form_id = update_currency_div_id.getElementsByTagName('Form')[0];
-    user_currency_id = document.getElementById('user_new_currency');
-    user_currency_id.value = user_currency_new;
-    update_currency_form_id.submit();
-} // update_currency_submit
-
-// Version of pre_update_currency to be used in gifts controller pages
-var pending_gift_msg = 'Update currency?';
-function gifts_pre_update_currency() {
-    // get selected currency
-    var user_currency_new_id;
-    var user_currency_new;
-    var update_currency_div_id;
-    var update_currency_form_id;
-    var user_currency_id;
-    user_currency_new_id = document.getElementById('user_currency_new');
-    user_currency_new = user_currency_new_id.value;
-    if (user_currency_new == '<%= @users.first.currency %>') return false;
-    // check for pending new gift
-    var pending_data = false;
-    field_id = document.getElementById('gift_price');
-    if (field_id.value != '') pending_data = true;
-    field_id = document.getElementById('gift_description');
-    if (field_id.value != '') pending_data = true;
-    field_id = document.getElementById('gift_file');
-    if (field_id.value != '') pending_data = true;
-    if (!pending_data) return true; // no pending gift
-    // confirm box
-    return (confirm(pending_gift_msg));
-} // gifts_pre_update_currency()
-
-// only "current user currency" is in currency LOV at page startup
-// download all currencies when user clicks on currency LOV
-// for smaller page and faster startup time
-// minor problem. User has to click twice on currency LOV to change currency. First to get full currency list and second to change currency
-$(document).ready(function() {
-    var id = ".user_currency_new" ;
-    $(id).unbind('focus') ;
-    $(id).bind('focus', function () {
-        // var id_select = document.getElementById("user_currency_new");
-        var id_select = $(this);
-        if (id_select.length > 1) {
-            // list of currencies is already initialised
-            $(id).unbind('focus');
-        }
-        else {
-            // get full list of currencies from server
-            $.ajax({
-                type: 'GET',
-                url: '/util/currencies.js',
-                dataType: "text",
-                success: function (msg) {
-                    $(id).unbind('focus');
-                    var pgm = 'user_currency_new.ajax.success: ' ;
-                    if (msg == 0) {
-                        // Query returned empty.
-                        msg = 'Did not get any currencies from server' ;
-                        add2log(pgm + msg);
-                        add_to_tasks_errors(msg)
-                    } else {
-                        // Query Has values.
-                        add2log(pgm + 'msg = ' + msg) ;
-                        $(id).replaceWith(msg);
-                        $(id).click;
-                    }
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    $(id).unbind('focus');
-                    var pgm = 'user_currency_new.ajax.error: ' ;
-                    var msg = 'Error when fetching currencies from server. ' + (errorThrown || textStatus) +
-                        '. More information in server log.'
-                    add2log(pgm + msg);
-                    add2log(pgm + 'jqXHR       = ' + jqXHR) ;
-                    add2log(pgm + 'textStatus  = ' + textStatus) ;
-                    add2log(pgm + 'errorThrown = ' + errorThrown) ;
-                    add_to_tasks_errors(msg)
-                }
-            });
-
-        }
-    }); // $(".user_currency_new").bind('focus', function () {
-})
-
-// disable user_currency_new LOV for deep link for not logged in users (gifts/show/<deep_link_id>)
-function disable_user_currency_new_lov() {
-    setInterval(function() {
-        $(".user_currency_new").unbind('focus') ;
-    }, 100) ;
-} // disable_user_currency_new_lov
 
 
 

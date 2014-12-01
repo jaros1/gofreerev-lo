@@ -21,14 +21,13 @@ class UsersController < ApplicationController
       return
     end
 
+    if xhr? and params[:user] and params[:user][:currency].to_s != ''
+      # ajax - currency update from user/edit page
+      update_user_currency
+      return format_response
+    end
+
     if params[:return_to].to_s != ''
-      # update user called from other controllers.
-      # change currency in page header, friend actions in users/show page etc
-      if params[:user] and params[:user][:new_currency].to_s != ''
-        # currency updated in page header - update currency and return to actual page
-        update_user_currency
-        return
-      end
       if params[:friend_id] and params[:friend_action]
         # friend actions from user/show page - add/remove api/app friend - see full list in user.friend_status_actions
         friend_actions
@@ -466,14 +465,14 @@ class UsersController < ApplicationController
   end
 
 
+  # ajax request
   private
   def update_user_currency
     # currency updated in page header - update currency and return to actual page
     old_currency = @users.first.currency
-    new_currency = params[:user][:new_currency]
+    new_currency = params[:user][:currency]
     if old_currency == new_currency
       # no change
-      redirect_to params[:return_to]
       return
     end
 
@@ -482,8 +481,7 @@ class UsersController < ApplicationController
       today = Sequence.get_last_exchange_rate_date
       er = ExchangeRate.where('date = ? and from_currency = ? and to_currency = ?', today, BASE_CURRENCY, new_currency).first
       if !er
-        save_flash_key '.invalid_currency' # todo: add key - test error message
-        redirect_to params[:return_to]
+        add_error_key '.invalid_currency' # todo: add key - test error message
         return
       end
     end
@@ -504,8 +502,8 @@ class UsersController < ApplicationController
     # ok - all needed exchange rates was available - currency and balance was updated
     # logger.debug2  "ok - all needed exchange rates was available - currency and balance was updated"
     # logger.debug2  "currency = #{@users.first.currency}, balance = #{users.first.balance}"
+    @currency = new_currency
 
-    redirect_to params[:return_to]
   end  # update_user_currency
 
 

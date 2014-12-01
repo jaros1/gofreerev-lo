@@ -1,20 +1,20 @@
 <script>
     // error callback for delete-account - write to debug log + page header
-    $(document).ready(function() {
-        $("#delete-account").unbind("click") ;
-        $("#delete-account").unbind("ajax:error") ;
-        $("#delete-account").bind("click", function(xhr, settings){
+    $(document).ready(function () {
+        $("#delete-account").unbind("click");
+        $("#delete-account").unbind("ajax:error");
+        $("#delete-account").bind("click", function (xhr, settings) {
             // clear page header error messages if any
-            clear_flash_and_ajax_errors() ;
+            clear_flash_and_ajax_errors();
         })
-        $("#delete-account").bind("ajax:error", function(jqxhr, textStatus, errorThrown){
+        $("#delete-account").bind("ajax:error", function (jqxhr, textStatus, errorThrown) {
             add2log('#delete-account::ajax:error');
             add2log('jqxhr = ' + jqxhr);
             add2log('jqxhr.target = ' + jqxhr.target);
             add2log('textStatus = ' + textStatus);
             add2log('errorThrown = ' + errorThrown);
             // inject ajax error message in page header
-            add_to_tasks_errors('Error when deleting account: ' + errorThrown + '. check server log for more information.') ;
+            add_to_tasks_errors('Error when deleting account: ' + errorThrown + '. check server log for more information.');
         })
     })
 </script>
@@ -30,12 +30,19 @@
   <tr title="<%= t '.currency_title', @user2.app_and_apiname_hash %>">
     <td><%= t '.currency_prompt', @user2.app_and_apiname_hash %></td>
     <td>:</td>
-    <td><%= select_tag :user_currency_new2, options_for_select(selected_currency, [@users.first.currency]), {:class => 'user_currency_new', :onchange => 'update_currency(this)'} %></td>
+    <td>
+      <%= hidden_field_tag :user_currency_old, @users.first.currency %>
+      <%= form_for @users.first, :remote => true, :authenticity_token => true, :html => {:method => 'put'}, :data => { :type => :script }, :format => :js do |f| -%>
+        <%= f.select :currency, currencies, {}, {:onchange => 'Gofreerev.update_currency(this)'} %>
+        <%= f.submit 'submit', :id => :currency_submit, :style => 'display: none' %>
+      <% end -%>
+    </td>
   </tr>
   <tr title="<%= t '.share_balance_title', :appname => APP_NAME %>">
     <td><%= t '.share_balance_prompt', :appname => APP_NAME %></td>
     <td>:</td>
-    <td>x</td></tr>
+    <td>x</td>
+  </tr>
   <tr title="<%= t '.log_out_title', @user2.app_and_apiname_hash %>">
     <td><%= t '.log_out_prompt', @user2.app_and_apiname_hash %></td>
     <td>:</td>
@@ -57,12 +64,14 @@
     <td>
       <%= link_to t('.delete_account_link_text'), user_path(:id => @user2.id), :id => 'delete-account',
                   :remote => true, :format => :js, :method => :delete,
-                  :data => { :confirm => t('.delete_account_link_confirm', @user2.app_and_apiname_hash),
-                             :type => :script } %>
+                  :data => {:confirm => t('.delete_account_link_confirm', @user2.app_and_apiname_hash),
+                            :type => :script} %>
     </td>
   </tr>
 </table>
 <br>
-<div style="width: 100%"><hr></div>
+<div style="width: 100%">
+  <hr>
+</div>
 
 

@@ -31,7 +31,6 @@ GofreerevFb::Application.routes.draw do
   post 'util/accept_new_deal'
   post 'util/reject_new_deal'
   post 'util/do_tasks'
-  get 'util/currencies'
   post 'util/post_on_wall_yn'
   post 'util/grant_write'
   post 'util/hide_grant_write'

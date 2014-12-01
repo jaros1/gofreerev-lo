@@ -100,14 +100,6 @@
             <%= hidden_field_tag :timezone, "" %>
         <% end %>
       </div>
-      <%# Hidden form to update currency => post to /users/:id/ => return to this page after currency has been changed -%>
-      <div id="update_currency_div" style="display:none">
-        <%= form_for @users.first, :class => 'update_currency_form' do |f| %>
-            <%= hidden_field_tag :return_to, @request_fullpath %>
-            <%= f.text_field :new_currency %>
-        <% end %>
-      </div>
-
       <div class="navbar-inner">
         <div class="container-fluid">
           <a class="btn btn-navbar" data-target=".nav-collapse" data-toggle="collapse">

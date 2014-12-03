@@ -33,7 +33,7 @@
     <td>
       <%= hidden_field_tag :user_currency_old, @users.first.currency %>
       <%= form_for @users.first, :remote => true, :authenticity_token => true, :html => {:method => 'put'}, :data => { :type => :script }, :format => :js do |f| -%>
-        <%= f.select :currency, currencies, {}, {:onchange => 'Gofreerev.update_currency(this)'} %>
+        <%= f.select :currency, currencies, {}, {:onchange => 'Gofreerev.onchange_currency(this)'} %>
         <%= f.submit 'submit', :id => :currency_submit, :style => 'display: none' %>
       <% end -%>
     </td>

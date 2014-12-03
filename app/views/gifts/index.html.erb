@@ -2,7 +2,7 @@
 <%= hidden_field_tag :newest_status_update_at, @newest_status_update_at, :id => "newest-status-update-at" %>
 
 <script>
-    last_user_ajax_comment_at = null;
+    Gofreerev.reset_last_user_ajax_comment_at ;
     <%=
       # recheck invalid picture urls with owner permissions
       @missing_api_picture_urls
@@ -10,14 +10,7 @@
 
 </script>
 
-
-<script>
-</script>
-
-
-
 <a href="#" id="share_gift" style="display: none">share gift</a>
-
 
 <%# create new gift form -%>
 <div style="width: 100%"><%= t '.create_gift_header_line' %></div>
@@ -147,13 +140,6 @@
             :remote => true, :data => { :type => :script }, :format => :js,
             :id => "show-more-rows-link", :style => "display: none" %>
 <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
-
-<script>
-    // add page specific version of pre_update_currency function.
-    // That is confirm popup before leaving page with unsaved data.
-    pending_gift_msg = '<%= t '.pending_gift_popup_msg' %>';
-    pre_update_currency = gifts_pre_update_currency;
-</script>
 
 <script>
   // new gift. check for /gifts?url=..&text==.. share link

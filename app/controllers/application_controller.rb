@@ -320,9 +320,9 @@ class ApplicationController < ActionController::Base
       !login_user_ids.index(user_id_created_by)
     end # delete_if
     if api_gifts.size == 0
-      'missing_api_picture_urls = [] ;'
+      'missing_api_picture_urls = Gofreerev.set_missing_api_picture_urls([]) ;'
     else
-      'missing_api_picture_urls = [' + api_gifts.collect { |ag| ag.id }.join(', ') + '] ;'
+      'missing_api_picture_urls = Gofreerev.set_missing_api_picture_urls([' + api_gifts.collect { |ag| ag.id }.join(', ') + ']) ;'
     end
   end # get_missing_api_picture_urls
 
@@ -412,7 +412,7 @@ class ApplicationController < ActionController::Base
 
   # Check price - allow decimal comma/point, max 2 decimals. Thousands separators not allowed
   # used in gifts and comments controller
-  # should be identical to JS function csv_invalid_price (csv = client side validation)
+  # should be identical to JS function csv_is_price_invalid (csv = client side validation)
   private
   def invalid_price? (price)
     # logger.debug2 "price = #{price}"

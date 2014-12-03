@@ -6,7 +6,7 @@
     // api_picture_url_on_error_at is set for pictures with invalid urls
     // picture urls are rechecked in gifts/index and users/show gifts tab
 -%>
-    setTimeout(report_missing_api_picture_urls, 2000) ;
+    setTimeout(Gofreerev.report_missing_api_picture_urls, 2000) ;
 <%#
     // get_more_rows_table - global JS variable - id for expanding html table, gifts or users
     // end_of_page - true or false
@@ -16,7 +16,7 @@
     // is unset in $(document).ready when new rows has been received
 -%>
     // setup ajax expanding page
-    get_more_rows_table = "<%= show_more_rows %>" ;
+    Gofreerev.set_more_rows_table("<%= show_more_rows %>") ;
     var end_of_page = <%= @last_row_id ? "false" : "true" %> ;
 <%#
     // check number of rows in table (gifts or users) before and after get more rows ajax event
@@ -27,20 +27,20 @@
     // remember timestamp in milliseconds for last show-more-rows ajax request
     // should only request more rows once every 3 seconds
 -%>
-    var old_show_more_rows_request_at = getSecondsSinceMidnight() - get_more_rows_interval ;
+    var old_show_more_rows_request_at = Gofreerev.getSecondsSinceMidnight() - get_more_rows_interval ;
 <%#
     // setup show-more-rows ajax handlers. Check number of new rows. Change link for next show-more-rows ajax request
     // show_more_rows is id for html table, gifts or users
 -%>
     $(document).ready(function(){
-        show_more_rows_ajax();
+        Gofreerev.show_more_rows_ajax();
     });
 <%#
     // trigger show-more-rows ajax event when user scrolls to end-of-page
     // show_more_rows is id for html table, gifts or users
 -%>
     $(window).scroll(function(){
-        show_more_rows_scroll() ;
+        Gofreerev.show_more_rows_scroll() ;
     });
 <%#
     // scroll to top of page after reload - prevent multiple show-more-rows requests
@@ -51,6 +51,6 @@
 <%#
     // startup with 1 row in gifts/users table - get next 10 more rows now - hide spinner if 0 or 1 row in gifts/users table
 -%>
-    if (end_of_page) stop_show_more_rows_spinner();
-    else show_more_rows() ;
+    if (end_of_page) Gofreerev.stop_show_more_rows_spinner();
+    else Gofreerev.show_more_rows() ;
 </script>

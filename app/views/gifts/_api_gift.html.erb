@@ -39,7 +39,7 @@
               <tr>
                 <td style="text-align: center">
                   <div id="<%= "gift-#{gift.id}-overflow-link" %>" class="overflow" style="display: none; float: none">
-                    <%= link_to t('.show_more_text'), "#", :onclick => "return show_overflow(this)" %>
+                    <%= link_to t('.show_more_text'), "#", :onclick => "return Gofreerev.show_overflow(this)" %>
                   </div>
                 </td>
               </tr>
@@ -47,7 +47,7 @@
           <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
               <tr>
                 <td>
-                    <%= image_tag api_gift.api_picture_url, :onload => "imgonload(this)", :onerror => "imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
+                    <%= image_tag api_gift.api_picture_url, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
                 </td>
               </tr>
           <% end -%>
@@ -55,7 +55,7 @@
               <tr>
                 <td>
                   <a href="<%= gift.open_graph_url %>" target="_blank">
-                    <%= image_tag gift.open_graph_image, :onload => "imgonload(this)", :onerror => "imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
+                    <%= image_tag gift.open_graph_image, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
                   </a>
                 </td>
               </tr>
@@ -117,10 +117,10 @@
               </tr>
               <tr>
                 <td><%= f.text_area :comment, :size => '60x1', :placeholder => t('.enter_comment'), :onfocus => 'autoresize_text_field(this)', :id => "gift-#{gift.id}-comment-new-textarea", :class => "new_com_text" %></td>
-                <td><%= f.submit 'Gem', :onclick => "return csv_comment(#{gift.id})", :id => "gift-#{gift.id}-comment-new-submit-1", :class => "submit_comment_large" %></td>
+                <td><%= f.submit 'Gem', :onclick => "return Gofreerev.csv_comment(#{gift.id})", :id => "gift-#{gift.id}-comment-new-submit-1", :class => "submit_comment_large" %></td>
               </tr>
               <tr class="submit_comment_small">
-                <td colspan="2"><%= f.submit 'Gem', :onclick => "return csv_comment(#{gift.id})", :id => "gift-#{gift.id}-comment-new-submit-2" %></td>
+                <td colspan="2"><%= f.submit 'Gem', :onclick => "return Gofreerev.csv_comment(#{gift.id})", :id => "gift-#{gift.id}-comment-new-submit-2" %></td>
               </tr>
             </table>
         <% end -%>

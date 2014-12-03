@@ -1420,9 +1420,6 @@ var Gofreerev = (function() {
     function set_show_more_rows_interval (interval) {
         show_more_rows_interval = interval
     }
-    function get_show_more_rows_interval () {
-        return show_more_rows_interval
-    }
 
     // setup "endless" ajax expanding page - called at page startup from shared/show_more_rows partial
     function setup_ajax_expanding_page (table, boolean) {
@@ -3116,11 +3113,9 @@ var Gofreerev = (function() {
     // export public used methods (views)
     return {
         // error handlers
-        set_ajax_debug: set_ajax_debug, // enable/disable JS debug
+        set_ajax_debug: set_ajax_debug, // enable/disable JS debug - application.html.erm layout
         clear_ajax_errors: clear_ajax_errors, // used in application.js.erb
         move_tasks_errors2: move_tasks_errors2, // used in application.js.erb
-        report_missing_api_picture_urls: report_missing_api_picture_urls,
-        set_missing_api_picture_urls: set_missing_api_picture_urls,
         imgonload: imgonload, // check invalid or missing pictures - used in gifts/index page
         show_debug_log_checkbox: show_debug_log_checkbox, // show/hide debug log in html page
         // view helpers
@@ -3130,16 +3125,11 @@ var Gofreerev = (function() {
         post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
-        show_more_rows: show_more_rows,
-        set_more_rows_table: set_more_rows_table, // set html table name, "gifts" or "users"
-        getSecondsSinceMidnight: getSecondsSinceMidnight,
         start_tasks_form_spinner: start_tasks_form_spinner,
-        stop_show_more_rows_spinner: stop_show_more_rows_spinner,
-        show_more_rows_scroll: show_more_rows_scroll,
-        show_more_rows_ajax: show_more_rows_ajax,
         set_show_more_rows_interval: set_show_more_rows_interval,
-        get_show_more_rows_interval: get_show_more_rows_interval,
         setup_ajax_expanding_page: setup_ajax_expanding_page,
+        set_missing_api_picture_urls: set_missing_api_picture_urls,
+        report_missing_api_picture_urls: report_missing_api_picture_urls,
         // client side validations
         csv_gift: csv_gift,
         csv_comment: csv_comment

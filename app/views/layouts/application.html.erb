@@ -71,12 +71,12 @@
         window.setTimeout(hide_cookie_note, <%= (@cookie_note * 1000) %>);
         <% end -%>
         <%#
-          copy rails constants to global JS variables. Used in my.js functions
+          copy rails constants to global JS variables. Used in gofreerev.js functions
           get_more_rows_interval - min interval between show-more-rows requests. 3.0 for 3 seconds.
           debug_ajax - true or false - true - write messages to debug_log table in page footer
         -%>
-        var get_more_rows_interval = <%=GET_MORE_ROWS_INTERVAL %>;
-        var debug_ajax = <%= debug_ajax? %>;
+        Gofreerev.set_show_more_rows_interval(<%=GET_MORE_ROWS_INTERVAL %>) ;
+        Gofreerev.set_ajax_debug(<%= debug_ajax? %>) ;
         var fb_user = <%= fb_user? %>;
     </script>
   </head>
@@ -193,7 +193,7 @@
             <%# post response ajax processing - for example download profile image and friend list from login provider -%>
             <script>
                 window.setTimeout(function () {
-                    start_tasks_form_spinner();
+                    Gofreerev.start_tasks_form_spinner();
                     $('#tasks_form').trigger('submit.rails');
                 }, 1000);
             </script>
@@ -206,7 +206,7 @@
     <% if debug_ajax? -%>
       <div style="width: 100%">
         Show debug
-        log? <%= check_box_tag "show_debug_log_checkbox", 1, false, :onchange => "show_debug_log_checkbox(this)" %>
+        log? <%= check_box_tag "show_debug_log_checkbox", 1, false, :onchange => 'Gofreerev.show_debug_log_checkbox(this)' %>
         <br/>
         <br/>
       </div>

@@ -353,7 +353,7 @@ class ApplicationController < ActionController::Base
       return true
     elsif dif < GET_MORE_ROWS_INTERVAL - 0.1
       # client must only send get-more-rows once every GET_MORE_ROWS_INTERVAL seconds.
-      # Must be an javascript/ajax error. See my.js show_more_rows_scroll
+      # Must be an javascript/ajax error. See gofreerev.js show_more_rows_scroll
       # best if client waits between requests - server should not spend time sleeping
       wait = GET_MORE_ROWS_INTERVAL-dif
       logger.warn2 "last_row_at = #{get_last_row_at()}, now = #{new_last_row_at}, dif = #{dif}"
@@ -2283,7 +2283,7 @@ class ApplicationController < ActionController::Base
   # all errors and messages are stored on @errors array with { :id => id, :msg => msg}
   # html request errors and messages are returned in notification div in page header as a "flash" message
   # ajax errors are injected in tasks_errors table in page header or error tables within page (:table option)
-  # ( see layouts/application.js.erb and JS method move_tasks_errors2 method (my.js) )
+  # ( see layouts/application.js.erb and JS method move_tasks_errors2 method (gofreerev.js) )
   # add_error_xxx adds error to @errors. format_response_xxx adds any error to @errors and format js or html response
   # note that all ajax calls must set format and datatype: :remote => true, :data => { :type => :script }, :format => :js
   private

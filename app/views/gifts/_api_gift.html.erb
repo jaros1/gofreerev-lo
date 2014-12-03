@@ -1,7 +1,7 @@
 <% gift = api_gift.gift
    if gift.deleted_at -%>
     <%# include dummy row so that post ajax function insert_update_gifts will delete gift from html page.
-        see util_controller.new_messages_count and JS function start_check_new_messages (my.js)
+        see util_controller.new_messages_count and JS function start_check_new_messages (gofreerev.js)
         called from new_messages_count_link remote link in page header once every 15, 60 or 300 seconds
      -%>
     <tr style="display: none" id="<%= "gift-#{gift.id}-deleted" %>">
@@ -99,7 +99,7 @@
       </td>
       <td colspan="2">
         <%# remote form for new comment. Sent to comments/create. Inserted in gift-<gift.id>-comments table.
-        Post ajax processing done in my.js / add_post_ajax_comment_handler
+        Post ajax processing done in gofreerev.js / add_post_ajax_comment_handler
     -%>
         <% comment = Comment.new ; comment.gift_id = gift.gift_id -%>
         <%= form_for comment,

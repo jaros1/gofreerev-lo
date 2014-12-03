@@ -8,49 +8,7 @@
 -%>
     setTimeout(Gofreerev.report_missing_api_picture_urls, 2000) ;
 <%#
-    // get_more_rows_table - global JS variable - id for expanding html table, gifts or users
-    // end_of_page - true or false
-    // - true when user is near end of page (get more rows)
-    // - true under an active get more rows ajax request
-    // is set in $(window).scroll
-    // is unset in $(document).ready when new rows has been received
+    // setup "endless" ajax expanding page
 -%>
-    // setup ajax expanding page
-    Gofreerev.set_more_rows_table("<%= show_more_rows %>") ;
-    var end_of_page = <%= @last_row_id ? "false" : "true" %> ;
-<%#
-    // check number of rows in table (gifts or users) before and after get more rows ajax event
-    // do not fire any more get more rows ajax events if no new rows has been received (server side error)
--%>
-    var old_number_of_rows ;
-<%#
-    // remember timestamp in milliseconds for last show-more-rows ajax request
-    // should only request more rows once every 3 seconds
--%>
-    var old_show_more_rows_request_at = Gofreerev.getSecondsSinceMidnight() - get_more_rows_interval ;
-<%#
-    // setup show-more-rows ajax handlers. Check number of new rows. Change link for next show-more-rows ajax request
-    // show_more_rows is id for html table, gifts or users
--%>
-    $(document).ready(function(){
-        Gofreerev.show_more_rows_ajax();
-    });
-<%#
-    // trigger show-more-rows ajax event when user scrolls to end-of-page
-    // show_more_rows is id for html table, gifts or users
--%>
-    $(window).scroll(function(){
-        Gofreerev.show_more_rows_scroll() ;
-    });
-<%#
-    // scroll to top of page after reload - prevent multiple show-more-rows requests
--%>
-    $(document).ready(function(){
-        $(this).scrollTop(0);
-    });
-<%#
-    // startup with 1 row in gifts/users table - get next 10 more rows now - hide spinner if 0 or 1 row in gifts/users table
--%>
-    if (end_of_page) Gofreerev.stop_show_more_rows_spinner();
-    else Gofreerev.show_more_rows() ;
+    Gofreerev.setup_ajax_expanding_page('<%= show_more_rows %>', <%= @last_row_id ? "false" : "true" %>) ;
 </script>

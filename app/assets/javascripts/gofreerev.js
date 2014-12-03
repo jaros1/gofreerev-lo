@@ -47,10 +47,24 @@ var Gofreerev = (function() {
     // error helper functions
 
     // for client side debugging - writes JS messages to debug_log div - only used if DEBUG_AJAX = true
+    var ajax_debug = false ;
+    var debug_log = [] ;
+    function set_ajax_debug (boolean) {
+        ajax_debug = boolean
+    }
     function add2log (text) {
-        // if (debug_ajax != true) return ;
+        if (!ajax_debug) return ;
         var log = document.getElementById('debug_log') ;
-        if (!log) return ;
+        if (!log) {
+            // buffer log messages in JS array until page is ready
+            debug_log.push(text) ;
+            return
+        }
+        if (debug_log.length > 0) {
+            // empty JS buffer
+            for (var i=0 ; i<debug_log.length ; i++) log.innerHTML = log.innerHTML + text + '<br>' ;
+            debug_log = [] ;
+        }
         log.innerHTML = log.innerHTML + text + '<br>' ;
     } // add2log
 
@@ -1000,8 +1014,7 @@ var Gofreerev = (function() {
     // JS array with gift ids
     var missing_api_picture_urls = [];
 
-    // preinit array with missing api puctures at page startup
-    // urls that should be rechecked with owner privs.
+    // preinit array with missing api pictures at page startup (recheck error marked urls with owner privs.)
     function set_missing_api_picture_urls (array) {
         missing_api_picture_urls = array
     }
@@ -1012,8 +1025,8 @@ var Gofreerev = (function() {
         if (img.dataset) api_gift_id = img.dataset.id ;
         else api_gift_id = img.getAttribute('data-id') ;
         var flickr = img.src.match(/^https?:\/\/farm\d+\.staticflickr\.com\//) ;
-//    add2log('imgonload. api gift id = ' + api_gift_id + ', img.width = ' + img.width + ', img.height = ' + img.height +
-//        ', naturalWidth = ' + img.naturalWidth + ', naturalHeight = ' + img.naturalHeight + ', complete = ' + img.complete) ;
+        //    add2log('imgonload. api gift id = ' + api_gift_id + ', img.width = ' + img.width + ', img.height = ' + img.height +
+        //        ', naturalWidth = ' + img.naturalWidth + ', naturalHeight = ' + img.naturalHeight + ', complete = ' + img.complete) ;
         if ((img.width <= 1) && (img.height <= 1)) {
             // image not found - url expired or api picture deleted
             // alert('changed picture url: gift_id = ' + giftid + ', img = ' + img + ', width = ' + img.width + ', height = ' + img.height) ;
@@ -1046,7 +1059,7 @@ var Gofreerev = (function() {
     } // imgonerror
 
 
-// function to report gift ids with invalid urls. Submitted in end of gifts/index page
+    // function to report gift ids with invalid urls. Submitted in end of gifts/index page
     function report_missing_api_picture_urls() {
         if (missing_api_picture_urls.length == 0) {
             // no picture urls to check
@@ -1055,12 +1068,11 @@ var Gofreerev = (function() {
         }
         // Report ids with invalid picture url
         // add2log('report_missing_api_picture_urls: sending api gift ids to server') ;
-        var missing_api_picture_urls_local = missing_api_picture_urls.join();
         $.ajax({
             url: "/util/missing_api_picture_urls.js",
             type: "POST",
             dataType: 'script',
-            data: { api_gifts: {ids: missing_api_picture_urls_local } },
+            data: { api_gifts: {ids: missing_api_picture_urls.join() } },
             error: function (jqxhr, textStatus, errorThrown) {
                 if (leaving_page) return ;
                 var pgm = 'missing_api_picture_urls.error: ' ;
@@ -1404,8 +1416,37 @@ var Gofreerev = (function() {
     // table_name should be gifts or users
     // interval should be 3000 = 3 seconds between each show-more-rows request
     // debug true - display messages for ajax debugging in button of page
+    var show_more_rows_interval = 3.0 ;
+    function set_show_more_rows_interval (interval) {
+        show_more_rows_interval = interval
+    }
+    function get_show_more_rows_interval () {
+        return show_more_rows_interval
+    }
+
+    // setup "endless" ajax expanding page - called at page startup from shared/show_more_rows partial
+    function setup_ajax_expanding_page (table, boolean) {
+        var pgm = 'setup_ajax_expanding_page: ' ;
+        show_more_rows_table = table ;
+        end_of_page = boolean ;
+        old_number_of_rows = null ;
+        old_show_more_rows_request_at = getSecondsSinceMidnight() - show_more_rows_interval ;
+        add2log(pgm + 'table = ' + table + ', end_of_page = ' + end_of_page + ', old_number_of_rows = ' + old_number_of_rows + ',  old_show_more_rows_request_at = ' + old_show_more_rows_request_at) ;
+        if (end_of_page) stop_show_more_rows_spinner();
+        else show_more_rows() ;
+        $(document).ready(function(){
+            show_more_rows_ajax();
+        });
+        $(window).scroll(function(){
+            show_more_rows_scroll() ;
+        });
+        $(document).ready(function(){
+            $(this).scrollTop(0);
+        });
+    }
+
     function show_more_rows_scroll () {
-        if (!document.getElementById('show-more-rows-link')) return ; // ignore - show-more-rows is not relevant in this page  (inbox etc)
+        if (!document.getElementById('show-more-rows-link')) return ; // ignore - show-more-rows is not relevant in this page (inbox etc)
         var table_name = show_more_rows_table ;
         if (end_of_page) return; // no more rows, not an ajax expanding page or ajax request already in progress
         if (($(document).height() - $(window).height()) - $(window).scrollTop() < 600) {
@@ -1426,18 +1467,18 @@ var Gofreerev = (function() {
 //                ', old_show_more_rows_request_at = ' + old_show_more_rows_request_at) ;
                 var interval = now - old_show_more_rows_request_at ;
                 if (interval < 0) interval = interval + twenty_four_hours ;
-                sleep = get_more_rows_interval - interval;
+                sleep = show_more_rows_interval - interval;
                 if (sleep < 0) sleep = 0 ;
             }
             var previous_timestamp = old_show_more_rows_request_at ;
             var next_timestamp = now + sleep;
             if (next_timestamp > twenty_four_hours) next_timestamp = next_timestamp - twenty_four_hours ;
-            if (debug_ajax) add2log('Sleep ' + sleep + ' seconds' + '. previous timestamp ' + previous_timestamp + ', next timestamp ' + next_timestamp);
+            add2log('Sleep ' + sleep + ' seconds' + '. previous timestamp ' + previous_timestamp + ', next timestamp ' + next_timestamp);
             old_show_more_rows_request_at = next_timestamp;
             add2log('show_more_rows_scroll: table_name = ' + table_name + '. call show_more_rows in ' + Math.round(sleep*1000) + ' milliseconds');
-            start_show_more_rows_spinner(table_name, debug_ajax) ;
+            start_show_more_rows_spinner(table_name, ajax_debug) ;
             if (sleep == 0) show_more_rows();
-            else setTimeout("Gofreerev.show_more_rows()", Math.round(sleep*1000));
+            else setTimeout(show_more_rows, Math.round(sleep*1000));
         }
     } // show_more_rows_scroll
 
@@ -1547,7 +1588,7 @@ var Gofreerev = (function() {
     //    $(link).unbind("click") ;
     //    $(link).bind("click", function(xhr, settings){
     //        var pgm = link + '.click: ' ;
-    //        try { start_show_more_rows_spinner(table_name, debug_ajax) }
+    //        try { start_show_more_rows_spinner(table_name, ajax_debug) }
     //        catch (err) {
     //            var msg = pgm + 'failed with JS error: ' + err;
     //            add2log(msg);
@@ -2640,7 +2681,7 @@ var Gofreerev = (function() {
 
 
 
-    // show/hide ajax debug log checkbox in bottom of page. Only used if debug_ajax? / DEBUG_AJAX is true
+    // show/hide ajax debug log checkbox in bottom of page. Only used if ajax_debug? / DEBUG_AJAX is true
     function show_debug_log_checkbox(checkbox) {
         var debug_log = document.getElementById('debug_log') ;
         if (!debug_log) {
@@ -3072,14 +3113,16 @@ var Gofreerev = (function() {
      };
      */
 
-    // export public methods
+    // export public used methods (views)
     return {
         // error handlers
+        set_ajax_debug: set_ajax_debug, // enable/disable JS debug
         clear_ajax_errors: clear_ajax_errors, // used in application.js.erb
         move_tasks_errors2: move_tasks_errors2, // used in application.js.erb
         report_missing_api_picture_urls: report_missing_api_picture_urls,
         set_missing_api_picture_urls: set_missing_api_picture_urls,
         imgonload: imgonload, // check invalid or missing pictures - used in gifts/index page
+        show_debug_log_checkbox: show_debug_log_checkbox, // show/hide debug log in html page
         // view helpers
         onchange_currency: onchange_currency, // ajax update currency in users/edit page
         show_overflow: show_overflow, // show more text function
@@ -3090,9 +3133,13 @@ var Gofreerev = (function() {
         show_more_rows: show_more_rows,
         set_more_rows_table: set_more_rows_table, // set html table name, "gifts" or "users"
         getSecondsSinceMidnight: getSecondsSinceMidnight,
+        start_tasks_form_spinner: start_tasks_form_spinner,
         stop_show_more_rows_spinner: stop_show_more_rows_spinner,
         show_more_rows_scroll: show_more_rows_scroll,
         show_more_rows_ajax: show_more_rows_ajax,
+        set_show_more_rows_interval: set_show_more_rows_interval,
+        get_show_more_rows_interval: get_show_more_rows_interval,
+        setup_ajax_expanding_page: setup_ajax_expanding_page,
         // client side validations
         csv_gift: csv_gift,
         csv_comment: csv_comment

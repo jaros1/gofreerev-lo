@@ -101,7 +101,7 @@ module GiftHelper
 
   # the giftid param is used as extra information in url for comment-action-link event (cancel, accept, reject, delete)
   # cleanup any old ajax error messages before new ajax delete comment request
-  # see $(".comment-action-link").bind("click" in my.js
+  # see $(".comment-action-link").bind("click" in gofreerev.js
   def link_to_cancel_new_deal (comment)
     link_to t('.cancel_new_deal'),
             util_cancel_new_deal_path(:comment_id => comment.id, :giftid => comment.gift.id),

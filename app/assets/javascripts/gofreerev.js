@@ -161,6 +161,7 @@ var Gofreerev = (function() {
         user_currency_old_id = document.getElementById('user_currency_old');
         if ((user_currency_old_id) && (user_currency_old_id.value == self.value)) return ;
         var currency_submit = document.getElementById('currency_submit');
+        // todo: check safari 5 workaround. See show_more_rows
         if (currency_submit) currency_submit.click() ; // ok rails ajax submit
         else self.form.submit() ; // error forms submit with js text response
     } // onchange_currency
@@ -395,7 +396,8 @@ var Gofreerev = (function() {
         return false ;
     } // csv_is_price_invalid
 
-    // Client side validation for new gift
+    // Client side validation for new gift + "submit" data for processing if data is ok
+    // note that form data is preocessed by javascript and ajax. Not with a html post.
     function csv_gift() {
         // ie fix. check if submit bottom has been disabled
         var submit_buttons = document.getElementsByName('commit_gift') ;
@@ -405,21 +407,27 @@ var Gofreerev = (function() {
             if (submit_buttons[i].disabled) {
                 // ie8 fix - submit new gift must be in progress - ignore
                 add2log('csv_gift: ie8 fix - submit new gift must be in progress - ignore click') ;
-                return false ;
+                return ;
             }
         }
 
         // check required description
         if (csv_is_field_empty('gift_description')) {
             alert(I18n.t('js.gifts.description_required_text'));
-            return false;
+            return ;
         }
         // check optional price. Allow decimal comma/point, max 2 decimals. Thousands separators not allowed
         if (csv_is_price_invalid('gift_price')) {
             alert(I18n.t('js.gifts.price_invalid_text'));
-            return false;
+            return ;
         }
-        // gift is ok. ready for submit
+        // gift is ok.
+
+        // prevent double "submit"
+        var submit_buttons = document.getElementsByName('commit_gift') ;
+        for (var i=0 ; i< submit_buttons.length ; i++) submit_buttons[i].disabled = true ;
+
+        // new gift data are ready for processing
 
         // clear any old (error) messages in page header
         clear_flash_and_ajax_errors() ;
@@ -441,14 +449,15 @@ var Gofreerev = (function() {
             // File Upload plugin (https://blueimp.github.io/jQuery-File-Upload/)
             // ignore rails js post and use json post from File Upload plugin
             gift_datatype.value = 'json' ;
+            // todo: check safari 5 workaround. See show_more_rows
             gift_file_button.click() ;
-            return false ;
+            return ;
         }
         else gift_datatype.value = 'js' ; // normal rails js post
 
-        if (!Modernizr.meter) return true; // process bar not supported
+        if (!Modernizr.meter) return ; // process bar not supported
         var progressbar_div = document.getElementById('progressbar-div');
-        if (!progressbar_div) return true; // no progressbar found in page
+        if (!progressbar_div) return ; // no progressbar found in page
 
         progressbar_div.style.display = 'block';
         // start upload process bar
@@ -474,7 +483,6 @@ var Gofreerev = (function() {
             loading();
         }, time);
 
-        return true;
     } // csv_gift
 
     // Client side validation for new comment
@@ -560,6 +568,7 @@ var Gofreerev = (function() {
                     // replace and click => ajax request to util/new_messages_count => update page
                     href = href.replace(/newest_status_update_at=[0-9]+/, 'newest_status_update_at=' + newest_status_update_at_new_value) ;
                     check_new_messages_link.href = href ;
+                    // todo: check safari 5 workaround. See show_more_rows
                     check_new_messages_link.click();
                 }, interval * 1000);
             });
@@ -2425,6 +2434,7 @@ var Gofreerev = (function() {
                 // share level 4 - single sign-on
                 // Security alert dialog. yes/no to save access tokens on server for offline access
                 var share_accounts_button = document.getElementById('share-accounts') ;
+                // todo: check safari 5 workaround. See show_more_rows
                 share_accounts_button.click() ;
                 return false ;
             }
@@ -2670,6 +2680,7 @@ var Gofreerev = (function() {
         var client_login = document.getElementById('client-login') ;
         if (!client_login) return ; // not a login page
         if (typeof(Storage) == "undefined") return ; // no html5 local storage support
+        // todo: check safari 5 workaround. See show_more_rows
         if (sessionStorage.getItem("userid") === null) client_login.click() ; // not logged in
         // already logged in
     })
@@ -2962,6 +2973,7 @@ var Gofreerev = (function() {
             if (['facebook'].indexOf(provider) != -1) share_gift.target = '' ;
             // alert('key = ' + key + ', href = ' + href) ;
             debug = 10 ;
+            // todo: check safari 5 workaround. See show_more_rows
             share_gift.click() ;
         }
         catch (err) {
@@ -3124,6 +3136,7 @@ var Gofreerev = (function() {
         inIframe: inIframe, // Fix bug. App is displayed in a iFrame for opera < 12.16
         post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
+        autoresize_text_field: autoresize_text_field,
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
         start_tasks_form_spinner: start_tasks_form_spinner,
         set_show_more_rows_interval: set_show_more_rows_interval,

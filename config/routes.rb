@@ -57,8 +57,9 @@ GofreerevFb::Application.routes.draw do
   #   get 'products/:id/purchase' => 'catalog#purchase', as: :purchase
 
   # Example resource route (maps HTTP verbs to controller actions automatically):
+  # todo: remove gifts_old1 and comments_old1
   scope "(:locale)" do
-    resources :gifts, :users, :inbox, :comments, :facebook
+    resources :gifts, :users, :inbox, :comments, :facebook, :gifts_old1, :comments_old1
   end
 
   # Example resource route with options:

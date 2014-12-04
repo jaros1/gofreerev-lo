@@ -328,12 +328,156 @@ en:
         deleted_user: "Could not delete comment. Your account is being deleted."
         exception: "System error. Could not delete comment. %{error}. More information available in log."
 
+  # comments controller - from before angularJS refactoring
+  comments_old1:
+     create:
+        invalid_request_no_comment_form: "Invalid request. System error. Comment form was not found."
+        invalid_request_unknown_gift: "Invalid request. System error. Unknown id for gift."
+        not_logged_in: "You are not logged in and you cannot create comments. Please refresh web page."
+        invalid_request_invalid_gift: "Invalid request. You have no access to this post. Please refresh web page."
+        deleted_user: "You account is being deleted and you cannot create comments"
+        no_providers: "Comment was not created. No shared login providers. May be a system error."
+        comment_error: "Comment was not created. %{error}."
+        exception: "System error. Comment was not created. %{error}. More information available in log."
+     index:
+        gift_id_is_missing: "Invalid request. Gift id is missing."
+        gift_not_found: "Invalid request. Gift was not found."
+        not_logged_in: "Cannot show older comments. You are not logged in. Please refresh web page."
+        gift_not_friends: "Invalid request. You are not allowed to see this gift."
+        first_comment_id_is_missing: "Invalid request. Comment id is missing."
+        first_comment_not_found: "Invalid request. Comment was not found."
+        gift_comment_mismatch: "Invalid request. Gift and comment do not match."
+        exception: "System error. Cannot get older comments. %{error}. More information in server log."
+     api_comment: # 4 types of comments: comment, deal proposal, rejected deal proposal and accepted deal proposal
+        optional_price: "/ %{price}"
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        proposal_text: "%{date} %{optional_price} : %{text} (proposal)" # new_deal_yn == Y, accepted_yn == nil
+        rejected_text: "%{date} %{optional_price} : %{text} (rejected)" # new_deal_yn == Y, accepted_yn == N
+        accepted_text: "%{date} %{optional_price} : %{text} (accepted)" # new_deal_yn == Y, accepted_yn == Y
+     api_comments2:
+        show_more_text: "Show more text"
+        like_gift: "Like"
+        unlike_gift: "Unlike"
+        follow_gift: "Follow"
+        unfollow_gift: "Don't follow"
+        hide_gift: "Hide post"
+        confirm_hide_gift: "Hide post?"
+        share_gift: "Share post"
+        delete_gift: "Delete post"
+        confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # currency, price and user_name. user_name is short user name for other user in closed deal
+        confirm_delete_gift_2: "Delete post?"
+        show_older_comment: "Show older comment"
+        show_older_comments: "Show %{no_older_comments} older comments"
+     api_comment_status:
+        cancel_new_deal: "Cancel"
+        confirm_cancel_new_deal: "Cancel proposal?"
+        accept_new_deal: "Accept"
+        confirm_accept_new_deal: "Accept proposal?"
+        reject_new_deal: "Reject"
+        confirm_reject_new_deal: "Reject proposal?"
+        delete_comment: "Delete"
+        confirm_delete_comment: "Delete comment?"
+     destroy:
+        unknown_comment: "Cannot delete comment. Comment was not found. Please refresh page."
+        not_logged_in: "Delete comment was not allowed. You are not logged in. Please refresh page."
+        invalid_comment: "Delete comment was not allowed. Please refresh page."
+        deleted_user: "Could not delete comment. Your account is being deleted."
+        exception: "System error. Could not delete comment. %{error}. More information available in log."
+
   cookie:
      decline_cookies:
         page_header_html: "%{appname} uses temporary cookies for log in. In temporary session cookie are stored information about start time, login API authorization, language, timezone. Temporary cookies are removed when the browser is closed. Cookie acceptance is the only information stored in a resident cookie.<br><br>You have rejected to use cookies for this web site. All cookies have been removed and it is secure to leave this web site. Thank you for visiting %{appname}."
 
   # gift controller
   gifts:
+     create:
+        not_logged_in: "You are not logged in and you cannot create new posts. Please refresh web page."
+        deleted_user: "You account is being deleted and you cannot create new posts"
+        post_on_wall_deauthorized: "%{appname}'s write permission to your %{apiname} wall has been removed."
+        file_upload_not_allowed: "File upload not allowed. %{appname} lack access to write on your %{apiname} wall."
+        unsupported_filetype: "Unsupported filetype %{filetype} in file upload. Supported filetypes are jpg, gif, png and bmp."
+        file_is_too_big: "File is too big. Max allowed picture size is %{maxsize}."
+        file_mv_error: "Post was created without picture. Picture upload failed. Error: \"%{error}\"."
+        # gift_not_posted_<n> is used if gift was not saved in gifts table - should never happen
+        gift_not_posted_1: "Gift was not posted on your %{apiname} wall (%{error})" # unhandled error message
+        gift_not_posted_2: "Gift was posted on your %{apiname} wall"
+        gift_not_posted_3: "Gift was not posted on your %{apiname} wall" # missing privileges
+        gift_not_posted_4: "Duplicate status message on %{apiname} wall"
+        gift_not_posted_5: "Posting on %{apiname} has not yet been implemented"
+        no_api_walls: "Post was created here but not on any login provider wall. Your post will been seen only by friends that also uses %{appname}. You may go to \"Log in\" page and check read/write permissions to login provider wall and check if you have allowed post to login provider wall."
+        exception: "System error. Gift was not created. %{error}. More information available in log."
+     index:
+        not_logged_in: "Cannot show more rows. You are not logged in. Please refresh web page."
+        welcome_msg_after_login: "Welcome %{username} to %{appname}"
+        create_gift_header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell."
+        price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all."
+        price_prompt: "Price:"
+        price_placeholder: "Price proposal"
+        price_free: "free"
+        direction_giver_prompt: "Offers: "
+        direction_receiver_prompt: "Seeks: "
+        description_title: "Text. Required. Describe what you offer or what you are looking for whether it is things or help. You decide whether you want to sell, buy, rent, lend or give things away for free. We are trading in virtuel free money. Since we are trading in virtuel money you are in practive always giving  your things away or receiving help for free. But your balance in free money changes. Posts are made on your wall and displayed to your friends or whom you have selected to view posts by this app. Your friends can comment on your post on your wall. The agreement should be finalized in here so your balance in free cash is being updated."
+        description_prompt: "Text:"
+        description_placeholder: "Describe what you offer or what you are looking for whether it is things or help."
+        file_title_true: "Optional picture. Photos are an effective way to be seen by your friends. Picture upload takes some time as the picture is uploaded in 2 steps. First upload to %{appname} and then upload to your login provider wall. Please wait."
+        file_title_false: "Sorry. Picture upload is not possible. Pictures are uploaded to your login provider wall and %{appname} lack permission to write on your wall. Photos are an effective way to be seen by your friends. You can use link in top of this page if you wish to give %{appname} access to write on your wall. You can go to \"Log in\" page and select \"Post?\" for one or more login providers if you wish that %{appname} should post on your login provider wall."
+        file_prompt: "Picture:"
+        file_placeholder: "Choose File"
+        link_prompt: "or link:"
+        link_placeholder: "copy/paste url"
+        gift_submit_button_text: "Create post"
+        pending_gift_popup_msg: "Change currency? Select Cancel if you wish to complete your wall posting. Select OK to ignore the not saved post and change currency."
+        description_required_text: "Text is required."
+        price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
+        no_gifts_was_found_html: "<p>There was not found any posts. Neither you nor your friends have yet created<br />any posts here in %{appname}. To get started, you must now create a few posts<br />with something you want to share with your friends or with something you are looking<br />for or are missing, and with which you think your friends might be able to help you.</p>"
+        comment_comment_required_text: "Comment is required"
+        comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
+        http_invalid_last_row_id: "System error. last_row_id must be blank in first http request. last_row_id = \"%{last_row_id}\"."
+        ajax_invalid_last_row_id: "System error. Invalid or empty last_row_id in ajax request. last_row_id = \"%{last_row_id}\"."
+        share_gift_error: "Could not share post on your %{apiname} wall. %{error}"
+     table_header_row:
+        giver_column_heading_html: "From:"
+        receiver_column_heading_html: "To:"
+        received_at_column_heading_html : "Date:"
+        price_column_heading_html: "Price:"
+        received_at_and_pice_heading_html: "Date and price:"
+        new_price_column_heading_html: "Value<br />today:"
+        balance_column_heading_html: "Balance"
+        link_and_text_column_heading_html: "Text:"
+     api_gifts:
+     api_gift:
+        # 4 translate keys to format gift text with link and text.
+        gift_link_title: "Click on link for more information"
+        gift_picture_title: "Click on picture for more information"
+        direction_giver: "%{username} offers"
+        direction_receiver: "%{username} seeks"
+        direction_giver_and_receiver: "from %{givername} to %{receivername}"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
+        optional_price: "/ %{price}"
+        show_more_text: "Show more text"
+        like_gift: "Like"
+        unlike_gift: "Unlike"
+        follow_gift: "Follow"
+        unfollow_gift: "Don't follow"
+        share_lov_text: "Share at:"
+        enter_comment: "Enter a comment ..."
+        new_deal_check_box_prompt: "Agreement proposal"
+        price_prompt: "Price"
+        price_free: "free"
+        new_proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
+     show:
+        invalid_gift_id: "Invalid request. Unknown post id"
+        no_access: "Invalid request. You are not allowed to see this post"
+        invalid_deep_link_id_logged_in: "Sorry. This post has been removed."
+        invalid_deep_link_id_not_logged_in: "Sorry. This post has been removed. Use back button in browser or log in to see other posts."
+        og_def_desc_facebook: "Give, rent, loan, sell, buy. Share resources with your friends. Help each other and help the environment. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics." # optimal size 255 characters
+        og_def_desc_google_oauth2: "Help each other and the environment. Share your resources. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics."
+        og_def_desc_linkedin: "Give, rent, loan, sell, buy. Share each others resources and help the environment. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics." # optimal size 220 characters.
+        og_def_desc_twitter: "Help each other and the environment. Share your resources. %{appname} is a play with some concepts (gift network, free money and negative interest) from Charles Eisensteins book Sacred Economics."
+
+  # old gifts controller - from before angularJS refactoring
+  gifts_old1:
      create:
         not_logged_in: "You are not logged in and you cannot create new posts. Please refresh web page."
         deleted_user: "You account is being deleted and you cannot create new posts"

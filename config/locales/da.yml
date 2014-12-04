@@ -331,6 +331,62 @@ da:
         deleted_user: "Kan ikke slette kommentar. Din konto er ved at blive slettet."
         exception: "Systemfejl. Kan ikke slette kommentar. %{error}. Se mere information i log."
 
+  # comments controller - from before angularJS refactoring
+  comments_old1:
+     create:
+        invalid_request_no_comment_form: "Ugyldigt kald. Systemfejl. Kommentar-form ej fundet."
+        invalid_request_unknown_gift: "Ugyldigt kald. Systemfejl. Ukendt id for opslag."
+        not_logged_in: "Du er ikke logget ind og kan ikke oprette nye kommentarer. Opdater venligst siden."
+        invalid_request_invalid_gift: "Ugyldigt kald. Du har ikke adgang til dette opslag. Opdater venligst siden."
+        deleted_user: "Din konto er ved at blive slettet, og du kan ikke oprette nye kommentarer"
+        no_providers: "Kunne ikke oprette kommentar. Ingen fælles loginudbydere. Kan evt. være en systemfejl."
+        comment_error: "Kunne ikke oprette kommentar. %{error}."
+        exception: "Systemfejl. Kunne ikke oprette kommentar. %{error}. Se mere information i log."
+     index:
+        gift_id_is_missing: "Ugyldigt kald. Opslagsnr. mangler."
+        gift_not_found: "Ugyldigt kald. Opslag blev ikke fundet."
+        not_logged_in: "Kan ikke vise ældre kommentarer. Du er ikke logget ind. Opdater venligst siden."
+        gift_not_friends: "Ugyldigt kald. Du må ikke se dette opslag."
+        first_comment_id_is_missing: "Ugyldig kald. Kommentarnr. mangler."
+        first_comment_not_found: "Ugyldigt kald. Kommentar blev ikke fundet."
+        gift_comment_mismatch: "Ugyldigt kald. Opslag og kommentar passer ikke sammen."
+        exception: "Systemfejl. Kunne ikke hente ældre kommentarer. %{error}. Mere information i server log."
+     api_comment: # 4 types of comments: comment, deal proposal, rejected deal proposal and accepted deal proposal
+        optional_price: "/ %{price}"
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        proposal_text: "%{date} %{optional_price} : %{text} (forslag)" # new_deal_yn == Y, accepted_yn == nil
+        rejected_text: "%{date} %{optional_price} : %{text} (afvist)" # new_deal_yn == Y, accepted_yn == N
+        accepted_text: "%{date} %{optional_price} : %{text} (accepteret)" # new_deal_yn == Y, accepted_yn == Y
+     api_comments2:
+        show_more_text: "Vis mere tekst"
+        like_gift: "Synes om"
+        unlike_gift: "Synes ikke længere om"
+        follow_gift: "Følg opslag"
+        unfollow_gift: "Følg ikke længere"
+        hide_gift: "Skjul opslag"
+        confirm_hide_gift: "Skjul opslag?"
+        share_gift: "Del opslag"
+        delete_gift: "Slet opslag"
+        confirm_delete_gift_1: "Slet opslag? Bemærk at %{user_name} og din saldo vil blive ændret med %{price} %{currency}, hvis dette opslag slettes" # currency, price and user_name. user_name is short user name for other user in closed deal
+        confirm_delete_gift_2: "Slet opslag?"
+        show_older_comment: "Vis ældre kommentar"
+        show_older_comments: "Vis %{no_older_comments} ældre kommentarer"
+     api_comment_status:
+        cancel_new_deal: "Fortryd"
+        confirm_cancel_new_deal: "Fortryd forslag?"
+        accept_new_deal: "Godkend"
+        confirm_accept_new_deal: "Godkend forslag?"
+        reject_new_deal: "Afvis"
+        confirm_reject_new_deal: "Afvis forslag?"
+        delete_comment: "Slet"
+        confirm_delete_comment: "Slet kommentar?"
+     destroy:
+        unknown_comment: "Kan ikke slette kommentar. Kommentar blev ikke fundet. Opdater venligst siden."
+        not_logged_in: "Kan ikke slette kommentar. Du er ikke logget ind. Opdater venligst siden."
+        invalid_comment: "Kan ikke slette kommentar. Opdater venligst siden."
+        deleted_user: "Kan ikke slette kommentar. Din konto er ved at blive slettet."
+        exception: "Systemfejl. Kan ikke slette kommentar. %{error}. Se mere information i log."
+
   cookie:
      decline_cookies:
         page_header_html: "%{appname} anvender temporære cookies i forbindelse med login. I temporær session cookie gemmes information om starttidspunkt, login API adgangsoplysninger, sprog, tidszone. Temporære cookies slettes, når browseren lukkes. Eneste cookie, der gemmes permanent, er accept af anvendelse af cookies.<br><br>Du har valgt at sige nej tak til cookies. Alle cookies er blevet slettet, og du kan forlade siden sikkert. Tak for besøget."
@@ -422,6 +478,95 @@ da:
         og_def_desc_google_oauth2: "Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics."
         og_def_desc_linkedin: "Giv, lån/lej ud, sælg. Hjælp hinanden og miljøet. Del jeres ressourcer. %{appname} leger med nogle af begreber (frie penge, negativ rente og gavenetværk) fra Charles Eisensteins bog Sacred Economics. Kan læses nettet." # optimal size 220 characters
         og_def_desc_twitter: "Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics."
+
+  # old gifts controller - from before angularJS refactoring
+  gifts_old1:
+     create:
+        not_logged_in: "Du er ikke logget ind og kan ikke oprette nye opslag. Opdater venligst siden."
+        deleted_user: "Din konto er ved at blive slettet, og du kan ikke oprette nye opslag"
+        post_on_wall_deauthorized: "%{appname} har ikke længere tilladelse til at lave opslag på din %{apiname} væg."
+        file_upload_not_allowed: "Fil upload ej tilladt. %{appname} mangler adgang til at skrive på din %{apiname} væg."
+        unsupported_filetype: "Usupporteret filtype %{filetype} i fil upload. Supporterede filtyper er jpg, gif, png og bmp."
+        file_is_too_big: "Fil er for stor. Højst tilladte størrelse på billede er %{maxsize}."
+        file_mv_error: "Opslag oprettet uden billede. Fil upload fejlede. Fejl: \"%{error}\"."
+        # gift_not_posted_<n> is used if gift was not saved in gifts table - should never happen
+        gift_not_posted_1: "Opslag blev ikke oprettet på din %{apiname} væg (%{error})." # unhandled error message
+        gift_not_posted_2: "Opslag blev oprettet på din %{apiname} væg."
+        gift_not_posted_3: "Opslag blev ikke oprettet på din %{apiname} væg." # missing privileges
+        gift_not_posted_4: "Opslag findes allerede på %{apiname} væg."
+        gift_not_posted_5: "Opslag på %{apiname} væg er endnu ikke implementeret."
+        no_api_walls: "Opslag blev oprettet herinde, men ikke på nogen loginudbyders væg. Dit opslag vil kun set af venner, der benytter %{appname}. Gå evt. til \"Log ind\" siden og tjek læse/skriveadgang til loginudbyder væg, og om du har tilladt opslag på login udbyder væg."
+        exception: "Systemfejl. Kunne ikke oprette opslag. %{error}. Se mere information i log."
+     index:
+        not_logged_in: "Kan ikke vise flere rækker. Du er ikke logget ind. Opdater venligst siden."
+        welcome_msg_after_login: "Velkommen %{username} til %{appname}"
+        create_gift_header_line: "Hjælp hinanden og miljøet. Del jeres ressourcer. Giv, lån/lej ud, sælg etc."
+        price_title: "Pris i virtuelle frie penge. Valgfri. Kan sættes nu eller senere. Bedst, hvis køber/modtager sætter pris, der så bliver et mål for, hvor meget pris vedkommende satte på den modtagne ting/hjælp. Der anvendes frie virtuelle nationale penge herinde med en negativ rente. %{min_interest}% om året for en positiv saldo og %{max_interest}% om året for en negativ saldo. Et formål med den negative rente er at sikre, at penge og ressourcer cirkulerer. Den negative rente gør det muligt med et samfund uden vækst, uden overforbrug og med mere fritid."
+        price_prompt: "Pris:"
+        price_placeholder: "Pris forslag"
+        price_free: "frie"
+        direction_giver_prompt: "Tilbyder: "
+        direction_receiver_prompt: "Søger: "
+        description_title: "Tekst. Skal udfyldes. Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp. Du bestemmer selv, om du vil sælge, udleje, udlåne eller forære ting væk. Da der handles i virtuelle frie penge, forærer man i praksis altid ting væk, men ens saldo i frie penge vokser. Opslag laves på din væg og vises til dine venner, eller hvem du har valgt skal se opslag fra denne app. Dine venner kan kommenterer dit opslag på din væg. Aftalen bør sluttes herinde, så din saldo i frie penge opdateres."
+        description_prompt: "Tekst:"
+        description_placeholder: "Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp."
+        file_title_true: "Vedlæg gerne et foto af det, som du deler eller leder efter. Billeder er en effektiv måde at blive set på af ens venner. Upload kan godt tage lidt tid, da billedet uploades i 2 trin. Først til %{appname} og dernæst videre til din væg hos din loginudbyder. Vent venligst."
+        file_title_false: "Der kan ikke vedlægges foto af det, som du deler eller leder efter. Billeder uploades til din væg hos din loginudbyder, og %{appname} mangler tilladelse til at skrive på din væg. Billeder er en effektiv måde at blive set på af ens venner. Benyt link øverst i denne side, hvis du ønsker at give %{appname} lov til at lave opslag på din væg. Gå til \"Log ind\" siden og sæt hak i \"Opslag?\" tjekbox ud for en eller flere loginudbydere, hvis du ønsker at %{appname} skal lave opslag hos din loginudbyder."
+        file_prompt: "Vedlæg:"
+        file_placeholder: "Vælg fil"
+        link_prompt: "eller link:"
+        link_placeholder: "kopier/indsæt url"
+        gift_submit_button_text: "Opret opslag"
+        pending_gift_popup_msg: "Ret valuta? Svar Cancel for at vende tilbage og lave opslag færdig. Svar OK for at kassere det indtastede og opdatere valuta."
+        description_required_text: "Tekst skal udfyldes."
+        price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
+        no_gifts_was_found_html: "<p>Der blev ikke fundet nogle opslag. Hverken du eller dine venner har endnu oprettet<br />nogle opslag herinde i %{appname}. For at komme i gang bør du nu oprette et eller flere opslag<br />med noget, du gerne vil dele med dine venner eller med noget, du søger eller mangler<br />, og som du tror dine venner måske kan hjælpe dig med.</p>"
+        comment_comment_required_text: "Kommentar felt skal udfyldes"
+        comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
+        http_invalid_last_row_id: "Systemfejl. last_row_id skal være tom ved første http kald. last_row_id = %{last_row_id}."
+        ajax_invalid_last_row_id: "Systemfejl. Ugyldigt eller blank last_row_id i ajax kald. last_row_id = %{last_row_id}."
+        share_gift_error: "Kunne ikke dele opslag din %{apiname} væg. %{error}"
+     table_header_row:
+        giver_column_heading_html: "Fra:"
+        receiver_column_heading_html: "Til:"
+        received_at_column_heading_html : "Dato:"
+        price_column_heading_html: "Pris:"
+        received_at_and_pice_heading_html: "Dato og pris:"
+        new_price_column_heading_html: "Værdi<nr>nu:"
+        balance_column_heading_html: "Saldo:"
+        link_and_text_column_heading_html: "Tekst:"
+     api_gifts:
+     api_gift:
+        # 4 translate keys to format gift text with link and text.
+        direction_giver: "%{username} tilbyder"
+        direction_receiver: "%{username} søger"
+        direction_giver_and_receiver: "fra %{givername} til %{receivername}"
+        gift_link_title: "Klik på link for flere informationer om opslag"
+        gift_picture_title: "Klik på billede for flere informationer om opslag"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
+        optional_price: "/ %{price}"
+        show_more_text: "Vis mere tekst"
+        like_gift: "Synes om"
+        unlike_gift: "Synes ikke længere om"
+        follow_gift: "Følg opslag"
+        unfollow_gift: "Følg ikke længere"
+        share_lov_text: "Del på:"
+        enter_comment: "Skriv en kommentar..."
+        new_deal_check_box_prompt: "Foreslå aftale"
+        price_prompt: "Pris"
+        price_free: "frie"
+        new_proposal_title: "Anvend \"Foreslå aftale\" tjekboks, hvis du ønsker at foreslå %{username} en aftale. Indtast en pris i frie penge, hvis du ønsker at anvende frie penge i denne aftale. %{username} vil få besked om dit tilbud og kan accepterer eller afvise dit forslag."
+     show:
+        invalid_gift_id: "Ugyldigt kald. Ukendt opslagsnr."
+        no_access: "Ugyldigt kald. Du har ikke adgang til at se dette opslag"
+        invalid_deep_link_id_logged_in: "Dette opslag er desværre blevet slettet."
+        invalid_deep_link_id_not_logged_in: "Dette opslag er desværre blevet slettet. Brug browserens tilbageknap eller log ind for at se andre opslag"
+        og_def_desc_facebook: "Giv, lån/lej ud, hjælp, byt, sælg. Del jeres ressourcer. Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics. Læs bogen gratis på nettet." # optimal size 255 characters
+        og_def_desc_google_oauth2: "Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics."
+        og_def_desc_linkedin: "Giv, lån/lej ud, sælg. Hjælp hinanden og miljøet. Del jeres ressourcer. %{appname} leger med nogle af begreber (frie penge, negativ rente og gavenetværk) fra Charles Eisensteins bog Sacred Economics. Kan læses nettet." # optimal size 220 characters
+        og_def_desc_twitter: "Hjælp dine venner og miljøet. %{appname} er en leg med nogle af begreber (gavenetværk, frie penge og negativ rente) fra Charles Eisensteins bog Sacred Economics."
+
 
   # inbox controller
   inbox:

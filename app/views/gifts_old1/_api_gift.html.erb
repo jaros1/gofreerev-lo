@@ -80,7 +80,7 @@
     </tr>
 
     <%# render gift links and gift comments -%>
-    <%= render :partial => 'comments/api_comments3',
+    <%= render :partial => 'comments_old1/api_comments3',
                :locals => {:api_comments3 => gift.api_comments_with_filter(@users, nil), :gift => gift, :api_gift => api_gift} %>
 
     <tr id='<%= "gift-#{gift.id}-comment-new" %>'>

@@ -1,0 +1,24 @@
+<div id="<%= "gift-#{@comment.gift.id}-comment-#{@comment.id}-status" %>" style="text-align: right;">
+  <table style="text-align: left; margin-left: auto; margin-right: 10px;">
+    <% if @comment.show_cancel_new_deal_link?(@users) -%>
+        <tr>
+          <td><%= link_to_cancel_new_deal(@comment) %></td>
+        </tr>
+    <% end -%>
+    <% if @comment.show_accept_new_deal_link?(@users) -%>
+        <tr>
+          <td><%= link_to_accept_new_deal(@comment) %></td>
+        </tr>
+    <% end -%>
+    <% if @comment.show_reject_new_deal_link?(@users) -%>
+        <tr>
+          <td><%= link_to_reject_new_deal(@comment) %></td>
+        </tr>
+    <% end -%>
+    <% if @comment.show_delete_comment_link?(@users) -%>
+        <tr>
+          <td><%= link_to_delete_comment(@comment) %></td>
+        </tr>
+    <% end -%>
+  </table>
+</div>

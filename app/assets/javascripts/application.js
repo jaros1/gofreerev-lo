@@ -36,6 +36,8 @@
 //= require jquery.fileupload
 //= require jquery.fileupload-process
 //= require jquery.fileupload-image
-//= require jquery.fileupload-validate.js
+//= require jquery.fileupload-validate
+
+//= require angular
 
 //= require_tree .

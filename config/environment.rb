@@ -44,7 +44,12 @@ class String
     end
     (self <= Date.today.to_yyyymmdd)
   end # yyyymmdd?
+  # for sanitize support in controllers (json)
+  def sanitize(options={})
+    ActionController::Base.helpers.sanitize(self, options)
+  end
 end # String
+
 
 # Implement find_usertype. Only relevant for Hash, but must exists as dummy methods in String and Array
 # usertype is first two characters in user_id. That is FB, GP etc

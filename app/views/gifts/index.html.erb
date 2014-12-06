@@ -14,26 +14,26 @@
 
 <%# create new gift form. note that Gofreerev.csv_gift always returns false. HTML submit is not used. Ajax is used to send data to server. -%>
 <div style="width: 100%"><%= t '.create_gift_header_line' %></div>
-<div style="width: 100%">
-  <%= form_for @gift, :html => {:enctype => 'multipart/form-data', :id => 'new_gift'} do |f| -%>
+<div style="width: 100%" ng-controller="GiftsCtrl as ctrl">
+  <%= form_for @gift, :remote => true, :html => {:enctype => 'multipart/form-data', :name => 'new_gift_form', 'ng-submit' => 'ctrl.create_new_gift()', :action => nil} do |f| -%>
       <table>
         <tr title="<%= t '.price_title', :min_interest => NEG_INT_POS_BALANCE_PER_YEAR, :max_interest => NEG_INT_NEG_BALANCE_PER_YEAR %>">
           <td><%= t '.price_prompt' %></td>
           <td>
-            <%= f.text_field(:price, :size => 10, :maxlength => 10, :placeholder => t('.price_placeholder')) %>
+            <%= f.text_field :price, :size => 10, :maxlength => 10, :placeholder => t('.price_placeholder'), "ng-model" => 'ctrl.new_gift.price' %>
             <%= t '.price_free' %>
             <%= @users.first.currency %>
             &nbsp;&nbsp;&nbsp;
             <div style="text-wrap: none">
-              <%= t '.direction_giver_prompt' %> <%= f.radio_button :direction, 'giver' %>&nbsp;&nbsp;
-              <%= t '.direction_receiver_prompt' %> <%= f.radio_button :direction, 'receiver' %>
+              <%= t '.direction_giver_prompt' %> <%= f.radio_button :direction, 'giver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>&nbsp;&nbsp;
+              <%= t '.direction_receiver_prompt' %> <%= f.radio_button :direction, 'receiver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>
             </div>
           </td>
         </tr>
         <tr title="<%= t '.description_title' %>">
           <td style="vertical-align: top"><%= t '.description_prompt' %></td>
-          <td><%= f.text_area :description, :size => '60x2', :placeholder => t('.description_placeholder'), :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => 'new_gift_text' %>
-            <%= f.submit t('.gift_submit_button_text'), :onclick => '{Gofreerev.csv_gift();return false}', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
+          <td><%= f.text_area :description, :size => '60x2', :placeholder => t('.description_placeholder'), :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => 'new_gift_text', :required => true, 'ng-model' => 'ctrl.new_gift.description' %>
+            <%= f.submit t('.gift_submit_button_text'), "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
         </tr>
         <tr title="<%= t ".file_title_#{post_image_allowed?()}", :appname => APP_NAME %>">
           <td>
@@ -53,7 +53,13 @@
                     <tbody>
                     <tr>
                       <td><%= t '.link_prompt' %></td>
-                      <td><%= f.text_field(:open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', :oninput=>"gift_open_graph_url_sync(this)") %></td>
+                      <td>
+                        <%= f.text_field :open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %>
+                        <%# todo: remove - angularJS does not support 2 way binding for hidden fields %>
+                        <%# f.hidden_field :open_graph_title, 'ng-model' => 'ctrl.new_gift.open_graph_title' %>
+                        <%# f.hidden_field :open_graph_description, 'ng-model' => 'ctrl.new_gift.open_graph_description' %>
+                        <%# f.hidden_field :open_graph_image, 'ng-model' => 'ctrl.new_gift.open_graph_image' %>
+                      </td>
                     </tr>
                     </tbody>
                   </table>
@@ -65,7 +71,9 @@
         </tr>
         <tr class="new_gift_link_small">
           <td><%= t '.link_prompt' %></td>
-          <td><%= f.text_field(:open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url2", :class => 'gift_open_graph_url', :oninput=>"gift_open_graph_url_sync(this)") %></td>
+          <td><%= f.text_field :open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'),
+                               :id => "gift_open_graph_url2", :class => 'gift_open_graph_url',
+                               :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %></td>
         </tr>
         <tr>
           <td colspan="2">
@@ -74,7 +82,7 @@
         </tr>
         <tr class="new_gift_submit_small">
           <td></td>
-          <td><%= f.submit t('.gift_submit_button_text'), :onclick => '{Gofreerev.csv_gift();return false}', :name => 'commit_gift' %></td>
+          <td><%= f.submit t('.gift_submit_button_text'), "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift' %></td>
         </tr>
       </table>
   <% end # form   -%>
@@ -106,16 +114,122 @@
       <hr>
     </div>
 <% end -%>
+<!--
 
 <%# gifts table -%>
 <div style="width: 100%">
-  <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>">
+  <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>" ng-controller="GiftsCtrl as ctrl">
+    
     <thead>
     <%= render :partial => 'table_header_row' %>
     </thead>
     <tbody id="gifts_tbody">
 
-    <%= render :partial => 'api_gifts' %>
+
+    <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts">
+      <td>
+        <div title="Jan R/facebook. Saldo . Klik her for at se brugeroplysninger." ng-click="top.location.href = '/{{ctrl.language}}/users/{{gift.user_id_giver}}'">
+          <div>
+            <img class="small_pro_pic" src="https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&amp;oe=5502EE27&amp;__gda__=1426931048_182d748d6d46db7eb51077fc36365623"/>
+          </div>
+        </div>
+      </td>
+      <td>
+        <img src="/images/invisible-picture.gif" class="small_profile_picture"/>
+      </td>
+      <td colspan="2" class="wrapword" style="vertical-align: top;">
+        <table>
+          <tr>
+            <td>
+              <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text">
+                <a href="/da/da/gifts/{{gift.giftid}}" title="Klik på link for flere informationer om opslag"> 3. dec 2014 / 0,00
+                  DKK / Jan R tilbyder</a>
+                : {{gift.description}}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr id='gift-{{gift.giftid}}-links'>
+      <td colspan="2"></td>
+      <td colspan="2">
+        <div id="gift-{{gift.giftid}}-overflow-link" class="overflow" style="display: none">
+          <a href="#" ng-click="return Gofreerev.show_overflow(this)">Vis mere tekst</a> -&nbsp;
+        </div>
+        <a class="gift-action-link" data-method="post" data-remote="true" data-type="script" format="js" href="/da/util/like_gift?gift_id={{gift.giftid}}" id="gift-{{gift.giftid}}-like-unlike-link" rel="nofollow">Synes
+          om</a>
+        -
+        <a class="gift-action-link" data-method="post" data-remote="true" data-type="script" format="js" href="/da/util/unfollow_gift?gift_id={{gift.giftid}}" id="gift-{{gift.giftid}}-follow-unfollow-link" rel="nofollow">Følg
+          ikke længere</a>
+        - <select id="share_gift_{{gift.giftid}}" name="share_gift_{{gift.giftid}}" onchange="get_share_gift_link(this)">
+        <option value="">Del på:</option>
+        <option value="appnet">App.net</option>
+        <option value="arto">Arto</option>
+        <option value="blogger">Blogger</option>
+        <option value="buffer">Buffer</option>
+        <option value="delicious">Delicious</option>
+        <option value="digg">Digg</option>
+        <option value="facebook">Facebook</option>
+        <option value="google_oauth2">Google+</option>
+        <option value="linkedin">LinkedIn</option>
+        <option value="myspace">MySpace</option>
+        <option value="pinterest">Pinterest</option>
+        <option value="reddit">Reddit</option>
+        <option value="sonico">Sonico</option>
+        <option value="stumbleupon">Stumble</option>
+        <option value="tumblr">Tumblr</option>
+        <option value="twitter">Twitter</option>
+        <option value="vkontakte">VK</option>
+        <option value="odnoklassniki">ok.ru</option>
+      </select>
+        -
+        <a class="gift-action-link" data-confirm="Slet opslag?" data-method="post" data-remote="true" data-type="script" format="js" href="/da/util/delete_gift?gift_id={{gift.giftid}}" id="gift-{{gift.giftid}}-delete-link" rel="nofollow">Slet
+          opslag</a>
+      </td>
+    </tr>
+
+    <tr id='gift--comment-new'>
+      <td colspan="2" style="text-align: right; vertical-align: top">
+      </td>
+      <td colspan="2">
+        <form accept-charset="UTF-8" ng-submit="ctrl.new_comment(gift.giftid)" class="new_comment" id="gift-{{gift.giftid}}-new-comment-form">
+          <div style="margin:0;padding:0;display:inline"><input name="utf8" type="hidden" value="&#x2713;"/></div>
+          <input id="gift-{{gift.giftid}}-comment-gift-id" name="comment[gift_id]" type="hidden" value="VzQVv68g6ZiyBugWsYxr" ng-model="ctrl.new_comment.{{gift.giftid}}.gift_id"/>
+          <input id="gift-{{gift.giftid}}-comment-new-deal-yn" name="comment[new_deal_yn]" type="hidden" ng-model="ctrl.new_comment.new_deal_yn"/>
+
+          <table style="border-spacing: 0;">
+            <tr id="gift-{{gift.giftid}}-comment-new-price-tr" style="display: none">
+              <td colspan="2">
+                <input id="gift-{{gift.giftid}}-comment-new-price" name="comment[price]" placeholder="Pris" size="10" type="text" />
+                frie DKK
+              </td>
+            </tr>
+            <tr>
+              <td><textarea class="new_com_text" cols="60" id="gift-{{gift.giftid}}-comment-new-textarea" name="comment[comment]" onfocus="Gofreerev.autoresize_text_field(this)" placeholder="Skriv en kommentar..." rows="1">
+</textarea></td>
+              <td>
+                <input class="submit_comment_large" id="gift-{{gift.giftid}}-comment-new-submit-1" name="commit" ng-click="return gift.csv_comment()" type="submit" value="Gem"/>
+              </td>
+            </tr>
+            <tr class="submit_comment_small">
+              <td colspan="2">
+                <input id="gift-{{gift.giftid}}-comment-new-submit-2" name="commit" ng-click="return gift.csv_comment()" type="submit" value="Gem"/>
+              </td>
+            </tr>
+          </table>
+        </form>
+      </td>
+    </tr>
+
+    <tr id="gift-{{gift.giftid}}-footer-1" ng-repeat-end>
+      <td colspan="4">
+        <hr/>
+      </td>
+    </tr>
+
+
 
     </tbody>
     <tfoot>
@@ -142,13 +256,14 @@
             :remote => true, :data => { :type => :script }, :format => :js,
             :id => "show-more-rows-link", :style => "display: none" %>
 <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
+-->
 
 <script>
   // new gift. check for /gifts?url=..&text==.. share link
   // ajax get open graph meta tags in 2 seconds and display open graph preview under link
   (function () {
       var url = document.getElementById('gift_open_graph_url1') ;
-      if (url.value) gift_open_graph_url_sync(url) ;
+      if (url.value) Gofreerev.gift_open_graph_url_sync(url) ;
   })();
 </script>
 

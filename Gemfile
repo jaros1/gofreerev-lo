@@ -193,6 +193,10 @@ gem 'embedly'
 gem "twitter-bootstrap-rails"
 gem 'simple_form'
 
+# angularJS - fix for ActionController::InvalidAuthenticityToken
+# https://github.com/jsanders/angular_rails_csrf
+gem 'angular_rails_csrf'
+
 # use when moving to an other db environment. See issue 12
 # https://github.com/ludicast/yaml_db
 # https://github.com/ludicast/yaml_db/pull/45

@@ -246,6 +246,8 @@ class GiftsController < ApplicationController
   end
 
   def index
+    @ng_app = 'gifts'
+
     if !logged_in?
       if xhr?
         @api_gifts = []
@@ -302,7 +304,7 @@ class GiftsController < ApplicationController
 
     # initialize gift form in top of gifts/index page
     @gift = Gift.new
-    @gift.direction = 'giver'
+    @gift.direction = params[:direction] if params[:direction].to_s != ''
     @gift.open_graph_url = params[:url] if params[:url].to_s != ''
     @gift.description = params[:text] if params[:text].to_s != ''
     if User.dummy_users?(@users)

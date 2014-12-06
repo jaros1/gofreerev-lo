@@ -136,7 +136,7 @@
 <br/>
 
 <%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows. set DEBUG_AJAX to true in initializers/constraints.rb to get more ajax debug information -%>
-<%= link_to "show-more-rows", "/gifts?last_row_id=#{@last_row_id}",
+<%= link_to "show-more-rows", "/gifts_old1?last_row_id=#{@last_row_id}",
             :remote => true, :data => { :type => :script }, :format => :js,
             :id => "show-more-rows-link", :style => "display: none" %>
 <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
@@ -146,7 +146,7 @@
   // ajax get open graph meta tags in 2 seconds and display open graph preview under link
   (function () {
       var url = document.getElementById('gift_open_graph_url1') ;
-      if (url.value) gift_open_graph_url_sync(url) ;
+      if (url.value) Gofreerev.gift_open_graph_url_sync(url) ;
   })();
 </script>
 
@@ -165,7 +165,7 @@
     $(function () {
         'use strict';
         // Change this url to the location of your server-side upload handler:
-        var url = '/gifts/',
+        var url = '/gifts_old1/',
                 uploadButton = $('<button/>')
                         .addClass('btn btn-primary')
                         .prop('disabled', true)

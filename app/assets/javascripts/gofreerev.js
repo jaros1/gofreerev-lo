@@ -1220,9 +1220,13 @@ var Gofreerev = (function() {
      });
      });
      */
-
-
-
+    // abort rails remote submit - ajax is handled by angularJS
+    $(document).ready(function() {
+        $("#new_gift").unbind("ajax:before") ;
+        $("#new_gift").bind("ajax:before", function(){
+            return false ;
+        })
+    })
 
 
     // auto resize text fields
@@ -3022,13 +3026,14 @@ var Gofreerev = (function() {
     // index/gift page: sync content of gift_open_graph_url1 and gift_open_graph_url2 fields (create new gift)
     function gift_open_graph_url_sync (field1) {
         // alert('oninput. id = ' + field1.id + ', value = ' + field1.value) ;
-        var id2 ;
-        if (field1.id == 'gift_open_graph_url1') id2 = 'gift_open_graph_url2' ;
-        else id2 = 'gift_open_graph_url1' ;
-        var field2 = document.getElementById(id2) ;
-        if (!field2) return ;
-        field2.value = field1.value ;
-        // setup timer. fire ajax request in 2 seconds
+        //var id2 ;
+        //if (field1.id == 'gift_open_graph_url1') id2 = 'gift_open_graph_url2' ;
+        //else id2 = 'gift_open_graph_url1' ;
+        //var field2 = document.getElementById(id2) ;
+        //if (!field2) return ;
+        //field2.value = field1.value ;
+        //// setup timer. fire ajax request in 2 seconds
+        return ;
         clearTimeout(gift_open_graph_url_timer);
         if (field1.value != '') {
             gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
@@ -3039,10 +3044,11 @@ var Gofreerev = (function() {
     // response from /util/open_graph.js ajax request in gift_open_graph_url_done
     function gift_open_graph_url_preview(url, title, description, image) {
         // alert('gift_open_graph_url_preview: url = ' + url + ', title = ' + title + ', description = ' + description + ', image = ' + image);
+        var pgm = 'gift_open_graph_url_preview: ' ;
         var gift_preview = document.getElementById('gift_preview') ;
         if (!gift_preview) return ;
         // create table with image, title (bold) and description
-        var table, tbody, tr, td, img, b, t ;
+        var table, tbody, tr, td, img, b, t ; //, input ;
         table = document.createElement('TABLE');
         tbody = document.createElement('TBODY');
         table.appendChild(tbody);
@@ -3056,6 +3062,12 @@ var Gofreerev = (function() {
             img.src = image ;
             img.width = 200 ;
             td.appendChild(img) ;
+            //input = document.createElement('INPUT') ;
+            //input.name = 'open_graph_image' ;
+            //input.type = 'hidden' ;
+            //input.value = image ;
+            //input.setAttribute('ng-model', 'ctrl.new_gift.open_graph_image');
+            //td.appendChild(input) ;
         }
         // add bold title
         tr = document.createElement('TR') ;
@@ -3066,6 +3078,12 @@ var Gofreerev = (function() {
         td.appendChild(b) ;
         t = document.createTextNode(title) ;
         b.appendChild(t) ;
+        //input = document.createElement('INPUT') ;
+        //input.name = 'open_graph_title' ;
+        //input.type = 'hidden' ;
+        //input.value = title ;
+        //input.setAttribute('ng-model', 'ctrl.new_gift.open_graph_title');
+        //td.appendChild(input) ;
         // add description
         tr = document.createElement('TR') ;
         tbody.appendChild(tr) ;
@@ -3073,6 +3091,13 @@ var Gofreerev = (function() {
         tr.appendChild(td) ;
         t = document.createTextNode(description) ;
         td.appendChild(t) ;
+        //input = document.createElement('INPUT') ;
+        //input.name = 'open_graph_description' ;
+        //input.type = 'hidden' ;
+        //input.value = description ;
+        //input.setAttribute('ng-model', 'ctrl.new_gift.open_graph_description');
+        //td.appendChild(input) ;
+
         // remove any old preview
         while (gift_preview.firstChild) {
             gift_preview.removeChild(gift_preview.firstChild);
@@ -3083,6 +3108,17 @@ var Gofreerev = (function() {
         if (disp_gift_file) disp_gift_file.value = '' ;
         // insert preview
         gift_preview.appendChild(table) ;
+        // copy open graph values to hidden fields (for angularJS)
+        // todo: remove - angularJS does not support model binding for hidden fields
+        //input = document.getElementById('gift_open_graph_title') ;
+        //if (input) input.value = title ;
+        //else add2log(pgm + 'element with id gift_open_graph_title was not found') ;
+        //input = document.getElementById('gift_open_graph_description') ;
+        //if (input) input.value = description ;
+        //else add2log(pgm + 'element with id gift_open_graph_description was not found') ;
+        //input = document.getElementById('gift_open_graph_image') ;
+        //if (input) input.value = image ;
+        //else add2log(pgm + 'element with id gift_open_graph_image was not found') ;
     } // gift_open_graph_url_preview
 
     // custom confirm box - for styling
@@ -3137,6 +3173,8 @@ var Gofreerev = (function() {
         post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
         autoresize_text_field: autoresize_text_field,
+        gift_open_graph_url_sync: gift_open_graph_url_sync, // create gift - preview open graph link
+        gift_open_graph_url_preview: gift_open_graph_url_preview, // create gift - preview open graph link
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
         start_tasks_form_spinner: start_tasks_form_spinner,
         set_show_more_rows_interval: set_show_more_rows_interval,
@@ -3150,6 +3188,158 @@ var Gofreerev = (function() {
 })();
 // Gofreerev closure end
 
+
+// angularJS code
+angular.module('gifts', [])
+    .controller('GiftsCtrl', ['$http', function ($http) {
+        var self = this;
+        self.language = 'da' ;
+        // extend user object with custom methods
+        function user (hash) {
+            hash.href = function() {
+                return '/' + hash.language + '/users/' + hash.user_id ;
+            }
+            return hash
+        }
+        // test data - users - todo: receive array with login users (me) after login
+        self.users = [
+            user({
+                user_id: 920,
+                provider: 'facebook',
+                user_name: 'Jan Roslind',
+                short_user_name: 'Jan R',
+                balance: null,
+                api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623'
+            }),
+            user({
+                user_id: 791,
+                provider: 'linkedin',
+                user_name: 'Jan Roslind',
+                short_user_name: 'Jan R',
+                balance: null,
+                api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ'
+            }),
+            user({
+                user_id: 998,
+                provider: 'instagram',
+                user_name: 'gofreerev gofreerev',
+                short_user_name: 'gofreerev g',
+                balance: null,
+                api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg'
+            })
+        ];
+        // extend gift object with custom methods
+        function gift (hash) {
+            hash.csv_comment = function() {
+                return Gofreerev.csv_comment(hash.giftid) ;
+            }
+            return hash ;
+        }
+        // test data - gifts - todo: load gifts from local storage - maybe a service?
+        self.gifts = [
+            gift({
+                giftid: 1731,
+                user_id_giver: 920,
+                date: 1417624621, // '3. dec 2014',
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                description: 'b'
+            }),
+            gift({
+                giftid: 1730,
+                user_id_giver: 920,
+                date: 1417624391, // 3. dec 2014
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                description: 'b'
+            }),
+            gift({
+                giftid: 1729,
+                user_id_giver: 920,
+                date: 1417624155, // 3. dec 2014
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                description: 'a'
+            }),
+            gift({
+                giftid: 1725,
+                user_id_giver: 920,
+                user_id_receiver: null,
+                date: 1417253762, // 29. nov 2014
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                description: 'xxx',
+                api_picture_url: '/images/temp/mc3vwsegbd.jpeg'
+            }),
+            gift({
+                giftid: 1710,
+                user_id_giver: 920,
+                user_id_receiver: null,
+                date: 1415975141, // 14. nov 2014
+                price: 0,
+                currency: 'SEK',
+                direction: 'giver',
+                description: 'Gofreerev share link',
+                open_graph_url: 'http://www.dr.dk/Nyheder/Kultur/Boeger/2014/11/09/151443.htm',
+                open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
+                open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
+                open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg'
+            })
+        ];
+        // new gift default values
+        self.new_gift = {direction: 'giver'}
+        // submit new gift
+        self.create_new_gift = function () {
+            alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
+        }
+
+        // watch new_gift.open_graph_url - send open graph ajax request to server with 2 seconds typing delay
+
+
+        // setup new gift link preview in gifts/index page
+        // fetch open graph meta tags with ajax and display preview information under link
+        // typing delay 2 seconds.
+
+        var gift_open_graph_url_timer;                //timer identifier
+
+        // user is done typing - get open graph meta tags in an ajax request - gift_open_graph_url_preview is called in ajax response
+        function gift_open_graph_url_done () {
+            if (self.new_gift.open_graph_url == '') return ;
+            // check url & get open graph meta tags
+            $http.post('/util/open_graph.json', {url: self.new_gift.open_graph_url}).
+                success(function(data, status, headers, config) {
+                    // this callback will be called asynchronously
+                    // when the response is available
+                    console.log('/util/open_graph - success. data = ' + JSON.stringify(data)) ;
+                    if (data.error) console.log('error response');
+                    else if (data.url) {
+                        self.new_gift.open_graph_url = data.url ;
+                        self.new_gift.open_graph_description = data.description ;
+                        self.new_gift.open_graph_title = data.title ;
+                        self.new_gift.open_graph_image = data.image ;
+                    }
+                }).
+                error(function(data, status, headers, config) {
+                    // called asynchronously if an error occurs
+                    // or server returns response with an error status.
+                    console.log('/util/open_graph - error') ;
+                });
+        } // gift_open_graph_url_done
+
+        self.new_gift_open_graph_url_changed = function () {
+            // setup timer. fire ajax request in 2 seconds unless cancelled
+            clearTimeout(gift_open_graph_url_timer);
+            if (self.new_gift.open_graph_url != '') {
+                gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
+            }
+
+        }
+        // end GiftsCtrl
+    }]) ;
 
 
 

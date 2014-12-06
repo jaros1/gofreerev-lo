@@ -3005,15 +3005,32 @@ class UtilController < ApplicationController
   def open_graph
     table = "tasks_errors" # ajax error table in page header
     begin
-      return format_response_key('.not_logged_in', {}) unless logged_in?
+      if !logged_in?
+        error = t '.not_logged_in', {}
+        render :json => { :error => error }
+        return
+      end
+      # return format_response_key('.not_logged_in', {}) unless logged_in?
       url = params[:url]
       logger.debug2 "url = #{url}"
-      @og = OpenGraphLink.find_or_create_link(url)
-      format_response
+      og = OpenGraphLink.find_or_create_link(url)
+      if !og
+        render :json => { }.to_json
+        return
+      end
+      # format_response
+      render :json => {
+                 :url  => og.url,
+                 :title => og.title.to_s.sanitize,
+                 :description => og.description.to_s.sanitize,
+                 :image => og.image
+             }.to_json
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
-      format_response_key '.exception', :error => e.message, :table => table
+      error = t '.exception', :error => e.message, :table => table
+      render :json => { :error => error }
+      # format_response_key '.exception', :error => e.message, :table => table
     end
   end
 

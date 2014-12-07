@@ -1224,6 +1224,7 @@ var Gofreerev = (function() {
      });
      });
      */
+
     // abort rails remote submit - ajax is handled by angularJS
     $(document).ready(function() {
         $("#new_gift").unbind("ajax:before") ;
@@ -3216,9 +3217,13 @@ angular.module('gifts', [])
                     }
                     else if (data.url) {
                         // ok response from rails with preview info
+                        // dirty File Upload plugin/angular integration ==>
                         // remove any preview from File Upload plugin
                         var preview2 = $('#gift_preview2');
                         if (preview2) preview2.empty();
+                        var disp_gift_file = document.getElementById('disp_gift_file');
+                        if (disp_gift_file) disp_gift_file.value = '';
+                        // <== dirty File Upload plugin/angular integration
                         // insert open graph preview
                         self.new_gift.open_graph_url = data.url;
                         self.new_gift.open_graph_description = data.description;

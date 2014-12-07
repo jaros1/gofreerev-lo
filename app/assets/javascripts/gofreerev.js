@@ -3173,23 +3173,19 @@ angular.module('gifts', [])
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg'
             })
         ];
+
         // new gift default values
         self.new_gift = {direction: 'giver'}
-        // submit new gift
-        self.create_new_gift = function () {
-            alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
-        }
-
-        // watch new_gift.open_graph_url - send open graph ajax request to server with 2 seconds typing delay
 
 
-        // setup new gift link open graph preview in gifts/index page
+        // new gift link open graph preview in gifts/index page ==>
+
         // fetch open graph meta tags from server with ajax and display preview information under link
         // typing delay 2 seconds before sending ajax request to server.
 
         var gift_open_graph_url_timer;                // timer identifier
 
-        // helper - reset all open graph variables
+        // helper - reset all open graph variables except open_graph_url
         function reset_open_graph_preview () {
             self.new_gift.open_graph_description = null ;
             self.new_gift.open_graph_title = null ;
@@ -3200,7 +3196,7 @@ angular.module('gifts', [])
             Gofreerev.clear_flash_and_ajax_errors() ;
         }
 
-        // user is done typing - get open graph meta tags in an ajax request - gift_open_graph_url_preview is called in ajax response
+        // user is done typing - get open graph meta tags in an ajax request
         function gift_open_graph_url_done () {
             reset_open_graph_preview() ;
             if (self.new_gift.open_graph_url == '') return ;
@@ -3220,6 +3216,10 @@ angular.module('gifts', [])
                     }
                     else if (data.url) {
                         // ok response from rails with preview info
+                        // remove any preview from File Upload plugin
+                        var preview2 = $('#gift_preview2');
+                        if (preview2) preview2.empty();
+                        // insert open graph preview
                         self.new_gift.open_graph_url = data.url;
                         self.new_gift.open_graph_description = data.description;
                         self.new_gift.open_graph_title = data.title;
@@ -3255,25 +3255,23 @@ angular.module('gifts', [])
                 });
         } // gift_open_graph_url_done
 
-        self.new_gift_open_graph_url_changed = function () {
-            // setup timer. fire ajax request in 2 seconds unless cancelled
+        // new_gift.open_graph_url ng-change
+        self.new_gift_open_graph_url_change = function () {
+            // setup timer. fire ajax request in 2 seconds unless cancelled by a new new_gift_open_graph_url ng-change
             clearTimeout(gift_open_graph_url_timer);
             if (!self.new_gift.open_graph_url) reset_open_graph_preview() ;
             else gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
         }
 
+        // <== new gift link open graph preview in gifts/index page
+
+
+        // new_gift ng-submit
+        self.create_new_gift = function () {
+            alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
+        }
+
+
+
         // end GiftsCtrl
     }]) ;
-
-
-
-
-
-
-
-
-
-
-
-
-

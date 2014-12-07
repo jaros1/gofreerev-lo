@@ -54,7 +54,7 @@
                     <tr>
                       <td><%= t '.link_prompt' %></td>
                       <td>
-                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %>
+                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_change()' %>
                       </td>
                     </tr>
                     </tbody>
@@ -73,7 +73,7 @@
         </tr>
         <tr>
           <td colspan="2">
-            <div id="gift_preview" class="files">
+            <div id="gift_preview1">
               <table>
                 <tbody>
                 <tr ng-show="ctrl.new_gift.open_graph_image">
@@ -91,6 +91,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="gift_preview2" class="files"></div>
           </td>
         </tr>
         <tr class="new_gift_submit_small">
@@ -332,16 +333,31 @@
                     data.files.splice(index,1) ;
                 }
                 else {
-                    // filetype ok - keep only "last" file in gift_preview
-                    $('#gift_preview').empty();
+                    // filetype ok - keep only "last" file in gift_preview2
+                    $('#gift_preview2').empty();
+
+                    // dirty File Upload plugin/angular integration ==>
                     // clear any old open graph url
-                    var open_graph_url ;
-                    open_graph_url = document.getElementById('gift_open_graph_url1') ;
-                    if (open_graph_url) open_graph_url.value = '' ;
-                    open_graph_url = document.getElementById('gift_open_graph_url2') ;
-                    if (open_graph_url) open_graph_url.value = '' ;
+                    var open_graph_url = $('#gift_open_graph_url1');
+                    if (open_graph_url) {
+                        if (open_graph_url.val() != '') {
+                            open_graph_url.val('');
+                            open_graph_url.trigger('input')
+                        }
+                    }
+                    else {
+                        open_graph_url = open_graph_url = $('#gift_open_graph_url2');
+                        if (open_graph_url) {
+                            if (open_graph_url.val() != '') {
+                                open_graph_url.val('');
+                                open_graph_url.trigger('input')
+                            }
+                        }
+                    }
+                    // <== dirty File Upload plugin/angular integration
+
                     // preview file
-                    data.context = $('<div/>').appendTo('#gift_preview');
+                    data.context = $('<div/>').appendTo('#gift_preview2');
                     var node = $('<p/>') ;
                     //        .append($('<span/>').text(file.name));
                     if (disp_gift_file) disp_gift_file.value = file.name ;

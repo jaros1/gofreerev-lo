@@ -3004,7 +3004,7 @@ class UtilController < ApplicationController
   public
   def open_graph
     table = "tasks_errors" # ajax error table in page header
-    x = 1 / 0 # todo: remove
+    # x = 1 / 0 # todo: remove
     begin
       # sleep 10 # todo: remove
       if !logged_in?

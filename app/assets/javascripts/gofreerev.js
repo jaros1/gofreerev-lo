@@ -540,6 +540,11 @@ var Gofreerev = (function() {
     {
         $(document).ready(
             function () {
+                var check_new_messages_link = document.getElementById("new_messages_count_link");
+                if (!check_new_messages_link) {
+                    add_to_tasks_errors(I18n.t('js.new_messages_count.link_not_found')) ;
+                    return ;
+                }
                 var interval = calculate_new_messages_interval() ;
                 check_new_messages_interval_id = setInterval(function () {
                     // call util/new_messages_count and insert response in new_messages_buffer_div in page header
@@ -549,7 +554,6 @@ var Gofreerev = (function() {
                     // + todo: changed gifts and comments to be replaced in gifts/index page
                     // is post ajax processed in #new_messages_count_link::ajax:success event handler
                     // (update_new_messages_count, update_title, insert_new_comments and insert_update_gifts)
-                    var check_new_messages_link = document.getElementById("new_messages_count_link");
                     // update newest_gift_id and newest_status_update_at before ajax request.
                     // only newer gifts (>newest_gift_id) are ajax inserted in gifts/index page
                     // only gifts and comments with > newest_status_update_at are ajax replaced into gifts/index page
@@ -2998,128 +3002,6 @@ var Gofreerev = (function() {
     } // inIframe
 
 
-    // setup new gift link preview in gifts/index page
-    // fetch open graph meta tags with ajax and display preview information under link
-    // typing delay 2 seconds.
-
-    var gift_open_graph_url_timer;                //timer identifier
-
-    // user is done typing - get open graph meta tags in an ajax request - gift_open_graph_url_preview is called in ajax response
-    function gift_open_graph_url_done () {
-        var url = document.getElementById('gift_open_graph_url1').value ;
-        if (url == '') return ;
-        // setup ajax request
-        $.ajax({
-            url: "/util/open_graph.js",
-            type: "POST",
-            dataType: 'script',
-            data: { url: url },
-            error: function (jqxhr, textStatus, errorThrown) {
-                var pgm = 'gift_open_graph_url_done: ajax: error: ' ;
-                if (leaving_page) return ;
-                var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
-                add_to_tasks_errors(I18n.t('js.open_graph.ajax_error', {error: err, location: 24, debug: 0}));
-            }
-        });
-    } // gift_open_graph_url_done
-
-    // index/gift page: sync content of gift_open_graph_url1 and gift_open_graph_url2 fields (create new gift)
-    function gift_open_graph_url_sync (field1) {
-        // alert('oninput. id = ' + field1.id + ', value = ' + field1.value) ;
-        //var id2 ;
-        //if (field1.id == 'gift_open_graph_url1') id2 = 'gift_open_graph_url2' ;
-        //else id2 = 'gift_open_graph_url1' ;
-        //var field2 = document.getElementById(id2) ;
-        //if (!field2) return ;
-        //field2.value = field1.value ;
-        //// setup timer. fire ajax request in 2 seconds
-        return ;
-        clearTimeout(gift_open_graph_url_timer);
-        if (field1.value != '') {
-            gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
-        }
-    } // gift_open_graph_url_sync
-
-    // preview link before create new gift
-    // response from /util/open_graph.js ajax request in gift_open_graph_url_done
-    function gift_open_graph_url_preview(url, title, description, image) {
-        // alert('gift_open_graph_url_preview: url = ' + url + ', title = ' + title + ', description = ' + description + ', image = ' + image);
-        var pgm = 'gift_open_graph_url_preview: ' ;
-        var gift_preview = document.getElementById('gift_preview') ;
-        if (!gift_preview) return ;
-        // create table with image, title (bold) and description
-        var table, tbody, tr, td, img, b, t ; //, input ;
-        table = document.createElement('TABLE');
-        tbody = document.createElement('TBODY');
-        table.appendChild(tbody);
-        // add image
-        if (image != '') {
-            tr = document.createElement('TR') ;
-            tbody.appendChild(tr) ;
-            td = document.createElement('TD') ;
-            tr.appendChild(td) ;
-            img = document.createElement('IMG') ;
-            img.src = image ;
-            img.width = 200 ;
-            td.appendChild(img) ;
-            //input = document.createElement('INPUT') ;
-            //input.name = 'open_graph_image' ;
-            //input.type = 'hidden' ;
-            //input.value = image ;
-            //input.setAttribute('ng-model', 'ctrl.new_gift.open_graph_image');
-            //td.appendChild(input) ;
-        }
-        // add bold title
-        tr = document.createElement('TR') ;
-        tbody.appendChild(tr) ;
-        td = document.createElement('TD') ;
-        tr.appendChild(td) ;
-        b = document.createElement('B') ;
-        td.appendChild(b) ;
-        t = document.createTextNode(title) ;
-        b.appendChild(t) ;
-        //input = document.createElement('INPUT') ;
-        //input.name = 'open_graph_title' ;
-        //input.type = 'hidden' ;
-        //input.value = title ;
-        //input.setAttribute('ng-model', 'ctrl.new_gift.open_graph_title');
-        //td.appendChild(input) ;
-        // add description
-        tr = document.createElement('TR') ;
-        tbody.appendChild(tr) ;
-        td = document.createElement('TD') ;
-        tr.appendChild(td) ;
-        t = document.createTextNode(description) ;
-        td.appendChild(t) ;
-        //input = document.createElement('INPUT') ;
-        //input.name = 'open_graph_description' ;
-        //input.type = 'hidden' ;
-        //input.value = description ;
-        //input.setAttribute('ng-model', 'ctrl.new_gift.open_graph_description');
-        //td.appendChild(input) ;
-
-        // remove any old preview
-        while (gift_preview.firstChild) {
-            gift_preview.removeChild(gift_preview.firstChild);
-        }
-        var gift_file = document.getElementById('gift_file') ;
-        if (gift_file) gift_file.value = '' ;
-        var disp_gift_file = document.getElementById('disp_gift_file') ;
-        if (disp_gift_file) disp_gift_file.value = '' ;
-        // insert preview
-        gift_preview.appendChild(table) ;
-        // copy open graph values to hidden fields (for angularJS)
-        // todo: remove - angularJS does not support model binding for hidden fields
-        //input = document.getElementById('gift_open_graph_title') ;
-        //if (input) input.value = title ;
-        //else add2log(pgm + 'element with id gift_open_graph_title was not found') ;
-        //input = document.getElementById('gift_open_graph_description') ;
-        //if (input) input.value = description ;
-        //else add2log(pgm + 'element with id gift_open_graph_description was not found') ;
-        //input = document.getElementById('gift_open_graph_image') ;
-        //if (input) input.value = image ;
-        //else add2log(pgm + 'element with id gift_open_graph_image was not found') ;
-    } // gift_open_graph_url_preview
 
     // custom confirm box - for styling
     // http://lesseverything.com/blog/archives/2012/07/18/customizing-confirmation-dialog-in-rails/
@@ -3163,9 +3045,12 @@ var Gofreerev = (function() {
         // error handlers
         set_ajax_debug: set_ajax_debug, // enable/disable JS debug - application.html.erm layout
         clear_ajax_errors: clear_ajax_errors, // used in application.js.erb
+        clear_flash_and_ajax_errors: clear_flash_and_ajax_errors, // used in angularJS module
         move_tasks_errors2: move_tasks_errors2, // used in application.js.erb
+        add_to_tasks_errors: add_to_tasks_errors, // used in angularjs modules
         imgonload: imgonload, // check invalid or missing pictures - used in gifts/index page
         show_debug_log_checkbox: show_debug_log_checkbox, // show/hide debug log in html page
+        add2log: add2log, // used in angularjs module
         // view helpers
         onchange_currency: onchange_currency, // ajax update currency in users/edit page
         show_overflow: show_overflow, // show more text function
@@ -3173,8 +3058,6 @@ var Gofreerev = (function() {
         post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
         autoresize_text_field: autoresize_text_field,
-        gift_open_graph_url_sync: gift_open_graph_url_sync, // create gift - preview open graph link
-        gift_open_graph_url_preview: gift_open_graph_url_preview, // create gift - preview open graph link
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
         start_tasks_form_spinner: start_tasks_form_spinner,
         set_show_more_rows_interval: set_show_more_rows_interval,
@@ -3314,6 +3197,7 @@ angular.module('gifts', [])
             self.new_gift.open_graph_error = null ;
             self.new_gift.open_graph_status = null ;
             self.new_gift.open_graph_time = null ;
+            Gofreerev.clear_flash_and_ajax_errors() ;
         }
 
         // user is done typing - get open graph meta tags in an ajax request - gift_open_graph_url_preview is called in ajax response
@@ -3321,8 +3205,9 @@ angular.module('gifts', [])
             reset_open_graph_preview() ;
             if (self.new_gift.open_graph_url == '') return ;
             // check url & get open graph meta tags - timeout 3 seconds
+            var timeout = 3000 ;
             $http.post('/util/open_graph.json', {url: self.new_gift.open_graph_url}, {
-                timeout: 3000,
+                timeout: timeout,
                 starttime: (new Date).getTime()
             }).
                 success(function (data, status, headers, config) {
@@ -3331,8 +3216,7 @@ angular.module('gifts', [])
                     self.new_gift.open_graph_status = status ;
                     if (data.error) {
                         // "nice" error message from rails
-                        console.log('error response. error = ' + data.error);
-                        self.new_gift.open_graph_error = data.error ;
+                        self.new_gift.open_graph_error  = data.error ;
                     }
                     else if (data.url) {
                         // ok response from rails with preview info
@@ -3347,22 +3231,27 @@ angular.module('gifts', [])
                     }
                 }).
                 error(function (data, status, headers, config) {
-                    // ERROR response - server not responding, timeout, http errors
-                    //console.log('/util/open_graph - error' +
-                    //'. data = ' + JSON.stringify(data) + ', status = ' + JSON.stringify(status) +
-                    //', headers = ' + JSON.stringify(headers) + ', config = ' + JSON.stringify(config)) ;
-                    // server not responding or timeout
-                    var starttime = config.starttime;
-                    var endtime = (new Date).getTime();
-                    var elapsedtime = endtime - starttime;
-                    console.log('error: status = ' + status + ', starttime = ' + starttime + ', endtime = ' + endtime + ', elapsedtime = ' + elapsedtime);
+                    // ERROR response - server not responding, timeout, other http errors
                     // status == 0 (try again later) used for:
                     // 1) firefox work offline     - few ms
                     // 2) rails server not running - few ms
                     // 3) rails server timeout     > 3000 ms
+                    var starttime = config.starttime;
+                    var endtime = (new Date).getTime();
+                    var elapsedtime = endtime - starttime;
+                    console.log('/util/open_graph.json: error: status = ' + status +
+                    ', starttime = ' + starttime + ', endtime = ' + endtime +
+                    ', timeout = ' + timeout + ', elapsedtime = ' + elapsedtime);
+                    if (status != 0) {
+                        console.log('data = ' + JSON.stringify(data)) ;
+                        console.log('status = ' + JSON.stringify(status)) ;
+                        console.log('headers = ' + JSON.stringify(headers)) ;
+                        console.log('config = ' + JSON.stringify(config)) ;
+                    }
                     self.new_gift.open_graph_status = status ;
                     self.new_gift.open_graph_time = endtime ;
-                    self.new_gift.open_graph_error = 'Server not responding' ; // todo: translate
+                    if (status == 0) self.new_gift.open_graph_error = I18n.t('js.new_gift.open_graph_timeout') ;
+                    else self.new_gift.open_graph_error = I18n.t('js.new_gift.open_graph_error', {status: status}) ;
                 });
         } // gift_open_graph_url_done
 

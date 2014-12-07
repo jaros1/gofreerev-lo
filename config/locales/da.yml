@@ -1170,6 +1170,7 @@ da:
         comment_comment_required_text: "Kommentar felt skal udfyldes"
         comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
      new_messages_count:
+        link_not_found: "Kan ikke tjekke for nye beskeder. Link med id new_messages_count_link mangler i html siden."
         ajax_error: "Fejl ved tjek for nye beskeder. %{error}. Mere information i server log."
         js_error: "Javascript fejl ved tjek for nye beskeder. %{error} (%{location},%{debug})."
      insert_new_comments:
@@ -1179,6 +1180,8 @@ da:
      missing_api_picture_urls:
         ajax_error: "Fejl ved tjek af flyttede eller slettede billeder. %{error}. Mere information i server log."
      new_gift:
+        open_graph_timeout: "Kan ikke vise preview for link. Server svarer desværre ikke i øjeblikket."
+        open_graph_error: "Kan ikke vise preview for link. Status kode %{status}. Mere information i klient og server log."
         ajax_error: "Fejl ved oprettelse af nyt opslag. %{error}. Mere information i server log."
         js_error: "Mindre javascript fejl efter oprettelse af opslag. %{error} (%{location},%{debug})."
      gift_actions:

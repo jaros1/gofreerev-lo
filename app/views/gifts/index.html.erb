@@ -54,7 +54,7 @@
                     <tr>
                       <td><%= t '.link_prompt' %></td>
                       <td>
-                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %>
+                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %>
                       </td>
                     </tr>
                     </tbody>
@@ -69,7 +69,7 @@
           <td><%= t '.link_prompt' %></td>
           <td><%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'),
                                :id => "gift_open_graph_url2", :class => 'gift_open_graph_url',
-                               :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %></td>
+                               'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %></td>
         </tr>
         <tr>
           <td colspan="2">
@@ -77,7 +77,7 @@
               <table>
                 <tbody>
                 <tr ng-show="ctrl.new_gift.open_graph_image">
-                  <td><img width="200" src="{{ctrl.new_gift.open_graph_image}}"></td>
+                  <td><img width="200" ng-src="{{ctrl.new_gift.open_graph_image}}"></td>
                 </tr>
                 <tr ng-show="ctrl.new_gift.open_graph_title">
                   <td><b>{{ctrl.new_gift.open_graph_title}}</b></td>
@@ -271,14 +271,6 @@
 <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
 -->
 
-<script>
-  // new gift. check for /gifts?url=..&text==.. share link
-  // ajax get open graph meta tags in 2 seconds and display open graph preview under link
-  (function () {
-      var url = document.getElementById('gift_open_graph_url1') ;
-      if (url.value) Gofreerev.gift_open_graph_url_sync(url) ;
-  })();
-</script>
 
 <!--
   The File Upload processing plugin

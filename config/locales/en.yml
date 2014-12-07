@@ -1165,6 +1165,7 @@ en:
         comment_comment_required_text: "Comment is required"
         comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
      new_messages_count:
+        link_not_found: "Cannot check for new messages. Link with new_messages_count_link was not found in web page." # js.new_messages_count.link_not_found
         ajax_error: "Error when checking for new messages. %{error}. More information in server log."
         js_error: "Javascript error when checking for new messages. %{error} (%{location},%{debug})."
      insert_new_comments:
@@ -1174,6 +1175,8 @@ en:
      missing_api_picture_urls:
         ajax_error: "Error when checking moved or deleted images. %{error}. More information in server log."
      new_gift:
+        open_graph_timeout: "Sorry. Cannot show link preview. Server is not responding at the moment." # js.new_gift.open_graph_timeout
+        open_graph_error: "Cannot show link preview. Status code %{status}. More information in client and server logs."
         ajax_error: "Error when creating new post. %{error}. More information in server log."
         js_error: "Minor javascript error after creating new post. %{error} (%{location},%{debug})."
      gift_actions:

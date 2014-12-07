@@ -3000,11 +3000,11 @@ class UtilController < ApplicationController
 
 
   # check external url from gifts/index page (create new gift)
-  # get open graph tags from html page and json with preview info or jsom with error message
+  # get open graph tags from html page and json with preview info or json with error message
   public
   def open_graph
     table = "tasks_errors" # ajax error table in page header
-    # x = 1 / 0 # todo: remove
+    x = 1 / 0 # todo: remove
     begin
       # sleep 10 # todo: remove
       if !logged_in?

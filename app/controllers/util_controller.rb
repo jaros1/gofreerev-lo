@@ -3000,11 +3000,13 @@ class UtilController < ApplicationController
 
 
   # check external url from gifts/index page (create new gift)
-  # get open graph tags from html page and return link preview in a div
+  # get open graph tags from html page and json with preview info or jsom with error message
   public
   def open_graph
     table = "tasks_errors" # ajax error table in page header
+    # x = 1 / 0 # todo: remove
     begin
+      # sleep 10 # todo: remove
       if !logged_in?
         error = t '.not_logged_in', {}
         render :json => { :error => error }
@@ -3015,6 +3017,7 @@ class UtilController < ApplicationController
       logger.debug2 "url = #{url}"
       og = OpenGraphLink.find_or_create_link(url)
       if !og
+        # invalid url or server not responding
         render :json => { }.to_json
         return
       end
@@ -3032,7 +3035,7 @@ class UtilController < ApplicationController
       render :json => { :error => error }
       # format_response_key '.exception', :error => e.message, :table => table
     end
-  end
+  end # open_graph
 
   public
   def upload

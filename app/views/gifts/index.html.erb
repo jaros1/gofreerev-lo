@@ -54,11 +54,7 @@
                     <tr>
                       <td><%= t '.link_prompt' %></td>
                       <td>
-                        <%= f.text_field :open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %>
-                        <%# todo: remove - angularJS does not support 2 way binding for hidden fields %>
-                        <%# f.hidden_field :open_graph_title, 'ng-model' => 'ctrl.new_gift.open_graph_title' %>
-                        <%# f.hidden_field :open_graph_description, 'ng-model' => 'ctrl.new_gift.open_graph_description' %>
-                        <%# f.hidden_field :open_graph_image, 'ng-model' => 'ctrl.new_gift.open_graph_image' %>
+                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %>
                       </td>
                     </tr>
                     </tbody>
@@ -71,13 +67,30 @@
         </tr>
         <tr class="new_gift_link_small">
           <td><%= t '.link_prompt' %></td>
-          <td><%= f.text_field :open_graph_url, :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'),
+          <td><%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'),
                                :id => "gift_open_graph_url2", :class => 'gift_open_graph_url',
                                :oninput=>"Gofreerev.gift_open_graph_url_sync(this)", 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %></td>
         </tr>
         <tr>
           <td colspan="2">
-            <div id="gift_preview" class="files"></div>
+            <div id="gift_preview" class="files">
+              <table>
+                <tbody>
+                <tr ng-show="ctrl.new_gift.open_graph_image">
+                  <td><img width="200" src="{{ctrl.new_gift.open_graph_image}}"></td>
+                </tr>
+                <tr ng-show="ctrl.new_gift.open_graph_title">
+                  <td><b>{{ctrl.new_gift.open_graph_title}}</b></td>
+                </tr>
+                <tr ng-show="ctrl.new_gift.open_graph_description">
+                  <td>{{ctrl.new_gift.open_graph_description}}</td>
+                </tr>
+                <tr ng-show="ctrl.new_gift.open_graph_error">
+                  <td>{{ctrl.new_gift.open_graph_error}}</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
           </td>
         </tr>
         <tr class="new_gift_submit_small">

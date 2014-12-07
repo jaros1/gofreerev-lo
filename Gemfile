@@ -182,12 +182,12 @@ gem 'exception_notification'
 # http://embedly.github.io/jquery-preview/demo/
 # http://embed.ly/
 # used on dev2 server where there is an issue with nokogiri dependencies
-gem 'embedly'
+# gem 'embedly'
 
 # https://github.com/huyha85/opengraph_parser
 # EMBEDLY = false: use opengraph_parser to parse open graph metatags
 # used in development environment
-#gem "opengraph_parser"
+gem "opengraph_parser"
 
 # http://www.jackiejohnston.us/blog/bootstrap-your-app/
 gem "twitter-bootstrap-rails"

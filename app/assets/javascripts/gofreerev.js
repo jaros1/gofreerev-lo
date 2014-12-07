@@ -3300,44 +3300,79 @@ angular.module('gifts', [])
         // watch new_gift.open_graph_url - send open graph ajax request to server with 2 seconds typing delay
 
 
-        // setup new gift link preview in gifts/index page
-        // fetch open graph meta tags with ajax and display preview information under link
-        // typing delay 2 seconds.
+        // setup new gift link open graph preview in gifts/index page
+        // fetch open graph meta tags from server with ajax and display preview information under link
+        // typing delay 2 seconds before sending ajax request to server.
 
-        var gift_open_graph_url_timer;                //timer identifier
+        var gift_open_graph_url_timer;                // timer identifier
+
+        // helper - reset all open graph variables
+        function reset_open_graph_preview () {
+            self.new_gift.open_graph_description = null ;
+            self.new_gift.open_graph_title = null ;
+            self.new_gift.open_graph_image = null ;
+            self.new_gift.open_graph_error = null ;
+            self.new_gift.open_graph_status = null ;
+            self.new_gift.open_graph_time = null ;
+        }
 
         // user is done typing - get open graph meta tags in an ajax request - gift_open_graph_url_preview is called in ajax response
         function gift_open_graph_url_done () {
+            reset_open_graph_preview() ;
             if (self.new_gift.open_graph_url == '') return ;
-            // check url & get open graph meta tags
-            $http.post('/util/open_graph.json', {url: self.new_gift.open_graph_url}).
-                success(function(data, status, headers, config) {
-                    // this callback will be called asynchronously
-                    // when the response is available
-                    console.log('/util/open_graph - success. data = ' + JSON.stringify(data)) ;
-                    if (data.error) console.log('error response');
+            // check url & get open graph meta tags - timeout 3 seconds
+            $http.post('/util/open_graph.json', {url: self.new_gift.open_graph_url}, {
+                timeout: 3000,
+                starttime: (new Date).getTime()
+            }).
+                success(function (data, status, headers, config) {
+                    // OK response - can be empty - can be an error message
+                    // console.log('/util/open_graph - success. data = ' + JSON.stringify(data));
+                    self.new_gift.open_graph_status = status ;
+                    if (data.error) {
+                        // "nice" error message from rails
+                        console.log('error response. error = ' + data.error);
+                        self.new_gift.open_graph_error = data.error ;
+                    }
                     else if (data.url) {
-                        self.new_gift.open_graph_url = data.url ;
-                        self.new_gift.open_graph_description = data.description ;
-                        self.new_gift.open_graph_title = data.title ;
-                        self.new_gift.open_graph_image = data.image ;
+                        // ok response from rails with preview info
+                        self.new_gift.open_graph_url = data.url;
+                        self.new_gift.open_graph_description = data.description;
+                        self.new_gift.open_graph_title = data.title;
+                        self.new_gift.open_graph_image = data.image;
+                    }
+                    else {
+                        // ok response from rails - url must be invalid
+                        null;
                     }
                 }).
-                error(function(data, status, headers, config) {
-                    // called asynchronously if an error occurs
-                    // or server returns response with an error status.
-                    console.log('/util/open_graph - error') ;
+                error(function (data, status, headers, config) {
+                    // ERROR response - server not responding, timeout, http errors
+                    //console.log('/util/open_graph - error' +
+                    //'. data = ' + JSON.stringify(data) + ', status = ' + JSON.stringify(status) +
+                    //', headers = ' + JSON.stringify(headers) + ', config = ' + JSON.stringify(config)) ;
+                    // server not responding or timeout
+                    var starttime = config.starttime;
+                    var endtime = (new Date).getTime();
+                    var elapsedtime = endtime - starttime;
+                    console.log('error: status = ' + status + ', starttime = ' + starttime + ', endtime = ' + endtime + ', elapsedtime = ' + elapsedtime);
+                    // status == 0 (try again later) used for:
+                    // 1) firefox work offline     - few ms
+                    // 2) rails server not running - few ms
+                    // 3) rails server timeout     > 3000 ms
+                    self.new_gift.open_graph_status = status ;
+                    self.new_gift.open_graph_time = endtime ;
+                    self.new_gift.open_graph_error = 'Server not responding' ; // todo: translate
                 });
         } // gift_open_graph_url_done
 
         self.new_gift_open_graph_url_changed = function () {
             // setup timer. fire ajax request in 2 seconds unless cancelled
             clearTimeout(gift_open_graph_url_timer);
-            if (self.new_gift.open_graph_url != '') {
-                gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
-            }
-
+            if (!self.new_gift.open_graph_url) reset_open_graph_preview() ;
+            else gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
         }
+
         // end GiftsCtrl
     }]) ;
 

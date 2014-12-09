@@ -48,25 +48,35 @@ var Gofreerev = (function() {
 
     // for client side debugging - writes JS messages to debug_log div - only used if DEBUG_AJAX = true
     var ajax_debug = false ;
-    var debug_log = [] ;
+    var temp_debug_log = [] ; // temp JS debug log until page is ready
     function set_ajax_debug (boolean) {
         ajax_debug = boolean
     }
+    function empty_temp_debug_log() {
+        var log = document.getElementById('debug_log') ;
+        if (!log) return ;
+        if (temp_debug_log.length > 0) {
+            // empty JS buffer
+            for (var i=0 ; i<temp_debug_log.length ; i++) log.innerHTML = log.innerHTML + temp_debug_log[i] + '<br>' ;
+            temp_debug_log = [] ;
+        }
+    } // empty_temp_debug_log
     function add2log (text) {
-        if (!ajax_debug) return ;
+        // if (!ajax_debug) return ;
         var log = document.getElementById('debug_log') ;
         if (!log) {
             // buffer log messages in JS array until page is ready
-            debug_log.push(text) ;
+            temp_debug_log.push(text) ;
             return
         }
-        if (debug_log.length > 0) {
-            // empty JS buffer
-            for (var i=0 ; i<debug_log.length ; i++) log.innerHTML = log.innerHTML + text + '<br>' ;
-            debug_log = [] ;
-        }
+        empty_temp_debug_log() ;
         log.innerHTML = log.innerHTML + text + '<br>' ;
     } // add2log
+
+    // empty temp debug log
+    $(document).ready(function () {
+        empty_temp_debug_log() ;
+    });
 
     // this ajax flash is used when inserting or updating gifts and comments in gifts table
     // todo: add some kind of flash when removing (display=none) rows from gifts table
@@ -2255,17 +2265,20 @@ var Gofreerev = (function() {
     } // move_tasks_errors2
 
 
-    // ajax enable/disable gift file field in gifts/index page
-    // enable after granting write permission to aåi wall
+    // show/hide new gift file field in gifts/index page
+    // enable after granting write permission to api wall
     // disable after revoking last write permission to api wall
-    function disable_enable_file_upload (gift_file_enabled) {
-        // add2log('disable_enable_file_upload: gift_file_enabled = ' + gift_file_enabled) ;
-        if (gift_file_enabled === undefined) return;
-        var gift_file = document.getElementById('gift_file');
-        if (!gift_file) return ;
-        gift_file.disabled = !gift_file_enabled ;
-        // add2log('gift_file.disabled = ' + gift_file.disabled) ;
-    } // disable_enable_file_upload
+    var file_upload_enabled = true ;
+    function set_file_upload_enabled (boolean) {
+        add2log('set_file_upload_enabled: boolean = ' + boolean) ;
+        file_upload_enabled = boolean ; // save flag for angularJS
+    } // set_file_upload_enabled
+    // check if file upload has been disabled. Used by angularJS ng-show and ng-hide
+    function is_file_upload_disabled () {
+        add2log('is_file_upload_disabled: ' + (!file_upload_enabled)) ;
+        return (!file_upload_enabled) ;
+    } // is_file_upload_disabled
+
 
 
     // display cookie_note div for the first SHOW_COOKIE_NOTE seconds when a new user visits gofreerev
@@ -3052,6 +3065,8 @@ var Gofreerev = (function() {
         imgonload: imgonload, // check invalid or missing pictures - used in gifts/index page
         show_debug_log_checkbox: show_debug_log_checkbox, // show/hide debug log in html page
         add2log: add2log, // used in angularjs module
+        set_file_upload_enabled: set_file_upload_enabled,
+        is_file_upload_disabled: is_file_upload_disabled,
         // view helpers
         onchange_currency: onchange_currency, // ajax update currency in users/edit page
         show_overflow: show_overflow, // show more text function
@@ -3077,6 +3092,7 @@ var Gofreerev = (function() {
 angular.module('gifts', [])
     .controller('GiftsCtrl', ['$http', function ($http) {
         var self = this;
+
         self.language = 'da' ;
         // extend user object with custom methods
         function user (hash) {
@@ -3176,8 +3192,12 @@ angular.module('gifts', [])
         ];
 
         // new gift default values
-        self.new_gift = {direction: 'giver'}
-
+        self.new_gift = {
+            direction: 'giver',
+            is_file_upload_disabled: function () {
+                return Gofreerev.is_file_upload_disabled()
+            }
+        }
 
         // new gift link open graph preview in gifts/index page ==>
 
@@ -3275,8 +3295,6 @@ angular.module('gifts', [])
         self.create_new_gift = function () {
             alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
         }
-
-
 
         // end GiftsCtrl
     }]) ;

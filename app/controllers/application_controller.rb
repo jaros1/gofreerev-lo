@@ -1539,8 +1539,33 @@ class ApplicationController < ActionController::Base
     # add gofreerev_get_friends - used on post_login_<provider>
     api_client.define_singleton_method :gofreerev_get_friends do |logger|
       # get arrays with follows and followers
-      follows = self.user_follows
+      begin
+        follows = self.user_follows
+      rescue Instagram::BadRequest => e
+        # 400: The access_token provided is invalid. (Instagram::BadRequest) gives stack dump:
+        # D, [2014-12-09T08:46:34.301990 #11628] DEBUG -- : rescue in generic_post_login: Exception: GET https://api.instagram.com/v1/users/self/follows.json?access_token=1092213433.11b9d9c.c6f8442384e64ba2a03f387b3ce8971d: 400: The access_token provided is invalid. (Instagram::BadRequest)
+        # D, [2014-12-09T08:46:34.304499 #11628] DEBUG -- : rescue in generic_post_login: Backtrace: /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/instagram-1.1.3/lib/faraday/raise_http_exception.rb:11:in `block in call'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday-0.9.0/lib/faraday/response.rb:57:in `on_complete'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/instagram-1.1.3/lib/faraday/raise_http_exception.rb:8:in `call'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday_middleware-0.9.1/lib/faraday_middleware/response_middleware.rb:30:in `call'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday-0.9.0/lib/faraday/response.rb:8:in `call'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday-0.9.0/lib/faraday/request/url_encoded.rb:15:in `call'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/instagram-1.1.3/lib/faraday/oauth2.rb:33:in `call'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday-0.9.0/lib/faraday/rack_builder.rb:139:in `build_response'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday-0.9.0/lib/faraday/connection.rb:377:in `run_request'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/faraday-0.9.0/lib/faraday/connection.rb:140:in `get'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/instagram-1.1.3/lib/instagram/request.rb:31:in `request'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/instagram-1.1.3/lib/instagram/request.rb:9:in `get'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/shared/bundle/ruby/2.0.0/gems/instagram-1.1.3/lib/instagram/client/users.rb:66:in `user_follows'
+        # /mnt/plugdisk/railsapps/gofreerev-fb/releases/20141114142829/app/controllers/application_controller.rb:1542:in `block in init_api_client_instagram'
+        if e.message =~ /The access_token provided is invalid/
+          raise AppNotAuthorized
+        else
+          raise
+        end
+      end
       followed_by = self.user_followed_by
+
       # api_friend: Y: mutual friends, F follows, S Stalked by = followed_by
       api_friends = {}
       follows.each { |f| api_friends[f.id] = 'F' }
@@ -2456,13 +2481,16 @@ class ApplicationController < ActionController::Base
       next unless API_GIFT_PICTURE_STORE[login_user.provider] == :local
       return :local if post_on_wall_allowed?(login_user.provider)
     end
+    logger.debug2 "No provider with local picture store was found for logged in users"
     # :api picture store?
     @users.each do |login_user|
       next unless API_GIFT_PICTURE_STORE[login_user.provider] == :api
       return :api if  post_on_wall_allowed?(login_user.provider)
     end
+    logger.debug2 "No provider with api picture store was found for logged in users"
     # fallback option when :local or :api picture store was not available
     return :local if API_GIFT_PICTURE_STORE[:fallback] == :local
+    logger.debug2 "Fallback to local picture store was disabled"
     # no fallback - could be a readonly API as google+ or instagram - image upload is not allowed
     nil
   end # find_picture_store
@@ -2472,7 +2500,9 @@ class ApplicationController < ActionController::Base
     case find_picture_store()
       when :local then Picture.new_perm_rel_path image_type
       when :api then Picture.new_temp_rel_path image_type
-      else nil # error - no picture store - could be google+ - image upload is not allowed
+      else
+        logger.warn2 "error - no picture store - could be google+ - image upload is not allowed"
+        nil
     end
   end # new_temp_or_perm_rel_path
 
@@ -2484,7 +2514,9 @@ class ApplicationController < ActionController::Base
 
   private
   def post_image_allowed?
-    (find_picture_store() != nil)
+    x = find_picture_store() ;
+    logger.debug2 "picture_store = #{x} (#{x.class})"
+    (x != nil)
   end # post_image_allowed?
   helper_method "post_image_allowed?"
 

@@ -35,24 +35,26 @@
           <td><%= f.text_area :description, :size => '60x2', :placeholder => t('.description_placeholder'), :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => 'new_gift_text', :required => true, 'ng-model' => 'ctrl.new_gift.description' %>
             <%= f.submit t('.gift_submit_button_text'), "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
         </tr>
+        <% logger.debug2 "post_image_allowed?() = #{post_image_allowed?()}" -%>
         <tr title="<%= t ".file_title_#{post_image_allowed?()}", :appname => APP_NAME %>">
           <td>
-            <div class="fileupload bottom">
+            <div class="fileupload bottom" ng-hide="ctrl.new_gift.is_file_upload_disabled">
               <%= t '.file_prompt' %>
-              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
+              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), "ng-disabled" => 'ctrl.new_gift.is_file_upload_disabled()', :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
               <%= f.hidden_field :datatype %>
             </div>
+            <div ng-show="ctrl.new_gift.is_file_upload_disabled"><%= t '.link_prompt1' %></div>
           </td>
           <td>
             <table>
               <tbody>
               <tr>
-                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => t('.file_placeholder'), :disabled => "disabled", :style => "line-height:16px;" %></td>
+                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => t('.file_placeholder'), :disabled => "disabled", :style => "line-height:16px;", "ng-hide" => "ctrl.new_gift.is_file_upload_disabled" %></td>
                 <td>
                   <table class="new_gift_link_large">
                     <tbody>
                     <tr>
-                      <td><%= t '.link_prompt' %></td>
+                      <td><div ng-hide="ctrl.new_gift.is_file_upload_disabled"><%= t '.link_prompt2' %></div></td>
                       <td>
                         <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_change()' %>
                       </td>
@@ -101,6 +103,12 @@
       </table>
   <% end # form   -%>
 </div>
+
+<%# show/hide file upload input fields (angularJS) + enable/disable file upload plugin (drag & drop). -%>
+<script>
+    Gofreerev.set_file_upload_enabled(<%= post_image_allowed? %>) ;
+</script>
+
 <%# Modernizr.progressbar is required -%>
 <div class="demo-wrapper html5-progress-bar" id="progressbar-div" style="display: none">
   <div class="progress-bar-wrapper">
@@ -278,6 +286,7 @@
   https://blueimp.github.io/jQuery-File-Upload/
   Some scripts have to be included here!
 -->
+
 <script src="/assets/jquery.fileupload-process.js"></script>
 <script src="/assets/jquery.fileupload-image.js"></script>
 <script src="/assets/jquery.fileupload-validate.js"></script>
@@ -305,6 +314,7 @@
                                         $this.remove();
                                         data.abort();
                                     });
+                            console.log('uploadButton, onclick: data = ' + JSON.stringify(data)) ;
                             data.submit().always(function () {
                                 $this.remove();
                             });
@@ -327,8 +337,10 @@
             var disp_gift_file = document.getElementById('disp_gift_file');
             $.each(data.files.reverse(), function (index, file) {
                 var filetype = data.originalFiles[index].type ;
-                if (!/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)) {
-                    // invalid filetype - remove from file arrays
+                if (Gofreerev.is_file_upload_disabled() || (!(/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)))) {
+                    // upload disabled or invalid filetype - remove from file arrays
+                    if (Gofreerev.is_file_upload_disabled()) Gofreerev.add2log('File upload plugin - file upload is disabled') ;
+                    else Gofreerev.add2log('File upload plugin - invalid file type ' + filetype) ;
                     data.originalFiles.splice(index,1) ;
                     data.files.splice(index,1) ;
                 }
@@ -419,3 +431,4 @@
                 .parent().addClass($.support.fileInput ? undefined : 'disabled');
     });
 </script>
+

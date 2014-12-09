@@ -2796,7 +2796,7 @@ class UtilController < ApplicationController
   #end # post_on_vkontakte
 
 
-    # check after post_on_<provider>'s' if user have write access to any api wall
+  # check after post_on_<provider>'s' if user have write access to any api wall
   # disable if user does not have granted write permission to any api wall
   # enable if user have granted write permission to one api wall
   # todo: should also change title ......

@@ -1455,3 +1455,7 @@
     });
 
 }));
+
+function debug_file_upload_plugin() {
+    console.log('debug_file_upload_plugin');
+}

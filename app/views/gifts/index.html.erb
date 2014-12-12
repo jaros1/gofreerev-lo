@@ -38,23 +38,23 @@
         <% logger.debug2 "post_image_allowed?() = #{post_image_allowed?()}" -%>
         <tr title="<%= t ".file_title_#{post_image_allowed?()}", :appname => APP_NAME %>">
           <td>
-            <div class="fileupload bottom" ng-hide="ctrl.new_gift.is_file_upload_disabled">
+            <div class="fileupload bottom" ng-hide="ctrl.new_gift.is_file_upload_disabled()">
               <%= t '.file_prompt' %>
-              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), "ng-disabled" => 'ctrl.new_gift.is_file_upload_disabled()', :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
+              <%= file_field_tag :gift_file, :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
               <%= f.hidden_field :datatype %>
             </div>
-            <div ng-show="ctrl.new_gift.is_file_upload_disabled"><%= t '.link_prompt1' %></div>
+            <div ng-show="ctrl.new_gift.is_file_upload_disabled()"><%= t '.link_prompt1' %></div>
           </td>
           <td>
             <table>
               <tbody>
               <tr>
-                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => t('.file_placeholder'), :disabled => "disabled", :style => "line-height:16px;", "ng-hide" => "ctrl.new_gift.is_file_upload_disabled" %></td>
+                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => t('.file_placeholder'), :disabled => "disabled", :style => "line-height:16px;", "ng-hide" => "ctrl.new_gift.is_file_upload_disabled()" %></td>
                 <td>
                   <table class="new_gift_link_large">
                     <tbody>
                     <tr>
-                      <td><div ng-hide="ctrl.new_gift.is_file_upload_disabled"><%= t '.link_prompt2' %></div></td>
+                      <td><div ng-hide="ctrl.new_gift.is_file_upload_disabled()"><%= t '.link_prompt2' %></div></td>
                       <td>
                         <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_change()' %>
                       </td>
@@ -104,7 +104,7 @@
   <% end # form   -%>
 </div>
 
-<%# show/hide file upload input fields (angularJS) + enable/disable file upload plugin (drag & drop). -%>
+<%# inject file upload status from rails to angularJS and File Upload Plugin (drag & drop) -%>
 <script>
     Gofreerev.set_file_upload_enabled(<%= post_image_allowed? %>) ;
 </script>
@@ -136,7 +136,7 @@
       <hr>
     </div>
 <% end -%>
-<!--
+
 
 <%# gifts table -%>
 <div style="width: 100%">
@@ -164,8 +164,8 @@
           <tr>
             <td>
               <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text">
-                <a href="/da/da/gifts/{{gift.giftid}}" title="Klik på link for flere informationer om opslag"> 3. dec 2014 / 0,00
-                  DKK / Jan R tilbyder</a>
+                <a href="/da/da/gifts/{{gift.giftid}}" title="Klik på link for flere informationer om opslag"> {{gift.date | dateFormatShort}} / {{gift.price | priceFormat:2}}
+                  {{gift.currency}} / Jan R tilbyder</a>
                 : {{gift.description}}
               </div>
             </td>
@@ -177,71 +177,13 @@
     <tr id='gift-{{gift.giftid}}-links'>
       <td colspan="2"></td>
       <td colspan="2">
-        <div id="gift-{{gift.giftid}}-overflow-link" class="overflow" style="display: none">
-          <a href="#" ng-click="return Gofreerev.show_overflow(this)">Vis mere tekst</a> -&nbsp;
-        </div>
-        <a class="gift-action-link" data-method="post" data-remote="true" data-type="script" format="js" href="/da/util/like_gift?gift_id={{gift.giftid}}" id="gift-{{gift.giftid}}-like-unlike-link" rel="nofollow">Synes
-          om</a>
-        -
-        <a class="gift-action-link" data-method="post" data-remote="true" data-type="script" format="js" href="/da/util/unfollow_gift?gift_id={{gift.giftid}}" id="gift-{{gift.giftid}}-follow-unfollow-link" rel="nofollow">Følg
-          ikke længere</a>
-        - <select id="share_gift_{{gift.giftid}}" name="share_gift_{{gift.giftid}}" onchange="get_share_gift_link(this)">
-        <option value="">Del på:</option>
-        <option value="appnet">App.net</option>
-        <option value="arto">Arto</option>
-        <option value="blogger">Blogger</option>
-        <option value="buffer">Buffer</option>
-        <option value="delicious">Delicious</option>
-        <option value="digg">Digg</option>
-        <option value="facebook">Facebook</option>
-        <option value="google_oauth2">Google+</option>
-        <option value="linkedin">LinkedIn</option>
-        <option value="myspace">MySpace</option>
-        <option value="pinterest">Pinterest</option>
-        <option value="reddit">Reddit</option>
-        <option value="sonico">Sonico</option>
-        <option value="stumbleupon">Stumble</option>
-        <option value="tumblr">Tumblr</option>
-        <option value="twitter">Twitter</option>
-        <option value="vkontakte">VK</option>
-        <option value="odnoklassniki">ok.ru</option>
-      </select>
-        -
-        <a class="gift-action-link" data-confirm="Slet opslag?" data-method="post" data-remote="true" data-type="script" format="js" href="/da/util/delete_gift?gift_id={{gift.giftid}}" id="gift-{{gift.giftid}}-delete-link" rel="nofollow">Slet
-          opslag</a>
       </td>
     </tr>
 
-    <tr id='gift--comment-new'>
+    <tr id='gift-{{gift.giftid}}-comment-new'>
       <td colspan="2" style="text-align: right; vertical-align: top">
       </td>
       <td colspan="2">
-        <form accept-charset="UTF-8" ng-submit="ctrl.new_comment(gift.giftid)" class="new_comment" id="gift-{{gift.giftid}}-new-comment-form">
-          <div style="margin:0;padding:0;display:inline"><input name="utf8" type="hidden" value="&#x2713;"/></div>
-          <input id="gift-{{gift.giftid}}-comment-gift-id" name="comment[gift_id]" type="hidden" value="VzQVv68g6ZiyBugWsYxr" ng-model="ctrl.new_comment.{{gift.giftid}}.gift_id"/>
-          <input id="gift-{{gift.giftid}}-comment-new-deal-yn" name="comment[new_deal_yn]" type="hidden" ng-model="ctrl.new_comment.new_deal_yn"/>
-
-          <table style="border-spacing: 0;">
-            <tr id="gift-{{gift.giftid}}-comment-new-price-tr" style="display: none">
-              <td colspan="2">
-                <input id="gift-{{gift.giftid}}-comment-new-price" name="comment[price]" placeholder="Pris" size="10" type="text" />
-                frie DKK
-              </td>
-            </tr>
-            <tr>
-              <td><textarea class="new_com_text" cols="60" id="gift-{{gift.giftid}}-comment-new-textarea" name="comment[comment]" onfocus="Gofreerev.autoresize_text_field(this)" placeholder="Skriv en kommentar..." rows="1">
-</textarea></td>
-              <td>
-                <input class="submit_comment_large" id="gift-{{gift.giftid}}-comment-new-submit-1" name="commit" ng-click="return gift.csv_comment()" type="submit" value="Gem"/>
-              </td>
-            </tr>
-            <tr class="submit_comment_small">
-              <td colspan="2">
-                <input id="gift-{{gift.giftid}}-comment-new-submit-2" name="commit" ng-click="return gift.csv_comment()" type="submit" value="Gem"/>
-              </td>
-            </tr>
-          </table>
-        </form>
       </td>
     </tr>
 
@@ -273,12 +215,14 @@
 </div>
 <br/>
 
+
+
 <%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows. set DEBUG_AJAX to true in initializers/constraints.rb to get more ajax debug information -%>
 <%= link_to "show-more-rows", "/gifts?last_row_id=#{@last_row_id}",
             :remote => true, :data => { :type => :script }, :format => :js,
             :id => "show-more-rows-link", :style => "display: none" %>
 <%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
--->
+
 
 
 <!--
@@ -302,9 +246,11 @@
                         .addClass('btn btn-primary')
                         .prop('disabled', true)
                         .prop('id', 'gift_file_button')
-                        .css('display', '')
+                        .css('display', 'none')
                         .text('Processing...')
                         .on('click', function () {
+                            console.log('uploadButton, onclick: start') ;
+                            debug_file_upload_plugin();
                             var $this = $(this),
                                     data = $this.data();
                             $this
@@ -338,7 +284,7 @@
             $.each(data.files.reverse(), function (index, file) {
                 var filetype = data.originalFiles[index].type ;
                 if (Gofreerev.is_file_upload_disabled() || (!(/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)))) {
-                    // upload disabled or invalid filetype - remove from file arrays
+                    // file upload disabled or invalid filetype - remove from file arrays
                     if (Gofreerev.is_file_upload_disabled()) Gofreerev.add2log('File upload plugin - file upload is disabled') ;
                     else Gofreerev.add2log('File upload plugin - invalid file type ' + filetype) ;
                     data.originalFiles.splice(index,1) ;

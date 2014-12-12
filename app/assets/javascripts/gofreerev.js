@@ -2275,7 +2275,7 @@ var Gofreerev = (function() {
     } // set_file_upload_enabled
     // check if file upload has been disabled. Used by angularJS ng-show and ng-hide
     function is_file_upload_disabled () {
-        add2log('is_file_upload_disabled: ' + (!file_upload_enabled)) ;
+        // add2log('is_file_upload_disabled: ' + (!file_upload_enabled)) ;
         return (!file_upload_enabled) ;
     } // is_file_upload_disabled
 
@@ -3054,6 +3054,8 @@ var Gofreerev = (function() {
      };
      */
 
+
+
     // export public used methods (views)
     return {
         // error handlers
@@ -3297,4 +3299,27 @@ angular.module('gifts', [])
         }
 
         // end GiftsCtrl
-    }]) ;
+    }])
+    .filter('dateFormatShort', [function () {
+        var date_formats_short = I18n.t('date.formats.short') ;
+        if (!date_formats_short) date_formats_short = '%b %d' ;
+        return function (ts) {
+            if (!ts) return ts ;
+            return I18n.strftime((new Date(ts*1000)), date_formats_short)  ;
+        } ;
+    }])
+    .filter('priceFormat', [function () {
+        var delimiter = I18n.t('number.format.delimiter') ;
+        var default_precision = I18n.t('number.format.precision') ;
+        var separator = I18n.t('number.format.separator') ;
+        var strip_insignificant_zeros= I18n.t('number.format.strip_insignificant_zeros') ;
+        return function (p, precision) {
+            if (typeof p == 'undefined') return p ;
+            if (p == null) return p ;
+            if (typeof precision == 'undefined') precision = default_precision ;
+            if (precision == null) precision = default_precision ;
+            return I18n.toNumber(p,
+                {delimiter: delimiter, precision: precision,
+                    separator: separator, strip_insignificant_zeros: strip_insignificant_zeros}) ;
+        }
+    }]);

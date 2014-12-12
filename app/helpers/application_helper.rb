@@ -64,7 +64,7 @@ module ApplicationHelper
   end # render_page_footer
 
 
-  # format prices - user currency is used for default seperators
+  # format prices - user currency is used for default separators
   def format_price (price)
     return nil unless price
     # logger.debug2  "@user_currency_separator = #{@user_currency_separator}, @user_currency_delimiter = #{@user_currency_delimiter}"

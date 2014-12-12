@@ -452,11 +452,12 @@ da:
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
+        gift_link_title: "Klik på link for flere informationer om opslag"
+        gift_picture_title: "Klik på billede for flere informationer om opslag"
+        # format direction - todo: AnhularJS - moved to js.gift.*
         direction_giver: "%{username} tilbyder"
         direction_receiver: "%{username} søger"
         direction_giver_and_receiver: "fra %{givername} til %{receivername}"
-        gift_link_title: "Klik på link for flere informationer om opslag"
-        gift_picture_title: "Klik på billede for flere informationer om opslag"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
         gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
         optional_price: "/ %{price}"
@@ -1264,3 +1265,7 @@ da:
         href_vkontakte:
      open_graph:
         ajax_error: "Kan ikke tjekke link. %{error}. Mere information i server log."
+     gift: # from gifts.api_gift - for AngularJS filter
+        direction_giver: "%{givername} tilbyder"
+        direction_receiver: "%{receivername} søger"
+        direction_both: "fra %{givername} til %{receivername}"

@@ -3016,6 +3016,30 @@ var Gofreerev = (function() {
     } // inIframe
 
 
+    // Angular helpers
+
+    // users - read from local storage - used in angularJS filter functions
+    var users ;
+    var users_index_by_user_id = {} ;
+    function init_users (array) {
+        users = array ;
+        users_index_by_user_id = {}
+        for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+    }
+    function get_users () {
+        return users ;
+    }
+    function get_user (user_id) {
+        if (typeof users == 'undefined') return null ;
+        var i = users_index_by_user_id[user_id] ;
+        if (typeof i == 'undefined') return null ;
+        var user = users[i] ;
+        if (!user.short_user_name) {
+            var user_name_a = user.user_name.split(' ') ;
+            user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
+        }
+        return user ;
+    }
 
     // custom confirm box - for styling
     // http://lesseverything.com/blog/archives/2012/07/18/customizing-confirmation-dialog-in-rails/
@@ -3084,7 +3108,11 @@ var Gofreerev = (function() {
         report_missing_api_picture_urls: report_missing_api_picture_urls,
         // client side validations
         csv_gift: csv_gift,
-        csv_comment: csv_comment
+        csv_comment: csv_comment,
+        // angular helpers
+        init_users: init_users,
+        get_users: get_users,
+        get_user: get_user
     };
 })();
 // Gofreerev closure end
@@ -3095,41 +3123,35 @@ angular.module('gifts', [])
     .controller('GiftsCtrl', ['$http', function ($http) {
         var self = this;
 
-        self.language = 'da' ;
-        // extend user object with custom methods
-        function user (hash) {
-            hash.href = function() {
-                return '/' + hash.language + '/users/' + hash.user_id ;
-            }
-            return hash
+        self.language = function() {
+            return I18n.locale || I18n.defaultLocale ;
         }
+
         // test data - users - todo: receive array with login users (me) after login
-        self.users = [
-            user({
+        Gofreerev.init_users([{
                 user_id: 920,
                 provider: 'facebook',
                 user_name: 'Jan Roslind',
-                short_user_name: 'Jan R',
                 balance: null,
                 api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623'
-            }),
-            user({
+            },
+            {
                 user_id: 791,
                 provider: 'linkedin',
                 user_name: 'Jan Roslind',
-                short_user_name: 'Jan R',
                 balance: null,
                 api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ'
-            }),
-            user({
+            },
+            {
                 user_id: 998,
                 provider: 'instagram',
                 user_name: 'gofreerev gofreerev',
-                short_user_name: 'gofreerev g',
                 balance: null,
                 api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg'
-            })
-        ];
+            }
+        ]);
+
+        // test data - gifts - todo: load gifts from local storage - maybe a service?
         // extend gift object with custom methods
         function gift (hash) {
             hash.csv_comment = function() {
@@ -3137,7 +3159,6 @@ angular.module('gifts', [])
             }
             return hash ;
         }
-        // test data - gifts - todo: load gifts from local storage - maybe a service?
         self.gifts = [
             gift({
                 giftid: 1731,
@@ -3301,6 +3322,7 @@ angular.module('gifts', [])
         // end GiftsCtrl
     }])
     .filter('dateFormatShort', [function () {
+        // format date using date.formats.short
         var date_formats_short = I18n.t('date.formats.short') ;
         if (!date_formats_short) date_formats_short = '%b %d' ;
         return function (ts) {
@@ -3309,6 +3331,7 @@ angular.module('gifts', [])
         } ;
     }])
     .filter('priceFormat', [function () {
+        // format number using number.format, argv1 = precision
         var delimiter = I18n.t('number.format.delimiter') ;
         var default_precision = I18n.t('number.format.precision') ;
         var separator = I18n.t('number.format.separator') ;
@@ -3321,5 +3344,21 @@ angular.module('gifts', [])
             return I18n.toNumber(p,
                 {delimiter: delimiter, precision: precision,
                     separator: separator, strip_insignificant_zeros: strip_insignificant_zeros}) ;
+        }
+    }])
+    .filter('directionFormat', [function() {
+        // format direction - direction with giver/receiver
+        // from application_controller.format_direction_with_user
+        return function (gift) {
+            // console.log('directionFormat. gift = ' + JSON.stringify(gift)) ;
+            var giver = Gofreerev.get_user(gift.user_id_giver) ;
+            var receiver = Gofreerev.get_user(gift.user_id_receiver) ;
+            // console.log('giver = ' + JSON.stringify(giver)) ;
+            // console.log('receiver = ' + JSON.stringify(receiver)) ;
+            var x = I18n.t('js.gift.direction_' + gift.direction,
+                {givername: giver ? giver.short_user_name : 'no name',
+                receivername: receiver ? receiver.short_user_name : 'no name'}) ;
+            // console.log('x = ' + x) ;
+            return x ;
         }
     }]);

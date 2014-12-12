@@ -451,6 +451,7 @@ en:
         # 4 translate keys to format gift text with link and text.
         gift_link_title: "Click on link for more information"
         gift_picture_title: "Click on picture for more information"
+        # format direction - todo: AnhularJS - 3 keys moved to js.gift.*
         direction_giver: "%{username} offers"
         direction_receiver: "%{username} seeks"
         direction_giver_and_receiver: "from %{givername} to %{receivername}"
@@ -1261,3 +1262,8 @@ en:
         href_vkontakte: "https://vkontakte.ru/share.php?url=%{link}"
      open_graph:
         ajax_error: "Cannot check url. %{error}. More information in server log."
+     gift:
+        # 3 translation keys from gifts.api_gift - for AngularJS filter
+        direction_giver: "%{givername} offers"
+        direction_receiver: "%{username} seeks"
+        direction_both: "from %{givername} to %{receivername}"

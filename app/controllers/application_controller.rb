@@ -1143,6 +1143,7 @@ class ApplicationController < ActionController::Base
   # end # format_direction
 
   # used in gifts/index
+  # todo: moved to AngularJS GiftsCtrl, directionFormat filter
   private
   def format_direction_with_user (api_gift)
     gift = api_gift.gift

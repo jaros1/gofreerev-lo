@@ -3349,10 +3349,11 @@ angular.module('gifts', [])
     .filter('formatPriceOptional', ['formatPriceFilter', function (formatPrice) {
         // format optional price using "js.gift.optional_price" format - used in gift link
         // from application_helper.format_gift_param
-        return function (p, precision) {
+        return function (gift, precision) {
+            var p = gift.price ;
             if (typeof p == 'undefined') return p ;
             if (p == null) return p ;
-            return I18n.t('js.gift.optional_price', {price: formatPrice(p, precision) }) ;
+            return I18n.t('js.gift.optional_price', {price: formatPrice(p, precision), currency: gift.currency }) ;
         }
     }])
     .filter('formatDirection', [function() {
@@ -3370,4 +3371,17 @@ angular.module('gifts', [])
             // console.log('x = ' + x) ;
             return x ;
         }
+    }])
+    .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatPriceOptionalFilter', 'formatDirectionFilter',
+        function (formatDateShort, formatPriceOptional, formatDirection) {
+            // format gift link text using translation js.gift.gift_link_text: %{date} %{optional_price} / %{direction}
+            // html: {{gift.date | formatDateShort}} {{gift | formatPriceOptional:2}} / {{gift | formatDirection}}
+            // nested format using 3 sub format filters
+            // old rails code was t('.gift_link_text', format_gift_param(api_gift))
+            return function (gift, precision) {
+                var date = formatDateShort(gift.date);
+                var optional_price = formatPriceOptional(gift, precision);
+                var direction = formatDirection(gift) ;
+                return I18n.t('js.gift.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
+            }
     }]);

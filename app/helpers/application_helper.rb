@@ -65,6 +65,7 @@ module ApplicationHelper
 
 
   # format prices - user currency is used for default separators
+  # todo: angularJS - moved to formatPrice filter
   def format_price (price)
     return nil unless price
     # logger.debug2  "@user_currency_separator = #{@user_currency_separator}, @user_currency_delimiter = #{@user_currency_delimiter}"
@@ -187,6 +188,7 @@ module ApplicationHelper
     "(#{n}) #{APP_NAME}"
   end # title
 
+  # todo: angularJS: moved to formatGiftLinkText filter
   def format_gift_param (api_gift)
     gift = api_gift.gift
     optional_price = gift.price ? "#{t('.optional_price', :price => format_price(gift.price))} #{gift.currency}" : nil

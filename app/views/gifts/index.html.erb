@@ -164,9 +164,9 @@
           <tr>
             <td>
               <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text">
-                <a href="/da/da/gifts/{{gift.giftid}}" title="Klik på link for flere informationer om opslag"> {{gift.date | formatDateShort}} {{gift.price | formatPriceOptional:2}}
-                  {{gift.currency}} / {{gift | formatDirection}}</a>
-                : {{gift.description}}
+                <a href="/da/da/gifts/{{gift.giftid}}" title="Klik på link for flere informationer om opslag">
+                  {{gift | formatGiftLinkText:2}}
+                </a> : {{gift.description}}
               </div>
             </td>
           </tr>

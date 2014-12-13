@@ -541,14 +541,14 @@ da:
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
-        direction_giver: "%{username} tilbyder"
-        direction_receiver: "%{username} søger"
-        direction_giver_and_receiver: "fra %{givername} til %{receivername}"
+        direction_giver: "%{username} tilbyder" # todo: angularJs - moved to js.gift.direction_giver
+        direction_receiver: "%{username} søger" # todo: angularJs - moved to js.gift.direction_receiver
+        direction_giver_and_receiver: "fra %{givername} til %{receivername}" # todo: angularJs - moved to js.gift.direction_both
         gift_link_title: "Klik på link for flere informationer om opslag"
         gift_picture_title: "Klik på billede for flere informationer om opslag"
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
         gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
-        optional_price: "/ %{price}"
+        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
         show_more_text: "Vis mere tekst"
         like_gift: "Synes om"
         unlike_gift: "Synes ikke længere om"
@@ -1269,5 +1269,6 @@ da:
         direction_giver: "%{givername} tilbyder"
         direction_receiver: "%{receivername} søger"
         direction_both: "fra %{givername} til %{receivername}"
-        optional_price: "/ %{price}"
+        optional_price: "/ %{price} %{currency}"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
 

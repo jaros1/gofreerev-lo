@@ -540,12 +540,12 @@ en:
         # 4 translate keys to format gift text with link and text.
         gift_link_title: "Click on link for more information"
         gift_picture_title: "Click on picture for more information"
-        direction_giver: "%{username} offers"
-        direction_receiver: "%{username} seeks"
-        direction_giver_and_receiver: "from %{givername} to %{receivername}"
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        direction_giver: "%{username} offers" # todo: angularJs - moved to js.gift.direction_giver
+        direction_receiver: "%{username} seeks" # todo: angularJs - moved to js.gift.direction_receiver
+        direction_giver_and_receiver: "from %{givername} to %{receivername}" # todo: angularJs - moved to js.gift.direction_both
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
-        optional_price: "/ %{price}"
+        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
         show_more_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
@@ -1267,4 +1267,5 @@ en:
         direction_giver: "%{givername} offers"
         direction_receiver: "%{username} seeks"
         direction_both: "from %{givername} to %{receivername}"
-        optional_price: "/ %{price}"
+        optional_price: "/ %{price} %{currency}"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate

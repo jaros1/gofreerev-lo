@@ -3120,34 +3120,46 @@ var Gofreerev = (function() {
 
 // angularJS code
 angular.module('gifts', [])
-    .controller('GiftsCtrl', ['$http', function ($http) {
+    .controller('GiftsCtrl', ['$location', '$http', function ($location, $http) {
         var self = this;
 
         self.language = function() {
             return I18n.locale || I18n.defaultLocale ;
         }
 
-        // test data - users - todo: receive array with login users (me) after login
+        // test data - users - todo: receive array with users after login (login users and friends)
+        // friend:
+        //   1) logged in user
+        //   2) mutual friends         - show detailed info
+        //   3) follows (F)            - show few info
+        //   4) stalked by (S)         - show few info
+        //   5) deselected api friends - show few info
+        //   6) friends of friends     - show few info + not clickable user div
+        //   7) friends proposals      - not clickable user div
+        //   8) others                 - not clickable user div - for example comments from other login providers
         Gofreerev.init_users([{
                 user_id: 920,
                 provider: 'facebook',
                 user_name: 'Jan Roslind',
                 balance: null,
-                api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623'
+                api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623',
+                friend: 1 // me=logged in user
             },
             {
                 user_id: 791,
                 provider: 'linkedin',
                 user_name: 'Jan Roslind',
                 balance: null,
-                api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ'
+                api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ',
+                friend: 1 // me=logged in user
             },
             {
                 user_id: 998,
                 provider: 'instagram',
                 user_name: 'gofreerev gofreerev',
                 balance: null,
-                api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg'
+                api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg',
+                friend: 1 // me=logged in user
             }
         ]);
 
@@ -3213,6 +3225,19 @@ angular.module('gifts', [])
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg'
             })
         ];
+
+        self.user_div_on_click = function (user_id) {
+            // console.log('GiftsCtrl.gift_on_click. user_id = ' + user_id) ;
+            var user = Gofreerev.get_user(user_id) ;
+            if (!user) return ; // error - user not found in users array
+            if (!user.friend) return ; // error - no friend status was found
+            if ([1,2,3,4,5].indexOf(user.friend) == -1) return ; // ok - not clickable div
+            var locale = I18n.currentLocale() || I18n.defaultLocale ;
+            // ok - redirect to users/show page
+            // todo: use windows redirect or angular single page app?
+            // $location.url('/' + locale + '/users/' + user_id) ;
+            window.top.location.assign('/' + locale + '/users/' + user_id) ;
+        }
 
         // new gift default values
         self.new_gift = {
@@ -3323,6 +3348,7 @@ angular.module('gifts', [])
     }])
     .filter('formatDateShort', [function () {
         // format date using "date.formats.short"
+        // used in formatGiftLinkText filter
         var date_formats_short = I18n.t('date.formats.short') ;
         if (!date_formats_short) date_formats_short = '%b %d' ;
         return function (ts) {
@@ -3332,6 +3358,7 @@ angular.module('gifts', [])
     }])
     .filter('formatPrice', [function () {
         // format number using "number.format", optional arg1 = precision (default 3 decimals)
+        // used in formatPriceOptional and formatGiftLinkText filters
         var delimiter = I18n.t('number.format.delimiter') ;
         var default_precision = I18n.t('number.format.precision') ;
         var separator = I18n.t('number.format.separator') ;
@@ -3349,6 +3376,7 @@ angular.module('gifts', [])
     .filter('formatPriceOptional', ['formatPriceFilter', function (formatPrice) {
         // format optional price using "js.gift.optional_price" format - used in gift link
         // from application_helper.format_gift_param
+        // used in formatGiftLinkText filter
         return function (gift, precision) {
             var p = gift.price ;
             if (typeof p == 'undefined') return p ;
@@ -3359,6 +3387,7 @@ angular.module('gifts', [])
     .filter('formatDirection', [function() {
         // format direction - direction with short giver/receiver user name
         // from application_controller.format_direction_with_user
+        // used in formatGiftLinkText filter
         return function (gift) {
             // console.log('formatDirection. gift = ' + JSON.stringify(gift)) ;
             var giver = Gofreerev.get_user(gift.user_id_giver) ;

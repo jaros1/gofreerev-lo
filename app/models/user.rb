@@ -1735,7 +1735,7 @@ class User < ActiveRecord::Base
   # 3) follows (F)            - show few info
   # 4) stalked by (S)         - show few info
   # 5) deselected api friends - show few info
-  # 6) friends of friends     - show few info
+  # 6) friends of friends     - show few info + not clickable user div
   # 7) friends proposals      - not clickable user div 
   # 8) others                 - not clickable user div - for example comments from other login providers
   def friend? (login_users)

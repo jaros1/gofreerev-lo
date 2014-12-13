@@ -147,17 +147,23 @@
     </thead>
     <tbody id="gifts_tbody">
 
-
+    <%# start gift ng-repeat block -%>
     <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts">
       <td>
-        <div title="Jan R/facebook. Saldo . Klik her for at se brugeroplysninger." ng-click="top.location.href = '/{{ctrl.language}}/users/{{gift.user_id_giver}}'">
+        <div ng-show='gift.user_id_giver' title="Jan R/facebook. Saldo . Klik her for at se brugeroplysninger." ng-click="ctrl.user_div_on_click(gift.user_id_giver)">
           <div>
             <img class="small_pro_pic" src="https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&amp;oe=5502EE27&amp;__gda__=1426931048_182d748d6d46db7eb51077fc36365623"/>
           </div>
         </div>
+        <img ng-hide='gift.user_id_giver' src="/images/invisible-picture.gif" class="small_profile_picture"/>
       </td>
       <td>
-        <img src="/images/invisible-picture.gif" class="small_profile_picture"/>
+        <div ng-show='gift.user_id_receiver' title="Jan R/facebook. Saldo . Klik her for at se brugeroplysninger." ng-click="ctrl.user_div_on_click(gift.user_id_receiver)">
+          <div>
+            <img class="small_pro_pic" src="https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&amp;oe=5502EE27&amp;__gda__=1426931048_182d748d6d46db7eb51077fc36365623"/>
+          </div>
+        </div>
+        <img ng-hide='gift.user_id_receiver' src="/images/invisible-picture.gif" class="small_profile_picture"/>
       </td>
       <td colspan="2" class="wrapword" style="vertical-align: top;">
         <table>
@@ -192,8 +198,7 @@
         <hr/>
       </td>
     </tr>
-
-
+    <%# end gift ng-repeat block -%>
 
     </tbody>
     <tfoot>

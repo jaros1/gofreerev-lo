@@ -3129,14 +3129,14 @@ angular.module('gifts', [])
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
-        //   1) logged in user
-        //   2) mutual friends         - show detailed info
-        //   3) follows (F)            - show few info
-        //   4) stalked by (S)         - show few info
-        //   5) deselected api friends - show few info
+        //   1) logged in user         - show detailed info + clickable user div
+        //   2) mutual friends         - show detailed info + clickable user div
+        //   3) follows (F)            - show few info + clickable user div
+        //   4) stalked by (S)         - show few info + clickable user div
+        //   5) deselected api friends - show few info + not clickable user div
         //   6) friends of friends     - show few info + not clickable user div
         //   7) friends proposals      - not clickable user div
-        //   8) others                 - not clickable user div - for example comments from other login providers
+        //   8) others                 - not clickable user div
         Gofreerev.init_users([{
                 user_id: 920,
                 provider: 'facebook',
@@ -3183,7 +3183,7 @@ angular.module('gifts', [])
             }),
             gift({
                 giftid: 1730,
-                user_id_giver: 920,
+                user_id_giver: 791,
                 date: 1417624391, // 3. dec 2014
                 price: 0,
                 currency: 'DKK',
@@ -3192,11 +3192,11 @@ angular.module('gifts', [])
             }),
             gift({
                 giftid: 1729,
-                user_id_giver: 920,
+                user_id_receiver: 998,
                 date: 1417624155, // 3. dec 2014
                 price: 0,
                 currency: 'DKK',
-                direction: 'giver',
+                direction: 'receiver',
                 description: 'a'
             }),
             gift({
@@ -3231,7 +3231,7 @@ angular.module('gifts', [])
             var user = Gofreerev.get_user(user_id) ;
             if (!user) return ; // error - user not found in users array
             if (!user.friend) return ; // error - no friend status was found
-            if ([1,2,3,4,5].indexOf(user.friend) == -1) return ; // ok - not clickable div
+            if ([1,2,3,4].indexOf(user.friend) == -1) return ; // ok - not clickable div
             var locale = I18n.currentLocale() || I18n.defaultLocale ;
             // ok - redirect to users/show page
             // todo: use windows redirect or angular single page app?
@@ -3413,4 +3413,40 @@ angular.module('gifts', [])
                 var direction = formatDirection(gift) ;
                 return I18n.t('js.gift.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
             }
+    }])
+    .filter('formatBalance', [function () {
+        return function (balance) {
+            if (typeof balance == 'undefined') return '' ;
+            if (balance == null) return '' ;
+            // todo 1: format user balance. hash with currencies and amounts
+            // todo 2: server side or client side balance calculation?
+            return JSON.stringify(balance) ;
+        }
+    }])
+    .filter('formatUserImgTitle', ['formatBalanceFilter', function (formatBalance) {
+        return function (user_id) {
+            // format mouseover title in user <div><img> tags in gifts/index page etc
+            // console.log('Angular GiftsCtrl.formatUserImgTitle: user_id = ' + user_id) ;
+            var user = Gofreerev.get_user(user_id);
+            if (!user) return; // error - user not found in users array
+            var keys = {
+                1: 'friend_click',
+                2: 'friend_click',
+                3: 'non_friend_click',
+                4: 'non_friend_click'
+            }
+            var key = 'js.user_div.title_' + (keys[user.friend] || 'non_friend');
+            var username = (user.friend <= 2) ? user.short_user_name : user.user_name;
+            var apiname = user.provider;
+            var balance = formatBalance(user.balance);
+            return I18n.t(key, {username: username, apiname: apiname, balance: balance});
+        }
+    }])
+    .filter('formatUserImgSrc', [function (user_id) {
+        return function (user_id) {
+            // format scr in user <div><img> tags in gifts/index page etc
+            var user = Gofreerev.get_user(user_id);
+            if (!user) return ''; // error - user not found in users array
+            return user.api_profile_picture_url ;
+        }
     }]);

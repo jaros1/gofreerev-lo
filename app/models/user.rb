@@ -1730,14 +1730,14 @@ class User < ActiveRecord::Base
   end
 
   # simple friend check from friends_hash cache. Initialized in fetch_user / cache_friend_info in app. controller
-  # 1) logged in user
-  # 2) mutual friends         - show detailed info
-  # 3) follows (F)            - show few info
-  # 4) stalked by (S)         - show few info
-  # 5) deselected api friends - show few info
+  # 1) logged in user         - show detailed info + clickable user div
+  # 2) mutual friends         - show detailed info + clickable user div
+  # 3) follows (F)            - show few info + clickable user div
+  # 4) stalked by (S)         - show few info + clickable user div
+  # 5) deselected api friends - show few info + not clickable user div
   # 6) friends of friends     - show few info + not clickable user div
   # 7) friends proposals      - not clickable user div 
-  # 8) others                 - not clickable user div - for example comments from other login providers
+  # 8) others                 - not clickable user div
   def friend? (login_users)
     # logger.debug2  "login_users.class = #{login_users.class}"
     return 8 unless [Array, ActiveRecord::Relation::ActiveRecord_Relation_User].index(login_users.class) # not logged in

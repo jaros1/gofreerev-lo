@@ -1271,4 +1271,9 @@ da:
         direction_both: "fra %{givername} til %{receivername}"
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+     user_div: # from shared.user_div - for angularJS filter
+        title_non_friend: "%{username}/%{apiname}."
+        title_friend: "%{username}/%{apiname}. Saldo %{balance}."
+        title_non_friend_click: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
+        title_friend_click: "%{username}/%{apiname}. Saldo %{balance}. Klik her for at se brugeroplysninger."
 

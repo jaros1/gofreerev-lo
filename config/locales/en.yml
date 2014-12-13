@@ -1267,3 +1267,4 @@ en:
         direction_giver: "%{givername} offers"
         direction_receiver: "%{username} seeks"
         direction_both: "from %{givername} to %{receivername}"
+        optional_price: "/ %{price}"

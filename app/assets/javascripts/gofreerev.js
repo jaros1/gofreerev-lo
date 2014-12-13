@@ -3321,8 +3321,8 @@ angular.module('gifts', [])
 
         // end GiftsCtrl
     }])
-    .filter('dateFormatShort', [function () {
-        // format date using date.formats.short
+    .filter('formatDateShort', [function () {
+        // format date using "date.formats.short"
         var date_formats_short = I18n.t('date.formats.short') ;
         if (!date_formats_short) date_formats_short = '%b %d' ;
         return function (ts) {
@@ -3330,8 +3330,8 @@ angular.module('gifts', [])
             return I18n.strftime((new Date(ts*1000)), date_formats_short)  ;
         } ;
     }])
-    .filter('priceFormat', [function () {
-        // format number using number.format, argv1 = precision
+    .filter('formatPrice', [function () {
+        // format number using "number.format", optional arg1 = precision (default 3 decimals)
         var delimiter = I18n.t('number.format.delimiter') ;
         var default_precision = I18n.t('number.format.precision') ;
         var separator = I18n.t('number.format.separator') ;
@@ -3346,11 +3346,20 @@ angular.module('gifts', [])
                     separator: separator, strip_insignificant_zeros: strip_insignificant_zeros}) ;
         }
     }])
-    .filter('directionFormat', [function() {
-        // format direction - direction with giver/receiver
+    .filter('formatPriceOptional', ['formatPriceFilter', function (formatPrice) {
+        // format optional price using "js.gift.optional_price" format - used in gift link
+        // from application_helper.format_gift_param
+        return function (p, precision) {
+            if (typeof p == 'undefined') return p ;
+            if (p == null) return p ;
+            return I18n.t('js.gift.optional_price', {price: formatPrice(p, precision) }) ;
+        }
+    }])
+    .filter('formatDirection', [function() {
+        // format direction - direction with short giver/receiver user name
         // from application_controller.format_direction_with_user
         return function (gift) {
-            // console.log('directionFormat. gift = ' + JSON.stringify(gift)) ;
+            // console.log('formatDirection. gift = ' + JSON.stringify(gift)) ;
             var giver = Gofreerev.get_user(gift.user_id_giver) ;
             var receiver = Gofreerev.get_user(gift.user_id_receiver) ;
             // console.log('giver = ' + JSON.stringify(giver)) ;

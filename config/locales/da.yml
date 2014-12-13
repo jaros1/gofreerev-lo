@@ -1269,3 +1269,5 @@ da:
         direction_giver: "%{givername} tilbyder"
         direction_receiver: "%{receivername} søger"
         direction_both: "fra %{givername} til %{receivername}"
+        optional_price: "/ %{price}"
+

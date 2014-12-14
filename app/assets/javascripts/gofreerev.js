@@ -50,10 +50,11 @@ var Gofreerev = (function() {
     // error helper functions
 
     // for client side debugging - writes JS messages to debug_log div - only used if DEBUG_AJAX = true
+    // debug messages are temp stored in a temp JS array temp_debug_log until page and rails['DEBUG_AJAX'] is ready
     function ajax_debug () {
         return rails['DEBUG_AJAX'] ;
     } ;
-    var temp_debug_log = [] ; // temp JS debug array until page is ready and ajax_debug is set to true or false
+    var temp_debug_log = [] ;
     function empty_temp_debug_log() {
         if (ajax_debug() != true) { temp_debug_log = null ; return }
         var log = document.getElementById('debug_log') ;
@@ -79,6 +80,7 @@ var Gofreerev = (function() {
     $(document).ready(function () {
         empty_temp_debug_log() ;
     });
+
 
     // this ajax flash is used when inserting or updating gifts and comments in gifts table
     // todo: add some kind of flash when removing (display=none) rows from gifts table
@@ -2408,7 +2410,7 @@ var Gofreerev = (function() {
 
         dialog = $( "#share-accounts-dialog-form" ).dialog({
             autoOpen: false,
-            height: fb_user ? 225 : 300, // only show email for logins without fb account
+            height: fb_logged_in_account() ? 225 : 300, // only show email for logins without fb account
             width: 350,
             modal: true,
             buttons:[
@@ -2670,7 +2672,7 @@ var Gofreerev = (function() {
 
         dialog = $( "#client-login-dialog-form" ).dialog({
             autoOpen: false,
-            height: fb_user ? 225 : 300, // only show password for logins without fb account
+            height: fb_logged_in_account() ? 225 : 300, // only show password for logins without fb account
             width: 350,
             modal: true,
             buttons:[login_button, cancel_button],
@@ -3041,6 +3043,18 @@ var Gofreerev = (function() {
             user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
         }
         return user ;
+    }
+
+    // is one if the logged in users a fb account?
+    // used in shared account model form in auth/index page
+    // returns: true: use fb notifications, false: use email
+    // todo: auth/index page is not yet included in angularJS (users array is empty)
+    function fb_logged_in_account () {
+        if (!users) return false ;
+        for (var i=0 ; i<users.length ; i++) {
+            if (users[i].provider=='facebook') return (users[i].friend==1) ;
+        }
+        return false ;
     }
 
     // custom confirm box - for styling

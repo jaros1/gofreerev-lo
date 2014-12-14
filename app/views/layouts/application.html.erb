@@ -70,8 +70,6 @@
         <%# display cookie alert in page header in @cookie_note seconds -%>
         window.setTimeout(hide_cookie_note, <%= (@cookie_note * 1000) %>);
         <% end -%>
-        <%# is one of the logged in users a facebook account? -%>
-        var fb_user = <%= fb_user? %>;
     </script>
   </head>
   <body>

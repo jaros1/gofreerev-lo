@@ -3044,6 +3044,13 @@ var Gofreerev = (function() {
         }
         return user ;
     }
+    function get_users_currency () {
+        if (typeof users == 'undefined') return null ;
+        for (var i=0 ; i<users.length ; i++) {
+            if (users[i].friend == 1) return users[i].currency ;
+        }
+        return null ;
+    }
 
     // is one if the logged in users a fb account?
     // used in shared account model form in auth/index page
@@ -3128,13 +3135,15 @@ var Gofreerev = (function() {
         // angular helpers
         init_users: init_users,
         get_users: get_users,
-        get_user: get_user
+        get_user: get_user,
+        get_users_currency: get_users_currency
     };
 })();
 // Gofreerev closure end
 
 
 // angularJS code
+
 angular.module('gifts', [])
     .controller('GiftsCtrl', ['$location', '$http', function ($location, $http) {
         var self = this;
@@ -3170,7 +3179,6 @@ angular.module('gifts', [])
             };
         };
         set_language_constants();
-        // console.log('js.new_gift.price_title = ' + self.texts.new_gift.price_title) ;
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3188,7 +3196,8 @@ angular.module('gifts', [])
                 user_name: 'Jan Roslind',
                 balance: null,
                 api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623',
-                friend: 1 // me=logged in user
+                friend: 1, // me=logged in user
+                currency: 'DKK'
             },
             {
                 user_id: 791,
@@ -3196,7 +3205,8 @@ angular.module('gifts', [])
                 user_name: 'Jan Roslind',
                 balance: null,
                 api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ',
-                friend: 1 // me=logged in user
+                friend: 1, // me=logged in user
+                currency: 'DKK'
             },
             {
                 user_id: 998,
@@ -3204,20 +3214,14 @@ angular.module('gifts', [])
                 user_name: 'gofreerev gofreerev',
                 balance: null,
                 api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg',
-                friend: 1 // me=logged in user
+                friend: 1, // me=logged in user
+                currency: 'DKK'
             }
         ]);
 
         // test data - gifts - todo: load gifts from local storage - maybe a service?
-        // extend gift object with custom methods
-        function gift (hash) {
-            hash.csv_comment = function() {
-                return Gofreerev.csv_comment(hash.giftid) ;
-            }
-            return hash ;
-        }
         self.gifts = [
-            gift({
+            {
                 giftid: 1731,
                 user_id_giver: 920,
                 date: 1417624621, // '3. dec 2014',
@@ -3225,8 +3229,8 @@ angular.module('gifts', [])
                 currency: 'DKK',
                 direction: 'giver',
                 description: 'b'
-            }),
-            gift({
+            },
+            {
                 giftid: 1730,
                 user_id_giver: 791,
                 date: 1417624391, // 3. dec 2014
@@ -3234,8 +3238,8 @@ angular.module('gifts', [])
                 currency: 'DKK',
                 direction: 'giver',
                 description: 'b'
-            }),
-            gift({
+            },
+            {
                 giftid: 1729,
                 user_id_receiver: 998,
                 date: 1417624155, // 3. dec 2014
@@ -3243,8 +3247,8 @@ angular.module('gifts', [])
                 currency: 'DKK',
                 direction: 'receiver',
                 description: 'a'
-            }),
-            gift({
+            },
+            {
                 giftid: 1725,
                 user_id_giver: 920,
                 user_id_receiver: null,
@@ -3254,8 +3258,8 @@ angular.module('gifts', [])
                 direction: 'giver',
                 description: 'xxx',
                 api_picture_url: '/images/temp/mc3vwsegbd.jpeg'
-            }),
-            gift({
+            },
+            {
                 giftid: 1710,
                 user_id_giver: 920,
                 user_id_receiver: null,
@@ -3268,7 +3272,7 @@ angular.module('gifts', [])
                 open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
                 open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg'
-            })
+            }
         ];
 
         self.user_div_on_click = function (user_id) {
@@ -3287,8 +3291,11 @@ angular.module('gifts', [])
         // new gift default values
         self.new_gift = {
             direction: 'giver',
-            is_file_upload_disabled: function () {
-                return Gofreerev.is_file_upload_disabled()
+            currency: Gofreerev.get_users_currency(),
+            is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
+            show: function () {
+                var currency = Gofreerev.get_users_currency() ;
+                return (currency != null) ;
             }
         }
 

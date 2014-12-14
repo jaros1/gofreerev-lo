@@ -15,7 +15,7 @@
 <div ng-controller="GiftsCtrl as ctrl">
 
 <%# create new gift form. note that Gofreerev.csv_gift always returns false. HTML submit is not used. Ajax is used to send data to server. -%>
-<div style="width: 100%">
+<div style="width: 100%" ng-show="ctrl.new_gift.show()">
   {{ctrl.texts.new_gift.header_line}}<br>
   <%= form_for @gift, :remote => true, :html => {:enctype => 'multipart/form-data', :name => 'new_gift_form', 'ng-submit' => 'ctrl.create_new_gift()'} do |f| %>
       <table>
@@ -23,7 +23,7 @@
           <td>{{ctrl.texts.new_gift.price_prompt}}</td>
           <td>
             <%= f.text_field :price, :size => 10, :maxlength => 10, :placeholder => '{{ctrl.texts.new_gift.price_placeholder}}', "ng-model" => 'ctrl.new_gift.price' %>
-            {{ctrl.texts.new_gift.price_free}} <%= @users.first.currency %> &nbsp;&nbsp;&nbsp;
+            {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}} &nbsp;&nbsp;&nbsp;
             <div style="text-wrap: none">
               {{ctrl.texts.new_gift.direction_giver_prompt}} <%= f.radio_button :direction, 'giver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>&nbsp;&nbsp;
               {{ctrl.texts.new_gift.direction_receiver_prompt}} <%= f.radio_button :direction, 'receiver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>

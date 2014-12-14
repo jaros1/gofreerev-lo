@@ -75,7 +75,6 @@
           get_more_rows_interval - min interval between show-more-rows requests. 3.0 for 3 seconds.
           debug_ajax - true or false - true - write messages to debug_log table in page footer
         -%>
-        Gofreerev.set_show_more_rows_interval(<%=GET_MORE_ROWS_INTERVAL %>) ;
         Gofreerev.set_ajax_debug(<%= debug_ajax? %>) ;
         var fb_user = <%= fb_user? %>;
     </script>

@@ -1447,9 +1447,9 @@ var Gofreerev = (function() {
     // table_name should be gifts or users
     // interval should be 3000 = 3 seconds between each show-more-rows request
     // debug true - display messages for ajax debugging in button of page
-    var show_more_rows_interval = 3.0 ;
-    function set_show_more_rows_interval (interval) {
-        show_more_rows_interval = interval
+    function show_more_rows_interval () {
+        return rails['GET_MORE_ROWS_INTERVAL'] || 3.0 ;
+
     }
 
     // setup "endless" ajax expanding page - called at page startup from shared/show_more_rows partial
@@ -3107,7 +3107,6 @@ var Gofreerev = (function() {
         autoresize_text_field: autoresize_text_field,
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
         start_tasks_form_spinner: start_tasks_form_spinner,
-        set_show_more_rows_interval: set_show_more_rows_interval,
         setup_ajax_expanding_page: setup_ajax_expanding_page,
         set_missing_api_picture_urls: set_missing_api_picture_urls,
         report_missing_api_picture_urls: report_missing_api_picture_urls,

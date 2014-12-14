@@ -70,12 +70,7 @@
         <%# display cookie alert in page header in @cookie_note seconds -%>
         window.setTimeout(hide_cookie_note, <%= (@cookie_note * 1000) %>);
         <% end -%>
-        <%#
-          copy rails constants to global JS variables. Used in gofreerev.js functions
-          get_more_rows_interval - min interval between show-more-rows requests. 3.0 for 3 seconds.
-          debug_ajax - true or false - true - write messages to debug_log table in page footer
-        -%>
-        Gofreerev.set_ajax_debug(<%= debug_ajax? %>) ;
+        <%# is one of the logged in users a facebook account? -%>
         var fb_user = <%= fb_user? %>;
     </script>
   </head>

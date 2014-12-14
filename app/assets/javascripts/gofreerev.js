@@ -50,22 +50,21 @@ var Gofreerev = (function() {
     // error helper functions
 
     // for client side debugging - writes JS messages to debug_log div - only used if DEBUG_AJAX = true
-    var ajax_debug = false ;
-    var temp_debug_log = [] ; // temp JS debug log until page is ready
-    function set_ajax_debug (boolean) {
-        ajax_debug = boolean
-    }
+    function ajax_debug () {
+        return rails['DEBUG_AJAX'] ;
+    } ;
+    var temp_debug_log = [] ; // temp JS debug array until page is ready and ajax_debug is set to true or false
     function empty_temp_debug_log() {
+        if (ajax_debug() != true) { temp_debug_log = null ; return }
         var log = document.getElementById('debug_log') ;
         if (!log) return ;
         if (temp_debug_log.length > 0) {
-            // empty JS buffer
             for (var i=0 ; i<temp_debug_log.length ; i++) log.innerHTML = log.innerHTML + temp_debug_log[i] + '<br>' ;
             temp_debug_log = [] ;
         }
     } // empty_temp_debug_log
     function add2log (text) {
-        // if (!ajax_debug) return ;
+        if (ajax_debug() == false) return ;
         var log = document.getElementById('debug_log') ;
         if (!log) {
             // buffer log messages in JS array until page is ready
@@ -1504,7 +1503,7 @@ var Gofreerev = (function() {
             add2log('Sleep ' + sleep + ' seconds' + '. previous timestamp ' + previous_timestamp + ', next timestamp ' + next_timestamp);
             old_show_more_rows_request_at = next_timestamp;
             add2log('show_more_rows_scroll: table_name = ' + table_name + '. call show_more_rows in ' + Math.round(sleep*1000) + ' milliseconds');
-            start_show_more_rows_spinner(table_name, ajax_debug) ;
+            start_show_more_rows_spinner(table_name, ajax_debug()) ;
             if (sleep == 0) show_more_rows();
             else setTimeout(show_more_rows, Math.round(sleep*1000));
         }
@@ -1616,7 +1615,7 @@ var Gofreerev = (function() {
     //    $(link).unbind("click") ;
     //    $(link).bind("click", function(xhr, settings){
     //        var pgm = link + '.click: ' ;
-    //        try { start_show_more_rows_spinner(table_name, ajax_debug) }
+    //        try { start_show_more_rows_spinner(table_name, ajax_debug()) }
     //        catch (err) {
     //            var msg = pgm + 'failed with JS error: ' + err;
     //            add2log(msg);
@@ -3088,7 +3087,6 @@ var Gofreerev = (function() {
         // constants from ruby on rails. see ruby_to.js.erb
         rails: rails,
         // error handlers
-        set_ajax_debug: set_ajax_debug, // enable/disable JS debug - application.html.erm layout
         clear_ajax_errors: clear_ajax_errors, // used in application.js.erb
         clear_flash_and_ajax_errors: clear_flash_and_ajax_errors, // used in angularJS module
         move_tasks_errors2: move_tasks_errors2, // used in application.js.erb

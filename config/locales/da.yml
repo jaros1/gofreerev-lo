@@ -413,24 +413,24 @@ da:
      index:
         not_logged_in: "Kan ikke vise flere rækker. Du er ikke logget ind. Opdater venligst siden."
         welcome_msg_after_login: "Velkommen %{username} til %{appname}"
-        create_gift_header_line: "Hjælp hinanden og miljøet. Del jeres ressourcer. Giv, lån/lej ud, sælg etc."
-        price_title: "Pris i virtuelle frie penge. Valgfri. Kan sættes nu eller senere. Bedst, hvis køber/modtager sætter pris, der så bliver et mål for, hvor meget pris vedkommende satte på den modtagne ting/hjælp. Der anvendes frie virtuelle nationale penge herinde med en negativ rente. %{min_interest}% om året for en positiv saldo og %{max_interest}% om året for en negativ saldo. Et formål med den negative rente er at sikre, at penge og ressourcer cirkulerer. Den negative rente gør det muligt med et samfund uden vækst, uden overforbrug og med mere fritid."
-        price_prompt: "Pris:"
-        price_placeholder: "Pris forslag"
-        price_free: "frie"
-        direction_giver_prompt: "Tilbyder: "
-        direction_receiver_prompt: "Søger: "
-        description_title: "Tekst. Skal udfyldes. Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp. Du bestemmer selv, om du vil sælge, udleje, udlåne eller forære ting væk. Da der handles i virtuelle frie penge, forærer man i praksis altid ting væk, men ens saldo i frie penge vokser. Opslag laves på din væg og vises til dine venner, eller hvem du har valgt skal se opslag fra denne app. Dine venner kan kommenterer dit opslag på din væg. Aftalen bør sluttes herinde, så din saldo i frie penge opdateres."
-        description_prompt: "Tekst:"
-        description_placeholder: "Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp."
-        file_title_true: "Vedlæg gerne et foto af det, som du deler eller leder efter. Billeder er en effektiv måde at blive set på af ens venner. Upload kan godt tage lidt tid, da billedet uploades i 2 trin. Først til %{appname} og dernæst videre til din væg hos din loginudbyder. Vent venligst."
-        file_title_false: "Der kan ikke vedlægges foto af det, som du deler eller leder efter. Billeder uploades til din væg hos din loginudbyder, og %{appname} mangler tilladelse til at skrive på din væg. Billeder er en effektiv måde at blive set på af ens venner. Benyt link øverst i denne side, hvis du ønsker at give %{appname} lov til at lave opslag på din væg. Gå til \"Log ind\" siden og sæt hak i \"Opslag?\" tjekbox ud for en eller flere loginudbydere, hvis du ønsker at %{appname} skal lave opslag hos din loginudbyder."
-        file_prompt: "Vedlæg:"
-        file_placeholder: "Vælg fil"
-        link_prompt1: "Link:"
-        link_prompt2: "eller link:"
-        link_placeholder: "kopier/indsæt url"
-        gift_submit_button_text: "Opret opslag"
+        create_gift_header_line: "Hjælp hinanden og miljøet. Del jeres ressourcer. Giv, lån/lej ud, sælg etc." # todo: angularJs - moved to js.new_gift.header_line
+        price_title: "Pris i virtuelle frie penge. Valgfri. Kan sættes nu eller senere. Bedst, hvis køber/modtager sætter pris, der så bliver et mål for, hvor meget pris vedkommende satte på den modtagne ting/hjælp. Der anvendes frie virtuelle nationale penge herinde med en negativ rente. %{min_interest}% om året for en positiv saldo og %{max_interest}% om året for en negativ saldo. Et formål med den negative rente er at sikre, at penge og ressourcer cirkulerer. Den negative rente gør det muligt med et samfund uden vækst, uden overforbrug og med mere fritid." # todo: angularJs - moved to js.new_gift.price_title
+        price_prompt: "Pris:" # todo: angularJs - moved to js.new_gift.price_prompt
+        price_placeholder: "Pris forslag" # todo: angularJs - moved to js.new_gift.price_placeholder
+        price_free: "frie" # todo: angularJs - moved to js.new_gift.price_frie
+        direction_giver_prompt: "Tilbyder: " # todo: angularJs - moved to js.new_gift.direction_giver_prompt
+        direction_receiver_prompt: "Søger: " # todo: angularJs - moved to js.new_gift.direction_receiver_prompt
+        description_title: "Tekst. Skal udfyldes. Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp. Du bestemmer selv, om du vil sælge, udleje, udlåne eller forære ting væk. Da der handles i virtuelle frie penge, forærer man i praksis altid ting væk, men ens saldo i frie penge vokser. Opslag laves på din væg og vises til dine venner, eller hvem du har valgt skal se opslag fra denne app. Dine venner kan kommenterer dit opslag på din væg. Aftalen bør sluttes herinde, så din saldo i frie penge opdateres." # todo: angularJs - moved to js.new_gift.description_title
+        description_prompt: "Tekst:" # todo: angularJs - moved to js.new_gift.description_prompt
+        description_placeholder: "Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp." # todo: angularJs - moved to js.new_gift.description_placeholder
+        file_title_true: "Vedlæg gerne et foto af det, som du deler eller leder efter. Billeder er en effektiv måde at blive set på af ens venner. Upload kan godt tage lidt tid, da billedet uploades i 2 trin. Først til %{appname} og dernæst videre til din væg hos din loginudbyder. Vent venligst." # todo: angularJs - moved to js.new_gift.file_title_true
+        file_title_false: "Der kan ikke vedlægges foto af det, som du deler eller leder efter. Billeder uploades til din væg hos din loginudbyder, og %{appname} mangler tilladelse til at skrive på din væg. Billeder er en effektiv måde at blive set på af ens venner. Benyt link øverst i denne side, hvis du ønsker at give %{appname} lov til at lave opslag på din væg. Gå til \"Log ind\" siden og sæt hak i \"Opslag?\" tjekbox ud for en eller flere loginudbydere, hvis du ønsker at %{appname} skal lave opslag hos din loginudbyder." # todo: angularJs - moved to js.new_gift.file_title_false
+        file_prompt: "Vedlæg:" # todo: angularJS - moved to js.new_gift.file_prompt
+        file_placeholder: "Vælg fil" # todo: angularJS - moved to js.new_gift.file_placeholder
+        link_prompt1: "Link:" # todo: angularJS - moved to js.new_gift.link_prompt1
+        link_prompt2: "eller link:" # todo: angularJS - moved to js.new_gift.link_prompt2
+        link_placeholder: "kopier/indsæt url" # todo: angularJS - moved to js.new_gift.placeholder
+        gift_submit_button_text: "Opret opslag" # todo: angularJS - moved to js.new_gift.submit_button_text
         pending_gift_popup_msg: "Ret valuta? Svar Cancel for at vende tilbage og lave opslag færdig. Svar OK for at kassere det indtastede og opdatere valuta."
         description_required_text: "Tekst skal udfyldes."
         price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
@@ -452,15 +452,15 @@ da:
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
-        gift_link_title: "Klik på link for flere informationer om opslag"
+        gift_link_title: "Klik på link for flere informationer om opslag" # todo: angularJs - moved to js.gift.gift_link_title
         gift_picture_title: "Klik på billede for flere informationer om opslag"
         # format direction - todo: AnhularJS - moved to js.gift.*
-        direction_giver: "%{username} tilbyder"
-        direction_receiver: "%{username} søger"
-        direction_giver_and_receiver: "fra %{givername} til %{receivername}"
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        direction_giver: "%{username} tilbyder" # todo: angularJs - moved to js.gift.direction_giver
+        direction_receiver: "%{username} søger" # todo: angularJs - moved to js.gift.direction_receiver
+        direction_giver_and_receiver: "fra %{givername} til %{receivername}" # todo: angularJs - moved to js.gift.direction_both
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
         gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
-        optional_price: "/ %{price}"
+        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
         show_more_text: "Vis mere tekst"
         like_gift: "Synes om"
         unlike_gift: "Synes ikke længere om"
@@ -541,14 +541,14 @@ da:
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
-        direction_giver: "%{username} tilbyder" # todo: angularJs - moved to js.gift.direction_giver
-        direction_receiver: "%{username} søger" # todo: angularJs - moved to js.gift.direction_receiver
-        direction_giver_and_receiver: "fra %{givername} til %{receivername}" # todo: angularJs - moved to js.gift.direction_both
+        direction_giver: "%{username} tilbyder"
+        direction_receiver: "%{username} søger"
+        direction_giver_and_receiver: "fra %{givername} til %{receivername}"
         gift_link_title: "Klik på link for flere informationer om opslag"
         gift_picture_title: "Klik på billede for flere informationer om opslag"
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
+        gift_link_text: "%{date} %{optional_price} / %{direction}"
         gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
-        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
+        optional_price: "/ %{price}"
         show_more_text: "Vis mere tekst"
         like_gift: "Synes om"
         unlike_gift: "Synes ikke længere om"
@@ -1265,12 +1265,32 @@ da:
         href_vkontakte:
      open_graph:
         ajax_error: "Kan ikke tjekke link. %{error}. Mere information i server log."
+     new_gift: # from gifts.index - for AngularJS
+        header_line: "Hjælp hinanden og miljøet. Del jeres ressourcer. Giv, lån/lej ud, sælg etc."
+        price_title: "Pris i virtuelle frie penge. Valgfri. Kan sættes nu eller senere. Bedst, hvis køber/modtager sætter pris, der så bliver et mål for, hvor meget pris vedkommende satte på den modtagne ting/hjælp. Der anvendes frie virtuelle nationale penge herinde med en negativ rente. %{min_interest}% om året for en positiv saldo og %{max_interest}% om året for en negativ saldo. Et formål med den negative rente er at sikre, at penge og ressourcer cirkulerer. Den negative rente gør det muligt med et samfund uden vækst, uden overforbrug og med mere fritid."
+        price_prompt: "Pris:"
+        price_placeholder: "Pris forslag"
+        price_free: "frie"
+        direction_giver_prompt: "Tilbyder: "
+        direction_receiver_prompt: "Søger: "
+        description_title: "Tekst. Skal udfyldes. Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp. Du bestemmer selv, om du vil sælge, udleje, udlåne eller forære ting væk. Da der handles i virtuelle frie penge, forærer man i praksis altid ting væk, men ens saldo i frie penge vokser. Opslag laves på din væg og vises til dine venner, eller hvem du har valgt skal se opslag fra denne app. Dine venner kan kommenterer dit opslag på din væg. Aftalen bør sluttes herinde, så din saldo i frie penge opdateres."
+        description_prompt: "Tekst:"
+        description_placeholder: "Beskriv det, du tilbyder eller søger, hvad enten det er ting eller hjælp."
+        submit_button_text: "Opret opslag"
+        file_title_true: "Vedlæg gerne et foto af det, som du deler eller leder efter. Billeder er en effektiv måde at blive set på af ens venner. Upload kan godt tage lidt tid, da billedet uploades i 2 trin. Først til %{appname} og dernæst videre til din væg hos din loginudbyder. Vent venligst."
+        file_title_false: "Der kan ikke vedlægges foto af det, som du deler eller leder efter. Billeder uploades til din væg hos din loginudbyder, og %{appname} mangler tilladelse til at skrive på din væg. Billeder er en effektiv måde at blive set på af ens venner. Benyt link øverst i denne side, hvis du ønsker at give %{appname} lov til at lave opslag på din væg. Gå til \"Log ind\" siden og sæt hak i \"Opslag?\" tjekbox ud for en eller flere loginudbydere, hvis du ønsker at %{appname} skal lave opslag hos din loginudbyder."
+        file_prompt: "Vedlæg:"
+        file_placeholder: "Vælg fil"
+        link_prompt1: "Link:"
+        link_prompt2: "eller link:"
+        link_placeholder: "kopier/indsæt url" # todo: angularJS - moved to js.new_gift.placeholder
      gift: # from gifts.api_gift - for AngularJS filter
         direction_giver: "%{givername} tilbyder"
         direction_receiver: "%{receivername} søger"
         direction_both: "fra %{givername} til %{receivername}"
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_link_title: "Klik på link for flere informationer om opslag" # todo: angularJs - moved to js.gift.gift_link_title
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

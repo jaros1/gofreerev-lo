@@ -9,6 +9,7 @@
     </tr>
 <% else -%>
     <tr style="vertical-align: top" id="<%= "gift-#{gift.id}-header" %>">
+
       <td>
         <% if api_gift.giver -%>
             <%= @size = 'small'; render '/shared/user_div', :user_div => api_gift.giver %>
@@ -17,6 +18,7 @@
             <% @first_gift = false -%>
         <% end -%>
       </td>
+
       <td>
         <% if api_gift.receiver -%>
             <%= @size = 'small'; render '/shared/user_div', :user_div => api_gift.receiver %>
@@ -25,6 +27,7 @@
             <% @first_gift = false -%>
         <% end -%>
       </td>
+
       <td colspan="2" class="wrapword" style="vertical-align: top;">
         <table>
           <tr>

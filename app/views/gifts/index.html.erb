@@ -12,51 +12,52 @@
 
 <a href="#" id="share_gift" style="display: none">share gift</a>
 
+<div ng-controller="GiftsCtrl as ctrl">
+
 <%# create new gift form. note that Gofreerev.csv_gift always returns false. HTML submit is not used. Ajax is used to send data to server. -%>
-<div style="width: 100%"><%= t '.create_gift_header_line' %></div>
-<div style="width: 100%" ng-controller="GiftsCtrl as ctrl">
-  <%= form_for @gift, :remote => true, :html => {:enctype => 'multipart/form-data', :name => 'new_gift_form', 'ng-submit' => 'ctrl.create_new_gift()', :action => nil} do |f| -%>
+<div style="width: 100%">
+  {{ctrl.texts.new_gift.header_line}}<br>
+  <%= form_for @gift, :remote => true, :html => {:enctype => 'multipart/form-data', :name => 'new_gift_form', 'ng-submit' => 'ctrl.create_new_gift()'} do |f| %>
       <table>
-        <tr title="<%= t '.price_title', :min_interest => NEG_INT_POS_BALANCE_PER_YEAR, :max_interest => NEG_INT_NEG_BALANCE_PER_YEAR %>">
-          <td><%= t '.price_prompt' %></td>
+        <tr title="{{ctrl.texts.new_gift.price_title}}">
+          <td>{{ctrl.texts.new_gift.price_prompt}}</td>
           <td>
-            <%= f.text_field :price, :size => 10, :maxlength => 10, :placeholder => t('.price_placeholder'), "ng-model" => 'ctrl.new_gift.price' %>
-            <%= t '.price_free' %>
-            <%= @users.first.currency %>
-            &nbsp;&nbsp;&nbsp;
+            <%= f.text_field :price, :size => 10, :maxlength => 10, :placeholder => '{{ctrl.texts.new_gift.price_placeholder}}', "ng-model" => 'ctrl.new_gift.price' %>
+            {{ctrl.texts.new_gift.price_free}} <%= @users.first.currency %> &nbsp;&nbsp;&nbsp;
             <div style="text-wrap: none">
-              <%= t '.direction_giver_prompt' %> <%= f.radio_button :direction, 'giver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>&nbsp;&nbsp;
-              <%= t '.direction_receiver_prompt' %> <%= f.radio_button :direction, 'receiver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>
+              {{ctrl.texts.new_gift.direction_giver_prompt}} <%= f.radio_button :direction, 'giver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>&nbsp;&nbsp;
+              {{ctrl.texts.new_gift.direction_receiver_prompt}} <%= f.radio_button :direction, 'receiver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>
             </div>
           </td>
         </tr>
-        <tr title="<%= t '.description_title' %>">
-          <td style="vertical-align: top"><%= t '.description_prompt' %></td>
-          <td><%= f.text_area :description, :size => '60x2', :placeholder => t('.description_placeholder'), :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => 'new_gift_text', :required => true, 'ng-model' => 'ctrl.new_gift.description' %>
-            <%= f.submit t('.gift_submit_button_text'), "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
+        <tr title="{{ctrl.texts.new_gift.description_title}}">
+          <td style="vertical-align: top">{{ctrl.texts.new_gift.description_prompt}}</td>
+          <td><%= f.text_area :description, :size => '60x2', :placeholder => '{{ctrl.texts.new_gift.description_placeholder}}', :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => 'new_gift_text', :required => true, 'ng-model' => 'ctrl.new_gift.description' %>
+            <%= f.submit '{{ctrl.texts.new_gift.submit_button_text}}', "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
         </tr>
-        <% logger.debug2 "post_image_allowed?() = #{post_image_allowed?()}" -%>
-        <tr title="<%= t ".file_title_#{post_image_allowed?()}", :appname => APP_NAME %>">
+        <tr title="{{ctrl.texts.new_gift.file_title_<%= post_image_allowed?() %>}}">
           <td>
             <div class="fileupload bottom" ng-hide="ctrl.new_gift.is_file_upload_disabled()">
-              <%= t '.file_prompt' %>
+              {{ctrl.texts.new_gift.file_prompt}}
               <%= file_field_tag :gift_file, :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
               <%= f.hidden_field :datatype %>
             </div>
-            <div ng-show="ctrl.new_gift.is_file_upload_disabled()"><%= t '.link_prompt1' %></div>
+            <div ng-show="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt1}}</div>
           </td>
           <td>
             <table>
               <tbody>
               <tr>
-                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => t('.file_placeholder'), :disabled => "disabled", :style => "line-height:16px;", "ng-hide" => "ctrl.new_gift.is_file_upload_disabled()" %></td>
+                <td><%= text_field_tag '', '', :id => "disp_gift_file", :placeholder => '{{ctrl.texts.new_gift.file_placeholder}}', :disabled => "disabled", :style => "line-height:16px;", "ng-hide" => "ctrl.new_gift.is_file_upload_disabled()" %></td>
                 <td>
                   <table class="new_gift_link_large">
                     <tbody>
                     <tr>
-                      <td><div ng-hide="ctrl.new_gift.is_file_upload_disabled()"><%= t '.link_prompt2' %></div></td>
+                      <td><div ng-hide="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt2}}</div></td>
                       <td>
-                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'), :id => "gift_open_graph_url1", :class => 'gift_open_graph_url', 'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_change()' %>
+                        <%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => '{{ctrl.texts.new_gift.link_placeholder}}',
+                                         :id => "gift_open_graph_url1", :class => 'gift_open_graph_url',
+                                         'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_change()' %>
                       </td>
                     </tr>
                     </tbody>
@@ -68,8 +69,11 @@
           </td>
         </tr>
         <tr class="new_gift_link_small">
-          <td><%= t '.link_prompt' %></td>
-          <td><%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => t('.link_placeholder'),
+          <td>
+            <div ng-show="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt1}}</div>
+            <div ng-hide="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt2}}</div>
+          </td>
+          <td><%= f.text_field :open_graph_url, :type => 'url', :size => 28, :maxlength => 200, :placeholder => '{{ctrl.texts.new_gift.link_placeholder}}',
                                :id => "gift_open_graph_url2", :class => 'gift_open_graph_url',
                                'ng-model' => 'ctrl.new_gift.open_graph_url', 'ng-change' => 'ctrl.new_gift_open_graph_url_changed()' %></td>
         </tr>
@@ -98,7 +102,7 @@
         </tr>
         <tr class="new_gift_submit_small">
           <td></td>
-          <td><%= f.submit t('.gift_submit_button_text'), "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift' %></td>
+          <td><%= f.submit '{{ctrl.texts.new_gift.submit_button_text}}', "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift' %></td>
         </tr>
       </table>
   <% end # form   -%>
@@ -140,7 +144,7 @@
 
 <%# gifts table -%>
 <div style="width: 100%">
-  <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>" ng-controller="GiftsCtrl as ctrl">
+  <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>">
     
     <thead>
     <%= render :partial => 'table_header_row' %>
@@ -149,7 +153,7 @@
 
     <%# start gift ng-repeat block -%>
     <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts">
-      <td>
+      <td><%# giver image or blank -%>
         <div ng-show='gift.user_id_giver' title="{{gift.user_id_giver | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.user_id_giver)">
           <div>
             <img class="small_pro_pic" ng-src="{{gift.user_id_giver | formatUserImgSrc}}"/>
@@ -157,7 +161,7 @@
         </div>
         <img ng-hide='gift.user_id_giver' src="/images/invisible-picture.gif" class="small_profile_picture"/>
       </td>
-      <td>
+      <td><%# receiver image or blank -%>
         <div ng-show='gift.user_id_receiver' title="{{gift.user_id_receiver | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.user_id_receiver)">
           <div>
             <img class="small_pro_pic" ng-src="{{gift.user_id_receiver | formatUserImgSrc}}"/>
@@ -170,7 +174,7 @@
           <tr>
             <td>
               <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text">
-                <a href="/da/da/gifts/{{gift.giftid}}" title="Klik på link for flere informationer om opslag">
+                <a href="/{{ctrl.language}}/gifts/{{gift.giftid}}" title="{{ctrl.texts.gift.link_title}}">
                   {{gift | formatGiftLinkText:2}}
                 </a> : {{gift.description}}
               </div>
@@ -218,6 +222,9 @@
     </tfoot>
   </table>
 </div>
+
+</div><%# end of GiftsCtrl -%>
+
 <br/>
 
 

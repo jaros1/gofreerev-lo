@@ -95,10 +95,10 @@ en:
         ajax_get: "Sorry. Request was rejected. Not logged in. Please refresh page."
         ajax_post: "Sorry. Action was rejected. Not logged in. Please refresh page."
      user_div:
-        title_non_friend: "%{username}/%{apiname}."
-        title_friend: "%{username}/%{apiname}. Balance %{balance}."
-        title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."
-        title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info."
+        title_non_friend: "%{username}/%{apiname}." # todo: angularJS - hoved to js.user_div.title_non_friend
+        title_friend: "%{username}/%{apiname}. Balance %{balance}." # todo: angularJS - hoved to js.user_div.title_friend
+        title_non_friend_click: "%{username}/%{apiname}. Click here to see user info." # todo: angularJS - hoved to js.user_div.title_non_friend_click
+        title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info." # todo: angularJS - hoved to js.user_div.title_friend_click
      invite_friend:
         invite_friend_prompt: "Invite"
         invite_friend_title: "%{username} is not using %{appname}. Use link to send a %{appname} invitation to %{username}."
@@ -410,24 +410,24 @@ en:
      index:
         not_logged_in: "Cannot show more rows. You are not logged in. Please refresh web page."
         welcome_msg_after_login: "Welcome %{username} to %{appname}"
-        create_gift_header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell."
-        price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all."
-        price_prompt: "Price:"
-        price_placeholder: "Price proposal"
-        price_free: "free"
-        direction_giver_prompt: "Offers: "
-        direction_receiver_prompt: "Seeks: "
-        description_title: "Text. Required. Describe what you offer or what you are looking for whether it is things or help. You decide whether you want to sell, buy, rent, lend or give things away for free. We are trading in virtuel free money. Since we are trading in virtuel money you are in practive always giving  your things away or receiving help for free. But your balance in free money changes. Posts are made on your wall and displayed to your friends or whom you have selected to view posts by this app. Your friends can comment on your post on your wall. The agreement should be finalized in here so your balance in free cash is being updated."
-        description_prompt: "Text:"
-        description_placeholder: "Describe what you offer or what you are looking for whether it is things or help."
-        file_title_true: "Optional picture. Photos are an effective way to be seen by your friends. Picture upload takes some time as the picture is uploaded in 2 steps. First upload to %{appname} and then upload to your login provider wall. Please wait."
-        file_title_false: "Sorry. Picture upload is not possible. Pictures are uploaded to your login provider wall and %{appname} lack permission to write on your wall. Photos are an effective way to be seen by your friends. You can use link in top of this page if you wish to give %{appname} access to write on your wall. You can go to \"Log in\" page and select \"Post?\" for one or more login providers if you wish that %{appname} should post on your login provider wall."
-        file_prompt: "Picture:"
-        file_placeholder: "Choose File"
-        link_prompt1: "Link:"
-        link_prompt2: "or link:"
-        link_placeholder: "copy/paste url"
-        gift_submit_button_text: "Create post"
+        create_gift_header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell." # todo: angularJS - moved to js.new_gift.header_line
+        price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all." # todo: angularJs - moved to js.new_gift.price_title
+        price_prompt: "Price:" # todo: angularJs - moved to js.new_gift.price_prompt
+        price_placeholder: "Price proposal" # todo: angularJs - moved to js.new_gift.price_placeholder
+        price_free: "free" # todo: angularJs - moved to js.new_gift.price_frie
+        direction_giver_prompt: "Offers: " # todo: angularJs - moved to js.direction_giver_prompt
+        direction_receiver_prompt: "Seeks: " # todo: angularJs - moved to js.new_gift.direction_receiver_prompt
+        description_title: "Text. Required. Describe what you offer or what you are looking for whether it is things or help. You decide whether you want to sell, buy, rent, lend or give things away for free. We are trading in virtuel free money. Since we are trading in virtuel money you are in practive always giving  your things away or receiving help for free. But your balance in free money changes. Posts are made on your wall and displayed to your friends or whom you have selected to view posts by this app. Your friends can comment on your post on your wall. The agreement should be finalized in here so your balance in free cash is being updated." # todo: angularJs - moved to js.new_gift.description_title
+        description_prompt: "Text:" # todo: angularJs - moved to js.description_prompt
+        description_placeholder: "Describe what you offer or what you are looking for whether it is things or help." # todo: angularJs - moved to js.description_placeholder
+        file_title_true: "Optional picture. Photos are an effective way to be seen by your friends. Picture upload takes some time as the picture is uploaded in 2 steps. First upload to %{appname} and then upload to your login provider wall. Please wait." # todo: angularJs - moved to js.new_gift.file_title_true
+        file_title_false: "Sorry. Picture upload is not possible. Pictures are uploaded to your login provider wall and %{appname} lack permission to write on your wall. Photos are an effective way to be seen by your friends. You can use link in top of this page if you wish to give %{appname} access to write on your wall. You can go to \"Log in\" page and select \"Post?\" for one or more login providers if you wish that %{appname} should post on your login provider wall." # todo: angularJs - moved to js.new_gift.file_title_false
+        file_prompt: "Picture:" # todo: angularJS - moved to js.new_gift.file_prompt
+        file_placeholder: "Choose File" # todo: angularJS - moved to js.new_gift.file_placeholder
+        link_prompt1: "Link:" # todo: angularJS - moved to js.new_gift.link_prompt1
+        link_prompt2: "or link:" # todo: angularJS - moved to js.new_gift.link_prompt2
+        link_placeholder: "copy/paste url" # todo: angularJS - moved to js.new_gift.placeholder
+        gift_submit_button_text: "Create post" # todo: angularJS - moved to js.new_gift.submit_button_text
         pending_gift_popup_msg: "Change currency? Select Cancel if you wish to complete your wall posting. Select OK to ignore the not saved post and change currency."
         description_required_text: "Text is required."
         price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
@@ -449,15 +449,15 @@ en:
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
-        gift_link_title: "Click on link for more information"
+        gift_link_title: "Click on link for more information" # todo: angularJs - moved to js.gift.gift_link_title
         gift_picture_title: "Click on picture for more information"
-        # format direction - todo: AnhularJS - 3 keys moved to js.gift.*
-        direction_giver: "%{username} offers"
-        direction_receiver: "%{username} seeks"
-        direction_giver_and_receiver: "from %{givername} to %{receivername}"
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        # format direction - todo: AngularJS - 3 keys moved to js.gift.*
+        direction_giver: "%{username} offers" # todo: angularJs - moved to js.gift.direction_giver
+        direction_receiver: "%{username} seeks" # todo: angularJs - moved to js.gift.direction_receiver
+        direction_giver_and_receiver: "from %{givername} to %{receivername}" # todo: angularJs - moved to js.gift.direction_both
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
-        optional_price: "/ %{price}"
+        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
         show_more_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
@@ -540,12 +540,12 @@ en:
         # 4 translate keys to format gift text with link and text.
         gift_link_title: "Click on link for more information"
         gift_picture_title: "Click on picture for more information"
-        direction_giver: "%{username} offers" # todo: angularJs - moved to js.gift.direction_giver
-        direction_receiver: "%{username} seeks" # todo: angularJs - moved to js.gift.direction_receiver
-        direction_giver_and_receiver: "from %{givername} to %{receivername}" # todo: angularJs - moved to js.gift.direction_both
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
+        direction_giver: "%{username} offers"
+        direction_receiver: "%{username} seeks"
+        direction_giver_and_receiver: "from %{givername} to %{receivername}"
+        gift_link_text: "%{date} %{optional_price} / %{direction}"
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
-        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
+        optional_price: "/ %{price}"
         show_more_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
@@ -1262,6 +1262,25 @@ en:
         href_vkontakte: "https://vkontakte.ru/share.php?url=%{link}"
      open_graph:
         ajax_error: "Cannot check url. %{error}. More information in server log."
+     new_gift: # from gifts.index - for AngularJS
+        header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell."
+        price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all."
+        price_prompt: "Price:"
+        price_placeholder: "Price proposal"
+        price_free: "free"
+        direction_giver_prompt: "Offers: "
+        direction_receiver_prompt: "Seeks: "
+        description_title: "Text. Required. Describe what you offer or what you are looking for whether it is things or help. You decide whether you want to sell, buy, rent, lend or give things away for free. We are trading in virtuel free money. Since we are trading in virtuel money you are in practive always giving  your things away or receiving help for free. But your balance in free money changes. Posts are made on your wall and displayed to your friends or whom you have selected to view posts by this app. Your friends can comment on your post on your wall. The agreement should be finalized in here so your balance in free cash is being updated."
+        description_prompt: "Text:"
+        description_placeholder: "Describe what you offer or what you are looking for whether it is things or help."
+        submit_button_text: "Create post"
+        file_title_true: "Optional picture. Photos are an effective way to be seen by your friends. Picture upload takes some time as the picture is uploaded in 2 steps. First upload to %{appname} and then upload to your login provider wall. Please wait."
+        file_title_false: "Sorry. Picture upload is not possible. Pictures are uploaded to your login provider wall and %{appname} lack permission to write on your wall. Photos are an effective way to be seen by your friends. You can use link in top of this page if you wish to give %{appname} access to write on your wall. You can go to \"Log in\" page and select \"Post?\" for one or more login providers if you wish that %{appname} should post on your login provider wall."
+        file_prompt: "Picture:"
+        file_placeholder: "Choose File" # todo: angularJS - moved to js.new_gift.file_placeholder
+        link_prompt1: "Link:"
+        link_prompt2: "or link:"
+        link_placeholder: "copy/paste url" # todo: angularJS - moved to js.new_gift.placeholder
      gift:
         # 3 translation keys from gifts.api_gift - for AngularJS filter
         direction_giver: "%{givername} offers"
@@ -1269,3 +1288,9 @@ en:
         direction_both: "from %{givername} to %{receivername}"
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
+        gift_link_title: "Click on link for more information"
+     user_div: # from shared.user_div - for angularJS filter
+        title_non_friend: "%{username}/%{apiname}."
+        title_friend: "%{username}/%{apiname}. Balance %{balance}." #
+        title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."
+        title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info."

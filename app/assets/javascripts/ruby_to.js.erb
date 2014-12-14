@@ -2,5 +2,9 @@
 
 // max text length used in share gift links. One max length for each share link provider. Used in share_gift
 // See documentation for ruby constant API_POST_MAX_TEXT_LENGTHS in /config/initializers/omniauth.rb
-var SHARE_GIFT_MAX_TEXT_LENGTHS = JSON.parse('<%= SHARE_GIFT_MAX_TEXT_LENGTHS.to_json %>');
+Gofreerev.rails['SHARE_GIFT_MAX_TEXT_LENGTHS'] = JSON.parse('<%= SHARE_GIFT_MAX_TEXT_LENGTHS.to_json %>') ;
 
+// used in js.new_gift.price_title
+Gofreerev.rails['NEG_INT_POS_BALANCE_PER_YEAR'] = <%= NEG_INT_POS_BALANCE_PER_YEAR %> ;
+Gofreerev.rails['NEG_INT_NEG_BALANCE_PER_YEAR'] = <%= NEG_INT_NEG_BALANCE_PER_YEAR %> ;
+Gofreerev.rails['APP_NAME'] = '<%= APP_NAME %>' ;

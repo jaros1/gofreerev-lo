@@ -31,6 +31,9 @@ if (!Array.prototype.indexOf)
 // Gofreerev closure start
 var Gofreerev = (function() {
 
+    // constants from ruby on rails. see ruby_to.js.erb
+    var rails = {} ;
+
     // keep track of "ajaxing". allow running ajax to complete before leaving page
     var ajaxing = false ;
     var leaving_page = false ;
@@ -2943,7 +2946,7 @@ var Gofreerev = (function() {
             var share_gift = document.getElementById('share_gift');
             if (!share_gift) return; // share gift link was not found
             debug = 2 ;
-            var max_lng = SHARE_GIFT_MAX_TEXT_LENGTHS[provider] ;
+            var max_lng = rails['SHARE_GIFT_MAX_TEXT_LENGTHS'][provider] ;
             if (max_lng === undefined) max_lng = 0 ;
             debug = 3 ;
             if (!gift_id || !('' + gift_id).match(/^\d+$/)) {
@@ -3082,6 +3085,8 @@ var Gofreerev = (function() {
 
     // export public used methods (views)
     return {
+        // constants from ruby on rails. see ruby_to.js.erb
+        rails: rails,
         // error handlers
         set_ajax_debug: set_ajax_debug, // enable/disable JS debug - application.html.erm layout
         clear_ajax_errors: clear_ajax_errors, // used in application.js.erb
@@ -3123,9 +3128,38 @@ angular.module('gifts', [])
     .controller('GiftsCtrl', ['$location', '$http', function ($location, $http) {
         var self = this;
 
-        self.language = function() {
-            return I18n.locale || I18n.defaultLocale ;
-        }
+        // language specific gift controller constants
+        // todo: client side change language without page refresh?
+        var set_language_constants = function () {
+            self.language = I18n.locale || I18n.defaultLocale;
+            self.texts = {
+                new_gift: {
+                    header_line: I18n.t('js.new_gift.header_line'),
+                    price_title: I18n.t('js.new_gift.price_title',
+                                    {min_interest: Gofreerev.rails['NEG_INT_POS_BALANCE_PER_YEAR'],
+                                     max_interest: Gofreerev.rails['NEG_INT_NEG_BALANCE_PER_YEAR']}),
+                    price_prompt: I18n.t('js.new_gift.price_prompt'),
+                    price_placeholder: I18n.t('js.new_gift.price_placeholder'),
+                    price_free: I18n.t('js.new_gift.price_free'),
+                    direction_giver_prompt: I18n.t('js.new_gift.direction_giver_prompt'),
+                    direction_receiver_prompt: I18n.t('js.new_gift.direction_receiver_prompt'),
+                    description_title: I18n.t('js.new_gift.description_title'),
+                    description_prompt: I18n.t('js.new_gift.description_prompt'),
+                    description_placeholder: I18n.t('js.new_gift.description_placeholder'),
+                    submit_button_text: I18n.t('js.new_gift.submit_button_text'),
+                    file_title_true: I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}),
+                    file_title_false: I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}),
+                    file_prompt: I18n.t('js.new_gift.file_prompt'),
+                    file_placeholder: I18n.t('js.new_gift.file_placeholder'),
+                    link_prompt1: I18n.t('js.new_gift.link_prompt1'),
+                    link_prompt2: I18n.t('js.new_gift.link_prompt2'),
+                    link_placeholder: I18n.t('js.new_gift.link_placeholder')
+                },
+                gift: {link_title: I18n.t('js.gift.gift_link_title')}
+            };
+        };
+        set_language_constants();
+        // console.log('js.new_gift.price_title = ' + self.texts.new_gift.price_title) ;
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3429,6 +3463,7 @@ angular.module('gifts', [])
             // console.log('Angular GiftsCtrl.formatUserImgTitle: user_id = ' + user_id) ;
             var user = Gofreerev.get_user(user_id);
             if (!user) return; // error - user not found in users array
+            // translation keys js.user_div.title_friends_click etc
             var keys = {
                 1: 'friend_click',
                 2: 'friend_click',
@@ -3436,6 +3471,7 @@ angular.module('gifts', [])
                 4: 'non_friend_click'
             }
             var key = 'js.user_div.title_' + (keys[user.friend] || 'non_friend');
+            // translate
             var username = (user.friend <= 2) ? user.short_user_name : user.user_name;
             var apiname = user.provider;
             var balance = formatBalance(user.balance);

@@ -195,6 +195,28 @@
               </div>
             </td>
           </tr>
+          <tr ng-show="ctrl.show_api_picture_url(gift)"><%# 3: table row with image attachment %>
+            <td>
+              <img id="gift-{{gift.giftid}}" ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+            </td>
+          </tr>
+          <tr ng-show="ctrl.show_open_graph_image(gift)"><%# 4: table row with open graph image - no error handling yet %>
+            <td>
+              <a href="{{gift.open_graph_url}}" target="_blank">
+                <img id="gift-{{gift.giftid}}-image" ng-src="{{gift.open_graph_image}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+              </a>
+            </td>
+          </tr>
+          <tr ng-show="ctrl.show_open_graph_title(gift)"><%# 5: table row with open graph title %>
+            <td>
+              <b>{{gift.open_graph_title}}</b>
+            </td>
+          </tr>
+          <tr ng-show="ctrl.show_open_graph_description(gift)"><%# 6: table row with open graph description %>
+            <td>
+              {{gift.open_graph_description}}
+            </td>
+          </tr>
         </table>
       </td>
     </tr>

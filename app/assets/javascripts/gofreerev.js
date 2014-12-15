@@ -3229,8 +3229,12 @@ angular.module('gifts', [])
             }
         ]);
 
-        // test data - gifts - todo: load gifts from local storage - maybe a service?
-        // todo: api_picture_url_on_error_at:
+        // test data - gifts
+        // todo 1: load gifts from local storage - maybe a service?
+        // todo 2: more than one api picture url if picture was uploaded to more than one login api
+        //         2a: rails server should not store gift texts and should not store relation between client gift and api pictures.
+        //             rails should upload picture and return api_gift_ids and api picture urls to client.
+        // todo 3: api_picture_url_on_error_at:
         //       mark as false if picture was not found (img onload and img onerror)
         //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
         //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
@@ -3270,7 +3274,8 @@ angular.module('gifts', [])
                 price: 0,
                 currency: 'DKK',
                 direction: 'giver',
-                description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
+                description: 'xxx',
+                // description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
                 api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
                 api_picture_url_on_error_at: false // see todo:
             },
@@ -3288,7 +3293,7 @@ angular.module('gifts', [])
                 open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg'
             }
-        ];
+        ]; // gifts
 
         self.user_div_on_click = function (user_id) {
             // console.log('GiftsCtrl.gift_on_click. user_id = ' + user_id) ;
@@ -3301,13 +3306,13 @@ angular.module('gifts', [])
             // todo: use windows redirect or angular single page app?
             // $location.url('/' + locale + '/users/' + user_id) ;
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
-        }
+        } // user_div_on_click
 
-        // show/hide table row with text overflow link for gift (long description).
-        // note that link if hidden (display: none) as default and is only activated for long descriptions
-        // ng-show: overflow link is shown above image if image attactment or open graph link
-        // ng-hide: overflow link is shown together with other gift link if no picture (attachment or open graph).
-        // rails: <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%> ... <% end -%>
+        // show/hide table row with text overflow link for gift (long description field).
+        // note that link is hidden (display: none) as default and is only activated for long descriptions
+        // ng-show: overflow link is shown above image if image attachment or open graph link
+        // ng-hide: overflow link is shown together with the other gift link if no gift picture (attachment or open graph).
+        // rails code: <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%> ... <% end -%>
         self.show_overflow_link = function (gift) {
             // console.log('GiftsCtrl.show_overflow_link. gift = ' + JSON.stringify(gift)) ;
             if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
@@ -3324,8 +3329,37 @@ angular.module('gifts', [])
                 // no picture
                 return false
             }
+        } // show_overflow_link
+
+        // show/hide table row with gift api_picture_url?
+        // only show row if api_picture_url and not error marked
+        // rails code: <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
+        self.show_api_picture_url = function (gift) {
+            if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
+                // image image attachment
+                if ((typeof gift.api_picture_url_on_error_at != 'undefined') && (gift.api_picture_url_on_error_at == true)) return false ;
+                else return true ;
+            }
+            else return false ;
+        } // show_api_picture_url
+
+        // show/hide table row with gift open graph image
+        self.show_open_graph_image = function (gift) {
+            if ((typeof gift.open_graph_image != 'undefined') && (gift.open_graph_image != null)) return true ;
+            else return false ;
         }
 
+        // show/hide table row with gift open graph title
+        self.show_open_graph_title = function (gift) {
+            if ((typeof gift.open_graph_title != 'undefined') && (gift.open_graph_title != null)) return true ;
+            else return false ;
+        }
+
+        // show/hide table row with gift open graph description
+        self.show_open_graph_description = function (gift) {
+            if ((typeof gift.open_graph_description != 'undefined') && (gift.open_graph_description != null)) return true ;
+            else return false ;
+        }
         // new gift default values
         function init_new_gift () {
             self.new_gift = {

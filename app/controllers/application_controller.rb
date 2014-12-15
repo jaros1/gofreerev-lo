@@ -865,6 +865,7 @@ class ApplicationController < ActionController::Base
   # get is called from flickr/index when user returns from flickr after allowing write access to flickr wall
   private
   def save_flickr_api_client (client, token)
+    logger.debug2 "start #{Time.now}"
     task_name = 'flickr_write'
     t = Task.find_by_session_id_and_task(session[:session_id], task_name)
     t.destroy if t
@@ -875,13 +876,16 @@ class ApplicationController < ActionController::Base
     t.ajax = 'N'
     t.task_data = [client, token].to_yaml
     t.save!
+    logger.debug2 "end #{Time.now}"
   end # save_flickr_client
   def get_flickr_api_client
+    logger.debug2 "start #{Time.now}"
     task_name = 'flickr_write'
     t = Task.where("session_id = ? and task = ? and created_at > ?", session[:session_id], task_name, 10.minutes.ago).first
     return nil unless t
     client = YAML::load(t.task_data)
     t.destroy
+    logger.debug2 "end #{Time.now}"
     client
   end # get_flickr_client
 

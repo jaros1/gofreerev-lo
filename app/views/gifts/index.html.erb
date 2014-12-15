@@ -79,7 +79,7 @@
         </tr>
         <tr>
           <td colspan="2">
-            <div id="gift_preview1">
+            <div id="gift_preview1"><%# open graph link preview %>
               <table>
                 <tbody>
                 <tr ng-show="ctrl.new_gift.open_graph_image">
@@ -97,7 +97,7 @@
                 </tbody>
               </table>
             </div>
-            <div id="gift_preview2" class="files"></div>
+            <div id="gift_preview2" class="files"></div><%# image upload preview %>
           </td>
         </tr>
         <tr class="new_gift_submit_small">
@@ -108,7 +108,11 @@
   <% end # form   -%>
 </div>
 
-<%# inject file upload status from rails to angularJS and File Upload Plugin (drag & drop) -%>
+<%#
+  #  inject file upload status from rails to angularJS and File Upload Plugin (drag & drop)
+  #  is post on wall / image upload allowed? show/hide image upload elements in html page
+  #  todo: angularJS: move post_image_allowed? code to client so that this rails => JS injection can be removed
+-%>
 <script>
     Gofreerev.set_file_upload_enabled(<%= post_image_allowed? %>) ;
 </script>
@@ -145,12 +149,16 @@
 <%# gifts table -%>
 <div style="width: 100%">
   <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>">
-    
+    <%# table header from partial gifts/table_header_row -%>
     <thead>
-    <%= render :partial => 'table_header_row' %>
+    <tr style="vertical-align: bottom;">
+      <th style="width: 52px; text-align: center">{{ctrl.texts.gifts.header.giver}}</th>
+      <th style="width: 52px; text-align: center">{{ctrl.texts.gifts.header.receiver}}</th>
+      <th style="width: 52px; text-align: center"></th>
+      <th>{{ctrl.texts.gifts.header.link_and_text}}</th>
+    </tr>
     </thead>
     <tbody id="gifts_tbody">
-
     <%# start gift ng-repeat block -%>
     <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts">
       <td><%# giver image or blank -%>
@@ -171,12 +179,19 @@
       </td>
       <td colspan="2" class="wrapword" style="vertical-align: top;">
         <table>
-          <tr>
+          <tr><%# 1: gift row with link and text %>
             <td>
               <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text">
-                <a href="/{{ctrl.language}}/gifts/{{gift.giftid}}" title="{{ctrl.texts.gift.link_title}}">
+                <a href="/{{ctrl.language}}/gifts/{{gift.giftid}}" title="{{ctrl.texts.gifts.link_title}}">
                   {{gift | formatGiftLinkText:2}}
                 </a> : {{gift.description}}
+              </div>
+            </td>
+          </tr>
+          <tr ng-show="ctrl.show_overflow_link(gift)"><%# 2: hidden row with show-more-text link used for large description with image attachment %>
+            <td style="text-align: center">
+              <div id="gift-{{gift.giftid}}-overflow-link" class="overflow" style="display: none; float: none">
+                <%= link_to '{{ctrl.texts.gifts.show_more_text}}', "#", :onclick => "return Gofreerev.show_overflow(this)" %>
               </div>
             </td>
           </tr>
@@ -203,6 +218,17 @@
       </td>
     </tr>
     <%# end gift ng-repeat block -%>
+
+    <%# ajax: dummy row - placeholder for object id for last row in html table. Used in ajax request for next set of rows -%>
+    <% if @last_row_id -%>
+        <tr style="display: none" id='<%= "last-row-id-#{@last_row_id}" %>'>
+          <td colspan="4"></td>
+        </tr>
+    <% else -%>
+        <tr style="display: none">
+          <td colspan="4"></td>
+        </tr>
+    <% end -%>
 
     </tbody>
     <tfoot>

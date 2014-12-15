@@ -3150,14 +3150,16 @@ angular.module('gifts', [])
 
         // language specific gift controller constants
         // todo: client side change language without page refresh?
-        var set_language_constants = function () {
+        function init_language_constants() {
             self.language = I18n.locale || I18n.defaultLocale;
             self.texts = {
                 new_gift: {
                     header_line: I18n.t('js.new_gift.header_line'),
                     price_title: I18n.t('js.new_gift.price_title',
-                                    {min_interest: Gofreerev.rails['NEG_INT_POS_BALANCE_PER_YEAR'],
-                                     max_interest: Gofreerev.rails['NEG_INT_NEG_BALANCE_PER_YEAR']}),
+                        {
+                            min_interest: Gofreerev.rails['NEG_INT_POS_BALANCE_PER_YEAR'],
+                            max_interest: Gofreerev.rails['NEG_INT_NEG_BALANCE_PER_YEAR']
+                        }),
                     price_prompt: I18n.t('js.new_gift.price_prompt'),
                     price_placeholder: I18n.t('js.new_gift.price_placeholder'),
                     price_free: I18n.t('js.new_gift.price_free'),
@@ -3175,10 +3177,18 @@ angular.module('gifts', [])
                     link_prompt2: I18n.t('js.new_gift.link_prompt2'),
                     link_placeholder: I18n.t('js.new_gift.link_placeholder')
                 },
-                gift: {link_title: I18n.t('js.gift.gift_link_title')}
+                gifts: {
+                    header: {
+                        giver: I18n.t('js.gifts_header.giver'),
+                        receiver: I18n.t('js.gifts_header.receiver'),
+                        link_and_text: I18n.t('js.gifts_header.link_and_text')
+                    },
+                    link_title: I18n.t('js.gifts.gift_link_title'),
+                    show_more_text: I18n.t('js.gifts.show_more_text')
+                }
             };
         };
-        set_language_constants();
+        init_language_constants();
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3220,6 +3230,10 @@ angular.module('gifts', [])
         ]);
 
         // test data - gifts - todo: load gifts from local storage - maybe a service?
+        // todo: api_picture_url_on_error_at:
+        //       mark as false if picture was not found (img onload and img onerror)
+        //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
+        //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
         self.gifts = [
             {
                 giftid: 1731,
@@ -3256,8 +3270,9 @@ angular.module('gifts', [])
                 price: 0,
                 currency: 'DKK',
                 direction: 'giver',
-                description: 'xxx',
-                api_picture_url: '/images/temp/mc3vwsegbd.jpeg'
+                description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
+                api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
+                api_picture_url_on_error_at: false // see todo:
             },
             {
                 giftid: 1710,
@@ -3288,16 +3303,42 @@ angular.module('gifts', [])
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
         }
 
-        // new gift default values
-        self.new_gift = {
-            direction: 'giver',
-            currency: Gofreerev.get_users_currency(),
-            is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
-            show: function () {
-                var currency = Gofreerev.get_users_currency() ;
-                return (currency != null) ;
+        // show/hide table row with text overflow link for gift (long description).
+        // note that link if hidden (display: none) as default and is only activated for long descriptions
+        // ng-show: overflow link is shown above image if image attactment or open graph link
+        // ng-hide: overflow link is shown together with other gift link if no picture (attachment or open graph).
+        // rails: <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%> ... <% end -%>
+        self.show_overflow_link = function (gift) {
+            // console.log('GiftsCtrl.show_overflow_link. gift = ' + JSON.stringify(gift)) ;
+            if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
+                // picture attachment - any picture with error are marked with gift.api_picture_url_on_error_at = true
+                if ((typeof gift.api_picture_url_on_error_at != 'undefined') && (gift.api_picture_url_on_error_at == true)) return false ;
+                else return true ;
+            }
+            else if ((typeof gift.open_graph_image != 'undefined') && (gift.open_graph_image != null)) {
+                // open graph image
+                // todo: add error check for open graph image as error check for image attachment?
+                return true ;
+            }
+            else {
+                // no picture
+                return false
             }
         }
+
+        // new gift default values
+        function init_new_gift () {
+            self.new_gift = {
+                direction: 'giver',
+                currency: Gofreerev.get_users_currency(),
+                is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
+                show: function () {
+                    var currency = Gofreerev.get_users_currency() ;
+                    return (currency != null) ;
+                }
+            }
+        }
+        init_new_gift() ;
 
         // new gift link open graph preview in gifts/index page ==>
 
@@ -3426,14 +3467,14 @@ angular.module('gifts', [])
         }
     }])
     .filter('formatPriceOptional', ['formatPriceFilter', function (formatPrice) {
-        // format optional price using "js.gift.optional_price" format - used in gift link
+        // format optional price using "js.gifts.optional_price" format - used in gift link
         // from application_helper.format_gift_param
         // used in formatGiftLinkText filter
         return function (gift, precision) {
             var p = gift.price ;
             if (typeof p == 'undefined') return p ;
             if (p == null) return p ;
-            return I18n.t('js.gift.optional_price', {price: formatPrice(p, precision), currency: gift.currency }) ;
+            return I18n.t('js.gifts.optional_price', {price: formatPrice(p, precision), currency: gift.currency }) ;
         }
     }])
     .filter('formatDirection', [function() {
@@ -3446,7 +3487,7 @@ angular.module('gifts', [])
             var receiver = Gofreerev.get_user(gift.user_id_receiver) ;
             // console.log('giver = ' + JSON.stringify(giver)) ;
             // console.log('receiver = ' + JSON.stringify(receiver)) ;
-            var x = I18n.t('js.gift.direction_' + gift.direction,
+            var x = I18n.t('js.gifts.direction_' + gift.direction,
                 {givername: giver ? giver.short_user_name : 'no name',
                 receivername: receiver ? receiver.short_user_name : 'no name'}) ;
             // console.log('x = ' + x) ;
@@ -3455,7 +3496,7 @@ angular.module('gifts', [])
     }])
     .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatPriceOptionalFilter', 'formatDirectionFilter',
         function (formatDateShort, formatPriceOptional, formatDirection) {
-            // format gift link text using translation js.gift.gift_link_text: %{date} %{optional_price} / %{direction}
+            // format gift link text using translation js.gifts.gift_link_text: %{date} %{optional_price} / %{direction}
             // html: {{gift.date | formatDateShort}} {{gift | formatPriceOptional:2}} / {{gift | formatDirection}}
             // nested format using 3 sub format filters
             // old rails code was t('.gift_link_text', format_gift_param(api_gift))
@@ -3463,7 +3504,7 @@ angular.module('gifts', [])
                 var date = formatDateShort(gift.date);
                 var optional_price = formatPriceOptional(gift, precision);
                 var direction = formatDirection(gift) ;
-                return I18n.t('js.gift.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
+                return I18n.t('js.gifts.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
             }
     }])
     .filter('formatBalance', [function () {

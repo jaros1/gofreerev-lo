@@ -441,14 +441,14 @@ da:
         ajax_invalid_last_row_id: "Systemfejl. Ugyldigt eller blank last_row_id i ajax kald. last_row_id = %{last_row_id}."
         share_gift_error: "Kunne ikke dele opslag din %{apiname} væg. %{error}"
      table_header_row:
-        giver_column_heading_html: "Fra:"
-        receiver_column_heading_html: "Til:"
+        giver_column_heading_html: "Fra:" # todo: angularJS - moving to js.gifts_header.*
+        receiver_column_heading_html: "Til:" # todo: angularJS - moving to js.gifts_header.*
         received_at_column_heading_html : "Dato:"
         price_column_heading_html: "Pris:"
         received_at_and_pice_heading_html: "Dato og pris:"
         new_price_column_heading_html: "Værdi<nr>nu:"
         balance_column_heading_html: "Saldo:"
-        link_and_text_column_heading_html: "Tekst:"
+        link_and_text_column_heading_html: "Tekst:" # todo: angularJS - moving to js.gifts_header.*
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
@@ -549,7 +549,7 @@ da:
         gift_link_text: "%{date} %{optional_price} / %{direction}"
         gift_text_html: " : %{text}" # text is sanitized. Only todo: tags is allowed
         optional_price: "/ %{price}"
-        show_more_text: "Vis mere tekst"
+        show_more_text: "Vis mere tekst" # todo: angularJS: moved to js.gifts.show_more_text
         like_gift: "Synes om"
         unlike_gift: "Synes ikke længere om"
         follow_gift: "Følg opslag"
@@ -1284,13 +1284,18 @@ da:
         link_prompt1: "Link:"
         link_prompt2: "eller link:"
         link_placeholder: "kopier/indsæt url" # todo: angularJS - moved to js.new_gift.placeholder
-     gift: # from gifts.api_gift - for AngularJS filter
+     gifts_header: # from gifts.table_header
+        giver: "Fra:"
+        receiver: "Til:"
+        link_and_text: "Tekst:"
+     gifts: # from gifts.api_gift - for AngularJS filter
         direction_giver: "%{givername} tilbyder"
         direction_receiver: "%{receivername} søger"
         direction_both: "fra %{givername} til %{receivername}"
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
-        gift_link_title: "Klik på link for flere informationer om opslag" # todo: angularJs - moved to js.gift.gift_link_title
+        gift_link_title: "Klik på link for flere informationer om opslag"
+        show_more_text: "Vis mere tekst" #
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

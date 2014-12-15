@@ -38,6 +38,7 @@
               </div>
             </td>
           </tr>
+
           <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%>
               <tr>
                 <td style="text-align: center">
@@ -47,6 +48,7 @@
                 </td>
               </tr>
           <% end -%>
+
           <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
               <tr>
                 <td>
@@ -54,6 +56,7 @@
                 </td>
               </tr>
           <% end -%>
+
           <% if gift.open_graph_image.to_s != '' -%>
               <tr>
                 <td>
@@ -63,6 +66,7 @@
                 </td>
               </tr>
           <% end -%>
+
           <% if gift.open_graph_title.to_s != '' -%>
               <tr>
                 <td>
@@ -70,6 +74,7 @@
                 </td>
               </tr>
           <% end -%>
+
           <% if gift.open_graph_description.to_s != '' -%>
               <tr>
                 <td>
@@ -77,6 +82,7 @@
                 </td>
               </tr>
           <% end -%>
+
         </table>
         <%# logger.debug2 "api_gift.provider = #{api_gift.provider}, api_gift.picture? = #{api_gift.picture?}, api_gift.api_picture_url_on_error_at = #{api_gift.api_picture_url_on_error_at}" -%>
       </td>

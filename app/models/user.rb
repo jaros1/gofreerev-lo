@@ -960,11 +960,10 @@ class User < ActiveRecord::Base
       else
         logger.error2 "post_on_wall? not implemented for #{provider}"
         logger.error2 "API_GIFT_PICTURE_STORE[provider] = #{API_GIFT_PICTURE_STORE[provider]}, permissions = #{permissions}"
+        logger.error2 "time = #{Time.now}"
         false
     end # case
-  end
-
-  # post_on_wall_authorized?
+  end # post_on_wall_authorized?
 
 
   # post_on_wall privs. have been moved to session.

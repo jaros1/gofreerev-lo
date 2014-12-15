@@ -438,26 +438,26 @@ en:
         ajax_invalid_last_row_id: "System error. Invalid or empty last_row_id in ajax request. last_row_id = \"%{last_row_id}\"."
         share_gift_error: "Could not share post on your %{apiname} wall. %{error}"
      table_header_row:
-        giver_column_heading_html: "From:"
-        receiver_column_heading_html: "To:"
+        giver_column_heading_html: "From:" # todo: angularJS - moving to js.gifts_header.*
+        receiver_column_heading_html: "To:" # todo: angularJS - moving to js.gifts_header.*
         received_at_column_heading_html : "Date:"
         price_column_heading_html: "Price:"
         received_at_and_pice_heading_html: "Date and price:"
         new_price_column_heading_html: "Value<br />today:"
         balance_column_heading_html: "Balance"
-        link_and_text_column_heading_html: "Text:"
+        link_and_text_column_heading_html: "Text:" # todo: angularJS - moving to js.gifts_header.*
      api_gifts:
      api_gift:
         # 4 translate keys to format gift text with link and text.
-        gift_link_title: "Click on link for more information" # todo: angularJs - moved to js.gift.gift_link_title
+        gift_link_title: "Click on link for more information" # todo: angularJs - moved to js.gifts.gift_link_title
         gift_picture_title: "Click on picture for more information"
-        # format direction - todo: AngularJS - 3 keys moved to js.gift.*
-        direction_giver: "%{username} offers" # todo: angularJs - moved to js.gift.direction_giver
-        direction_receiver: "%{username} seeks" # todo: angularJs - moved to js.gift.direction_receiver
-        direction_giver_and_receiver: "from %{givername} to %{receivername}" # todo: angularJs - moved to js.gift.direction_both
-        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gift.gift_link_text
+        # format direction - todo: AngularJS - 3 keys moved to js.gifts.*
+        direction_giver: "%{username} offers" # todo: angularJs - moved to js.gifts.direction_giver
+        direction_receiver: "%{username} seeks" # todo: angularJs - moved to js.gifts.direction_receiver
+        direction_giver_and_receiver: "from %{givername} to %{receivername}" # todo: angularJs - moved to js.gifts.direction_both
+        gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gifts.gift_link_text
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
-        optional_price: "/ %{price}" # todo: angularJs - moved to js.gift.optional_price
+        optional_price: "/ %{price}" # todo: angularJs - moved to js.gifts.optional_price
         show_more_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
@@ -546,7 +546,7 @@ en:
         gift_link_text: "%{date} %{optional_price} / %{direction}"
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
         optional_price: "/ %{price}"
-        show_more_text: "Show more text"
+        show_more_text: "Show more text" # todo: angularJS: moved to js.gifts.show_more_text
         like_gift: "Like"
         unlike_gift: "Unlike"
         follow_gift: "Follow"
@@ -1262,7 +1262,7 @@ en:
         href_vkontakte: "https://vkontakte.ru/share.php?url=%{link}"
      open_graph:
         ajax_error: "Cannot check url. %{error}. More information in server log."
-     new_gift: # from gifts.index - for AngularJS
+     new_gift: # from gifts.index.* - for angularJS
         header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell."
         price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all."
         price_prompt: "Price:"
@@ -1281,15 +1281,19 @@ en:
         link_prompt1: "Link:"
         link_prompt2: "or link:"
         link_placeholder: "copy/paste url" # todo: angularJS - moved to js.new_gift.placeholder
-     gift:
-        # 3 translation keys from gifts.api_gift - for AngularJS filter
+     gifts_header: # from gifts.table_header.* - for angularJS
+        giver: "From:"
+        receiver: "To:"
+        link_and_text: "Text:"
+     gifts: # from gifts.api_gift.* - for angularJS
         direction_giver: "%{givername} offers"
         direction_receiver: "%{username} seeks"
         direction_both: "from %{givername} to %{receivername}"
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
         gift_link_title: "Click on link for more information"
-     user_div: # from shared.user_div - for angularJS filter
+        show_more_text: "Show more text"
+     user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #
         title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."

@@ -248,7 +248,9 @@ var Gofreerev = (function() {
     } // hyphenate_div
 
     // find div with hidden overflow - display show-more-text link
+    // one overflow div and two show-more-text link for each gift
     function find_overflow () {
+        return ; // todo: moved to angularJS
         var pgm = 'find_overflow: ' ;
         // fix for old browsers that does not support word break = break all (opera 12).
         var hyphenate = false ;
@@ -262,6 +264,10 @@ var Gofreerev = (function() {
         if (document.getElementsByClassName) divs = document.getElementsByClassName('overflow') ;
         else if (document.querySelectorAll) divs = document.querySelectorAll('.overflow') ;
         else return ; // IE8 running in compatibility mode - ignore div overflow
+        if (divs.length == 0) return ; // non
+
+
+
         var overflow_link = {} ;
         var overflow_text = {} ;
         var div, id, id_split, id_type, key, key, div_type ;
@@ -3113,6 +3119,7 @@ var Gofreerev = (function() {
         move_tasks_errors2: move_tasks_errors2, // used in application.js.erb
         add_to_tasks_errors: add_to_tasks_errors, // used in angularjs modules
         imgonload: imgonload, // check invalid or missing pictures - used in gifts/index page
+        imgonerror: imgonerror, // check invalid or missing pictures - used in gifts/index page
         show_debug_log_checkbox: show_debug_log_checkbox, // show/hide debug log in html page
         add2log: add2log, // used in angularjs module
         set_file_upload_enabled: set_file_upload_enabled,
@@ -3145,7 +3152,7 @@ var Gofreerev = (function() {
 // angularJS code
 
 angular.module('gifts', [])
-    .controller('GiftsCtrl', ['$location', '$http', function ($location, $http) {
+    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', function ($location, $http, $document, $window) {
         var self = this;
 
         // language specific gift controller constants
@@ -3246,7 +3253,8 @@ angular.module('gifts', [])
                 price: 0,
                 currency: 'DKK',
                 direction: 'giver',
-                description: 'b'
+                // description: 'b'
+                description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b '
             },
             {
                 giftid: 1730,
@@ -3274,8 +3282,8 @@ angular.module('gifts', [])
                 price: 0,
                 currency: 'DKK',
                 direction: 'giver',
-                description: 'xxx',
-                // description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
+                // description: 'xxx',
+                description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
                 api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
                 api_picture_url_on_error_at: false // see todo:
             },
@@ -3330,6 +3338,62 @@ angular.module('gifts', [])
                 return false
             }
         } // show_overflow_link
+
+
+        // new angularJS version of show-overflow-link
+        // link: 1 - above image (picture), 2 - together with other gift links (no picture)
+        // return false if small text without vertical overflow
+        // return
+        self.show_overflow_link_b = function (gift, link) {
+            console.log('GiftsCtrl.show_overflow_link. gift = ' + JSON.stringify(gift) + ', link = ' + JSON.stringify(link)) ;
+            var pgm = 'GiftsCtrl.show_overflow_link_b: ' ;
+            // find overflow div
+            var text_id = "gift-" + gift.giftid + "-overflow-text" ;
+            var text = document.getElementById(text_id) ;
+            if (!text) {
+                Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+                console.log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+                return false ;
+            }
+            // check for horizontal text overflow
+            var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
+            var screen_width_factor = screen_width / 320.0 ;
+            if (screen_width_factor < 1) screen_width_factor = 1 ;
+            var text_max_height = parseInt(text.style.maxHeight) ;
+            if (text.scrollHeight * screen_width_factor < text_max_height) {
+                console.log(pgm + 'small text - overflow is not relevant') ;
+                return false;
+            }
+            if (text.scrollHeight <= text.clientHeight) {
+                console.log(pgm + 'not relevant with actual screen width') ;
+                return false ;
+            }
+            // horizontal text overflow found - check for picture
+            var picture ;
+            if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
+                // picture attachment - any picture with error are marked with gift.api_picture_url_on_error_at = true
+                if ((typeof gift.api_picture_url_on_error_at != 'undefined') && (gift.api_picture_url_on_error_at == true)) picture = false ;
+                else picture = true ;
+            }
+            else if ((typeof gift.open_graph_image != 'undefined') && (gift.open_graph_image != null)) {
+                // open graph image
+                // todo: add error check for open graph image as error check for image attachment?
+                picture = true ;
+            }
+            else {
+                // no picture
+                picture = false
+            }
+            // show link? link 1 used for gift with pictures, link 2 used for gift without pictures
+            var show ;
+            if (link == 1) show = picture ;
+            else if (link == 2) show = !picture ;
+            else show = false ;
+            console.log(pgm + 'giftid = ' + gift.giftid + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
+            return show ;
+        } // show_overflow_link_b
+
+
 
         // show/hide table row with gift api_picture_url?
         // only show row if api_picture_url and not error marked
@@ -3468,7 +3532,7 @@ angular.module('gifts', [])
 
         // new_gift ng-submit
         self.create_new_gift = function () {
-            alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
+            $window.alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
         }
 
         // end GiftsCtrl

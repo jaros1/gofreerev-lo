@@ -181,16 +181,16 @@
         <table>
           <tr><%# 1: gift row with link and text %>
             <td>
-              <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text">
+              <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text" data-giftid="{{gift.giftid}}">
                 <a href="/{{ctrl.language}}/gifts/{{gift.giftid}}" title="{{ctrl.texts.gifts.link_title}}">
                   {{gift | formatGiftLinkText:2}}
                 </a> : {{gift.description}}
               </div>
             </td>
           </tr>
-          <tr ng-show="ctrl.show_overflow_link(gift)"><%# 2: hidden row with show-more-text link used for large description with image attachment %>
+          <tr ng-show="ctrl.show_overflow_link_b(gift,1)"><%# 2: hidden row with show-more-text link used for large description with image attachment %>
             <td style="text-align: center">
-              <div id="gift-{{gift.giftid}}-overflow-link" class="overflow" style="display: none; float: none">
+              <div id="gift-{{gift.giftid}}-overflow-link" data-giftid="{{gift.giftid}}" class="overflow" style="float: none">
                 <%= link_to '{{ctrl.texts.gifts.show_more_text}}', "#", :onclick => "return Gofreerev.show_overflow(this)" %>
               </div>
             </td>
@@ -224,7 +224,17 @@
     <tr id='gift-{{gift.giftid}}-links'>
       <td colspan="2"></td>
       <td colspan="2">
-       </td>
+        <%# link 1 - show more text %>
+        <%# todo: only text field, but two overflow links with identical ids! maybe drop id and use data=giftid? maybe use id names -text, -link1 and -link2? %>
+        <div ng-show="ctrl.show_overflow_link_b(gift,2)" id="gift-{{gift.giftid}}-overflow-link" data-giftid="{{gift.giftid}}" class="overflow" style="float: none">
+          <%= link_to '{{ctrl.texts.gifts.show_more_text}}', "#", :onclick => "return Gofreerev.show_overflow(this)" %> -
+        </div>
+        <%# link 2 & 3 - like and unlike gift %>
+        <%# link 4 - share gift is not relevant in lo version %>
+        <%# link 5 - delete gift %>
+        <%# link 6 - hide gift %>
+        <%# link 7 - show older comments %>
+      </td>
     </tr>
 
     <tr id='gift-{{gift.giftid}}-comment-new'>

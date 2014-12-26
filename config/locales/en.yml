@@ -1287,7 +1287,7 @@ en:
         link_and_text: "Text:"
      gifts: # from gifts.api_gift.* - for angularJS
         direction_giver: "%{givername} offers"
-        direction_receiver: "%{username} seeks"
+        direction_receiver: "%{receivername} seeks"
         direction_both: "from %{givername} to %{receivername}"
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate

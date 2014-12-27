@@ -247,106 +247,6 @@ var Gofreerev = (function() {
         div.innerHTML = link + text ;
     } // hyphenate_div
 
-    // find div with hidden overflow - display show-more-text link
-    // one overflow div and two show-more-text link for each gift
-    function find_overflow () {
-        return ; // todo: moved to angularJS
-        var pgm = 'find_overflow: ' ;
-        // fix for old browsers that does not support word break = break all (opera 12).
-        var hyphenate = false ;
-        if (navigator.userAgent.indexOf('Opera/9.80') != -1) hyphenate = true ;
-        if (hyphenate) add2log(pgm + 'hyphenate text (opera 12)') ;
-        var shy_div = document.createElement('DIV') ;
-        shy_div.innerHTML = '&shy;' ;
-        var shy = shy_div.innerHTML ;
-        // find overflow texts and links in page - one array with texts - one array with hidden links
-        var divs ;
-        if (document.getElementsByClassName) divs = document.getElementsByClassName('overflow') ;
-        else if (document.querySelectorAll) divs = document.querySelectorAll('.overflow') ;
-        else return ; // IE8 running in compatibility mode - ignore div overflow
-        if (divs.length == 0) return ; // non
-
-
-
-        var overflow_link = {} ;
-        var overflow_text = {} ;
-        var div, id, id_split, id_type, key, key, div_type ;
-        for (var i=0 ; i<divs.length ; i++) {
-            div = divs[i] ;
-            id = div.id ;
-            id_split = id.split('-') ;
-            div_type = id_split.pop() ;
-            key = id_split.join('-') ;
-            if (div_type == 'text') overflow_text[key] = i ;
-            else if (div_type == 'link') {
-                if (div.style.display == 'none') overflow_link[key] = i ;
-            }
-            else add2log(pgm + 'invalid overflow id ' + id) ;
-        } // i
-        // fix word break = break all in old browser (opera 12) - insert soft hyphen in text
-        if (hyphenate) {
-            for (key in overflow_text) {
-                text = divs[overflow_text[key]] ;
-                if (text.innerHTML.indexOf(shy) == -1) {
-                    // add2log(pgm + 'key = ' + key + ', hyphenate ' + text.children.length + ' children') ;
-                    hyphenate_div(text) ;
-                }
-            }
-        }
-        // check for vertical hidden overflow - display show-more-text link if overflow
-        var text, link, text_max_height ;
-        var screen_width = (document.width !== undefined) ? document.width : document.body.offsetWidth;
-        var screen_width_factor = screen_width / 320.0 ;
-        if (screen_width_factor < 1) screen_width_factor = 1 ;
-        // add2log('screen_width = ' + screen_width + ', screen_width_factor = ' + screen_width_factor) ;
-        var skip_keys = [] ;
-        for (key in overflow_link) {
-            // add2log(pgm + 'key = ' + key + ', text = ' + overflow_text[key] + ', link = ' + overflow_link[key]) ;
-            text = divs[overflow_text[key]] ;
-            if (!text) {
-                add2log(pgm + 'error. overflow text with key ' + key + ' was not found.') ;
-                continue ;
-            }
-            link = divs[overflow_link[key]] ;
-            if (!link) {
-                add2log(pgm + 'error. overflow link with key ' + key + ' was not found.') ;
-                continue ;
-            }
-            if (!text.style.maxHeight) {
-                add2log(pgm + 'error. found overflow text key ' + key + ' without maxHeight') ;
-                continue ;
-            }
-            text_max_height = parseInt(text.style.maxHeight) ;
-            // add2log(pgm + 'key = ' + key + ', text.style.maxHeight = ' + text_max_height +
-            //        ', text.client height = ' + text.clientHeight + ', text.scroll height = ' + text.scrollHeight +
-            //        ', link.style.display = ' + link.style.display) ;
-            if (text.scrollHeight * screen_width_factor < text_max_height) {
-                // small text - overflow is not relevant - skip in next call
-                skip_keys.push(key) ;
-                continue ;
-            }
-            if (text.scrollHeight <= text.clientHeight) continue ; // not relevant with actual screen width
-            // show link
-            link.style.display = '' ;
-            skip_keys.push(key) ;
-        } // key
-        // blank overflow class for text and links not to check next call (show-more-rows request)
-        // add2log('skip_keys = ' + skip_keys.join(', ')) ;
-        for (i=0 ; i<skip_keys.length ; i++) {
-            key = skip_keys[i] ;
-            text = document.getElementById(key + '-text') ;
-            if (text) text.className = '' ;
-            else add2log(pgm + 'error. key ' + key + '-text was not found') ;
-            link = document.getElementById(key + '-link') ;
-            if (link) link.className = '' ;
-            else add2log(pgm + 'error. key ' + key + '-link was not found') ;
-        } // key
-    } // find_overflow
-
-    $(document).ready(function() {
-        find_overflow () ;
-    })
-
     // keep track of "ajaxing". allow running ajax to complete before leaving page
     // this solution gives a nice message when user clicks on a http link (leaving page).
     // It could be nice with a solution that also gives a message for ajax request (not leaving page).
@@ -1025,9 +925,6 @@ var Gofreerev = (function() {
             // that's it
 
             debug = 110 ;
-            add2log(pgm + 'call find_overflow') ;
-            find_overflow();
-
             add2log(pgm + 'ajax_tasks_sleep = ' + tasks_sleep) ;
             if (!tasks_sleep) return ;
             // execute some more tasks - for example post status on api wall(s)
@@ -1596,8 +1493,6 @@ var Gofreerev = (function() {
             // add2log(pgm + 'new href = ' + href)
             end_of_page = false ;
         }
-        // show show-more-text for div with text overflow
-        find_overflow() ;
 
         if (table_name == 'gifts') {
             // unbind and bind ajax handlers for comment links (new rows)
@@ -2041,7 +1936,6 @@ var Gofreerev = (function() {
                 restart_check_new_messages();
                 debug = 14 ;
                 // check overflow for new comment - display show-more-text link for comment with long text
-                find_overflow();
                 debug = 15 ;
                 // restore scroll - not working 100% correct - problems with big comments
                 var textarea_new_offset = $('#' + textarea_id).offset().top ;
@@ -3255,6 +3149,7 @@ angular.module('gifts', [])
                 direction: 'giver',
                 // description: 'b'
                 description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b '
+                // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b '
             },
             {
                 giftid: 1730,
@@ -3316,59 +3211,25 @@ angular.module('gifts', [])
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
         } // user_div_on_click
 
-        // show/hide table row with text overflow link for gift (long description field).
-        // note that link is hidden (display: none) as default and is only activated for long descriptions
-        // ng-show: overflow link is shown above image if image attachment or open graph link
-        // ng-hide: overflow link is shown together with the other gift link if no gift picture (attachment or open graph).
-        // rails code: <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%> ... <% end -%>
-        self.show_overflow_link = function (gift) {
-            // console.log('GiftsCtrl.show_overflow_link. gift = ' + JSON.stringify(gift)) ;
-            if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
-                // picture attachment - any picture with error are marked with gift.api_picture_url_on_error_at = true
-                if ((typeof gift.api_picture_url_on_error_at != 'undefined') && (gift.api_picture_url_on_error_at == true)) return false ;
-                else return true ;
-            }
-            else if ((typeof gift.open_graph_image != 'undefined') && (gift.open_graph_image != null)) {
-                // open graph image
-                // todo: add error check for open graph image as error check for image attachment?
-                return true ;
-            }
-            else {
-                // no picture
-                return false
-            }
-        } // show_overflow_link
-
-
         // new angularJS version of show-overflow-link
         // link: 1 - above image (picture), 2 - together with other gift links (no picture)
         // return false if small text without vertical overflow
-        // return
-        self.show_overflow_link_b = function (gift, link) {
-            console.log('GiftsCtrl.show_overflow_link. gift = ' + JSON.stringify(gift) + ', link = ' + JSON.stringify(link)) ;
-            var pgm = 'GiftsCtrl.show_overflow_link_b: ' ;
+        // return true if big text with vertical overflow (link 1 & picture or link 2 without picture)
+        // note: ng-show is not recalculated if screen width changes (responsive view or rotate on a mobile phone)
+        self.show_overflow_link = function (gift, link) {
+            var pgm = 'GiftsCtrl.show_overflow_link: ' ;
             // find overflow div
             var text_id = "gift-" + gift.giftid + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
-            if (!text) {
-                Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
-                console.log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
-                return false ;
-            }
+            if (!text) return ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
             // check for horizontal text overflow
             var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
             var screen_width_factor = screen_width / 320.0 ;
             if (screen_width_factor < 1) screen_width_factor = 1 ;
             var text_max_height = parseInt(text.style.maxHeight) ;
-            if (text.scrollHeight * screen_width_factor < text_max_height) {
-                console.log(pgm + 'small text - overflow is not relevant') ;
-                return false;
-            }
-            if (text.scrollHeight <= text.clientHeight) {
-                console.log(pgm + 'not relevant with actual screen width') ;
-                return false ;
-            }
-            // horizontal text overflow found - check for picture
+            if (text.scrollHeight * screen_width_factor < text_max_height) return ; // small text - overflow is not relevant
+            if (text.scrollHeight <= text.clientHeight) return ; // not actual with current screen width
+            // vertical text overflow found - check for picture true/false
             var picture ;
             if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
                 // picture attachment - any picture with error are marked with gift.api_picture_url_on_error_at = true
@@ -3384,14 +3245,14 @@ angular.module('gifts', [])
                 // no picture
                 picture = false
             }
-            // show link? link 1 used for gift with pictures, link 2 used for gift without pictures
+            // show overflow link? link 1 used for gift with pictures, link 2 used for gift without pictures
             var show ;
             if (link == 1) show = picture ;
             else if (link == 2) show = !picture ;
             else show = false ;
             console.log(pgm + 'giftid = ' + gift.giftid + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
             return show ;
-        } // show_overflow_link_b
+        } // show_overflow_link
 
 
 

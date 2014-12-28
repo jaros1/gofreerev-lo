@@ -188,9 +188,9 @@
               </div>
             </td>
           </tr>
-          <tr ng-show="ctrl.show_full_text_link(gift,1)"><%# 2: hidden row with show-more-text link used for large description with image attachment %>
+          <tr ng-show="ctrl.show_full_text_link(gift,1)"><%# 2: hidden row with "show full text" link used for large description + image attachment %>
             <td style="text-align: center">
-              <div id="gift-{{gift.giftid}}-overflow-link" style="float: none">
+              <div style="float: none">
                 <a href ng-click="ctrl.show_full_text(gift.giftid)">{{ctrl.texts.gifts.show_full_text}}</a>
               </div>
             </td>
@@ -224,11 +224,17 @@
     <tr id='gift-{{gift.giftid}}-links'>
       <td colspan="2"></td>
       <td colspan="2">
-        <%# link 1 - show more text. link=2. gift without picture %>
-        <div ng-show="ctrl.show_full_text_link(gift,2)" id="gift-{{gift.giftid}}-overflow-link" style="float: none">
-          <a href ng-click="ctrl.show_full_text(gift.giftid)">{{ctrl.texts.gifts.show_full_text}}</a>-
+        <%# link 1 - show full text. link=2. gift without picture %>
+        <div ng-show="ctrl.show_full_text_link(gift,2)">
+          <a href ng-click="ctrl.show_full_text(gift.giftid)">{{ctrl.texts.gifts.show_full_text}}</a> -&nbsp;
         </div>
         <%# link 2 & 3 - like and unlike gift %>
+        <div ng-hide="gift.like">
+          <a href ng-click="ctrl.like_gift(gift)">{{ctrl.texts.gifts.like_gift}}</a>
+        </div>
+        <div ng-show="gift.like">
+          <a href ng-click="ctrl.unlike_gift(gift)">{{ctrl.texts.gifts.unlike_gift}}</a>
+        </div>
         <%# link 4 - share gift is not relevant in lo version %>
         <%# link 5 - delete gift %>
         <%# link 6 - hide gift %>

@@ -302,9 +302,9 @@ da:
         rejected_text: "%{date} %{optional_price} : %{text} (afvist)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepteret)" # new_deal_yn == Y, accepted_yn == Y
      api_comments2:
-        show_full_text: "Vis mere tekst"
-        like_gift: "Synes om"
-        unlike_gift: "Synes ikke længere om"
+        show_full_text: "Vis mere tekst" # todo: angularJS - moved to js.index.show_full_text
+        like_gift: "Synes om" # todo: angularJS - moved to js.index.like_gift
+        unlike_gift: "Synes ikke længere om" # todo: angularJS - moved to js.index.unlike_gift
         follow_gift: "Følg opslag"
         unfollow_gift: "Følg ikke længere"
         hide_gift: "Skjul opslag"
@@ -1295,7 +1295,9 @@ da:
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
         gift_link_title: "Klik på link for flere informationer om opslag"
-        show_full_text: "Vis mere tekst" #
+        show_full_text: "Vis mere tekst"
+        like_gift: "Synes om"
+        unlike_gift: "Synes ikke længere om"
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

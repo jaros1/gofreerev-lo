@@ -299,7 +299,7 @@ en:
         rejected_text: "%{date} %{optional_price} : %{text} (rejected)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepted)" # new_deal_yn == Y, accepted_yn == Y
      api_comments2:
-        show_more_text: "Show more text"
+        show_full_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
         follow_gift: "Follow"
@@ -355,7 +355,7 @@ en:
         rejected_text: "%{date} %{optional_price} : %{text} (rejected)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepted)" # new_deal_yn == Y, accepted_yn == Y
      api_comments2:
-        show_more_text: "Show more text"
+        show_full_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
         follow_gift: "Follow"
@@ -458,7 +458,7 @@ en:
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # todo: angularJs - moved to js.gifts.gift_link_text
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
         optional_price: "/ %{price}" # todo: angularJs - moved to js.gifts.optional_price
-        show_more_text: "Show more text"
+        show_full_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
         follow_gift: "Follow"
@@ -546,7 +546,7 @@ en:
         gift_link_text: "%{date} %{optional_price} / %{direction}"
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
         optional_price: "/ %{price}"
-        show_more_text: "Show more text" # todo: angularJS: moved to js.gifts.show_more_text
+        show_full_text: "Show more text" # todo: angularJS: moved to js.gifts.show_full_text
         like_gift: "Like"
         unlike_gift: "Unlike"
         follow_gift: "Follow"
@@ -833,7 +833,7 @@ en:
         direction_receiver: "%{username} seeks"
         direction_giver_and_receiver: "from %{givername} to %{receivername}"
         gift_text_html: " : %{text}" # text is sanitized. Only todo tags is allowed
-        show_more_text: "Show more text"
+        show_full_text: "Show more text"
         # 12 balance title keys. Documentation for balance calculation.
         # variables: new_balance, old_balance, sign_price, price, exchange_rate, sign_negative_interest, negative_interest,
         #            sign_currency_gain_loss, currency_gain_loss, new_currency, old_currency and number_of_days
@@ -1292,7 +1292,7 @@ en:
         optional_price: "/ %{price} %{currency}"
         gift_link_text: "%{date} %{optional_price} / %{direction}"  # nested translate
         gift_link_title: "Click on link for more information"
-        show_more_text: "Show more text"
+        show_full_text: "Show more text"
      user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #

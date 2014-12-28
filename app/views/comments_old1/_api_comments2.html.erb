@@ -8,7 +8,7 @@
   <td colspan="2">
     <% unless ((api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '')) -%>
         <div id="<%= "gift-#{gift.id}-overflow-link" %>" class="overflow" style="display: none">
-          <%= link_to t('.show_more_text'), "#", :onclick => "return Gofreerev.show_overflow(this)" %> -&nbsp;
+          <%= link_to t('.show_full_text'), "#", :onclick => "return Gofreerev.show_overflow(this)" %> -&nbsp;
         </div>
     <% end -%>
     <%= link_to_gift_like_unlike(gift) %>

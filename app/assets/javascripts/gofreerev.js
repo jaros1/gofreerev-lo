@@ -180,46 +180,6 @@ var Gofreerev = (function() {
         else self.form.submit() ; // error forms submit with js text response
     } // onchange_currency
 
-    // long gift description is truncated inside a div with max-height and overflow
-    // show-more-text link under text is used to remove max-height from div (show full text)
-    // class overflow is used to identify text and link in web page
-    // expects id <key>-text and <key>-link ( id="gift-1298-overflow-text" and id="gift-1298-overflow-link" )
-    // class "wrapword" is used for text. word-break: break-all is used.
-    // word-break: break-all works best on small width screens but not on wide screens
-    // but it is hard to find a solution that looks good on all devices
-
-    // show full text for div with overflow
-    function show_overflow(overflow_link) {
-        var pgm = 'show_overflow: ' ;
-        overflow_link = overflow_link.parentNode ;
-        var link_id = overflow_link.id ;
-        if (!link_id) {
-            add2log(pgm + 'overflow link without id') ;
-            return false ;
-        }
-        var link_id_split = link_id.split('-') ;
-        var pos = link_id_split.length-1 ;
-        if (link_id_split[pos] != 'link') {
-            add2log(pgm + 'overflow link id ' + link_id + ' is invalid') ;
-            return false ;
-        } // error - id should be gift-<nnn>-overflow-link
-        link_id_split[pos] = 'text' ;
-        var text_id = link_id_split.join('-') ;
-        var overflow_text = document.getElementById(text_id) ;
-        if (!overflow_text) {
-            add2log(pgm + 'overflow text id ' + text_id + ' was not found') ;
-            return false ;
-        } // error - overflow text was not found
-        // var tempScrollTop = $(window).scrollTop();
-        // add2log(pgm + 'empScrollTop = ' + tempScrollTop) ;
-        overflow_link.display = 'none' ;
-        overflow_text.style.maxHeight = 'none' ;
-        overflow_text.style.overflow = 'visible' ;
-        overflow_link.style.display = 'none' ;
-        // $(window).scrollTop(tempScrollTop);
-        return false ;
-    } // show_overflow
-
     // keep track of "ajaxing". allow running ajax to complete before leaving page
     // this solution gives a nice message when user clicks on a http link (leaving page).
     // It could be nice with a solution that also gives a message for ajax request (not leaving page).
@@ -2993,7 +2953,6 @@ var Gofreerev = (function() {
         is_file_upload_disabled: is_file_upload_disabled,
         // view helpers
         onchange_currency: onchange_currency, // ajax update currency in users/edit page
-        show_overflow: show_overflow, // show more text function
         inIframe: inIframe, // Fix bug. App is displayed in a iFrame for opera < 12.16
         post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
@@ -3058,7 +3017,7 @@ angular.module('gifts', [])
                         link_and_text: I18n.t('js.gifts_header.link_and_text')
                     },
                     link_title: I18n.t('js.gifts.gift_link_title'),
-                    show_more_text: I18n.t('js.gifts.show_more_text')
+                    show_full_text: I18n.t('js.gifts.show_full_text')
                 }
             };
         };
@@ -3185,35 +3144,18 @@ angular.module('gifts', [])
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
         } // user_div_on_click
 
-        self.show_overflow = function(giftid) {
-            // show full text for div with overflow
-            var pgm = 'GiftsCtrl.show_overflow: ' ;
-            // find overflow div
-            var text_id = "gift-" + giftid + "-overflow-text" ;
-            var text = document.getElementById(text_id) ;
-            if (!text) {
-                // error - div with gift link and description was not found
-                console.log(pgm + text_id + ' was not found') ;
-                return ;
-            }
-            // remove max height - should hide show-more-text links
-            text.style.maxHeight = 'none' ;
-            text.style.overflow = 'visible' ;
-        } // show_overflow
-
-        // new angularJS version of show-overflow-link
-        // link: 1 - above image (picture), 2 - together with other gift links (no picture)
+        // gift link + description - shpw "show-more-text" link if vertical text overflow in div container (maxHeight and overflow)
         // return false if small text without vertical overflow
-        // return true if big text with vertical overflow (link 1 & picture or link 2 without picture)
+        // link: 1 - above image (picture), 2 - together with other gift links (no picture)
         // note: ng-show is not recalculated if screen width changes (responsive view or rotate on a mobile phone)
-        self.show_overflow_link = function (gift, link) {
-            var pgm = 'GiftsCtrl.show_overflow_link: ' ;
+        self.show_full_text_link = function (gift, link) {
+            var pgm = 'GiftsCtrl.show_full_text_link: ' ;
             // find overflow div
             var text_id = "gift-" + gift.giftid + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
             if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
             // check style.overflow
-            if (text.style.overflow == 'visible') return false ; // show_overflow has already been activated
+            if (text.style.overflow == 'visible') return false ; // show_full_text has already been activated
             // check for horizontal text overflow
             var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
             var screen_width_factor = screen_width / 320.0 ;
@@ -3244,9 +3186,20 @@ angular.module('gifts', [])
             else show = false ;
             console.log(pgm + 'giftid = ' + gift.giftid + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
             return show ;
-        } // show_overflow_link
+        } // show_full_text_link
 
-
+        // show full gift description. remove style maxHeight and overflow from div container
+        self.show_full_text = function(giftid) {
+            // show full text for div with overflow
+            var pgm = 'GiftsCtrl.show_full_text: ' ;
+            // find overflow div
+            var text_id = "gift-" + giftid + "-overflow-text" ;
+            var text = document.getElementById(text_id) ;
+            if (!text) return ; // error - div with gift link and description was not found
+            // remove max height ( and hide show-more-text link)
+            text.style.maxHeight = 'none' ;
+            text.style.overflow = 'visible' ;
+        } // show_full_text
 
         // show/hide table row with gift api_picture_url?
         // only show row if api_picture_url and not error marked

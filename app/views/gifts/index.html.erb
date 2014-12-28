@@ -181,7 +181,7 @@
         <table>
           <tr><%# 1: gift row with link and text %>
             <td>
-              <div style="max-height: 150px; overflow: hidden" class="overflow" id="gift-{{gift.giftid}}-overflow-text" data-giftid="{{gift.giftid}}">
+              <div style="max-height: 150px; overflow: hidden" id="gift-{{gift.giftid}}-overflow-text">
                 <a href="/{{ctrl.language}}/gifts/{{gift.giftid}}" title="{{ctrl.texts.gifts.link_title}}">
                   {{gift | formatGiftLinkText:2}}
                 </a> : <span ng-bind-html="gift.description | formatGiftDescription"/>
@@ -190,8 +190,8 @@
           </tr>
           <tr ng-show="ctrl.show_overflow_link(gift,1)"><%# 2: hidden row with show-more-text link used for large description with image attachment %>
             <td style="text-align: center">
-              <div id="gift-{{gift.giftid}}-overflow-link" data-giftid="{{gift.giftid}}" style="float: none">
-                <%= link_to '{{ctrl.texts.gifts.show_more_text}}', "#", :onclick => "return Gofreerev.show_overflow(this)" %>
+              <div id="gift-{{gift.giftid}}-overflow-link" style="float: none">
+                <a href ng-click="ctrl.show_overflow(gift.giftid)">{{ctrl.texts.gifts.show_more_text}}</a>
               </div>
             </td>
           </tr>
@@ -224,10 +224,9 @@
     <tr id='gift-{{gift.giftid}}-links'>
       <td colspan="2"></td>
       <td colspan="2">
-        <%# link 1 - show more text %>
-        <%# todo: only text field, but two overflow links with identical ids! maybe drop id and use data=giftid? maybe use id names -text, -link1 and -link2? %>
-        <div ng-show="ctrl.show_overflow_link(gift,2)" id="gift-{{gift.giftid}}-overflow-link" data-giftid="{{gift.giftid}}" style="float: none">
-          <%= link_to '{{ctrl.texts.gifts.show_more_text}}', "#", :onclick => "return Gofreerev.show_overflow(this)" %> -
+        <%# link 1 - show more text. link=2. gift without picture %>
+        <div ng-show="ctrl.show_overflow_link(gift,2)" id="gift-{{gift.giftid}}-overflow-link" style="float: none">
+          <a href ng-click="ctrl.show_overflow(gift.giftid)">{{ctrl.texts.gifts.show_more_text}}</a>-
         </div>
         <%# link 2 & 3 - like and unlike gift %>
         <%# link 4 - share gift is not relevant in lo version %>

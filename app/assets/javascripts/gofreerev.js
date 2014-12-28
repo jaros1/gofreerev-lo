@@ -180,9 +180,8 @@ var Gofreerev = (function() {
         else self.form.submit() ; // error forms submit with js text response
     } // onchange_currency
 
-    // long gift description is hidden inside div with max-height and overflow
+    // long gift description is truncated inside a div with max-height and overflow
     // show-more-text link under text is used to remove max-height from div (show full text)
-    // find_overflow is called at startup, after show-more-rows and after ajax injecting new or changed gifts into page
     // class overflow is used to identify text and link in web page
     // expects id <key>-text and <key>-link ( id="gift-1298-overflow-text" and id="gift-1298-overflow-link" )
     // class "wrapword" is used for text. word-break: break-all is used.
@@ -220,126 +219,6 @@ var Gofreerev = (function() {
         // $(window).scrollTop(tempScrollTop);
         return false ;
     } // show_overflow
-
-    // find div with overflow - show link
-    // opera 12 fix for missing word-break=break-all support-
-    // insert soft hyphen in div text - expects format link + text
-    function hyphenate_div (div) {
-        var pgm = 'find_overflow: ' ;
-        var shy_div = document.createElement('DIV') ;
-        shy_div.innerHTML = '&shy;' ;
-        var shy = shy_div.innerHTML ;
-        var innerHTML = div.innerHTML ;
-        if (innerHTML.indexOf(shy) != -1) return ;
-        var pos = innerHTML.indexOf('</a>') ; // expected format: link + text
-        // add2log(pgm + 'pos = ' + pos) ;
-        var link, text ;
-        if (pos == -1) {
-            link = '' ;
-            text = innerHTML ;
-        }
-        else if (pos + 4 == innerHTML.length) return ;
-        else {
-            link = innerHTML.substr(0, pos+4) ;
-            text = innerHTML.substr(pos+4) ;
-        }
-        text = text.split('').join(shy) ;
-        div.innerHTML = link + text ;
-    } // hyphenate_div
-
-    // find div with hidden overflow - display show-more-text link
-    function find_overflow () {
-        var pgm = 'find_overflow: ' ;
-        // fix for old browsers that does not support word break = break all (opera 12).
-        var hyphenate = false ;
-        if (navigator.userAgent.indexOf('Opera/9.80') != -1) hyphenate = true ;
-        if (hyphenate) add2log(pgm + 'hyphenate text (opera 12)') ;
-        var shy_div = document.createElement('DIV') ;
-        shy_div.innerHTML = '&shy;' ;
-        var shy = shy_div.innerHTML ;
-        // find overflow texts and links in page - one array with texts - one array with hidden links
-        var divs ;
-        if (document.getElementsByClassName) divs = document.getElementsByClassName('overflow') ;
-        else if (document.querySelectorAll) divs = document.querySelectorAll('.overflow') ;
-        else return ; // IE8 running in compatibility mode - ignore div overflow
-        var overflow_link = {} ;
-        var overflow_text = {} ;
-        var div, id, id_split, id_type, key, key, div_type ;
-        for (var i=0 ; i<divs.length ; i++) {
-            div = divs[i] ;
-            id = div.id ;
-            id_split = id.split('-') ;
-            div_type = id_split.pop() ;
-            key = id_split.join('-') ;
-            if (div_type == 'text') overflow_text[key] = i ;
-            else if (div_type == 'link') {
-                if (div.style.display == 'none') overflow_link[key] = i ;
-            }
-            else add2log(pgm + 'invalid overflow id ' + id) ;
-        } // i
-        // fix word break = break all in old browser (opera 12) - insert soft hyphen in text
-        if (hyphenate) {
-            for (key in overflow_text) {
-                text = divs[overflow_text[key]] ;
-                if (text.innerHTML.indexOf(shy) == -1) {
-                    // add2log(pgm + 'key = ' + key + ', hyphenate ' + text.children.length + ' children') ;
-                    hyphenate_div(text) ;
-                }
-            }
-        }
-        // check for vertical hidden overflow - display show-more-text link if overflow
-        var text, link, text_max_height ;
-        var screen_width = (document.width !== undefined) ? document.width : document.body.offsetWidth;
-        var screen_width_factor = screen_width / 320.0 ;
-        if (screen_width_factor < 1) screen_width_factor = 1 ;
-        // add2log('screen_width = ' + screen_width + ', screen_width_factor = ' + screen_width_factor) ;
-        var skip_keys = [] ;
-        for (key in overflow_link) {
-            // add2log(pgm + 'key = ' + key + ', text = ' + overflow_text[key] + ', link = ' + overflow_link[key]) ;
-            text = divs[overflow_text[key]] ;
-            if (!text) {
-                add2log(pgm + 'error. overflow text with key ' + key + ' was not found.') ;
-                continue ;
-            }
-            link = divs[overflow_link[key]] ;
-            if (!link) {
-                add2log(pgm + 'error. overflow link with key ' + key + ' was not found.') ;
-                continue ;
-            }
-            if (!text.style.maxHeight) {
-                add2log(pgm + 'error. found overflow text key ' + key + ' without maxHeight') ;
-                continue ;
-            }
-            text_max_height = parseInt(text.style.maxHeight) ;
-            // add2log(pgm + 'key = ' + key + ', text.style.maxHeight = ' + text_max_height +
-            //        ', text.client height = ' + text.clientHeight + ', text.scroll height = ' + text.scrollHeight +
-            //        ', link.style.display = ' + link.style.display) ;
-            if (text.scrollHeight * screen_width_factor < text_max_height) {
-                // small text - overflow is not relevant - skip in next call
-                skip_keys.push(key) ;
-                continue ;
-            }
-            if (text.scrollHeight <= text.clientHeight) continue ; // not relevant with actual screen width
-            // show link
-            link.style.display = '' ;
-            skip_keys.push(key) ;
-        } // key
-        // blank overflow class for text and links not to check next call (show-more-rows request)
-        // add2log('skip_keys = ' + skip_keys.join(', ')) ;
-        for (i=0 ; i<skip_keys.length ; i++) {
-            key = skip_keys[i] ;
-            text = document.getElementById(key + '-text') ;
-            if (text) text.className = '' ;
-            else add2log(pgm + 'error. key ' + key + '-text was not found') ;
-            link = document.getElementById(key + '-link') ;
-            if (link) link.className = '' ;
-            else add2log(pgm + 'error. key ' + key + '-link was not found') ;
-        } // key
-    } // find_overflow
-
-    $(document).ready(function() {
-        find_overflow () ;
-    })
 
     // keep track of "ajaxing". allow running ajax to complete before leaving page
     // this solution gives a nice message when user clicks on a http link (leaving page).
@@ -3306,6 +3185,22 @@ angular.module('gifts', [])
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
         } // user_div_on_click
 
+        self.show_overflow = function(giftid) {
+            // show full text for div with overflow
+            var pgm = 'GiftsCtrl.show_overflow: ' ;
+            // find overflow div
+            var text_id = "gift-" + giftid + "-overflow-text" ;
+            var text = document.getElementById(text_id) ;
+            if (!text) {
+                // error - div with gift link and description was not found
+                console.log(pgm + text_id + ' was not found') ;
+                return ;
+            }
+            // remove max height - should hide show-more-text links
+            text.style.maxHeight = 'none' ;
+            text.style.overflow = 'visible' ;
+        } // show_overflow
+
         // new angularJS version of show-overflow-link
         // link: 1 - above image (picture), 2 - together with other gift links (no picture)
         // return false if small text without vertical overflow
@@ -3316,7 +3211,9 @@ angular.module('gifts', [])
             // find overflow div
             var text_id = "gift-" + gift.giftid + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
-            if (!text) return ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+            if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+            // check style.overflow
+            if (text.style.overflow == 'visible') return false ; // show_overflow has already been activated
             // check for horizontal text overflow
             var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
             var screen_width_factor = screen_width / 320.0 ;

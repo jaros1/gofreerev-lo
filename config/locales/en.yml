@@ -302,8 +302,8 @@ en:
         show_full_text: "Show more text" # todo: angularJS - moved to js.index.show_full_text
         like_gift: "Like" # todo: angularJS - moved to js.index.like_gift
         unlike_gift: "Unlike" # todo: angularJS - moved to js.index.unlike_gift
-        follow_gift: "Follow"
-        unfollow_gift: "Don't follow"
+        follow_gift: "Follow" # todo: angularJS - moved to js.index.follow_gift
+        unfollow_gift: "Don't follow" # todo: angularJS - moved to js.index.unfollow_gift
         hide_gift: "Hide post"
         confirm_hide_gift: "Hide post?"
         share_gift: "Share post"
@@ -1295,6 +1295,8 @@ en:
         show_full_text: "Show more text"
         like_gift: "Like"
         unlike_gift: "Unlike"
+        follow_gift: "Follow"
+        unfollow_gift: "Don't follow"
      user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #

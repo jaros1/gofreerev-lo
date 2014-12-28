@@ -3019,7 +3019,9 @@ angular.module('gifts', [])
                     link_title: I18n.t('js.gifts.gift_link_title'),
                     show_full_text: I18n.t('js.gifts.show_full_text'),
                     like_gift: I18n.t('js.gifts.like_gift'),
-                    unlike_gift: I18n.t('js.gifts.unlike_gift')
+                    unlike_gift: I18n.t('js.gifts.unlike_gift'),
+                    follow_gift: I18n.t('js.gifts.follow_gift'),
+                    unfollow_gift: I18n.t('js.gifts.unfollow_gift')
                 }
             };
         };
@@ -3239,6 +3241,13 @@ angular.module('gifts', [])
         }
         self.unlike_gift = function (gift) {
             gift.like = false ;
+        }
+
+        self.follow_gift = function (gift) {
+            gift.follow = true ;
+        }
+        self.unfollow_gift = function (gift) {
+            gift.follow = false ;
         }
 
         // new gift default values

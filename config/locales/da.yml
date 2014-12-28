@@ -305,8 +305,8 @@ da:
         show_full_text: "Vis mere tekst" # todo: angularJS - moved to js.index.show_full_text
         like_gift: "Synes om" # todo: angularJS - moved to js.index.like_gift
         unlike_gift: "Synes ikke længere om" # todo: angularJS - moved to js.index.unlike_gift
-        follow_gift: "Følg opslag"
-        unfollow_gift: "Følg ikke længere"
+        follow_gift: "Følg opslag" # todo: angularJS - moved to js.index.follow_gift
+        unfollow_gift: "Følg ikke længere" # todo: angularJS - moved to js.index.unfollow_gift
         hide_gift: "Skjul opslag"
         confirm_hide_gift: "Skjul opslag?"
         share_gift: "Del opslag"
@@ -1298,6 +1298,8 @@ da:
         show_full_text: "Vis mere tekst"
         like_gift: "Synes om"
         unlike_gift: "Synes ikke længere om"
+        follow_gift: "Følg opslag"
+        unfollow_gift: "Følg ikke længere"
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

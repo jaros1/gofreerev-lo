@@ -247,6 +247,100 @@ var Gofreerev = (function() {
         div.innerHTML = link + text ;
     } // hyphenate_div
 
+    // find div with hidden overflow - display show-more-text link
+    function find_overflow () {
+        var pgm = 'find_overflow: ' ;
+        // fix for old browsers that does not support word break = break all (opera 12).
+        var hyphenate = false ;
+        if (navigator.userAgent.indexOf('Opera/9.80') != -1) hyphenate = true ;
+        if (hyphenate) add2log(pgm + 'hyphenate text (opera 12)') ;
+        var shy_div = document.createElement('DIV') ;
+        shy_div.innerHTML = '&shy;' ;
+        var shy = shy_div.innerHTML ;
+        // find overflow texts and links in page - one array with texts - one array with hidden links
+        var divs ;
+        if (document.getElementsByClassName) divs = document.getElementsByClassName('overflow') ;
+        else if (document.querySelectorAll) divs = document.querySelectorAll('.overflow') ;
+        else return ; // IE8 running in compatibility mode - ignore div overflow
+        var overflow_link = {} ;
+        var overflow_text = {} ;
+        var div, id, id_split, id_type, key, key, div_type ;
+        for (var i=0 ; i<divs.length ; i++) {
+            div = divs[i] ;
+            id = div.id ;
+            id_split = id.split('-') ;
+            div_type = id_split.pop() ;
+            key = id_split.join('-') ;
+            if (div_type == 'text') overflow_text[key] = i ;
+            else if (div_type == 'link') {
+                if (div.style.display == 'none') overflow_link[key] = i ;
+            }
+            else add2log(pgm + 'invalid overflow id ' + id) ;
+        } // i
+        // fix word break = break all in old browser (opera 12) - insert soft hyphen in text
+        if (hyphenate) {
+            for (key in overflow_text) {
+                text = divs[overflow_text[key]] ;
+                if (text.innerHTML.indexOf(shy) == -1) {
+                    // add2log(pgm + 'key = ' + key + ', hyphenate ' + text.children.length + ' children') ;
+                    hyphenate_div(text) ;
+                }
+            }
+        }
+        // check for vertical hidden overflow - display show-more-text link if overflow
+        var text, link, text_max_height ;
+        var screen_width = (document.width !== undefined) ? document.width : document.body.offsetWidth;
+        var screen_width_factor = screen_width / 320.0 ;
+        if (screen_width_factor < 1) screen_width_factor = 1 ;
+        // add2log('screen_width = ' + screen_width + ', screen_width_factor = ' + screen_width_factor) ;
+        var skip_keys = [] ;
+        for (key in overflow_link) {
+            // add2log(pgm + 'key = ' + key + ', text = ' + overflow_text[key] + ', link = ' + overflow_link[key]) ;
+            text = divs[overflow_text[key]] ;
+            if (!text) {
+                add2log(pgm + 'error. overflow text with key ' + key + ' was not found.') ;
+                continue ;
+            }
+            link = divs[overflow_link[key]] ;
+            if (!link) {
+                add2log(pgm + 'error. overflow link with key ' + key + ' was not found.') ;
+                continue ;
+            }
+            if (!text.style.maxHeight) {
+                add2log(pgm + 'error. found overflow text key ' + key + ' without maxHeight') ;
+                continue ;
+            }
+            text_max_height = parseInt(text.style.maxHeight) ;
+            // add2log(pgm + 'key = ' + key + ', text.style.maxHeight = ' + text_max_height +
+            //        ', text.client height = ' + text.clientHeight + ', text.scroll height = ' + text.scrollHeight +
+            //        ', link.style.display = ' + link.style.display) ;
+            if (text.scrollHeight * screen_width_factor < text_max_height) {
+                // small text - overflow is not relevant - skip in next call
+                skip_keys.push(key) ;
+                continue ;
+            }
+            if (text.scrollHeight <= text.clientHeight) continue ; // not relevant with actual screen width
+            // show link
+            link.style.display = '' ;
+            skip_keys.push(key) ;
+        } // key
+        // blank overflow class for text and links not to check next call (show-more-rows request)
+        // add2log('skip_keys = ' + skip_keys.join(', ')) ;
+        for (i=0 ; i<skip_keys.length ; i++) {
+            key = skip_keys[i] ;
+            text = document.getElementById(key + '-text') ;
+            if (text) text.className = '' ;
+            else add2log(pgm + 'error. key ' + key + '-text was not found') ;
+            link = document.getElementById(key + '-link') ;
+            if (link) link.className = '' ;
+            else add2log(pgm + 'error. key ' + key + '-link was not found') ;
+        } // key
+    } // find_overflow
+
+    $(document).ready(function() {
+        find_overflow () ;
+    })
+
     // keep track of "ajaxing". allow running ajax to complete before leaving page
     // this solution gives a nice message when user clicks on a http link (leaving page).
     // It could be nice with a solution that also gives a message for ajax request (not leaving page).
@@ -3148,7 +3242,8 @@ angular.module('gifts', [])
                 currency: 'DKK',
                 direction: 'giver',
                 // description: 'b'
-                description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b '
+                description: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+                // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b '
                 // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b '
             },
             {
@@ -3465,6 +3560,16 @@ angular.module('gifts', [])
                 var direction = formatDirection(gift) ;
                 return I18n.t('js.gifts.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
             }
+    }])
+    .filter('formatGiftDescription', ['$window', '$sce', function ($window, $sce) {
+        return function (description) {
+            // workaround for long description + show more text for old browsers (opera 12)
+            // opera 12. insert soft hyphen in description
+            var pgm = 'GiftsCtrl.formatGiftDescription: ' ;
+            if ($window.navigator.userAgent.indexOf('Opera/9.80') == -1) return $sce.trustAsHtml(description) ;
+            var shy_description = description.split('').join('&shy;') + '&shy;' ;
+            return $sce.trustAsHtml(shy_description) ;
+        }
     }])
     .filter('formatBalance', [function () {
         return function (balance) {

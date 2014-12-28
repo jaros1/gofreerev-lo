@@ -242,8 +242,12 @@
         <div ng-show="gift.follow">
           <a href ng-click="ctrl.unfollow_gift(gift)">{{ctrl.texts.gifts.unfollow_gift}}</a>
         </div>
-        <%# link 4 - share gift is not relevant in lo version %>
-        <%# link 5 - delete gift %>
+        <%# link 4 - share gift %>
+        <%# link 5 - delete gift
+            only if giver or receiver
+            confirm dialog
+            two different texts - one for unaffected balance and one for affected balance
+        %>
         <%# link 6 - hide gift %>
         <%# link 7 - show older comments %>
       </td>

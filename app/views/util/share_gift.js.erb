@@ -4,6 +4,6 @@
     var gift_id = '<%= @api_gift.gift.id %>' ;
     var link = '<%= @api_gift.deep_link %>' ;
     var extra = '<%= @extra %>' ; // provider specific parameters (facebook: app_id, twitter: truncated tweet etc)
-    share_gift(provider, gift_id, link, extra) ;
+    Gofreerev.share_gift(provider, gift_id, link, extra) ;
 })();
 <% end -%>

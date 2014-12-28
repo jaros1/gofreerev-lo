@@ -2957,6 +2957,8 @@ var Gofreerev = (function() {
         post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
         autoresize_text_field: autoresize_text_field,
+        get_share_gift_link: get_share_gift_link,
+        share_gift: share_gift,
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
         start_tasks_form_spinner: start_tasks_form_spinner,
         setup_ajax_expanding_page: setup_ajax_expanding_page,

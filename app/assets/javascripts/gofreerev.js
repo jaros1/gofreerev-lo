@@ -2884,6 +2884,30 @@ var Gofreerev = (function() {
         }
         return null ;
     }
+    function find_giver (gift) {
+        var giver, user, i ;
+        for (i=0 ; i<gift.user_id_giver.length ; i++) {
+            user = get_user(gift.user_id_giver[i]) ;
+            if (user) {
+                if (user.friend == 1) return user ; // giver is a login user
+                if (!giver) giver = user ;
+            }
+        }
+        // giver is not a login in user
+        return giver ;
+    }
+    function find_receiver (gift) {
+        var receiver, user, i ;
+        for (i=0 ; i<gift.user_id_receiver.length ; i++) {
+            user = get_user(gift.user_id_receiver[i]) ;
+            if (user) {
+                if (user.friend == 1) return user ; // receiver is a login user
+                if (!receiver) receiver = user ;
+            }
+        }
+        // receiver is not a login in user
+        return receiver ;
+    }
 
     // is one if the logged in users a fb account?
     // used in shared account model form in auth/index page
@@ -2971,7 +2995,9 @@ var Gofreerev = (function() {
         init_users: init_users,
         get_users: get_users,
         get_user: get_user,
-        get_users_currency: get_users_currency
+        get_users_currency: get_users_currency,
+        find_giver: find_giver,
+        find_receiver: find_receiver
     };
 })();
 // Gofreerev closure end
@@ -3081,10 +3107,12 @@ angular.module('gifts', [])
         //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
         //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
         // todo 4: change user_id_giver and user_id_receiver to arrays (support for multpile logins)
+        // todo 5: add version to giftid. version=0 (seq from local storage), version=1 (seq from server), version>1 (giftid resequenzed by server)
         self.gifts = [
             {
                 giftid: 1731,
-                user_id_giver: 920,
+                user_id_giver: [920],
+                user_id_receiver: [],
                 date: 1417624621, // '3. dec 2014',
                 price: 0,
                 currency: 'DKK',
@@ -3097,7 +3125,8 @@ angular.module('gifts', [])
             },
             {
                 giftid: 1730,
-                user_id_giver: 791,
+                user_id_giver: [791],
+                user_id_receiver: [],
                 date: 1417624391, // 3. dec 2014
                 price: 0,
                 currency: 'DKK',
@@ -3106,7 +3135,8 @@ angular.module('gifts', [])
             },
             {
                 giftid: 1729,
-                user_id_receiver: 998,
+                user_id_giver: [],
+                user_id_receiver: [998],
                 date: 1417624155, // 3. dec 2014
                 price: 0,
                 currency: 'DKK',
@@ -3115,8 +3145,8 @@ angular.module('gifts', [])
             },
             {
                 giftid: 1725,
-                user_id_giver: 920,
-                user_id_receiver: null,
+                user_id_giver: [920],
+                user_id_receiver: [],
                 date: 1417253762, // 29. nov 2014
                 price: 0,
                 currency: 'DKK',
@@ -3128,8 +3158,8 @@ angular.module('gifts', [])
             },
             {
                 giftid: 1710,
-                user_id_giver: 920,
-                user_id_receiver: null,
+                user_id_giver: [920],
+                user_id_receiver: [],
                 date: 1415975141, // 14. nov 2014
                 price: 0,
                 currency: 'SEK',
@@ -3147,8 +3177,10 @@ angular.module('gifts', [])
             return !gift.deleted_at ;
         }
 
-        self.user_div_on_click = function (user_id) {
+        self.user_div_on_click = function (user_ids) {
             // console.log('GiftsCtrl.gift_on_click. user_id = ' + user_id) ;
+            if (!user_ids) return ; // error - user_id array not found in users array
+            var user_id = user_ids[0] ;
             var user = Gofreerev.get_user(user_id) ;
             if (!user) return ; // error - user not found in users array
             if (!user.friend) return ; // error - no friend status was found
@@ -3263,32 +3295,40 @@ angular.module('gifts', [])
 
         // delete gift. show delete link if login user(s) is giver or receiver of gift
         self.show_delete_gift = function (gift) {
-            var giver = Gofreerev.get_user(gift.user_id_giver) ;
-            if (giver && (giver.friend == 1)) return true ;
-            var receiver = Gofreerev.get_user(gift.user_id_giver) ;
-            if (receiver && (receiver.friend == 1)) return true ;
+            var user = Gofreerev.find_giver(gift) ;
+            if (user && (user.friend == 1)) return true ;
+            user = Gofreerev.find_receiver(gift) ;
+            if (user && (user.friend == 1)) return true ;
             return false ;
         }
         self.delete_gift = function (gift) {
+            var pgm = 'GiftsCtrl.delete_gft: ' ;
             var confirm_options = { price: gift.price, currency: gift.currency }
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
-                // todo: check if login user(s) are giver(s) or receiver(s)
-                var directions = [] ;
-                var giver = Gofreerev.get_user(gift.user_id_giver) ;
-                if (giver && (giver.friend == 1)) directions.push('giver') ;
-                var receiver = Gofreerev.get_user(gift.user_id_receiver) ;
-                if (receiver && (receiver.friend == 1)) directions.push('receiver') ;
-                if (directions.length == 0) return ; // error
+                var giver = Gofreerev.find_giver(gift) ;
+                if (!giver) {
+                    Gofreerev.add2log(pgm + 'error: giver was not found for giftid ' + gift.giftid) ;
+                    return ;
+                }
+                var receiver = Gofreerev.find_receiver(gift) ;
+                if (!receiver) {
+                    Gofreerev.add2log(pgm + 'error: receiver was not found for giftid ' + gift.giftid) ;
+                    return ;
+                }
+                if ((giver.friend != 1) && (receiver.friend != 1)) {
+                    Gofreerev.add2log(pgm + 'error: delete not allowed for giftid ' + gift.giftid) ;
+                    return ;
+                }
                 var keyno ;
-                if (directions.length == 2) keyno = 2 ; // login user(s) are giver and receiver of gift!
+                if ((giver.friend == 1) && (receiver.friend == 1)) keyno = 2 ; // simple confirm
                 else {
-                    // changed balance. add name(s) for affected user(s)
+                    // confirm with warning
                     keyno = 1
-                    var direction = directions[0] ;
-                    confirm_options['user_name'] = (direction == 'giver') ? receiver.user_name : giver.user_name ;
+                    confirm_options['user_name'] = is_giver ? receiver.user_name : giver.user_name ;
                 }
             }
-            else keyno = 2 ;
+            else keyno = 2 ; // simple confirm
+            // confirm dialog
             var confirm_key = "js.gifts.confirm_delete_gift_" + keyno ;
             var confirm_text = I18n.t(confirm_key, confirm_options) ;
             if (confirm(confirm_text)) gift.deleted_at = (new Date).getTime() ;
@@ -3451,14 +3491,11 @@ angular.module('gifts', [])
         // used in formatGiftLinkText filter
         return function (gift) {
             // console.log('formatDirection. gift = ' + JSON.stringify(gift)) ;
-            var giver = Gofreerev.get_user(gift.user_id_giver) ;
-            var receiver = Gofreerev.get_user(gift.user_id_receiver) ;
-            // console.log('giver = ' + JSON.stringify(giver)) ;
-            // console.log('receiver = ' + JSON.stringify(receiver)) ;
+            var giver = Gofreerev.find_giver(gift) ;
+            var receiver = Gofreerev.find_receiver(gift) ;
             var x = I18n.t('js.gifts.direction_' + gift.direction,
                 {givername: giver ? giver.short_user_name : 'no name',
                 receivername: receiver ? receiver.short_user_name : 'no name'}) ;
-            // console.log('x = ' + x) ;
             return x ;
         }
     }])

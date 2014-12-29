@@ -3023,7 +3023,10 @@ angular.module('gifts', [])
                     like_gift: I18n.t('js.gifts.like_gift'),
                     unlike_gift: I18n.t('js.gifts.unlike_gift'),
                     follow_gift: I18n.t('js.gifts.follow_gift'),
-                    unfollow_gift: I18n.t('js.gifts.unfollow_gift')
+                    unfollow_gift: I18n.t('js.gifts.unfollow_gift'),
+                    delete_gift: I18n.t('js.gifts.delete_gift'),
+                    confirm_delete_gift_1: I18n.t('js.gifts.confirm_delete_gift_1'), // balance changed
+                    confirm_delete_gift_2: I18n.t('js.gifts.confirm_delete_gift_2')  // balance unchanged
                 }
             };
         };
@@ -3077,6 +3080,7 @@ angular.module('gifts', [])
         //       mark as false if picture was not found (img onload and img onerror)
         //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
         //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
+        // todo 4: change user_id_giver and user_id_receiver to arrays (support for multpile logins)
         self.gifts = [
             {
                 giftid: 1731,
@@ -3137,6 +3141,11 @@ angular.module('gifts', [])
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg'
             }
         ]; // gifts
+
+        // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
+        self.gifts_filter = function (gift, index) {
+            return !gift.deleted_at ;
+        }
 
         self.user_div_on_click = function (user_id) {
             // console.log('GiftsCtrl.gift_on_click. user_id = ' + user_id) ;
@@ -3251,6 +3260,39 @@ angular.module('gifts', [])
         self.unfollow_gift = function (gift) {
             gift.follow = false ;
         }
+
+        // delete gift. show delete link if login user(s) is giver or receiver of gift
+        self.show_delete_gift = function (gift) {
+            var giver = Gofreerev.get_user(gift.user_id_giver) ;
+            if (giver && (giver.friend == 1)) return true ;
+            var receiver = Gofreerev.get_user(gift.user_id_giver) ;
+            if (receiver && (receiver.friend == 1)) return true ;
+            return false ;
+        }
+        self.delete_gift = function (gift) {
+            var confirm_options = { price: gift.price, currency: gift.currency }
+            if (gift.received_at && gift.price && (gift.price != 0.0)) {
+                // todo: check if login user(s) are giver(s) or receiver(s)
+                var directions = [] ;
+                var giver = Gofreerev.get_user(gift.user_id_giver) ;
+                if (giver && (giver.friend == 1)) directions.push('giver') ;
+                var receiver = Gofreerev.get_user(gift.user_id_receiver) ;
+                if (receiver && (receiver.friend == 1)) directions.push('receiver') ;
+                if (directions.length == 0) return ; // error
+                var keyno ;
+                if (directions.length == 2) keyno = 2 ; // login user(s) are giver and receiver of gift!
+                else {
+                    // changed balance. add name(s) for affected user(s)
+                    keyno = 1
+                    var direction = directions[0] ;
+                    confirm_options['user_name'] = (direction == 'giver') ? receiver.user_name : giver.user_name ;
+                }
+            }
+            else keyno = 2 ;
+            var confirm_key = "js.gifts.confirm_delete_gift_" + keyno ;
+            var confirm_text = I18n.t(confirm_key, confirm_options) ;
+            if (confirm(confirm_text)) gift.deleted_at = (new Date).getTime() ;
+        } // delete_gift
 
         // new gift default values
         function init_new_gift () {

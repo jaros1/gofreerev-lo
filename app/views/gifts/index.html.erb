@@ -160,7 +160,7 @@
     </thead>
     <tbody id="gifts_tbody">
     <%# start gift ng-repeat block -%>
-    <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts">
+    <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts | filter:ctrl.gifts_filter">
       <td><%# giver image or blank -%>
         <div ng-show='gift.user_id_giver' title="{{gift.user_id_giver | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.user_id_giver)">
           <div>
@@ -242,7 +242,16 @@
         <div ng-show="gift.follow">
           <a href ng-click="ctrl.unfollow_gift(gift)">{{ctrl.texts.gifts.unfollow_gift}}</a>
         </div>
-        <%# link 4 - share gift %>
+        <%# link 4 - share gift
+            gift description only in client - no way to share link without a server url
+            maybe use client side post as an alternative?
+            check providers (facebook, google+, linkedin etc) JS frameworks for post functionality
+            maybe some one has made a general JS wrapper for this with support for multiple providers
+            check http://adodson.com/hello.js
+        %>
+        <div ng-show="ctrl.show_delete_gift">
+          &nbsp;- <a href ng-click="ctrl.delete_gift(gift)">{{ctrl.texts.gifts.delete_gift}}</a>
+        </div>
         <%# link 5 - delete gift
             only if giver or receiver
             confirm dialog

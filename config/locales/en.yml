@@ -307,9 +307,9 @@ en:
         hide_gift: "Hide post"
         confirm_hide_gift: "Hide post?"
         share_gift: "Share post"
-        delete_gift: "Delete post"
-        confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # currency, price and user_name. user_name is short user name for other user in closed deal
-        confirm_delete_gift_2: "Delete post?"
+        delete_gift: "Delete post" # todo: angularJS - moved to js.index.delete_gift
+        confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # todo: angularJS - moved to js.index.confirm_delete_gift_1
+        confirm_delete_gift_2: "Delete post?" # todo: angularJS - moved to js.index.confirm_delete_gift_2
         show_older_comment: "Show older comment"
         show_older_comments: "Show %{no_older_comments} older comments"
      api_comment_status:
@@ -1297,6 +1297,9 @@ en:
         unlike_gift: "Unlike"
         follow_gift: "Follow"
         unfollow_gift: "Don't follow"
+        delete_gift: "Delete post"
+        confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted"
+        confirm_delete_gift_2: "Delete post?"
      user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #

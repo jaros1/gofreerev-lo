@@ -304,8 +304,8 @@ en:
         unlike_gift: "Unlike" # todo: angularJS - moved to js.index.unlike_gift
         follow_gift: "Follow" # todo: angularJS - moved to js.index.follow_gift
         unfollow_gift: "Don't follow" # todo: angularJS - moved to js.index.unfollow_gift
-        hide_gift: "Hide post"
-        confirm_hide_gift: "Hide post?"
+        hide_gift: "Hide post" # todo: angularJS - moved to js.index.hide_gift
+        confirm_hide_gift: "Hide post?" # todo: angularJS - moved to js.index.confirm_hide_gift
         share_gift: "Share post"
         delete_gift: "Delete post" # todo: angularJS - moved to js.index.delete_gift
         confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # todo: angularJS - moved to js.index.confirm_delete_gift_1
@@ -1300,6 +1300,8 @@ en:
         delete_gift: "Delete post"
         confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted"
         confirm_delete_gift_2: "Delete post?"
+        hide_gift: "Hide post"
+        confirm_hide_gift: "Hide post?"
      user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #

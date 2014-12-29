@@ -249,15 +249,14 @@
             maybe some one has made a general JS wrapper for this with support for multiple providers
             check http://adodson.com/hello.js
         %>
+        <%# link 5 - delete gift %>
         <div ng-show="ctrl.show_delete_gift">
           &nbsp;- <a href ng-click="ctrl.delete_gift(gift)">{{ctrl.texts.gifts.delete_gift}}</a>
         </div>
-        <%# link 5 - delete gift
-            only if giver or receiver
-            confirm dialog
-            two different texts - one for unaffected balance and one for affected balance
-        %>
         <%# link 6 - hide gift %>
+        <div>
+          &nbsp;- <a href ng-click="ctrl.hide_gift(gift)">{{ctrl.texts.gifts.hide_gift}}</a>
+        </div>
         <%# link 7 - show older comments %>
       </td>
     </tr>

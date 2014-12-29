@@ -2,6 +2,7 @@
 module GiftHelper
 
   # show like/unlike link for gift under gift text and picture
+  # todo: moved to CiftsCtrl in angularJS
   def link_to_gift_like_unlike (gift)
     if gift.show_like_gift_link?(@users)
       key, path = '.like_gift', util_like_gift_path(:gift_id => gift.id)
@@ -16,6 +17,7 @@ module GiftHelper
 
   # show follow/do not follow link for gift under gift text and picture
   # default is to follow gift as giver, receiver or commenter
+  # todo: moved to CiftsCtrl in angularJS
   def link_to_gift_follow_unfollow (gift)
     if gift.show_follow_gift_link?(@users)
       key, path = '.follow_gift', util_follow_gift_path(:gift_id => gift.id)
@@ -28,6 +30,7 @@ module GiftHelper
             :method => :post
   end # link_to_gift_follow_unfollow
 
+  # todo: moved to CiftsCtrl in angularJS
   def link_to_gift_hide (gift)
     link_to t('.hide_gift'), util_hide_gift_path(:gift_id => gift.id),
             :id => "gift-#{gift.id}-hide-link", :class => "gift-action-link",
@@ -35,7 +38,7 @@ module GiftHelper
             :method => :post
   end
 
-
+  # todo: not relevant in gofreerev-lo version. gifts only in clients local storage
   def lov_to_share_gift (gift)
     # link_to t('.share_gift'), '#', :onclick => 'alert("not implemented")'
     name = "share_gift_#{gift.id}"
@@ -45,13 +48,14 @@ module GiftHelper
   end # link_to_share_gift
 
 
-    # it could be nice with a popup dialog box with three choices. a) hide and keep balance, b) destroy and update balance, c) cancel
+  # it could be nice with a popup dialog box with three choices. a) hide and keep balance, b) destroy and update balance, c) cancel
   # but no build in JS function for this
   # must send a/b choice to util/delete_gift. must cancel require on c
   # some maybe useful links:
   # - http://www.pjmccormick.com/nicer-rails-confirm-dialogs-and-not-just-delete-methods
   # - http://stackoverflow.com/questions/7435859/custom-rails-confirm-box-with-rails-confirm-override
   # - http://rors.org/demos/custom-confirm-in-rails
+  # todo: delete - moved to GiftsCtrl in angularJS
   def link_to_delete_gift (gift)
     # confirm delete texts
     # - confirm_delete_gift_1 if delete gift effects user balance

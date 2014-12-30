@@ -266,7 +266,7 @@
       </td>
     </tr>
 
-    <tr ng-repeat="comment in gift.comments">
+    <tr ng-repeat="comment in (gift.comments || []) | limitTo:(gift.show_no_comments || ctrl.default_no_comments)">
       <td colspan="2"></td>
       <td>
         <div title="{{comment.userids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)">
@@ -275,7 +275,7 @@
           </div>
         </div>
       </td>
-      <td>{{comment.comment}}</td>
+      <td>{{comment | formatComment:2}}</td>
     </tr>
 
     <tr id='gift-{{gift.giftid}}-comment-new'>

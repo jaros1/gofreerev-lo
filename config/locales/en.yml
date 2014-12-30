@@ -293,8 +293,8 @@ en:
         gift_comment_mismatch: "Invalid request. Gift and comment do not match."
         exception: "System error. Cannot get older comments. %{error}. More information in server log."
      api_comment: # 4 types of comments: comment, deal proposal, rejected deal proposal and accepted deal proposal
-        optional_price: "/ %{price}"
-        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        optional_price: "/ %{price}" # todo: angularJS - moved to js.comments.optional_price
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil # todo: angularJS - moved to js.comments.comment_text
         proposal_text: "%{date} %{optional_price} : %{text} (proposal)" # new_deal_yn == Y, accepted_yn == nil
         rejected_text: "%{date} %{optional_price} : %{text} (rejected)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepted)" # new_deal_yn == Y, accepted_yn == Y
@@ -1302,6 +1302,9 @@ en:
         confirm_delete_gift_2: "Delete post?"
         hide_gift: "Hide post"
         confirm_hide_gift: "Hide post?"
+     comments:
+        optional_price: "/ %{price}"
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
      user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #

@@ -3055,10 +3055,14 @@ angular.module('gifts', [])
                     confirm_delete_gift_2: I18n.t('js.gifts.confirm_delete_gift_2'),  // confirm without warning
                     hide_gift: I18n.t('js.gifts.hide_gift'),
                     confirm_hide_gift: I18n.t('js.gifts.confirm_hide_gift')
+                },
+                comments: {
+                    comment_text: I18n.t('js.comments.comment_text')
                 }
             };
         };
         init_language_constants();
+        self.default_no_comments = 3 ;
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3124,8 +3128,7 @@ angular.module('gifts', [])
                 description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
                 // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
                 like: true,
-                show: true,
-                comments: []
+                show: true
             },
             {
                 giftid: 1730,
@@ -3152,8 +3155,7 @@ angular.module('gifts', [])
                 currency: 'DKK',
                 direction: 'receiver',
                 description: 'a',
-                show: true,
-                comments: []
+                show: true
             },
             {
                 giftid: 1725,
@@ -3167,8 +3169,7 @@ angular.module('gifts', [])
                 description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
                 api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
                 api_picture_url_on_error_at: false, // see todo:
-                show: true,
-                comments: []
+                show: true
             },
             {
                 giftid: 1710,
@@ -3183,8 +3184,7 @@ angular.module('gifts', [])
                 open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
                 open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg',
-                show: true,
-                comments: []
+                show: true
             }
         ]; // gifts
 
@@ -3482,7 +3482,7 @@ angular.module('gifts', [])
     }])
     .filter('formatPrice', [function () {
         // format number using "number.format", optional arg1 = precision (default 3 decimals)
-        // used in formatPriceOptional and formatGiftLinkText filters
+        // used in formatGiftPriceOptional and formatGiftLinkText filters
         var delimiter = I18n.t('number.format.delimiter') ;
         var default_precision = I18n.t('number.format.precision') ;
         var separator = I18n.t('number.format.separator') ;
@@ -3497,7 +3497,7 @@ angular.module('gifts', [])
                     separator: separator, strip_insignificant_zeros: strip_insignificant_zeros}) ;
         }
     }])
-    .filter('formatPriceOptional', ['formatPriceFilter', function (formatPrice) {
+    .filter('formatGiftPriceOptional', ['formatPriceFilter', function (formatPrice) {
         // format optional price using "js.gifts.optional_price" format - used in gift link
         // from application_helper.format_gift_param
         // used in formatGiftLinkText filter
@@ -3506,6 +3506,17 @@ angular.module('gifts', [])
             if (typeof p == 'undefined') return p ;
             if (p == null) return p ;
             return I18n.t('js.gifts.optional_price', {price: formatPrice(p, precision), currency: gift.currency }) ;
+        }
+    }])
+    .filter('formatCommentPriceOptional', ['formatPriceFilter', function (formatPrice) {
+        // format optional price using "js.comments.optional_price" format - used in comments
+        // from application_helper.format_comment_param
+        // used in formatComment filter
+        return function (comment, precision) {
+            var p = comment.price ;
+            if (typeof p == 'undefined') return '' ;
+            if (p == null) return '' ;
+            return I18n.t('js.comments.optional_price', {price: formatPrice(p, precision) }) ;
         }
     }])
     .filter('formatDirection', [function() {
@@ -3522,15 +3533,15 @@ angular.module('gifts', [])
             return x ;
         }
     }])
-    .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatPriceOptionalFilter', 'formatDirectionFilter',
-        function (formatDateShort, formatPriceOptional, formatDirection) {
+    .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatGiftPriceOptionalFilter', 'formatDirectionFilter',
+        function (formatDateShort, formatGiftPriceOptional, formatDirection) {
             // format gift link text using translation js.gifts.gift_link_text: %{date} %{optional_price} / %{direction}
-            // html: {{gift.date | formatDateShort}} {{gift | formatPriceOptional:2}} / {{gift | formatDirection}}
+            // html: {{gift.date | formatDateShort}} {{gift | formatGiftPriceOptional:2}} / {{gift | formatDirection}}
             // nested format using 3 sub format filters
             // old rails code was t('.gift_link_text', format_gift_param(api_gift))
             return function (gift, precision) {
                 var date = formatDateShort(gift.date);
-                var optional_price = formatPriceOptional(gift, precision);
+                var optional_price = formatGiftPriceOptional(gift, precision);
                 var direction = formatDirection(gift) ;
                 return I18n.t('js.gifts.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
             }
@@ -3580,6 +3591,18 @@ angular.module('gifts', [])
             // format scr in user <div><img> tags in gifts/index page etc
             var user = Gofreerev.get_user(user_id);
             if (!user) return ''; // error - user not found in users array
-            return user.api_profile_picture_url ;
+            return user.api_profile_picture_url;
+        }
+    }])
+    .filter('formatComment', ['formatDateShortFilter', 'formatCommentPriceOptionalFilter',
+        function (formatDateShort, formatCommentPriceOptional) {
+            return function (comment, precision) {
+                var pgm = 'GiftsCtrl.ormatComment: ' ;
+                var date = formatDateShort(comment.created_at);
+                var optional_price = formatCommentPriceOptional(comment, precision);
+                console.log(pgm + 'date = ' + date) ;
+                console.log(pgm + 'optional_price = ' + optional_price) ;
+                console.log(pgm + 'comment = ' + comment.comment) ;
+                return I18n.t('js.comments.comment_text', {date: date, optional_price: optional_price, text: comment.comment}) ;
         }
     }]);

@@ -296,8 +296,8 @@ da:
         gift_comment_mismatch: "Ugyldigt kald. Opslag og kommentar passer ikke sammen."
         exception: "Systemfejl. Kunne ikke hente ældre kommentarer. %{error}. Mere information i server log."
      api_comment: # 4 types of comments: comment, deal proposal, rejected deal proposal and accepted deal proposal
-        optional_price: "/ %{price}"
-        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        optional_price: "/ %{price}" # todo: angularJS - moved to js.comments.optional_price
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil # todo: angularJS - moved to js.comments.comment_text
         proposal_text: "%{date} %{optional_price} : %{text} (forslag)" # new_deal_yn == Y, accepted_yn == nil
         rejected_text: "%{date} %{optional_price} : %{text} (afvist)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepteret)" # new_deal_yn == Y, accepted_yn == Y
@@ -1305,6 +1305,9 @@ da:
         confirm_delete_gift_2: "Slet opslag?"
         hide_gift: "Skjul opslag"
         confirm_hide_gift: "Skjul opslag?"
+     comments:
+        optional_price: "/ %{price}"
+        comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

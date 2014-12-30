@@ -158,9 +158,10 @@
       <th>{{ctrl.texts.gifts.header.link_and_text}}</th>
     </tr>
     </thead>
-    <tbody id="gifts_tbody">
-    <%# start gift ng-repeat block -%>
-    <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" ng-repeat-start="gift in ctrl.gifts | filter:ctrl.gifts_filter">
+    <%# nested ng-repeat blocks. gifts ng-repeat attached to tbody tag. ng-repeat-start/ng-repeat-end block with comments for each gift %>
+
+    <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter"><%# start gift ng-repeat block -%>
+    <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" >
       <td><%# giver image or blank -%>
         <div ng-show='gift.user_id_giver' title="{{gift.user_id_giver | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.user_id_giver)">
           <div>
@@ -257,8 +258,24 @@
         <div>
           &nbsp;- <a href ng-click="ctrl.hide_gift(gift)">{{ctrl.texts.gifts.hide_gift}}</a>
         </div>
-        <%# link 7 - show older comments %>
+        <%# link 7 - show older comments
+            nested ng-repeat is required - check out https://coderwall.com/p/fnp2oq/use-ng-repeat-on-tbody-to-create-summary-rows-for-nested-data
+            that is use one tbody for each gift in gifts table
+            use limitTo filter to limit number of comment rows starting with 3
+        %>
       </td>
+    </tr>
+
+    <tr ng-repeat="comment in gift.comments">
+      <td colspan="2"></td>
+      <td>
+        <div title="{{comment.userids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)">
+          <div>
+            <img class="small_pro_pic" ng-src="{{comment.userids | formatUserImgSrc}}"/>
+          </div>
+        </div>
+      </td>
+      <td>{{comment.comment}}</td>
     </tr>
 
     <tr id='gift-{{gift.giftid}}-comment-new'>
@@ -268,12 +285,15 @@
       </td>
     </tr>
 
-    <tr id="gift-{{gift.giftid}}-footer-1" ng-repeat-end>
+    <tr id="gift-{{gift.giftid}}-footer-1">
       <td colspan="4">
         <hr/>
       </td>
     </tr>
-    <%# end gift ng-repeat block -%>
+    </tbody><%# end gifts ng-repeat block -%>
+
+    <%# empty "old" gifts_tbody block used by old show-more-rows functionality %>
+    <tbody id="gifts_tbody">
 
     <%# ajax: dummy row - placeholder for object id for last row in html table. Used in ajax request for next set of rows -%>
     <% if @last_row_id -%>

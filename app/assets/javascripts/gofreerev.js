@@ -3057,7 +3057,8 @@ angular.module('gifts', [])
                     confirm_hide_gift: I18n.t('js.gifts.confirm_hide_gift')
                 },
                 comments: {
-                    comment_text: I18n.t('js.comments.comment_text')
+                    comment_text: I18n.t('js.comments.comment_text'),
+                    show_full_text: I18n.t('js.comments.show_full_text')
                 }
             };
         };
@@ -3141,7 +3142,7 @@ angular.module('gifts', [])
                 description: 'b',
                 show: true,
                 comments: [
-                    {commentid: 1, userids: [791], comment: "comment 1", created_at: 1417624391},
+                    {commentid: 1, userids: [791], comment: "comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 ", created_at: 1417624391},
                     {commentid: 2, userids: [920], comment: "comment 2", created_at: 1417624391},
                     {commentid: 3, userids: [998], comment: "comment 3", created_at: 1417624391}
                 ]
@@ -3210,12 +3211,11 @@ angular.module('gifts', [])
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
         } // user_div_on_click
 
-        // gift link + description - shpw "show-more-text" link if vertical text overflow in div container (maxHeight and overflow)
+        // gift link + description - show "show-more-text" link if long gift description with vertical text overflow 
         // return false if small text without vertical overflow
-        // link: 1 - above image (picture), 2 - together with other gift links (no picture)
-        // note: ng-show is not recalculated if screen width changes (responsive view or rotate on a mobile phone)
-        self.show_full_text_link = function (gift, link) {
-            var pgm = 'GiftsCtrl.show_full_text_link: ' ;
+        // link 1: above image (picture attachment), link 2: together with other gift links (no picture attachment)
+        self.show_full_gift_link = function (gift, link) {
+            var pgm = 'GiftsCtrl.show_full_gift_link: ' ;
             // find overflow div
             var text_id = "gift-" + gift.giftid + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
@@ -3252,10 +3252,10 @@ angular.module('gifts', [])
             else show = false ;
             // console.log(pgm + 'giftid = ' + gift.giftid + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
             return show ;
-        } // show_full_text_link
+        } // show_full_gift_link
 
         // show full gift description. remove style maxHeight and overflow from div container
-        self.show_full_text = function(giftid) {
+        self.show_full_gift_click = function(giftid) {
             // show full text for div with overflow
             var pgm = 'GiftsCtrl.show_full_text: ' ;
             // find overflow div
@@ -3265,8 +3265,43 @@ angular.module('gifts', [])
             // remove max height ( and hide show-more-text link)
             text.style.maxHeight = 'none' ;
             text.style.overflow = 'visible' ;
-        } // show_full_text
+        } // show_full_gift_click
 
+        // show "show-more-text" link if long comment description with vertical text overflow
+        self.show_full_comment_link = function (comment) {
+            var pgm = 'commentsCtrl.show_full_comment_link: ' ;
+            // find overflow div
+            var text_id = "comment-" + comment.commentid + "-overflow-text" ;
+            var text = document.getElementById(text_id) ;
+            if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+            // check style.overflow
+            if (text.style.overflow == 'visible') return false ; // show_full_text has already been activated
+            // check for horizontal text overflow
+            var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
+            var screen_width_factor = screen_width / 320.0 ;
+            if (screen_width_factor < 1) screen_width_factor = 1 ;
+            var text_max_height = parseInt(text.style.maxHeight) ;
+            if (text.scrollHeight * screen_width_factor < text_max_height) return false ; // small text - overflow is not relevant
+            if (text.scrollHeight <= text.clientHeight) return false ; // not actual with current screen width
+            // vertical text overflow found
+            return true ;
+        } // show_full_comment_link
+
+        // show full comment description. remove style maxHeight and overflow from div container
+        self.show_full_comment_click = function(commentid) {
+            // show full text for div with overflow
+            var pgm = 'commentsCtrl.show_full_comment_click: ' ;
+            // find overflow div
+            var text_id = "comment-" + commentid + "-overflow-text" ;
+            var text = document.getElementById(text_id) ;
+            if (!text) return ; // error - div with comment link and description was not found
+            // remove max height ( and hide show-more-text link)
+            text.style.maxHeight = 'none' ;
+            text.style.overflow = 'visible' ;
+        } // show_full_comment_click
+        
+        
+        
         // show/hide table row with gift api_picture_url?
         // only show row if api_picture_url and not error marked
         // rails code: <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
@@ -3597,12 +3632,12 @@ angular.module('gifts', [])
     .filter('formatComment', ['formatDateShortFilter', 'formatCommentPriceOptionalFilter',
         function (formatDateShort, formatCommentPriceOptional) {
             return function (comment, precision) {
-                var pgm = 'GiftsCtrl.ormatComment: ' ;
+                var pgm = 'GiftsCtrl.formatComment: ' ;
                 var date = formatDateShort(comment.created_at);
                 var optional_price = formatCommentPriceOptional(comment, precision);
-                console.log(pgm + 'date = ' + date) ;
-                console.log(pgm + 'optional_price = ' + optional_price) ;
-                console.log(pgm + 'comment = ' + comment.comment) ;
+                // console.log(pgm + 'date = ' + date) ;
+                // console.log(pgm + 'optional_price = ' + optional_price) ;
+                // console.log(pgm + 'comment = ' + comment.comment) ;
                 return I18n.t('js.comments.comment_text', {date: date, optional_price: optional_price, text: comment.comment}) ;
         }
     }]);

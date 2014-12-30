@@ -1308,6 +1308,7 @@ da:
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
+        show_full_text: "Vis mere tekst"
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

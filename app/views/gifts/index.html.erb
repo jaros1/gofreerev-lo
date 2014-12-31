@@ -158,8 +158,8 @@
       <th>{{ctrl.texts.gifts.header.link_and_text}}</th>
     </tr>
     </thead>
-    <%# nested ng-repeat blocks. gifts ng-repeat attached to tbody tag. ng-repeat-start/ng-repeat-end block with comments for each gift %>
 
+    <%# nested ng-repeat blocks. gifts ng-repeat attached to tbody tag. ng-repeat-start/ng-repeat-end block with comments for each gift %>
     <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter"><%# start gift ng-repeat block -%>
     <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" >
       <td><%# giver image or blank -%>
@@ -221,22 +221,19 @@
         </table>
       </td>
     </tr>
-
+    <%# row with gift links: show full text, like/unlike, follow/unfollow, delete, hide and more more comments links -%>
     <tr id='gift-{{gift.giftid}}-links'>
       <td colspan="2"></td>
       <td colspan="2">
-        <%# link 1 - show full text. link=2. gift without picture %>
         <div ng-show="ctrl.show_full_gift_link(gift,2)">
           <a href ng-click="ctrl.show_full_gift_click(gift.giftid)">{{ctrl.texts.gifts.show_full_text}}</a> -&nbsp;
         </div>
-        <%# link 2 - like and unlike gift %>
         <div ng-hide="gift.like">
           <a href ng-click="ctrl.like_gift(gift)">{{ctrl.texts.gifts.like_gift}}</a> -&nbsp;
         </div>
         <div ng-show="gift.like">
           <a href ng-click="ctrl.unlike_gift(gift)">{{ctrl.texts.gifts.unlike_gift}}</a> -&nbsp;
         </div>
-        <%# link 3 - follow and unfollow gift %>
         <div ng-hide="gift.follow">
           <a href ng-click="ctrl.follow_gift(gift)">{{ctrl.texts.gifts.follow_gift}}</a>
         </div>
@@ -250,11 +247,9 @@
             maybe some one has made a general JS wrapper for this with support for multiple providers
             check http://adodson.com/hello.js
         %>
-        <%# link 5 - delete gift %>
-        <div ng-show="ctrl.show_delete_gift">
+        <div ng-show="ctrl.show_delete_gift(gift)">
           &nbsp;- <a href ng-click="ctrl.delete_gift(gift)">{{ctrl.texts.gifts.delete_gift}}</a>
         </div>
-        <%# link 6 - hide gift %>
         <div>
           &nbsp;- <a href ng-click="ctrl.hide_gift(gift)">{{ctrl.texts.gifts.hide_gift}}</a>
         </div>
@@ -263,6 +258,9 @@
             that is use one tbody for each gift in gifts table
             use limitTo filter to limit number of comment rows starting with 3
         %>
+        <div ng-show="ctrl.show_older_comments(gift)">
+          &nbsp;- <a href ng-click="ctrl.show_older_comments_click(gift)">{{ctrl.show_older_comments_text(gift)}}</a>
+        </div>
       </td>
     </tr>
 

@@ -3142,9 +3142,26 @@ angular.module('gifts', [])
                 description: 'b',
                 show: true,
                 comments: [
-                    {commentid: 1, userids: [791], comment: "comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 comment 1 ", created_at: 1417624391},
+                    {commentid: 1, userids: [791], comment: "comment 1", created_at: 1417624391},
                     {commentid: 2, userids: [920], comment: "comment 2", created_at: 1417624391},
-                    {commentid: 3, userids: [998], comment: "comment 3", created_at: 1417624391}
+                    {commentid: 3, userids: [920], comment: "comment 3", created_at: 1417624391},
+                    {commentid: 4, userids: [920], comment: "comment 4", created_at: 1417624391},
+                    {commentid: 5, userids: [920], comment: "comment 5", created_at: 1417624391},
+                    {commentid: 6, userids: [920], comment: "comment 6", created_at: 1417624391},
+                    {commentid: 7, userids: [920], comment: "comment 7", created_at: 1417624391},
+                    {commentid: 8, userids: [920], comment: "comment 8", created_at: 1417624391},
+                    {commentid: 9, userids: [920], comment: "comment 9", created_at: 1417624391},
+                    {commentid: 10, userids: [920], comment: "comment 10", created_at: 1417624391},
+                    {commentid: 11, userids: [920], comment: "comment 11", created_at: 1417624391},
+                    {commentid: 12, userids: [920], comment: "comment 12", created_at: 1417624391},
+                    {commentid: 13, userids: [920], comment: "comment 13", created_at: 1417624391},
+                    {commentid: 14, userids: [920], comment: "comment 14", created_at: 1417624391},
+                    {commentid: 15, userids: [920], comment: "comment 15", created_at: 1417624391},
+                    {commentid: 16, userids: [920], comment: "comment 16", created_at: 1417624391},
+                    {commentid: 17, userids: [920], comment: "comment 17", created_at: 1417624391},
+                    {commentid: 18, userids: [920], comment: "comment 18", created_at: 1417624391},
+                    {commentid: 19, userids: [920], comment: "comment 19", created_at: 1417624391},
+                    {commentid: 20, userids: [998], comment: "comment 20", created_at: 1417624391}
                 ]
             },
             {
@@ -3211,6 +3228,23 @@ angular.module('gifts', [])
             window.top.location.assign('/' + locale + '/users/' + user_id) ;
         } // user_div_on_click
 
+        var vertical_overflow = function (text_id) {
+            var pgm = 'GiftsCtrl.vertical_overflow: ' ;
+            var text = document.getElementById(text_id) ;
+            if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+            // check style
+            if (text.style.overflow == 'visible') return false ; // show_full_text has already been activated
+            // check for vertical overflow
+            var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
+            var screen_width_factor = screen_width / 320.0 ;
+            if (screen_width_factor < 1) screen_width_factor = 1 ;
+            var text_max_height = parseInt(text.style.maxHeight) ;
+            if (text.scrollHeight * screen_width_factor < text_max_height) return false ; // small text - overflow is not relevant
+            if (text.scrollHeight <= text.clientHeight) return false ; // not actual with current screen width
+            // vertical text overflow found
+            return true ;
+        } // vertical_overflow
+
         // gift link + description - show "show-more-text" link if long gift description with vertical text overflow 
         // return false if small text without vertical overflow
         // link 1: above image (picture attachment), link 2: together with other gift links (no picture attachment)
@@ -3218,17 +3252,7 @@ angular.module('gifts', [])
             var pgm = 'GiftsCtrl.show_full_gift_link: ' ;
             // find overflow div
             var text_id = "gift-" + gift.giftid + "-overflow-text" ;
-            var text = document.getElementById(text_id) ;
-            if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
-            // check style.overflow
-            if (text.style.overflow == 'visible') return false ; // show_full_text has already been activated
-            // check for horizontal text overflow
-            var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
-            var screen_width_factor = screen_width / 320.0 ;
-            if (screen_width_factor < 1) screen_width_factor = 1 ;
-            var text_max_height = parseInt(text.style.maxHeight) ;
-            if (text.scrollHeight * screen_width_factor < text_max_height) return ; // small text - overflow is not relevant
-            if (text.scrollHeight <= text.clientHeight) return ; // not actual with current screen width
+            if (!vertical_overflow(text_id)) return false ; // error or no vertical overflow
             // vertical text overflow found - check for picture true/false
             var picture ;
             if ((typeof gift.api_picture_url != 'undefined') && (gift.api_picture_url != null)) {
@@ -3254,6 +3278,14 @@ angular.module('gifts', [])
             return show ;
         } // show_full_gift_link
 
+        // show "show-more-text" link if long comment description with vertical text overflow
+        self.show_full_comment_link = function (comment) {
+            var pgm = 'commentsCtrl.show_full_comment_link: ' ;
+            // find overflow div
+            var text_id = "comment-" + comment.commentid + "-overflow-text" ;
+            return vertical_overflow(text_id) ;
+        } // show_full_comment_link
+
         // show full gift description. remove style maxHeight and overflow from div container
         self.show_full_gift_click = function(giftid) {
             // show full text for div with overflow
@@ -3267,25 +3299,6 @@ angular.module('gifts', [])
             text.style.overflow = 'visible' ;
         } // show_full_gift_click
 
-        // show "show-more-text" link if long comment description with vertical text overflow
-        self.show_full_comment_link = function (comment) {
-            var pgm = 'commentsCtrl.show_full_comment_link: ' ;
-            // find overflow div
-            var text_id = "comment-" + comment.commentid + "-overflow-text" ;
-            var text = document.getElementById(text_id) ;
-            if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
-            // check style.overflow
-            if (text.style.overflow == 'visible') return false ; // show_full_text has already been activated
-            // check for horizontal text overflow
-            var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
-            var screen_width_factor = screen_width / 320.0 ;
-            if (screen_width_factor < 1) screen_width_factor = 1 ;
-            var text_max_height = parseInt(text.style.maxHeight) ;
-            if (text.scrollHeight * screen_width_factor < text_max_height) return false ; // small text - overflow is not relevant
-            if (text.scrollHeight <= text.clientHeight) return false ; // not actual with current screen width
-            // vertical text overflow found
-            return true ;
-        } // show_full_comment_link
 
         // show full comment description. remove style maxHeight and overflow from div container
         self.show_full_comment_click = function(commentid) {
@@ -3390,6 +3403,21 @@ angular.module('gifts', [])
         self.hide_gift = function (gift) {
             var confirm_text = I18n.t("js.gifts.confirm_hide_gift") ;
             if (confirm(confirm_text)) gift.show = false ;
+        }
+
+        self.show_older_comments = function (gift) {
+            return ((gift.show_no_comments || self.default_no_comments) < (gift.comments || []).length) ;
+        }
+        self.show_older_comments_text = function (gift) {
+            var old_no_rows = gift.show_no_comments || self.default_no_comments ;
+            var new_no_rows = Math.min((gift.comments || []).length, old_no_rows + 10) ;
+            var no_older_comments = new_no_rows - old_no_rows ;
+            if (no_older_comments <= 1) return I18n.t('js.gifts.show_older_comment') ;
+            else return I18n.t('js.gifts.show_older_comments', {no_older_comments: no_older_comments}) ;
+        }
+        self.show_older_comments_click = function (gift) {
+            if (!gift.show_no_comments) gift.show_no_comments = self.default_no_comments ;
+            gift.show_no_comments = gift.show_no_comments + 10 ;
         }
 
         // new gift default values

@@ -299,19 +299,19 @@ en:
         rejected_text: "%{date} %{optional_price} : %{text} (rejected)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepted)" # new_deal_yn == Y, accepted_yn == Y
      api_comments2:
-        show_full_text: "Show more text" # todo: angularJS - moved to js.index.show_full_text
-        like_gift: "Like" # todo: angularJS - moved to js.index.like_gift
-        unlike_gift: "Unlike" # todo: angularJS - moved to js.index.unlike_gift
-        follow_gift: "Follow" # todo: angularJS - moved to js.index.follow_gift
-        unfollow_gift: "Don't follow" # todo: angularJS - moved to js.index.unfollow_gift
-        hide_gift: "Hide post" # todo: angularJS - moved to js.index.hide_gift
-        confirm_hide_gift: "Hide post?" # todo: angularJS - moved to js.index.confirm_hide_gift
+        show_full_text: "Show more text" # todo: angularJS - moved to js.gifts.show_full_text
+        like_gift: "Like" # todo: angularJS - moved to js.gifts.like_gift
+        unlike_gift: "Unlike" # todo: angularJS - moved to js.gifts.unlike_gift
+        follow_gift: "Follow" # todo: angularJS - moved to js.gifts.follow_gift
+        unfollow_gift: "Don't follow" # todo: angularJS - moved to js.gifts.unfollow_gift
+        hide_gift: "Hide post" # todo: angularJS - moved to js.gifts.hide_gift
+        confirm_hide_gift: "Hide post?" # todo: angularJS - moved to js.gifts.confirm_hide_gift
         share_gift: "Share post"
-        delete_gift: "Delete post" # todo: angularJS - moved to js.index.delete_gift
+        delete_gift: "Delete post" # todo: angularJS - moved to js.gifts.delete_gift
         confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # todo: angularJS - moved to js.index.confirm_delete_gift_1
-        confirm_delete_gift_2: "Delete post?" # todo: angularJS - moved to js.index.confirm_delete_gift_2
-        show_older_comment: "Show older comment"
-        show_older_comments: "Show %{no_older_comments} older comments"
+        confirm_delete_gift_2: "Delete post?" # todo: angularJS - moved to js.gifts.confirm_delete_gift_2
+        show_older_comment: "Show older comment" # todo: angularJS - moved to js.gifts.show_older_comment
+        show_older_comments: "Show %{no_older_comments} older comments" # todo: angularJS - moved to js.gifts.show_older_comments
      api_comment_status:
         cancel_new_deal: "Cancel"
         confirm_cancel_new_deal: "Cancel proposal?"
@@ -1302,6 +1302,8 @@ en:
         confirm_delete_gift_2: "Delete post?"
         hide_gift: "Hide post"
         confirm_hide_gift: "Hide post?"
+        show_older_comment: "Show older comment"
+        show_older_comments: "Show %{no_older_comments} older comments"
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil

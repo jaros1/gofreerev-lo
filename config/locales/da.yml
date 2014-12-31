@@ -302,19 +302,19 @@ da:
         rejected_text: "%{date} %{optional_price} : %{text} (afvist)" # new_deal_yn == Y, accepted_yn == N
         accepted_text: "%{date} %{optional_price} : %{text} (accepteret)" # new_deal_yn == Y, accepted_yn == Y
      api_comments2:
-        show_full_text: "Vis mere tekst" # todo: angularJS - moved to js.index.show_full_text
-        like_gift: "Synes om" # todo: angularJS - moved to js.index.like_gift
-        unlike_gift: "Synes ikke længere om" # todo: angularJS - moved to js.index.unlike_gift
-        follow_gift: "Følg opslag" # todo: angularJS - moved to js.index.follow_gift
-        unfollow_gift: "Følg ikke længere" # todo: angularJS - moved to js.index.unfollow_gift
-        hide_gift: "Skjul opslag" # todo: angularJS - moved to js.index.hide_gift
-        confirm_hide_gift: "Skjul opslag?" # todo: angularJS - moved to js.index.confirm_hide_gift
+        show_full_text: "Vis mere tekst" # todo: angularJS - moved to js.gifts.show_full_text
+        like_gift: "Synes om" # todo: angularJS - moved to js.gifts.like_gift
+        unlike_gift: "Synes ikke længere om" # todo: angularJS - moved to js.gifts.unlike_gift
+        follow_gift: "Følg opslag" # todo: angularJS - moved to js.gifts.follow_gift
+        unfollow_gift: "Følg ikke længere" # todo: angularJS - moved to js.gifts.unfollow_gift
+        hide_gift: "Skjul opslag" # todo: angularJS - moved to js.gifts.hide_gift
+        confirm_hide_gift: "Skjul opslag?" # todo: angularJS - moved to js.gifts.confirm_hide_gift
         share_gift: "Del opslag"
-        delete_gift: "Slet opslag" # todo: angularJS - moved to js.index.delete_gift
+        delete_gift: "Slet opslag" # todo: angularJS - moved to js.gifts.delete_gift
         confirm_delete_gift_1: "Slet opslag? Bemærk at %{user_name} og din saldo vil blive ændret med %{price} %{currency}, hvis dette opslag slettes" # todo: angularJS - moved to js.index.confirm_delete_gift_1
-        confirm_delete_gift_2: "Slet opslag?" # todo: angularJS - moved to js.index.confirm_delete_gift_2
-        show_older_comment: "Vis ældre kommentar"
-        show_older_comments: "Vis %{no_older_comments} ældre kommentarer"
+        confirm_delete_gift_2: "Slet opslag?" # todo: angularJS - moved to js.gifts.confirm_delete_gift_2
+        show_older_comment: "Vis ældre kommentar" # todo: angularJS - moved to js.gifts.show_older_comment
+        show_older_comments: "Vis %{no_older_comments} ældre kommentarer" # todo: angularJS - moved to js.gifts.show_older_comments
      api_comment_status:
         cancel_new_deal: "Fortryd"
         confirm_cancel_new_deal: "Fortryd forslag?"
@@ -1305,6 +1305,8 @@ da:
         confirm_delete_gift_2: "Slet opslag?"
         hide_gift: "Skjul opslag"
         confirm_hide_gift: "Skjul opslag?"
+        show_older_comment: "Vis ældre kommentar"
+        show_older_comments: "Vis %{no_older_comments} ældre kommentarer"
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil

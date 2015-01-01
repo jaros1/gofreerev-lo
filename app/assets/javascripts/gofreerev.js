@@ -2868,6 +2868,7 @@ var Gofreerev = (function() {
     }
     function get_user (user_id) {
         if (typeof users == 'undefined') return null ;
+        if (typeof user_id == 'undefined') return null ;
         var i = users_index_by_user_id[user_id] ;
         if (typeof i == 'undefined') return null ;
         var user = users[i] ;
@@ -2877,17 +2878,23 @@ var Gofreerev = (function() {
         }
         return user ;
     }
-    function get_users_currency () {
-        if (typeof users == 'undefined') return null ;
+    function get_login_userids() {
+        if (typeof users == 'undefined') return [] ;
+        var userids = []
         for (var i=0 ; i<users.length ; i++) {
-            if (users[i].friend == 1) return users[i].currency ;
+            if (users[i].friend == 1) userids.push(users[i].user_id) ;
         }
-        return null ;
+        return userids ;
+    }
+    function get_users_currency () {
+        var user = get_user(get_login_userids[0]) ;
+        if (!user) return null ;
+        return user.currency ;
     }
     function find_giver (gift) {
         var giver, user, i ;
-        for (i=0 ; i<gift.user_id_giver.length ; i++) {
-            user = get_user(gift.user_id_giver[i]) ;
+        for (i=0 ; i<gift.giver_user_ids.length ; i++) {
+            user = get_user(gift.giver_user_ids[i]) ;
             if (user) {
                 if (user.friend == 1) return user ; // giver is a login user
                 if (!giver) giver = user ;
@@ -2898,8 +2905,8 @@ var Gofreerev = (function() {
     }
     function find_receiver (gift) {
         var receiver, user, i ;
-        for (i=0 ; i<gift.user_id_receiver.length ; i++) {
-            user = get_user(gift.user_id_receiver[i]) ;
+        for (i=0 ; i<gift.receiver_user_ids.length ; i++) {
+            user = get_user(gift.receiver_user_ids[i]) ;
             if (user) {
                 if (user.friend == 1) return user ; // receiver is a login user
                 if (!receiver) receiver = user ;
@@ -2995,6 +3002,7 @@ var Gofreerev = (function() {
         init_users: init_users,
         get_users: get_users,
         get_user: get_user,
+        get_login_userids: get_login_userids,
         get_users_currency: get_users_currency,
         find_giver: find_giver,
         find_receiver: find_receiver
@@ -3104,6 +3112,13 @@ angular.module('gifts', [])
             }
         ]);
 
+        self.login_user_ids = function () {
+            var pgm = 'GiftsCtrl.login_user_ids: ' ;
+            var user_ids = Gofreerev.get_login_userids() ;
+            // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
+            return user_ids ;
+        }
+
         // test data - gifts
         // todo 1: load gifts from local storage - maybe a service?
         // todo 2: more than one api picture url if picture was uploaded to more than one login api
@@ -3113,13 +3128,13 @@ angular.module('gifts', [])
         //       mark as false if picture was not found (img onload and img onerror)
         //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
         //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
-        // todo 4: change user_id_giver and user_id_receiver to arrays (support for multpile logins)
-        // todo 5: add version to giftid. version=0 (seq from local storage), version=1 (seq from server), version>1 (giftid resequenzed by server)
+        // todo 4: change giver_user_ids and receiver_user_ids to arrays (support for multpile logins)
+        // todo 5: add version to gift_id. version=0 (seq from local storage), version=1 (seq from server), version>1 (gift_id resequenzed by server)
         self.gifts = [
             {
-                giftid: 1731,
-                user_id_giver: [920],
-                user_id_receiver: [],
+                gift_id: 1731,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
                 date: 1417624621, // '3. dec 2014',
                 price: 0,
                 currency: 'DKK',
@@ -3132,9 +3147,9 @@ angular.module('gifts', [])
                 show: true
             },
             {
-                giftid: 1730,
-                user_id_giver: [791],
-                user_id_receiver: [],
+                gift_id: 1730,
+                giver_user_ids: [791],
+                receiver_user_ids: [],
                 date: 1417624391, // 3. dec 2014
                 price: 0,
                 currency: 'DKK',
@@ -3165,9 +3180,9 @@ angular.module('gifts', [])
                 ]
             },
             {
-                giftid: 1729,
-                user_id_giver: [],
-                user_id_receiver: [998],
+                gift_id: 1729,
+                giver_user_ids: [],
+                receiver_user_ids: [998],
                 date: 1417624155, // 3. dec 2014
                 price: 0,
                 currency: 'DKK',
@@ -3176,9 +3191,9 @@ angular.module('gifts', [])
                 show: true
             },
             {
-                giftid: 1725,
-                user_id_giver: [920],
-                user_id_receiver: [],
+                gift_id: 1725,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
                 date: 1417253762, // 29. nov 2014
                 price: 0,
                 currency: 'DKK',
@@ -3190,9 +3205,9 @@ angular.module('gifts', [])
                 show: true
             },
             {
-                giftid: 1710,
-                user_id_giver: [920],
-                user_id_receiver: [],
+                gift_id: 1710,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
                 date: 1415975141, // 14. nov 2014
                 price: 0,
                 currency: 'SEK',
@@ -3214,8 +3229,13 @@ angular.module('gifts', [])
         }
 
         self.user_div_on_click = function (user_ids) {
-            // console.log('GiftsCtrl.gift_on_click. user_id = ' + user_id) ;
-            if (!user_ids) return ; // error - user_id array not found in users array
+            var pgm = 'GiftsCtrl.user_div_on_click ' ;
+            console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
+            if (typeof user_ids == 'undefined') {
+                // error - user_id array not found in users array
+                console.log(pgm + 'error: user_ids is undefined') ;
+                return;
+            }
             var user_id = user_ids[0] ;
             var user = Gofreerev.get_user(user_id) ;
             if (!user) return ; // error - user not found in users array
@@ -3251,7 +3271,7 @@ angular.module('gifts', [])
         self.show_full_gift_link = function (gift, link) {
             var pgm = 'GiftsCtrl.show_full_gift_link: ' ;
             // find overflow div
-            var text_id = "gift-" + gift.giftid + "-overflow-text" ;
+            var text_id = "gift-" + gift.gift_id + "-overflow-text" ;
             if (!vertical_overflow(text_id)) return false ; // error or no vertical overflow
             // vertical text overflow found - check for picture true/false
             var picture ;
@@ -3274,7 +3294,7 @@ angular.module('gifts', [])
             if (link == 1) show = picture ;
             else if (link == 2) show = !picture ;
             else show = false ;
-            // console.log(pgm + 'giftid = ' + gift.giftid + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
+            // console.log(pgm + 'gift_id = ' + gift.gift_id + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
             return show ;
         } // show_full_gift_link
 
@@ -3287,11 +3307,11 @@ angular.module('gifts', [])
         } // show_full_comment_link
 
         // show full gift description. remove style maxHeight and overflow from div container
-        self.show_full_gift_click = function(giftid) {
+        self.show_full_gift_click = function(gift_id) {
             // show full text for div with overflow
             var pgm = 'GiftsCtrl.show_full_text: ' ;
             // find overflow div
-            var text_id = "gift-" + giftid + "-overflow-text" ;
+            var text_id = "gift-" + gift_id + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
             if (!text) return ; // error - div with gift link and description was not found
             // remove max height ( and hide show-more-text link)
@@ -3373,16 +3393,16 @@ angular.module('gifts', [])
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
                 var giver = Gofreerev.find_giver(gift) ;
                 if (!giver) {
-                    Gofreerev.add2log(pgm + 'error: giver was not found for giftid ' + gift.giftid) ;
+                    Gofreerev.add2log(pgm + 'error: giver was not found for gift_id ' + gift.gift_id) ;
                     return ;
                 }
                 var receiver = Gofreerev.find_receiver(gift) ;
                 if (!receiver) {
-                    Gofreerev.add2log(pgm + 'error: receiver was not found for giftid ' + gift.giftid) ;
+                    Gofreerev.add2log(pgm + 'error: receiver was not found for gift_id ' + gift.gift_id) ;
                     return ;
                 }
                 if ((giver.friend != 1) && (receiver.friend != 1)) {
-                    Gofreerev.add2log(pgm + 'error: delete not allowed for giftid ' + gift.giftid) ;
+                    Gofreerev.add2log(pgm + 'error: delete not allowed for gift_id ' + gift.gift_id) ;
                     return ;
                 }
                 var keyno ;
@@ -3629,10 +3649,13 @@ angular.module('gifts', [])
         }
     }])
     .filter('formatUserImgTitle', ['formatBalanceFilter', function (formatBalance) {
-        return function (user_id) {
+        return function (user_ids) {
+            var pgm = 'GiftsCtrl.formatUserImgTitle: ' ;
             // format mouseover title in user <div><img> tags in gifts/index page etc
-            // console.log('Angular GiftsCtrl.formatUserImgTitle: user_id = ' + user_id) ;
-            var user = Gofreerev.get_user(user_id);
+            // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
+            // console.log(pgm + 'typeof user_ids = ' + (typeof user_ids)) ;
+            if (typeof user_ids == 'undefined') return null ;
+            var user = Gofreerev.get_user(user_ids[0]);
             if (!user) return; // error - user not found in users array
             // translation keys js.user_div.title_friends_click etc
             var keys = {
@@ -3649,10 +3672,10 @@ angular.module('gifts', [])
             return I18n.t(key, {username: username, apiname: apiname, balance: balance});
         }
     }])
-    .filter('formatUserImgSrc', [function (user_id) {
-        return function (user_id) {
+    .filter('formatUserImgSrc', [function () {
+        return function (user_ids) {
             // format scr in user <div><img> tags in gifts/index page etc
-            var user = Gofreerev.get_user(user_id);
+            var user = Gofreerev.get_user(user_ids[0]);
             if (!user) return ''; // error - user not found in users array
             return user.api_profile_picture_url;
         }

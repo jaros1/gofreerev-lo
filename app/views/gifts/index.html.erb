@@ -161,29 +161,25 @@
 
     <%# nested ng-repeat blocks. gifts ng-repeat attached to tbody tag. ng-repeat-start/ng-repeat-end block with comments for each gift %>
     <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter"><%# start gift ng-repeat block -%>
-    <tr style="vertical-align: top" id="gift-{{gift.giftid}}-header" >
+    <tr style="vertical-align: top" id="gift-{{gift.gift_id}}-header" >
       <td><%# giver image or blank -%>
-        <div ng-show='gift.user_id_giver' title="{{gift.user_id_giver | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.user_id_giver)">
-          <div>
-            <img class="small_pro_pic" ng-src="{{gift.user_id_giver | formatUserImgSrc}}"/>
-          </div>
+        <div ng-show='gift.giver_user_ids' title="{{gift.giver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.giver_user_ids)">
+          <img class="small_pro_pic" ng-src="{{gift.giver_user_ids | formatUserImgSrc}}"/>
         </div>
-        <img ng-hide='gift.user_id_giver' src="/images/invisible-picture.gif" class="small_profile_picture"/>
+        <img ng-hide='gift.giver_user_ids' src="/images/invisible-picture.gif" class="small_profile_picture"/>
       </td>
       <td><%# receiver image or blank -%>
-        <div ng-show='gift.user_id_receiver' title="{{gift.user_id_receiver | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.user_id_receiver)">
-          <div>
-            <img class="small_pro_pic" ng-src="{{gift.user_id_receiver | formatUserImgSrc}}"/>
-          </div>
+        <div ng-show='gift.receiver_user_ids' title="{{gift.receiver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.receiver_user_ids)">
+          <img class="small_pro_pic" ng-src="{{gift.receiver_user_ids | formatUserImgSrc}}"/>
         </div>
-        <img ng-hide='gift.user_id_receiver' src="/images/invisible-picture.gif" class="small_profile_picture"/>
+        <img ng-hide='gift.receiver_user_ids' src="/images/invisible-picture.gif" class="small_profile_picture"/>
       </td>
       <td colspan="2" class="wrapword" style="vertical-align: top;">
         <table>
           <tr><%# 1: gift row with link and text %>
             <td>
-              <div style="max-height: 150px; overflow: hidden" id="gift-{{gift.giftid}}-overflow-text">
-                <a href="/{{ctrl.language}}/gifts/{{gift.giftid}}" title="{{ctrl.texts.gifts.link_title}}">
+              <div style="max-height: 150px; overflow: hidden" id="gift-{{gift.gift_id}}-overflow-text">
+                <a href="/{{ctrl.language}}/gifts/{{gift.gift_id}}" title="{{ctrl.texts.gifts.link_title}}">
                   {{gift | formatGiftLinkText:2}}
                 </a> : <span ng-bind-html="gift.description | formatGiftDescription"/>
               </div>
@@ -192,19 +188,19 @@
           <tr ng-show="ctrl.show_full_gift_link(gift,1)"><%# 2: hidden row with "show full text" link used for large description + image attachment %>
             <td style="text-align: center">
               <div style="float: none">
-                <a href ng-click="ctrl.show_full_gift_click(gift.giftid)">{{ctrl.texts.gifts.show_full_text}}</a>
+                <a href ng-click="ctrl.show_full_gift_click(gift.gift_id)">{{ctrl.texts.gifts.show_full_text}}</a>
               </div>
             </td>
           </tr>
           <tr ng-show="ctrl.show_api_picture_url(gift)"><%# 3: table row with image attachment %>
             <td>
-              <img id="gift-{{gift.giftid}}" ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+              <img id="gift-{{gift.gift_id}}" ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
             </td>
           </tr>
           <tr ng-show="ctrl.show_open_graph_image(gift)"><%# 4: table row with open graph image - no error handling yet %>
             <td>
               <a href="{{gift.open_graph_url}}" target="_blank">
-                <img id="gift-{{gift.giftid}}-image" ng-src="{{gift.open_graph_image}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+                <img id="gift-{{gift.gift_id}}-image" ng-src="{{gift.open_graph_image}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
               </a>
             </td>
           </tr>
@@ -222,11 +218,11 @@
       </td>
     </tr>
     <%# row with gift links: show full text, like/unlike, follow/unfollow, delete, hide and more more comments links -%>
-    <tr id='gift-{{gift.giftid}}-links'>
+    <tr id='gift-{{gift.gift_id}}-links'>
       <td colspan="2"></td>
       <td colspan="2">
         <div ng-show="ctrl.show_full_gift_link(gift,2)">
-          <a href ng-click="ctrl.show_full_gift_click(gift.giftid)">{{ctrl.texts.gifts.show_full_text}}</a> -&nbsp;
+          <a href ng-click="ctrl.show_full_gift_click(gift.gift_id)">{{ctrl.texts.gifts.show_full_text}}</a> -&nbsp;
         </div>
         <div ng-hide="gift.like">
           <a href ng-click="ctrl.like_gift(gift)">{{ctrl.texts.gifts.like_gift}}</a> -&nbsp;
@@ -263,14 +259,12 @@
         </div>
       </td>
     </tr>
-
-    <tr ng-repeat="comment in (gift.comments || []) | limitTo:(gift.show_no_comments || ctrl.default_no_comments)">
+    <%# comments loop -%>
+    <tr ng-repeat="comment in (gift.comments || []) | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)">
       <td colspan="2"></td>
       <td style="vertical-align: top;">
         <div title="{{comment.userids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)">
-          <div>
-            <img class="small_pro_pic" ng-src="{{comment.userids | formatUserImgSrc}}"/>
-          </div>
+          <img class="small_pro_pic" ng-src="{{comment.userids | formatUserImgSrc}}"/>
         </div>
       </td>
       <td class="wrapword" style="text-align: left; vertical-align: top">
@@ -292,15 +286,19 @@
         </table>
       </td>
     </tr>
-
-    <tr id='gift-{{gift.giftid}}-comment-new'>
+    <%# create new comment -%>
+    <tr id='gift-{{gift.gift_id}}-comment-new'>
       <td colspan="2" style="text-align: right; vertical-align: top">
       </td>
-      <td colspan="2">
+      <td style="vertical-align: top">
+        <div title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())">
+          <img class="small_pro_pic" ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}"/>
+        </div>
       </td>
+      <td style="text-align: left; vertical-align: top">new comment ...</td>
     </tr>
 
-    <tr id="gift-{{gift.giftid}}-footer-1">
+    <tr id="gift-{{gift.gift_id}}-footer-1">
       <td colspan="4">
         <hr/>
       </td>

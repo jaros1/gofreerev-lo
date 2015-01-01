@@ -163,16 +163,12 @@
     <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter"><%# start gift ng-repeat block -%>
     <tr style="vertical-align: top" id="gift-{{gift.gift_id}}-header" >
       <td><%# giver image or blank -%>
-        <div ng-show='gift.giver_user_ids' title="{{gift.giver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.giver_user_ids)">
-          <img class="small_pro_pic" ng-src="{{gift.giver_user_ids | formatUserImgSrc}}"/>
-        </div>
-        <img ng-hide='gift.giver_user_ids' src="/images/invisible-picture.gif" class="small_profile_picture"/>
+        <img ng-src="{{gift.giver_user_ids | formatUserImgSrc}}" ng-show='gift.giver_user_ids' class="small_pro_pic" title="{{gift.giver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.giver_user_ids)"/>
+        <img src="/images/invisible-picture.gif" ng-hide='gift.giver_user_ids' class="small_profile_picture"/>
       </td>
       <td><%# receiver image or blank -%>
-        <div ng-show='gift.receiver_user_ids' title="{{gift.receiver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.receiver_user_ids)">
-          <img class="small_pro_pic" ng-src="{{gift.receiver_user_ids | formatUserImgSrc}}"/>
-        </div>
-        <img ng-hide='gift.receiver_user_ids' src="/images/invisible-picture.gif" class="small_profile_picture"/>
+        <img ng-src="{{gift.receiver_user_ids | formatUserImgSrc}}" ng-show='gift.receiver_user_ids' class="small_pro_pic" title="{{gift.receiver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.receiver_user_ids)"/>
+        <img src="/images/invisible-picture.gif" ng-hide='gift.receiver_user_ids' class="small_profile_picture"/>
       </td>
       <td colspan="2" class="wrapword" style="vertical-align: top;">
         <table>
@@ -263,9 +259,7 @@
     <tr ng-repeat="comment in (gift.comments || []) | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)">
       <td colspan="2"></td>
       <td style="vertical-align: top;">
-        <div title="{{comment.userids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)">
-          <img class="small_pro_pic" ng-src="{{comment.userids | formatUserImgSrc}}"/>
-        </div>
+        <img ng-src="{{comment.userids | formatUserImgSrc}}" class="small_pro_pic" title="{{comment.userids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)"/>
       </td>
       <td class="wrapword" style="text-align: left; vertical-align: top">
         <table>
@@ -291,9 +285,7 @@
       <td colspan="2" style="text-align: right; vertical-align: top">
       </td>
       <td style="vertical-align: top">
-        <div title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())">
-          <img class="small_pro_pic" ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}"/>
-        </div>
+        <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
       </td>
       <td style="text-align: left; vertical-align: top">new comment ...</td>
     </tr>

@@ -2887,7 +2887,8 @@ var Gofreerev = (function() {
         return userids ;
     }
     function get_users_currency () {
-        var user = get_user(get_login_userids[0]) ;
+        var user_ids = get_login_userids() ;
+        var user = get_user(user_ids[0]) ;
         if (!user) return null ;
         return user.currency ;
     }
@@ -3448,6 +3449,7 @@ angular.module('gifts', [])
                 is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
                 show: function () {
                     var currency = Gofreerev.get_users_currency() ;
+                    // console.log('currency = ' + JSON.stringify(currency)) ;
                     return (currency != null) ;
                 }
             }

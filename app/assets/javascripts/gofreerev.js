@@ -1082,6 +1082,12 @@ var Gofreerev = (function() {
             return false ;
         })
     })
+    $(document).ready(function() {
+        $("#new_comment").unbind("ajax:before") ;
+        $("#new_comment").bind("ajax:before", function(){
+            return false ;
+        })
+    })
 
 
     // auto resize text fields
@@ -2403,7 +2409,8 @@ var Gofreerev = (function() {
             localStorage.setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
             localStorage.setItem(userid + '_uid', uid) ; // unique device id
             localStorage.setItem(userid + '_pubkey', pubkey) ; // public key
-            localStorage.setItem(userid + '_giftid', '0') ; // giftid sequence
+            localStorage.setItem(userid + '_gift_id', '0') ; // gift_id sequence
+            localStorage.setItem(userid + '_comment_id', '0') ; // gift_id sequence
             return userid ;
         }
         // invalid password (create_new_account=false)
@@ -2543,6 +2550,26 @@ var Gofreerev = (function() {
         if (sessionStorage.getItem("userid") === null) client_login.click() ; // not logged in
         // already logged in
     })
+
+    function next_local_id (seq_name) {
+        var seq = parseInt(localStorage.getItem(seq_name)) ;
+        seq = seq + 1 ;
+        localStorage.setItem(seq_name, '' + seq) ;
+        return seq ;
+    } // next_local_id
+
+    // local sequences
+    function next_local_gift_id() {
+        var userid = sessionStorage.getItem('userid') ;
+        if (!userid) return ; // not logged in
+        return next_local_id(userid + '_gift_id') ;
+    }
+
+    function next_local_comment_id() {
+        var userid = sessionStorage.getItem('userid') ;
+        if (!userid) return ; // not logged in
+        return next_local_id(userid + '_comment_id') ;
+    }
 
     // local storage functions <==
 
@@ -3006,7 +3033,9 @@ var Gofreerev = (function() {
         get_login_userids: get_login_userids,
         get_users_currency: get_users_currency,
         find_giver: find_giver,
-        find_receiver: find_receiver
+        find_receiver: find_receiver,
+        next_local_gift_id: next_local_gift_id,
+        next_local_comment_id: next_local_comment_id
     };
 })();
 // Gofreerev closure end
@@ -3068,11 +3097,17 @@ angular.module('gifts', [])
                 comments: {
                     comment_text: I18n.t('js.comments.comment_text'),
                     show_full_text: I18n.t('js.comments.show_full_text')
+                },
+                new_comment: {
+                    comment_placeholder: I18n.t('js.new_comment.comment_placeholder'),
+                    submit_button_text: I18n.t('js.new_comment.submit_button_text')
                 }
             };
         };
         init_language_constants();
         self.default_no_comments = 3 ;
+
+
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3145,7 +3180,8 @@ angular.module('gifts', [])
                 description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
                 // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
                 like: true,
-                show: true
+                show: true,
+                new_comment: {comment: ""}
             },
             {
                 gift_id: 1730,
@@ -3157,28 +3193,8 @@ angular.module('gifts', [])
                 direction: 'giver',
                 description: 'b',
                 show: true,
-                comments: [
-                    {commentid: 1, userids: [791], comment: "comment 1", created_at: 1417624391},
-                    {commentid: 2, userids: [920], comment: "comment 2", created_at: 1417624391},
-                    {commentid: 3, userids: [920], comment: "comment 3", created_at: 1417624391},
-                    {commentid: 4, userids: [920], comment: "comment 4", created_at: 1417624391},
-                    {commentid: 5, userids: [920], comment: "comment 5", created_at: 1417624391},
-                    {commentid: 6, userids: [920], comment: "comment 6", created_at: 1417624391},
-                    {commentid: 7, userids: [920], comment: "comment 7", created_at: 1417624391},
-                    {commentid: 8, userids: [920], comment: "comment 8", created_at: 1417624391},
-                    {commentid: 9, userids: [920], comment: "comment 9", created_at: 1417624391},
-                    {commentid: 10, userids: [920], comment: "comment 10", created_at: 1417624391},
-                    {commentid: 11, userids: [920], comment: "comment 11", created_at: 1417624391},
-                    {commentid: 12, userids: [920], comment: "comment 12", created_at: 1417624391},
-                    {commentid: 13, userids: [920], comment: "comment 13", created_at: 1417624391},
-                    {commentid: 14, userids: [920], comment: "comment 14", created_at: 1417624391},
-                    {commentid: 15, userids: [920], comment: "comment 15", created_at: 1417624391},
-                    {commentid: 16, userids: [920], comment: "comment 16", created_at: 1417624391},
-                    {commentid: 17, userids: [920], comment: "comment 17", created_at: 1417624391},
-                    {commentid: 18, userids: [920], comment: "comment 18", created_at: 1417624391},
-                    {commentid: 19, userids: [920], comment: "comment 19", created_at: 1417624391},
-                    {commentid: 20, userids: [998], comment: "comment 20", created_at: 1417624391}
-                ]
+                comments: [],
+                new_comment: {comment: ""}
             },
             {
                 gift_id: 1729,
@@ -3189,7 +3205,8 @@ angular.module('gifts', [])
                 currency: 'DKK',
                 direction: 'receiver',
                 description: 'a',
-                show: true
+                show: true,
+                new_comment: {comment: ""}
             },
             {
                 gift_id: 1725,
@@ -3203,7 +3220,8 @@ angular.module('gifts', [])
                 description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
                 api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
                 api_picture_url_on_error_at: false, // see todo:
-                show: true
+                show: true,
+                new_comment: {comment: ""}
             },
             {
                 gift_id: 1710,
@@ -3218,9 +3236,16 @@ angular.module('gifts', [])
                 open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
                 open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
                 open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg',
-                show: true
+                show: true,
+                new_comment: {comment: ""}
             }
         ]; // gifts
+
+        // add some comments
+        for (var i=1 ; i<=20; i++) {
+            var temp_comment_id = Gofreerev.next_local_comment_id() ;
+            self.gifts[1].comments.push({commentid: temp_comment_id, userids: [791], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
+        }
 
         // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
         self.gifts_filter = function (gift, index) {
@@ -3552,6 +3577,21 @@ angular.module('gifts', [])
         self.create_new_gift = function () {
             $window.alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
         }
+
+        // new comment ng-submit
+        self.create_new_comment = function (gift) {
+            // $window.alert('GiftsCtrl.create_new_comment: gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
+            if (typeof gift.comments == 'undefined') gift.comments = [] ;
+            // todo: add sequence for commentid in local storage
+            var new_comment = {commentid: 99, userids: Gofreerev.get_login_userids(), comment: gift.new_comment.comment, created_at: (new Date).getTime()} ;
+            gift.new_comment.comment = null ;
+            var old_no_rows = gift.show_no_comments || self.default_no_comments ;
+            gift.comments.push(new_comment) ;
+            if (gift.comments.length > old_no_rows) {
+                old_no_rows = old_no_rows + 1 ;
+                gift.show_no_comments = old_no_rows ;
+            }
+        } // create_new_comment
 
         // end GiftsCtrl
     }])

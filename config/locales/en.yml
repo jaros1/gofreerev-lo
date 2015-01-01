@@ -464,7 +464,7 @@ en:
         follow_gift: "Follow"
         unfollow_gift: "Don't follow"
         share_lov_text: "Share at:"
-        enter_comment: "Enter a comment ..."
+        enter_comment: "Enter a comment ..." # todo: angularJS - moved to js.comments.new_comment_placeholder
         new_deal_check_box_prompt: "Agreement proposal"
         price_prompt: "Price"
         price_free: "free"
@@ -1308,6 +1308,9 @@ en:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Show more text"
+     new_comment:
+        comment_placeholder: "Enter a comment ..."
+        submit_button_text: "Save"
      user_div: # from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #

@@ -8,6 +8,9 @@
       @missing_api_picture_urls
     %>
 
+    // localStorage.clear() ;
+    // sessionStorage.clear() ;
+
 </script>
 
 <a href="#" id="share_gift" style="display: none">share gift</a>
@@ -287,7 +290,38 @@
       <td style="vertical-align: top">
         <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
       </td>
-      <td style="text-align: left; vertical-align: top">new comment ...</td>
+      <td style="text-align: left; vertical-align: top">
+
+
+        <%# remote form for new comment. Sent to comments/create. Inserted in gift-<gift.id>-comments table.
+        Post ajax processing done in gofreerev.js / add_post_ajax_comment_handler
+        -%>
+        <%= form_for Comment.new, :remote => true, :html => {:name => "gift-{{gift.gift_id}}-new-comment-form", 'ng-submit' => 'ctrl.create_new_comment(gift)'} do |f| %>
+            <%# f.hidden_field :gift_id, :id => "gift-#{gift.id}-comment-gift-id" %>
+            <%# f.hidden_field :new_deal_yn, :id => "gift-#{gift.id}-comment-new-deal-yn" %>
+            <table style="border-spacing: 0;">
+              <tr ng-show="gift.new_comment.show_price">
+                <td colspan="2">
+                  <%= f.text_field :price, :size => 10, :placeholder => '{{ctrl.texts.new_gift.price_placeholder}}', "ng-model" => 'gift.new_comment.price' %>
+                  {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}}
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <%= f.text_area :comment, :size => '60x1', :placeholder => '{{ctrl.texts.new_comment.comment_placeholder}}', :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => "new_com_text", :required => true, "ng-model" => 'gift.new_comment.comment' %></td>
+                <%# %>
+                <td>
+                  <%# f.submit '{{ctrl.texts.new_gift.submit_button_text}}', "ng-disabled" => 'new_gift_form.$invalid', :name => 'commit_gift', :class => 'new_gift_submit_large' %>
+                  <%= f.submit '{{ctrl.texts.new_comment.submit_button_text}}', "ng-disabled" => 'gift-{{gift.gift_id}}-new-comment-form.$invalid', :class => "submit_comment_large" %>
+                </td>
+              </tr>
+              <tr class="submit_comment_small">
+                <td colspan="2"><%= f.submit '{{ctrl.texts.new_comment.submit_button_text}}', "ng-disabled" => 'gift-{{gift.gift_id}}-new-comment-form.$invalid' %></td>
+              </tr>
+            </table>
+        <% end -%>
+
+      </td>
     </tr>
 
     <tr id="gift-{{gift.gift_id}}-footer-1">

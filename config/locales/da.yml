@@ -467,7 +467,7 @@ da:
         follow_gift: "Følg opslag"
         unfollow_gift: "Følg ikke længere"
         share_lov_text: "Del på:"
-        enter_comment: "Skriv en kommentar..."
+        enter_comment: "Skriv en kommentar..." # todo: angularJS - moved to js.comments.new_comment_placeholder
         new_deal_check_box_prompt: "Foreslå aftale"
         price_prompt: "Pris"
         price_free: "frie"
@@ -1311,6 +1311,9 @@ da:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Vis mere tekst"
+     new_comment:
+        comment_placeholder: "Skriv en kommentar..."
+        submit_button_text: "Gem"
      user_div: # from shared.user_div - for angularJS filter
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."

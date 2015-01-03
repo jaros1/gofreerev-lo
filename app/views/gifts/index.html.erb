@@ -25,7 +25,7 @@
         <tr title="{{ctrl.texts.new_gift.price_title}}">
           <td>{{ctrl.texts.new_gift.price_prompt}}</td>
           <td>
-            <%= f.text_field :price, :size => 10, :maxlength => 10, :placeholder => '{{ctrl.texts.new_gift.price_placeholder}}', "ng-model" => 'ctrl.new_gift.price' %>
+            <input ng-model="ctrl.new_gift.price" type="number" min="0" step="0.01" size="10" placeholder="{{ctrl.texts.new_gift.price_placeholder}}" />
             {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}} &nbsp;&nbsp;&nbsp;
             <div style="text-wrap: none">
               {{ctrl.texts.new_gift.direction_giver_prompt}} <%= f.radio_button :direction, 'giver', 'ng-model' => 'ctrl.new_gift.direction', :id => nil %>&nbsp;&nbsp;
@@ -298,9 +298,9 @@
       <td style="text-align: left; vertical-align: top">
         <%= form_for Comment.new, :remote => true, :html => {:name => "gift-{{gift.gift_id}}-new-comment-form", 'ng-submit' => 'ctrl.create_new_comment(gift)'} do |f| %>
             <table style="border-spacing: 0;">
-              <tr ng-show="gift.new_comment.show_price">
+              <tr ng-show="gift.new_comment.new_proposal">
                 <td colspan="2">
-                  <%= f.text_field :price, :size => 10, :placeholder => '{{ctrl.texts.new_gift.price_placeholder}}', "ng-model" => 'gift.new_comment.price' %>
+                  <input ng-model="gift.new_comment.price" type="number" min="0" step="0.01" size="10" placeholder="{{ctrl.texts.new_gift.price_placeholder}}" />
                   {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}}
                 </td>
               </tr>

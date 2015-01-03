@@ -316,7 +316,7 @@ da:
         show_older_comment: "Vis ældre kommentar" # todo: angularJS - moved to js.gifts.show_older_comment
         show_older_comments: "Vis %{no_older_comments} ældre kommentarer" # todo: angularJS - moved to js.gifts.show_older_comments
      api_comment_status:
-        cancel_new_deal: "Fortryd"
+        cancel_new_deal: "Fortryd" # todo: angularJS - moved to js.comments.cancel_new_deal
         confirm_cancel_new_deal: "Fortryd forslag?"
         accept_new_deal: "Godkend"
         confirm_accept_new_deal: "Godkend forslag?"
@@ -1311,6 +1311,7 @@ da:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Vis mere tekst"
+        cancel_new_deal: "Fortryd"
         delete_comment: "Slet"
      new_comment:
         proposal_title: "Anvend \"Foreslå aftale\" tjekboks, hvis du ønsker at foreslå %{username} en aftale. Indtast en pris i frie penge, hvis du ønsker at anvende frie penge i denne aftale. %{username} vil få besked om dit tilbud og kan accepterer eller afvise dit forslag."

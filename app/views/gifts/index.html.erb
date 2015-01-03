@@ -261,8 +261,8 @@
         <div style="text-align: right;">
           <table style="text-align: left; margin-left: auto; margin-right: 10px;">
             <tbody>
-            <tr ng-show="ctrl.show_cancel_new_deal_link(comment)">
-              <td><%# link_to_cancel_new_deal(@comment) %></td>
+            <tr ng-show="ctrl.show_cancel_new_deal_link(gift,comment)">
+              <td><a href ng-click="ctrl.cancel_new_deal(gift,comment)">{{ctrl.texts.comments.cancel_new_deal}}</a></td>
             </tr>
             <tr ng-show="ctrl.show_accept_new_deal_link(comment)">
               <td><%# link_to_accept_new_deal(@comment) %></td>
@@ -271,9 +271,7 @@
               <td><%# link_to_reject_new_deal(@comment) %></td>
             </tr>
             <tr ng-show="ctrl.show_delete_comment_link(gift,comment)">
-              <td>
-                <a href ng-click="ctrl.delete_comment(comment)">{{ctrl.texts.comments.delete_comment}}</a>
-              </td>
+              <td><a href ng-click="ctrl.delete_comment(comment)">{{ctrl.texts.comments.delete_comment}}</a></td>
             </tr>
             </tbody>
           </table>
@@ -306,16 +304,14 @@
     <%# create new comment -%>
     <tr id='gift-{{gift.gift_id}}-comment-new'>
       <td colspan="2" style="text-align: right; vertical-align: top">
-
             <div ng-show="ctrl.show_new_deal_checkbox(gift)" title="{{(gift|formatNewProposalTitle)}}">
               <table>
                 <tr>
                   <td>{{ctrl.texts.new_comment.check_box_prompt}}</td>
-                  <td><input type="checkbox" ng-model="gift.new_comment.new_proposal"></td>
+                  <td><input type="checkbox" ng-model="gift.new_comment.new_deal"></td>
                 </tr>
               </table>
             </div>
-
       </td>
       <td style="vertical-align: top">
         <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
@@ -323,7 +319,7 @@
       <td style="text-align: left; vertical-align: top">
         <%= form_for Comment.new, :remote => true, :html => {:name => "gift-{{gift.gift_id}}-new-comment-form", 'ng-submit' => 'ctrl.create_new_comment(gift)'} do |f| %>
             <table style="border-spacing: 0;">
-              <tr ng-show="gift.new_comment.new_proposal">
+              <tr ng-show="gift.new_comment.new_deal">
                 <td colspan="2">
                   <input ng-model="gift.new_comment.price" type="number" min="0" step="0.01" size="10" placeholder="{{ctrl.texts.new_gift.price_placeholder}}" />
                   {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}}

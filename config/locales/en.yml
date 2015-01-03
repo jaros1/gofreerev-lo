@@ -313,7 +313,7 @@ en:
         show_older_comment: "Show older comment" # todo: angularJS - moved to js.gifts.show_older_comment
         show_older_comments: "Show %{no_older_comments} older comments" # todo: angularJS - moved to js.gifts.show_older_comments
      api_comment_status:
-        cancel_new_deal: "Cancel"
+        cancel_new_deal: "Cancel" # todo: angularJS - moved to js.comments.cancel_new_deal
         confirm_cancel_new_deal: "Cancel proposal?"
         accept_new_deal: "Accept"
         confirm_accept_new_deal: "Accept proposal?"
@@ -1308,6 +1308,7 @@ en:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Show more text"
+        cancel_new_deal: "Cancel"
         delete_comment: "Delete"
      new_comment:
         proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."

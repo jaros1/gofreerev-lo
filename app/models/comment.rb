@@ -186,6 +186,7 @@ class Comment < ActiveRecord::Base
 
   # display cancel new deal check box?
   # only for new not accepted/rejected agreement proposals
+  # todo: angularJS - moved to GiftsCtrl.show_cancel_new_deal_link
   def show_cancel_new_deal_link? (users)
     return false unless new_deal_yn == 'Y'
     return false if accepted_yn

@@ -3097,6 +3097,7 @@ angular.module('gifts', [])
                 comments: {
                     comment_text: I18n.t('js.comments.comment_text'),
                     show_full_text: I18n.t('js.comments.show_full_text'),
+                    cancel_new_deal: I18n.t('js.comments.cancel_new_deal'),
                     delete_comment: I18n.t('js.comments.delete_comment')
                 },
                 new_comment: {
@@ -3508,6 +3509,20 @@ angular.module('gifts', [])
             if (!comment.deleted_at) comment.deleted_at = unix_timestamp() ;
         }
 
+        self.show_cancel_new_deal_link = function (gift,comment) {
+            // from rails Comment.show_cancel_new_deal_link?
+            if (comment.new_deal != true) return false ;
+            if (comment.accepted) return false ;
+            var login_user_ids = Gofreerev.get_login_userids() ;
+            if ($(login_user_ids).filter(comment.user_ids).length == 0) return false ;
+            if (gift.direction == 'both') return false ;
+            return true ;
+        }
+        self.cancel_new_deal = function (gift,comment) {
+            if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
+            comment.new_deal = false ;
+        }
+
         self.show_new_deal_checkbox = function (gift) {
             // see also formatNewProposalTitle
             if (gift.direction == 'both') return false ; // closed deal
@@ -3646,10 +3661,12 @@ angular.module('gifts', [])
                 commentid: Gofreerev.next_local_comment_id(),
                 user_ids: Gofreerev.get_login_userids(),
                 comment: gift.new_comment.comment,
-                created_at: unix_timestamp()
+                created_at: unix_timestamp(),
+                new_deal: gift.new_comment.new_deal
             } ;
             // console.log(pgm + 'created_at = ' + new_comment.created_at) ;
             gift.new_comment.comment = null ;
+            gift.new_comment.new_deal = false ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;
             if (gift.comments.length > old_no_rows) {

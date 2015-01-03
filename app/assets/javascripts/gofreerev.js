@@ -3099,6 +3099,7 @@ angular.module('gifts', [])
                     show_full_text: I18n.t('js.comments.show_full_text')
                 },
                 new_comment: {
+                    check_box_prompt: I18n.t('js.new_comment.check_box_prompt'),
                     comment_placeholder: I18n.t('js.new_comment.comment_placeholder'),
                     submit_button_text: I18n.t('js.new_comment.submit_button_text')
                 }
@@ -3134,7 +3135,7 @@ angular.module('gifts', [])
                 user_name: 'Jan Roslind',
                 balance: null,
                 api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ',
-                friend: 1, // me=logged in user
+                friend: 2, // me=logged in user
                 currency: 'DKK'
             },
             {
@@ -3466,6 +3467,19 @@ angular.module('gifts', [])
             gift.show_no_comments = gift.show_no_comments + 10 ;
         }
 
+        self.show_new_deal_checkbox = function (gift) {
+            // see also formatNewProposalTitle
+            if (gift.direction == 'both') return false ; // closed deal
+            var login_user_ids = Gofreerev.get_login_userids() ;
+            if (gift.direction == 'giver') {
+                if ($(login_user_ids).filter(gift.giver_user_ids).length > 0) return false ; // login user(s) is giver
+            }
+            else {
+                if ($(login_user_ids).filter(gift.receiver_user_ids).length > 0) return false ; // login user(s) is receiver
+            }
+            return true ;
+        }
+
         // new gift default values
         function init_new_gift () {
             self.new_gift = {
@@ -3572,6 +3586,9 @@ angular.module('gifts', [])
 
         // <== new gift link open graph preview in gifts/index page
 
+        var unix_timestamp = function() {
+            return Math.round((new Date).getTime()/1000) ;
+        }
 
         // new_gift ng-submit
         self.create_new_gift = function () {
@@ -3580,10 +3597,18 @@ angular.module('gifts', [])
 
         // new comment ng-submit
         self.create_new_comment = function (gift) {
-            // $window.alert('GiftsCtrl.create_new_comment: gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
+            var pgm = 'GiftsCtrl.create_new_comment: ' ;
+            // $window.alert(pgm + 'gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
             // todo: add sequence for commentid in local storage
-            var new_comment = {commentid: 99, userids: Gofreerev.get_login_userids(), comment: gift.new_comment.comment, created_at: (new Date).getTime()} ;
+            var new_comment = {
+                commentid: Gofreerev.next_local_comment_id(),
+                userids: Gofreerev.get_login_userids(),
+                comment: gift.new_comment.comment,
+                created_at: unix_timestamp()
+            } ;
+
+            console.log(pgm + 'created_at = ' + new_comment.created_at) ;
             gift.new_comment.comment = null ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;
@@ -3732,5 +3757,36 @@ angular.module('gifts', [])
                 // console.log(pgm + 'optional_price = ' + optional_price) ;
                 // console.log(pgm + 'comment = ' + comment.comment) ;
                 return I18n.t('js.comments.comment_text', {date: date, optional_price: optional_price, text: comment.comment}) ;
+        }
+    }])
+    .filter('formatNewProposalTitle', [function () {
+        return function (gift) {
+            var pgm = 'GiftsCtrl.formatNewProposalTitle: gift id = ' + gift.gift_id + '. ' ;
+            // see also GiftsCtrl.show_new_deal_checkbox
+            if (gift.direction == 'both') {
+                console.log(pgm + 'error. invalid direction') ;
+                return '' ;
+            }
+            var login_user_ids = Gofreerev.get_login_userids() ;
+            var other_user_ids ;
+            if (gift.direction == 'giver') other_user_ids = $(login_user_ids).not(gift.giver_user_ids) ;
+            else other_user_ids = $(login_user_ids).not(gift.receiver_user_ids) ;
+            // console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) + ', other_user_ids = ' + JSON.stringify(other_user_ids)) ;
+            // console.log(pgm + 'other_user_ids.length = ' + other_user_ids.length) ;
+            if (other_user_ids.length == 0) {
+                console.log(pgm + 'error. other_user_ids.length = 0') ;
+                return '' ;
+            }
+            var other_user_id = other_user_ids[0] ;
+            var other_user = Gofreerev.get_user(other_user_id) ;
+            // console.log(pgm + 'other_user_id = ' + JSON.stringify(other_user_id)) ;
+            // console.log(pgm + 'other_user = ' + JSON.stringify(other_user)) ;
+            if (!other_user) {
+                console.log(pgm + 'error. other user with user id ' + other_user_id + ' does not exists') ;
+                return '' ;
+            }
+            var title = I18n.t('js.new_comment.proposal_title', {username: other_user.short_user_name}) ;
+            // console.log(pgm + 'gift id = ' + gift.gift_id + ', title = ' + JSON.stringify(title)) ;
+            return title ;
         }
     }]);

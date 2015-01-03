@@ -464,11 +464,11 @@ en:
         follow_gift: "Follow"
         unfollow_gift: "Don't follow"
         share_lov_text: "Share at:"
-        enter_comment: "Enter a comment ..." # todo: angularJS - moved to js.comments.new_comment_placeholder
-        new_deal_check_box_prompt: "Agreement proposal"
+        enter_comment: "Enter a comment ..." # todo: angularJS - moved to js.new_comment.comment_placeholder
+        new_deal_check_box_prompt: "Agreement proposal" # todo: angularJS - moved to js.new_comment.check_box_prompt
         price_prompt: "Price"
         price_free: "free"
-        new_proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
+        new_proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer." # todo: angularJS - moved to js.new_comment.proposal_title
      show:
         invalid_gift_id: "Invalid request. Unknown post id"
         no_access: "Invalid request. You are not allowed to see this post"
@@ -1309,6 +1309,8 @@ en:
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Show more text"
      new_comment:
+        proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
+        check_box_prompt: "Agreement proposal"
         comment_placeholder: "Enter a comment ..."
         submit_button_text: "Save"
      user_div: # from shared.user_div.* - for angularJS

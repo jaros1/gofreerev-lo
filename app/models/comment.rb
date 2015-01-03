@@ -227,6 +227,7 @@ class Comment < ActiveRecord::Base
   end # show_reject_new_deal_link?
 
   # ok to delete comment if login user(s) is giver, receiver or creator of comment
+  # todo: angularJS - moved to GiftsCtrl.show_delete_comment_link
   def show_delete_comment_link?(users)
     return false unless [Array, ActiveRecord::Relation::ActiveRecord_Relation_User].index(users.class) and users.length > 0
     return false if users.size == 1 and users.first.dummy_user?

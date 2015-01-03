@@ -319,7 +319,7 @@ en:
         confirm_accept_new_deal: "Accept proposal?"
         reject_new_deal: "Reject"
         confirm_reject_new_deal: "Reject proposal?"
-        delete_comment: "Delete"
+        delete_comment: "Delete" # todo: angularJS - moved to js.comments.delete_comment
         confirm_delete_comment: "Delete comment?"
      destroy:
         unknown_comment: "Cannot delete comment. Comment was not found. Please refresh page."
@@ -1308,6 +1308,7 @@ en:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Show more text"
+        delete_comment: "Delete"
      new_comment:
         proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
         check_box_prompt: "Agreement proposal"

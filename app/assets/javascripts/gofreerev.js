@@ -3096,7 +3096,8 @@ angular.module('gifts', [])
                 },
                 comments: {
                     comment_text: I18n.t('js.comments.comment_text'),
-                    show_full_text: I18n.t('js.comments.show_full_text')
+                    show_full_text: I18n.t('js.comments.show_full_text'),
+                    delete_comment: I18n.t('js.comments.delete_comment')
                 },
                 new_comment: {
                     check_box_prompt: I18n.t('js.new_comment.check_box_prompt'),
@@ -3245,7 +3246,7 @@ angular.module('gifts', [])
         // add some comments
         for (var i=1 ; i<=20; i++) {
             var temp_comment_id = Gofreerev.next_local_comment_id() ;
-            self.gifts[1].comments.push({commentid: temp_comment_id, userids: [791], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
+            self.gifts[1].comments.push({commentid: temp_comment_id, user_ids: [791], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
         }
 
         // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
@@ -3254,6 +3255,13 @@ angular.module('gifts', [])
             if (!gift.show) return false ;
             return true ;
         }
+
+        // comments filter. hide deleted comments. used in ng-repeat
+        self.comments_filter = function (comment, index) {
+            if (comment.deleted_at) return false ;
+            return true ;
+        }
+
 
         self.user_div_on_click = function (user_ids) {
             var pgm = 'GiftsCtrl.user_div_on_click ' ;
@@ -3467,6 +3475,39 @@ angular.module('gifts', [])
             gift.show_no_comments = gift.show_no_comments + 10 ;
         }
 
+        self.show_delete_comment_link = function (gift, comment) {
+            // from rails Comment.show_delete_comment_link?
+            var pgm = 'GiftsCtrl.show_delete_comment_link. gift id = ' + gift.gift_id + ', comment id = ' + comment.commentid + '. ';
+            if (comment.accepted) return false ; // delete accepted proposal is not allow - delete gift is allowed
+            if (comment.deleted_at) return false ; // comment has already been marked as deleted
+            // console.log(pgm) ;
+            // ok to delete if login user(s) is giver/reciever
+            var login_user_ids = Gofreerev.get_login_userids() ;
+            if ($(login_user_ids).filter(gift.giver_user_ids).length > 0) {
+                // login user(s) is giver
+                // console.log(pgm + 'login user is giver') ;
+                return true ;
+            }
+            if ($(login_user_ids).filter(gift.receiver_user_ids).length > 0) {
+                // login user(s) is receiver
+                // console.log(pgm + 'login user is receiver') ;
+                return true ;
+            }
+            if ($(login_user_ids).filter(comment.user_ids).length > 0) {
+                // login user(s) has created this comment
+                // console.log(pgm + 'login_user has created the comment') ;
+                return true ;
+            }
+            // console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) +
+            // ', giver_user_ids = ' + JSON.stringify(gift.giver_user_ids) +
+            // ', receiver_user_ids = ' + JSON.stringify(gift.receiver_user_ids) +
+            // ', comment.user_ids = ' + JSON.stringify(comment.user_ids)) ;
+            return false ;
+        }
+        self.delete_comment = function (comment) {
+            if (!comment.deleted_at) comment.deleted_at = unix_timestamp() ;
+        }
+
         self.show_new_deal_checkbox = function (gift) {
             // see also formatNewProposalTitle
             if (gift.direction == 'both') return false ; // closed deal
@@ -3603,12 +3644,11 @@ angular.module('gifts', [])
             // todo: add sequence for commentid in local storage
             var new_comment = {
                 commentid: Gofreerev.next_local_comment_id(),
-                userids: Gofreerev.get_login_userids(),
+                user_ids: Gofreerev.get_login_userids(),
                 comment: gift.new_comment.comment,
                 created_at: unix_timestamp()
             } ;
-
-            console.log(pgm + 'created_at = ' + new_comment.created_at) ;
+            // console.log(pgm + 'created_at = ' + new_comment.created_at) ;
             gift.new_comment.comment = null ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;

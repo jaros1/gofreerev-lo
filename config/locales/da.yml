@@ -322,7 +322,7 @@ da:
         confirm_accept_new_deal: "Godkend forslag?"
         reject_new_deal: "Afvis"
         confirm_reject_new_deal: "Afvis forslag?"
-        delete_comment: "Slet"
+        delete_comment: "Slet" # todo: angularJS - moved to js.comments.delete_comment
         confirm_delete_comment: "Slet kommentar?"
      destroy:
         unknown_comment: "Kan ikke slette kommentar. Kommentar blev ikke fundet. Opdater venligst siden."
@@ -1311,6 +1311,7 @@ da:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Vis mere tekst"
+        delete_comment: "Slet"
      new_comment:
         proposal_title: "Anvend \"Foreslå aftale\" tjekboks, hvis du ønsker at foreslå %{username} en aftale. Indtast en pris i frie penge, hvis du ønsker at anvende frie penge i denne aftale. %{username} vil få besked om dit tilbud og kan accepterer eller afvise dit forslag."
         check_box_prompt: "Foreslå aftale"

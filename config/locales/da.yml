@@ -317,13 +317,13 @@ da:
         show_older_comments: "Vis %{no_older_comments} ældre kommentarer" # todo: angularJS - moved to js.gifts.show_older_comments
      api_comment_status:
         cancel_new_deal: "Fortryd" # todo: angularJS - moved to js.comments.cancel_new_deal
-        confirm_cancel_new_deal: "Fortryd forslag?"
-        accept_new_deal: "Godkend"
-        confirm_accept_new_deal: "Godkend forslag?"
-        reject_new_deal: "Afvis"
-        confirm_reject_new_deal: "Afvis forslag?"
+        confirm_cancel_new_deal: "Fortryd forslag?" # todo: angularJS - moved to js.comments.confirm_cancel_new_deal
+        accept_new_deal: "Godkend" # todo: angularJS - moved to js.comments.accept_new_deal
+        confirm_accept_new_deal: "Godkend forslag?" # todo: angularJS - moved to js.comments.confirm_accept_new_deal
+        reject_new_deal: "Afvis" # todo: angularJS - moved to js.comments.reject_new_deal
+        confirm_reject_new_deal: "Afvis forslag?" # todo: angularJS - moved to js.comments.confirm_reject_new_deal
         delete_comment: "Slet" # todo: angularJS - moved to js.comments.delete_comment
-        confirm_delete_comment: "Slet kommentar?"
+        confirm_delete_comment: "Slet kommentar?" # todo: angularJS - moved to js.comments.confirm_delete_comment
      destroy:
         unknown_comment: "Kan ikke slette kommentar. Kommentar blev ikke fundet. Opdater venligst siden."
         not_logged_in: "Kan ikke slette kommentar. Du er ikke logget ind. Opdater venligst siden."
@@ -1312,7 +1312,13 @@ da:
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Vis mere tekst"
         cancel_new_deal: "Fortryd"
+        confirm_cancel_new_deal: "Fortryd forslag?"
+        accept_new_deal: "Godkend"
+        confirm_accept_new_deal: "Godkend forslag?"
+        reject_new_deal: "Afvis"
+        confirm_reject_new_deal: "Afvis forslag?"
         delete_comment: "Slet"
+        confirm_delete_comment: "Slet kommentar?"
      new_comment:
         proposal_title: "Anvend \"Foreslå aftale\" tjekboks, hvis du ønsker at foreslå %{username} en aftale. Indtast en pris i frie penge, hvis du ønsker at anvende frie penge i denne aftale. %{username} vil få besked om dit tilbud og kan accepterer eller afvise dit forslag."
         check_box_prompt: "Foreslå aftale"

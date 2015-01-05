@@ -254,7 +254,7 @@
       </td>
     </tr>
     <%# comments loop -%>
-    <tr ng-repeat="comment in (gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)">
+    <tr ng-repeat="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments))">
       <td colspan="2">
 
 
@@ -264,14 +264,14 @@
             <tr ng-show="ctrl.show_cancel_new_deal_link(gift,comment)">
               <td><a href ng-click="ctrl.cancel_new_deal(gift,comment)">{{ctrl.texts.comments.cancel_new_deal}}</a></td>
             </tr>
-            <tr ng-show="ctrl.show_accept_new_deal_link(comment)">
-              <td><%# link_to_accept_new_deal(@comment) %></td>
+            <tr ng-show="ctrl.show_accept_new_deal_link(gift,comment)">
+              <td><a href ng-click="ctrl.accept_new_deal(gift,comment)">{{ctrl.texts.comments.accept_new_deal}}</a></td>
             </tr>
-            <tr ng-show="ctrl.show_reject_new_deal_link(comment)">
-              <td><%# link_to_reject_new_deal(@comment) %></td>
+            <tr ng-show="ctrl.show_reject_new_deal_link(gift,comment)">
+              <td><a href ng-click="ctrl.reject_new_deal(gift,comment)">{{ctrl.texts.comments.reject_new_deal}}</a></td>
             </tr>
             <tr ng-show="ctrl.show_delete_comment_link(gift,comment)">
-              <td><a href ng-click="ctrl.delete_comment(comment)">{{ctrl.texts.comments.delete_comment}}</a></td>
+              <td><a href ng-click="ctrl.delete_comment(gift,comment)">{{ctrl.texts.comments.delete_comment}}</a></td>
             </tr>
             </tbody>
           </table>
@@ -280,7 +280,7 @@
 
       </td>
       <td style="vertical-align: top;">
-        <img ng-src="{{comment.user_ids | formatUserImgSrc}}" class="small_pro_pic" title="{{comment.userids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)"/>
+        <img ng-src="{{comment.user_ids | formatUserImgSrc}}" class="small_pro_pic" title="{{comment.user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)"/>
       </td>
       <td class="wrapword" style="text-align: left; vertical-align: top">
         <table>

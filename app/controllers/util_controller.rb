@@ -685,6 +685,7 @@ class UtilController < ApplicationController
     end
   end # cancel_new_deal
 
+  # todo: moved to angularJS GiftsCtrl.reject_new_deal
   def reject_new_deal
     @link_id = nil
     table = 'tasks_errors' # tasks errors table in top of page
@@ -713,6 +714,7 @@ class UtilController < ApplicationController
     end
   end # reject_new_deal
 
+  # todo: moved to angularJS GiftsCtrl.accept_new_deal
   def accept_new_deal
     @api_gifts = nil
     table = 'tasks_errors' # tasks errors table in top of page

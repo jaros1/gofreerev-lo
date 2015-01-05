@@ -3098,7 +3098,13 @@ angular.module('gifts', [])
                     comment_text: I18n.t('js.comments.comment_text'),
                     show_full_text: I18n.t('js.comments.show_full_text'),
                     cancel_new_deal: I18n.t('js.comments.cancel_new_deal'),
-                    delete_comment: I18n.t('js.comments.delete_comment')
+                    confirm_cancel_new_deal: I18n.t('js.comments.confirm_cancel_new_deal'),
+                    accept_new_deal: I18n.t('js.comments.accept_new_deal'),
+                    confirm_accept_new_deal: I18n.t('js.comments.confirm_accept_new_deal'),
+                    reject_new_deal: I18n.t('js.comments.reject_new_deal'),
+                    confirm_reject_new_deal: I18n.t('js.comments.confirm_reject_new_deal'),
+                    delete_comment: I18n.t('js.comments.delete_comment'),
+                    confirm_delete_comment: I18n.t('js.comments.confirm_delete_comment')
                 },
                 new_comment: {
                     check_box_prompt: I18n.t('js.new_comment.check_box_prompt'),
@@ -3137,7 +3143,7 @@ angular.module('gifts', [])
                 user_name: 'Jan Roslind',
                 balance: null,
                 api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ',
-                friend: 2, // me=logged in user
+                friend: 2, // friend of logged in user
                 currency: 'DKK'
             },
             {
@@ -3188,7 +3194,7 @@ angular.module('gifts', [])
             },
             {
                 gift_id: 1730,
-                giver_user_ids: [791],
+                giver_user_ids: [920],
                 receiver_user_ids: [],
                 date: 1417624391, // 3. dec 2014
                 price: 0,
@@ -3247,8 +3253,11 @@ angular.module('gifts', [])
         // add some comments
         for (var i=1 ; i<=20; i++) {
             var temp_comment_id = Gofreerev.next_local_comment_id() ;
-            self.gifts[1].comments.push({commentid: temp_comment_id, user_ids: [791], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
+            self.gifts[1].comments.push({commentid: temp_comment_id, user_ids: [920], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
         }
+        // todo: test - setup last comment as a new deal proposal
+        self.gifts[1].comments[19].user_ids = [791] ;
+        self.gifts[1].comments[19].new_deal = true ;
 
         // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
         self.gifts_filter = function (gift, index) {
@@ -3259,8 +3268,12 @@ angular.module('gifts', [])
 
         // comments filter. hide deleted comments. used in ng-repeat
         self.comments_filter = function (comment, index) {
-            if (comment.deleted_at) return false ;
-            return true ;
+            var pgm = 'GiftsCtrl.comments_filter: ' ;
+            var show ;
+            if (comment.deleted_at) show = false ;
+            else show = true ;
+            // console.log(pgm + 'comment id = ' + comment.commentid + ', show = ' + show) ;
+            return show ;
         }
 
 
@@ -3355,7 +3368,6 @@ angular.module('gifts', [])
             text.style.overflow = 'visible' ;
         } // show_full_gift_click
 
-
         // show full comment description. remove style maxHeight and overflow from div container
         self.show_full_comment_click = function(commentid) {
             // show full text for div with overflow
@@ -3369,8 +3381,7 @@ angular.module('gifts', [])
             text.style.overflow = 'visible' ;
         } // show_full_comment_click
         
-        
-        
+
         // show/hide table row with gift api_picture_url?
         // only show row if api_picture_url and not error marked
         // rails code: <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
@@ -3505,8 +3516,15 @@ angular.module('gifts', [])
             // ', comment.user_ids = ' + JSON.stringify(comment.user_ids)) ;
             return false ;
         }
-        self.delete_comment = function (comment) {
-            if (!comment.deleted_at) comment.deleted_at = unix_timestamp() ;
+
+        self.delete_comment = function (gift, comment) {
+            var pgm = 'GiftsCtrl.delete_comment: ' ;
+            if (!self.show_delete_comment_link(gift,comment)) return ; // delete link no longer active
+            if (confirm(self.texts.comments.confirm_delete_comment)) {
+                comment.deleted_at = unix_timestamp() ;
+                gift.show_no_comments = gift.show_no_comments - 1 ;
+            }
+            // console.log(pgm + 'comment id = ' + comment.commentid + ', deleted_at = ' + comment.deleted_at) ;
         }
 
         self.show_cancel_new_deal_link = function (gift,comment) {
@@ -3520,7 +3538,48 @@ angular.module('gifts', [])
         }
         self.cancel_new_deal = function (gift,comment) {
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
-            comment.new_deal = false ;
+            if (confirm(self.texts.comments.confirm_cancel_new_deal)) comment.new_deal = false ;
+        }
+
+        self.show_accept_new_deal_link = function (gift,comment) {
+            // from rails Comment.show_accept_new_deal_link?
+            if (comment.new_deal != true) return false ;
+            if (typeof comment.accepted != 'undefined') return false ; // true or false
+            var login_user_ids = Gofreerev.get_login_userids() ;
+            if (gift.direction == 'both') return false ;
+            var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
+            var user_ids = $(login_user_ids).filter(gift_user_ids) ;
+            if (user_ids.length == 0) return false ;
+            // login user(s) is creator of gift.
+            // recheck friend relation with creator of new proposal (comment)
+            // friends relation can have changed - or maybe not logged in with the correct users to accept deal proposal
+            var user ;
+            for (i=0 ; i<user_ids.length ; i++) {
+                user = Gofreerev.get_user(user_ids[i]) ;
+                if (user && (user.friend <= 2)) return true ; // friends
+            }
+            // no longer friends
+            return false ;
+        }
+        self.accept_new_deal = function (gift,comment) {
+            if (!self.show_accept_new_deal_link(gift,comment)) return false ; // accept link no longer active!
+            if (!confirm(self.texts.comments.confirm_accept_new_deal)) return ; // operation cancelled
+            // from utilController.
+            var login_user_ids = Gofreerev.get_login_userids() ;
+            var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
+            comment.accepted = true ;
+            comment.updated_by = $(login_user_ids).filter(gift_user_ids) ;
+        }
+
+        self.show_reject_new_deal_link = function (gift,comment) {
+            return self.show_accept_new_deal_link(gift,comment) ;
+        }
+        self.reject_new_deal = function (gift,comment) {
+            if (!self.show_reject_new_deal_link(gift,comment)) return false ; // reject link no longer active!
+            if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
+            // from utilController.reject_new_deal
+            comment.accepted = false ;
+            comment.updated_by = Gofreerev.get_login_userids() ;
         }
 
         self.show_new_deal_checkbox = function (gift) {

@@ -314,13 +314,13 @@ en:
         show_older_comments: "Show %{no_older_comments} older comments" # todo: angularJS - moved to js.gifts.show_older_comments
      api_comment_status:
         cancel_new_deal: "Cancel" # todo: angularJS - moved to js.comments.cancel_new_deal
-        confirm_cancel_new_deal: "Cancel proposal?"
-        accept_new_deal: "Accept"
-        confirm_accept_new_deal: "Accept proposal?"
-        reject_new_deal: "Reject"
-        confirm_reject_new_deal: "Reject proposal?"
+        confirm_cancel_new_deal: "Cancel proposal?" # todo: angularJS - moved to js.comments.confirm_cancel_new_deal
+        accept_new_deal: "Accept" # todo: angularJS - moved to js.comments.accept_new_deal
+        confirm_accept_new_deal: "Accept proposal?" # todo: angularJS - moved to js.comments.confirm_accept_new_deal
+        reject_new_deal: "Reject" # todo: angularJS - moved to js.comments.reject_new_deal
+        confirm_reject_new_deal: "Reject proposal?" # todo: angularJS - moved to js.comments.confirm_reject_new_deal
         delete_comment: "Delete" # todo: angularJS - moved to js.comments.delete_comment
-        confirm_delete_comment: "Delete comment?"
+        confirm_delete_comment: "Delete comment?" # todo: angularJS - moved to js.comments.confirm_delete_comment
      destroy:
         unknown_comment: "Cannot delete comment. Comment was not found. Please refresh page."
         not_logged_in: "Delete comment was not allowed. You are not logged in. Please refresh page."
@@ -1309,7 +1309,13 @@ en:
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Show more text"
         cancel_new_deal: "Cancel"
+        confirm_cancel_new_deal: "Cancel proposal?"
+        accept_new_deal: "Accept"
+        confirm_accept_new_deal: "Accept proposal?"
+        reject_new_deal: "Reject"
+        confirm_reject_new_deal: "Reject proposal?"
         delete_comment: "Delete"
+        confirm_delete_comment: "Delete comment?"
      new_comment:
         proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
         check_box_prompt: "Agreement proposal"

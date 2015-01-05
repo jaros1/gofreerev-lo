@@ -198,6 +198,7 @@ class Comment < ActiveRecord::Base
     true
   end # show_cancel_new_deal_link?
 
+  # todo: angularJS - moved to GiftsCtrl.show_accept_new_deal_link
   def show_accept_new_deal_link? (users)
     return false unless new_deal_yn == 'Y'
     return false if accepted_yn

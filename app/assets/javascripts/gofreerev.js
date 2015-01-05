@@ -3707,7 +3707,22 @@ angular.module('gifts', [])
 
         // new_gift ng-submit
         self.create_new_gift = function () {
-            $window.alert('create new gift = ' + JSON.stringify(self.new_gift)) ;
+            var gift = {
+                gift_id: Gofreerev.next_local_gift_id(),
+                giver_user_ids: [],
+                receiver_user_ids: [],
+                date: unix_timestamp(),
+                price: self.new_gift.price,
+                currency: self.new_gift.currency,
+                direction: self.new_gift.direction,
+                description: self.new_gift.description,
+                show: true,
+                new_comment: {comment: ""}
+            };
+            if (gift.direction == 'giver') gift.giver_user_ids = Gofreerev.get_login_userids() ;
+            else gift.receiver_user_ids = Gofreerev.get_login_userids() ;
+            self.gifts.unshift(gift) ;
+            init_new_gift() ;
         }
 
         // new comment ng-submit
@@ -3769,8 +3784,8 @@ angular.module('gifts', [])
         // used in formatGiftLinkText filter
         return function (gift, precision) {
             var p = gift.price ;
-            if (typeof p == 'undefined') return p ;
-            if (p == null) return p ;
+            if (typeof p == 'undefined') return '' ;
+            if (p == null) return '' ;
             return I18n.t('js.gifts.optional_price', {price: formatPrice(p, precision), currency: gift.currency }) ;
         }
     }])

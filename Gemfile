@@ -202,6 +202,10 @@ gem 'simple_form'
 # https://github.com/jsanders/angular_rails_csrf
 gem 'angular_rails_csrf'
 
+# fix for rake assets:precompile ExecJS::RuntimeError bootstrap.js.coffee
+# http://stackoverflow.com/questions/8362458/error-when-running-rails-app-execjsruntimeerror
+gem 'therubyracer'
+
 # use when moving to an other db environment. See issue 12
 # https://github.com/ludicast/yaml_db
 # https://github.com/ludicast/yaml_db/pull/45

@@ -74,11 +74,11 @@
     <tr>
       <td style="vertical-align: top">
         <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" ng-show="(ctrl.new_gift.direction == 'giver')" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
-        <img src="/images/invisible-picture.gif" ng-hide='gift.giver_user_ids' class="small_profile_picture"/>
+        <img src="/images/invisible-picture.gif" ng-hide="(ctrl.new_gift.direction == 'giver')" class="small_profile_picture"/>
       </td>
       <td style="vertical-align: top">
         <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" ng-show="(ctrl.new_gift.direction == 'receiver')" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
-        <img src="/images/invisible-picture.gif" ng-hide='gift.receiver_user_ids' class="small_profile_picture"/>
+        <img src="/images/invisible-picture.gif" ng-hide="(ctrl.new_gift.direction == 'receiver')" class="small_profile_picture"/>
       </td>
       <td colspan="2">
 

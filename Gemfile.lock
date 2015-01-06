@@ -148,6 +148,7 @@ GEM
       multi_json
     launchy (2.4.3)
       addressable (~> 2.3)
+    libv8 (3.16.14.7)
     mail (2.5.4)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
@@ -244,6 +245,7 @@ GEM
     rake (10.4.2)
     rdoc (4.2.0)
       json (~> 1.4)
+    ref (1.0.5)
     rest_client (1.8.2)
       netrc (~> 0.7.7)
     retriable (1.4.1)
@@ -283,6 +285,9 @@ GEM
       colorize (>= 0.7.0)
       net-scp (>= 1.1.2)
       net-ssh (>= 2.8.0)
+    therubyracer (0.12.1)
+      libv8 (~> 3.16.14.0)
+      ref
     thor (0.19.1)
     thread_safe (0.3.4)
     tilt (1.4.1)
@@ -367,6 +372,7 @@ DEPENDENCIES
   sdoc
   session_off
   simple_form
+  therubyracer
   turbolinks
   twitter (>= 5.5.1)
   twitter-bootstrap-rails

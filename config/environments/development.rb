@@ -33,20 +33,21 @@ GofreerevFb::Application.configure do
   config.action_mailer.raise_delivery_errors = true
   # get smtp config from environment variables <env>_EN_EMAIL_PREFIX. EN = exception notification
   rails_env = case Rails.env when "development" then "DEV" when "test" then "TEST" when "production" then "PROD" end
+  env_prefix = "gofreerev_lo_#{rails_env}_"
   config.middleware.use ExceptionNotification::Rack,
                         :email => {
-                            :email_prefix => ENV["gofreerev_#{rails_env}_en_email_prefix".upcase],
-                            :sender_address => ["notifier", ENV["gofreerev_#{rails_env}_en_sender".upcase]],
-                            :exception_recipients => ENV["gofreerev_#{rails_env}_en_recipients".upcase].to_s.split(' '),
+                            :email_prefix => ENV["#{env_prefix}en_email_prefix".upcase],
+                            :sender_address => ["notifier", ENV["#{env_prefix}en_sender".upcase]],
+                            :exception_recipients => ENV["#{env_prefix}en_recipients".upcase].to_s.split(' '),
                             :delivery_method => :smtp,
                             :smtp_settings => {
-                                :address => ENV["gofreerev_#{rails_env}_en_address".upcase],
+                                :address => ENV["#{env_prefix}en_address".upcase],
                                 :port => 587,
                                 :authentication => 'plain',
                                 :enable_starttls_auto => true,
-                                :domain => ENV["gofreerev_#{rails_env}_en_domain".upcase],
-                                :user_name => ENV["gofreerev_#{rails_env}_en_user_name".upcase],
-                                :password => ENV["gofreerev_#{rails_env}_en_password".upcase],
+                                :domain => ENV["#{env_prefix}en_domain".upcase],
+                                :user_name => ENV["#{env_prefix}en_user_name".upcase],
+                                :password => ENV["#{env_prefix}en_password".upcase],
                             }
                         }
 end

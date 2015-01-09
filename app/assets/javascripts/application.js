@@ -39,5 +39,11 @@
 //= require jquery.fileupload-validate
 
 //= require angular
+//= require angular-sanitize
+//= require angular-dialog-service/0-license
+//= require angular-dialog-service/1-dialogs-default-translations
+//= require angular-dialog-service/2-dialogs
+//= require angular-dialog-service/3-dialogs-main
+//= require angular-route
 
 //= require_tree .

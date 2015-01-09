@@ -1082,13 +1082,6 @@ var Gofreerev = (function() {
             return false ;
         })
     })
-    $(document).ready(function() {
-        $("#new_comment").unbind("ajax:before") ;
-        $("#new_comment").bind("ajax:before", function(){
-            return false ;
-        })
-    })
-
 
     // auto resize text fields
     // found at http://stackoverflow.com/questions/454202/creating-a-textarea-with-auto-resize
@@ -2465,6 +2458,8 @@ var Gofreerev = (function() {
                 // login ok - save password temporary in session store for encryption
                 sessionStorage.setItem('password', o.val()) ;
                 sessionStorage.setItem('userid', userid) ;
+                // todo: load local storage info for user into JS arrays (api authorization, users & gifts)
+                // used in angularJS GiftsCtrl
                 return true;
             }
         }
@@ -3730,7 +3725,6 @@ angular.module('gifts', [])
             var pgm = 'GiftsCtrl.create_new_comment: ' ;
             // $window.alert(pgm + 'gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
-            // todo: add sequence for commentid in local storage
             var new_comment = {
                 commentid: Gofreerev.next_local_comment_id(),
                 user_ids: Gofreerev.get_login_userids(),

@@ -55,7 +55,6 @@
     </div>
 <% end -%>
 
-
 <%# gifts table -%>
 <div style="width: 100%">
   <table  id="gifts" style="table-layout:fixed; <%= 'display: none; ' if @api_gifts.size == 0  %>">
@@ -340,7 +339,7 @@
         <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
       </td>
       <td style="text-align: left; vertical-align: top">
-        <%= form_for Comment.new, :remote => true, :html => {:name => "gift-{{gift.gift_id}}-new-comment-form", 'ng-submit' => 'ctrl.create_new_comment(gift)'} do |f| %>
+        <form name="gift-{{gift.gift_id}}-new-comment-form" ng-submit="ctrl.create_new_comment(gift)">
             <table style="border-spacing: 0;">
               <tr ng-show="gift.new_comment.new_deal">
                 <td colspan="2">
@@ -350,16 +349,21 @@
               </tr>
               <tr>
                 <td>
-                  <%= f.text_area :comment, :size => '60x1', :placeholder => '{{ctrl.texts.new_comment.comment_placeholder}}', :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => "new_com_text", :required => true, "ng-model" => 'gift.new_comment.comment' %></td>
+                  <textarea ng-model="gift.new_comment.comment" cols="60" rows="1" required=""
+                            placeholder="{{ctrl.texts.new_comment.comment_placeholder}}" onfocus="Gofreerev.autoresize_text_field(this)">
+                  </textarea>
+                </td>
                 <td>
-                  <%= f.submit '{{ctrl.texts.new_comment.submit_button_text}}', "ng-disabled" => 'gift-{{gift.gift_id}}-new-comment-form.$invalid', :class => "submit_comment_large" %>
+                  <input type="submit" value="{{ctrl.texts.new_comment.submit_button_text}}" ng-disabled="gift-{{gift.gift_id}}-new-comment-form.$invalid" class="submit_comment_large">
                 </td>
               </tr>
               <tr class="submit_comment_small">
-                <td colspan="2"><%= f.submit '{{ctrl.texts.new_comment.submit_button_text}}', "ng-disabled" => 'gift-{{gift.gift_id}}-new-comment-form.$invalid' %></td>
+                <td colspan="2">
+                  <input type="submit" value="{{ctrl.texts.new_comment.submit_button_text}}" ng-disabled="gift-{{gift.gift_id}}-new-comment-form.$invalid">
+                </td>
               </tr>
             </table>
-        <% end -%>
+        </form>
       </td>
     </tr>
 

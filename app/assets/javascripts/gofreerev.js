@@ -250,7 +250,7 @@ var Gofreerev = (function() {
     } // csv_is_price_invalid
 
     // Client side validation for new gift + "submit" data for processing if data is ok
-    // note that form data is preocessed by javascript and ajax. Not with a html post.
+    // note that form data is preprocessed by javascript and ajax. Not with a html post.
     function csv_gift() {
         // ie fix. check if submit bottom has been disabled
         var submit_buttons = document.getElementsByName('commit_gift') ;
@@ -3063,8 +3063,6 @@ angular.module('gifts', [])
                     description_prompt: I18n.t('js.new_gift.description_prompt'),
                     description_placeholder: I18n.t('js.new_gift.description_placeholder'),
                     submit_button_text: I18n.t('js.new_gift.submit_button_text'),
-                    file_title_true: I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}),
-                    file_title_false: I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}),
                     file_prompt: I18n.t('js.new_gift.file_prompt'),
                     file_placeholder: I18n.t('js.new_gift.file_placeholder'),
                     link_prompt1: I18n.t('js.new_gift.link_prompt1'),
@@ -3596,6 +3594,10 @@ angular.module('gifts', [])
                 direction: 'giver',
                 currency: Gofreerev.get_users_currency(),
                 is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
+                file_upload_title: function () {
+                    if (Gofreerev.is_file_upload_disabled()) return I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}) ;
+                    else return I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}) ;
+                },
                 show: function () {
                     var currency = Gofreerev.get_users_currency() ;
                     // console.log('currency = ' + JSON.stringify(currency)) ;
@@ -3711,6 +3713,10 @@ angular.module('gifts', [])
                 currency: self.new_gift.currency,
                 direction: self.new_gift.direction,
                 description: self.new_gift.description,
+                open_graph_url: self.new_gift.open_graph_url,
+                open_graph_title: self.new_gift.open_graph_title,
+                open_graph_description: self.new_gift.open_graph_description,
+                open_graph_image: self.new_gift.open_graph_image,
                 show: true,
                 new_comment: {comment: ""}
             };

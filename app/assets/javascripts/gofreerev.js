@@ -308,33 +308,35 @@ var Gofreerev = (function() {
         }
         else gift_datatype.value = 'js' ; // normal rails js post
 
-        if (!Modernizr.meter) return ; // process bar not supported
-        var progressbar_div = document.getElementById('progressbar-div');
-        if (!progressbar_div) return ; // no progressbar found in page
+        // progressbar removed. pictures are uploaded asyn and device maybe temporary offline
 
-        progressbar_div.style.display = 'block';
-        // start upload process bar
-        // http://www.hongkiat.com/blog/html5-progress-bar/
-        var progressbar = $('#progressbar'),
-            max = progressbar.attr('max'),
-            time = (1000 / max) * 5,
-            value = 0;
-
-        var loading = function () {
-            value += 3;
-            addValue = progressbar.val(value);
-
-            $('.progress-value').html(value + '%');
-
-            if (value >= max) {
-                clearInterval(animate);
-                progressbar_div.style.display = 'none';
-            }
-        };
-
-        var animate = setInterval(function () {
-            loading();
-        }, time);
+        //if (!Modernizr.meter) return ; // process bar not supported
+        //var progressbar_div = document.getElementById('progressbar-div');
+        //if (!progressbar_div) return ; // no progressbar found in page
+        //
+        //progressbar_div.style.display = 'block';
+        //// start upload process bar
+        //// http://www.hongkiat.com/blog/html5-progress-bar/
+        //var progressbar = $('#progressbar'),
+        //    max = progressbar.attr('max'),
+        //    time = (1000 / max) * 5,
+        //    value = 0;
+        //
+        //var loading = function () {
+        //    value += 3;
+        //    addValue = progressbar.val(value);
+        //
+        //    $('.progress-value').html(value + '%');
+        //
+        //    if (value >= max) {
+        //        clearInterval(animate);
+        //        progressbar_div.style.display = 'none';
+        //    }
+        //};
+        //
+        //var animate = setInterval(function () {
+        //    loading();
+        //}, time);
 
     } // csv_gift
 
@@ -2875,81 +2877,6 @@ var Gofreerev = (function() {
     } // inIframe
 
 
-    // Angular helpers
-
-    // users - read from local storage - used in angularJS filter functions
-    var users ;
-    var users_index_by_user_id = {} ;
-    function init_users (array) {
-        users = array ;
-        users_index_by_user_id = {}
-        for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
-    }
-    function get_users () {
-        return users ;
-    }
-    function get_user (user_id) {
-        if (typeof users == 'undefined') return null ;
-        if (typeof user_id == 'undefined') return null ;
-        var i = users_index_by_user_id[user_id] ;
-        if (typeof i == 'undefined') return null ;
-        var user = users[i] ;
-        if (!user.short_user_name) {
-            var user_name_a = user.user_name.split(' ') ;
-            user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
-        }
-        return user ;
-    }
-    function get_login_userids() {
-        if (typeof users == 'undefined') return [] ;
-        var userids = []
-        for (var i=0 ; i<users.length ; i++) {
-            if (users[i].friend == 1) userids.push(users[i].user_id) ;
-        }
-        return userids ;
-    }
-    function get_users_currency () {
-        var user_ids = get_login_userids() ;
-        var user = get_user(user_ids[0]) ;
-        if (!user) return null ;
-        return user.currency ;
-    }
-    function find_giver (gift) {
-        var giver, user, i ;
-        for (i=0 ; i<gift.giver_user_ids.length ; i++) {
-            user = get_user(gift.giver_user_ids[i]) ;
-            if (user) {
-                if (user.friend == 1) return user ; // giver is a login user
-                if (!giver) giver = user ;
-            }
-        }
-        // giver is not a login in user
-        return giver ;
-    }
-    function find_receiver (gift) {
-        var receiver, user, i ;
-        for (i=0 ; i<gift.receiver_user_ids.length ; i++) {
-            user = get_user(gift.receiver_user_ids[i]) ;
-            if (user) {
-                if (user.friend == 1) return user ; // receiver is a login user
-                if (!receiver) receiver = user ;
-            }
-        }
-        // receiver is not a login in user
-        return receiver ;
-    }
-
-    // is one if the logged in users a fb account?
-    // used in shared account model form in auth/index page
-    // returns: true: use fb notifications, false: use email
-    // todo: auth/index page is not yet included in angularJS (users array is empty)
-    function fb_logged_in_account () {
-        if (!users) return false ;
-        for (var i=0 ; i<users.length ; i++) {
-            if (users[i].provider=='facebook') return (users[i].friend==1) ;
-        }
-        return false ;
-    }
 
     // custom confirm box - for styling
     // http://lesseverything.com/blog/archives/2012/07/18/customizing-confirmation-dialog-in-rails/
@@ -2989,6 +2916,18 @@ var Gofreerev = (function() {
      */
 
 
+    // angularJS - used function is used in modal login dialog form, but info in stored in angular UserService
+    // temporary get/set function until all login functionality are moved to angularJS
+    var is_fb_logged_in_account = false
+    var fb_logged_in_account = function () {
+        return is_fb_logged_in_account ;
+    }
+    function set_fb_logged_in_account (boolean) {
+        is_fb_logged_in_account = boolean ;
+    }
+
+
+
 
     // export public used methods (views)
     return {
@@ -3022,13 +2961,7 @@ var Gofreerev = (function() {
         csv_gift: csv_gift,
         csv_comment: csv_comment,
         // angular helpers
-        init_users: init_users,
-        get_users: get_users,
-        get_user: get_user,
-        get_login_userids: get_login_userids,
-        get_users_currency: get_users_currency,
-        find_giver: find_giver,
-        find_receiver: find_receiver,
+        set_fb_logged_in_account: set_fb_logged_in_account,
         next_local_gift_id: next_local_gift_id,
         next_local_comment_id: next_local_comment_id
     };
@@ -3039,7 +2972,137 @@ var Gofreerev = (function() {
 // angularJS code
 
 angular.module('gifts', [])
-    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', function ($location, $http, $document, $window) {
+    .factory('UserService', [function() {
+        console.log('UserService loaded') ;
+
+        // users - read from local storage - used in angularJS filter functions
+        var users ;
+        var users_index_by_user_id = {} ;
+
+        var init_users = function (array) {
+            users = array ;
+            users_index_by_user_id = {}
+            for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+        }
+        var get_users = function  () {
+            return users ;
+        }
+        var get_user = function (user_id) {
+            if (typeof users == 'undefined') return null ;
+            if (typeof user_id == 'undefined') return null ;
+            var i = users_index_by_user_id[user_id] ;
+            if (typeof i == 'undefined') return null ;
+            var user = users[i] ;
+            if (!user.short_user_name) {
+                var user_name_a = user.user_name.split(' ') ;
+                user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
+            }
+            return user ;
+        }
+        var get_login_userids = function () {
+            if (typeof users == 'undefined') return [] ;
+            var userids = []
+            for (var i=0 ; i<users.length ; i++) {
+                if (users[i].friend == 1) userids.push(users[i].user_id) ;
+            }
+            return userids ;
+        }
+        var get_users_currency = function  () {
+            var user_ids = get_login_userids() ;
+            var user = get_user(user_ids[0]) ;
+            if (!user) return null ;
+            return user.currency ;
+        }
+        var find_giver = function (gift) {
+            var giver, user, i ;
+            for (i=0 ; i<gift.giver_user_ids.length ; i++) {
+                user = get_user(gift.giver_user_ids[i]) ;
+                if (user) {
+                    if (user.friend == 1) return user ; // giver is a login user
+                    if (!giver) giver = user ;
+                }
+            }
+            // giver is not a login in user
+            return giver ;
+        }
+        var find_receiver = function (gift) {
+            var receiver, user, i ;
+            for (i=0 ; i<gift.receiver_user_ids.length ; i++) {
+                user = get_user(gift.receiver_user_ids[i]) ;
+                if (user) {
+                    if (user.friend == 1) return user ; // receiver is a login user
+                    if (!receiver) receiver = user ;
+                }
+            }
+            // receiver is not a login in user
+            return receiver ;
+        }
+        // is one if the logged in users a fb account?
+        // used in shared account model form in auth/index page
+        // returns: true: use fb notifications, false: use email
+        // todo: auth/index page is not yet included in angularJS (users array is empty)
+        var fb_logged_in_account = function () {
+            if (!users) return false ;
+            for (var i=0 ; i<users.length ; i++) {
+                if (users[i].provider=='facebook') return (users[i].friend==1) ;
+            }
+            return false ;
+        }
+
+        // test data - users - todo: receive array with users after login (login users and friends)
+        // friend:
+        //   1) logged in user         - show detailed info + clickable user div
+        //   2) mutual friends         - show detailed info + clickable user div
+        //   3) follows (F)            - show few info + clickable user div
+        //   4) stalked by (S)         - show few info + clickable user div
+        //   5) deselected api friends - show few info + not clickable user div
+        //   6) friends of friends     - show few info + not clickable user div
+        //   7) friends proposals      - not clickable user div
+        //   8) others                 - not clickable user div
+        init_users([{
+            user_id: 920,
+            provider: 'facebook',
+            user_name: 'Jan Roslind',
+            balance: null,
+            api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623',
+            friend: 1, // me=logged in user
+            currency: 'DKK'
+        },
+            {
+                user_id: 791,
+                provider: 'linkedin',
+                user_name: 'Jan Roslind',
+                balance: null,
+                api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ',
+                friend: 2, // friend of logged in user
+                currency: 'DKK'
+            },
+            {
+                user_id: 998,
+                provider: 'instagram',
+                user_name: 'gofreerev gofreerev',
+                balance: null,
+                api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg',
+                friend: 1, // me=logged in user
+                currency: 'DKK'
+            }
+        ]);
+
+        // todo: temporary inject fb logged in status into Gofreerev - used in model login dialog form
+        Gofreerev.set_fb_logged_in_account(fb_logged_in_account()) ;
+
+        return {
+            get_login_userids: get_login_userids,
+            get_user: get_user,
+            get_users_currency: get_users_currency,
+            find_giver: find_giver,
+            find_receiver: find_receiver
+        }
+    }])
+    .controller('NavCtrl', [function() {
+        console.log('NavCtrl loaded') ;
+    }])
+    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', 'UserService', function ($location, $http, $document, $window, userService) {
         var self = this;
 
         // language specific gift controller constants
@@ -3111,48 +3174,10 @@ angular.module('gifts', [])
 
 
 
-        // test data - users - todo: receive array with users after login (login users and friends)
-        // friend:
-        //   1) logged in user         - show detailed info + clickable user div
-        //   2) mutual friends         - show detailed info + clickable user div
-        //   3) follows (F)            - show few info + clickable user div
-        //   4) stalked by (S)         - show few info + clickable user div
-        //   5) deselected api friends - show few info + not clickable user div
-        //   6) friends of friends     - show few info + not clickable user div
-        //   7) friends proposals      - not clickable user div
-        //   8) others                 - not clickable user div
-        Gofreerev.init_users([{
-                user_id: 920,
-                provider: 'facebook',
-                user_name: 'Jan Roslind',
-                balance: null,
-                api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623',
-                friend: 1, // me=logged in user
-                currency: 'DKK'
-            },
-            {
-                user_id: 791,
-                provider: 'linkedin',
-                user_name: 'Jan Roslind',
-                balance: null,
-                api_profile_picture_url: 'https://media.licdn.com/mpr/mprx/0_527SxeD4nB0V6Trf5HytxIfNnPeU6XrfFIU-xIuWWnywJ8F7doxTAw4bZjHk5iAikfSPKuYGV9tQ',
-                friend: 2, // friend of logged in user
-                currency: 'DKK'
-            },
-            {
-                user_id: 998,
-                provider: 'instagram',
-                user_name: 'gofreerev gofreerev',
-                balance: null,
-                api_profile_picture_url: 'https://instagramimages-a.akamaihd.net/profiles/profile_1092213433_75sq_1392313136.jpg',
-                friend: 1, // me=logged in user
-                currency: 'DKK'
-            }
-        ]);
 
         self.login_user_ids = function () {
             var pgm = 'GiftsCtrl.login_user_ids: ' ;
-            var user_ids = Gofreerev.get_login_userids() ;
+            var user_ids = userService.get_login_userids() ;
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             return user_ids ;
         }
@@ -3279,7 +3304,7 @@ angular.module('gifts', [])
                 return;
             }
             var user_id = user_ids[0] ;
-            var user = Gofreerev.get_user(user_id) ;
+            var user = userService.get_user(user_id) ;
             if (!user) return ; // error - user not found in users array
             if (!user.friend) return ; // error - no friend status was found
             if ([1,2,3,4].indexOf(user.friend) == -1) return ; // ok - not clickable div
@@ -3421,9 +3446,9 @@ angular.module('gifts', [])
 
         // delete gift. show delete link if login user(s) is giver or receiver of gift
         self.show_delete_gift = function (gift) {
-            var user = Gofreerev.find_giver(gift) ;
+            var user = userService.find_giver(gift) ;
             if (user && (user.friend == 1)) return true ;
-            user = Gofreerev.find_receiver(gift) ;
+            user = userService.find_receiver(gift) ;
             if (user && (user.friend == 1)) return true ;
             return false ;
         }
@@ -3431,12 +3456,12 @@ angular.module('gifts', [])
             var pgm = 'GiftsCtrl.delete_gft: ' ;
             var confirm_options = { price: gift.price, currency: gift.currency }
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
-                var giver = Gofreerev.find_giver(gift) ;
+                var giver = userService.find_giver(gift) ;
                 if (!giver) {
                     Gofreerev.add2log(pgm + 'error: giver was not found for gift_id ' + gift.gift_id) ;
                     return ;
                 }
-                var receiver = Gofreerev.find_receiver(gift) ;
+                var receiver = userService.find_receiver(gift) ;
                 if (!receiver) {
                     Gofreerev.add2log(pgm + 'error: receiver was not found for gift_id ' + gift.gift_id) ;
                     return ;
@@ -3487,7 +3512,7 @@ angular.module('gifts', [])
             if (comment.deleted_at) return false ; // comment has already been marked as deleted
             // console.log(pgm) ;
             // ok to delete if login user(s) is giver/reciever
-            var login_user_ids = Gofreerev.get_login_userids() ;
+            var login_user_ids = userService.get_login_userids() ;
             if ($(login_user_ids).filter(gift.giver_user_ids).length > 0) {
                 // login user(s) is giver
                 // console.log(pgm + 'login user is giver') ;
@@ -3515,7 +3540,7 @@ angular.module('gifts', [])
             if (!self.show_delete_comment_link(gift,comment)) return ; // delete link no longer active
             if (confirm(self.texts.comments.confirm_delete_comment)) {
                 comment.deleted_at = unix_timestamp() ;
-                gift.show_no_comments = gift.show_no_comments - 1 ;
+                if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
             }
             // console.log(pgm + 'comment id = ' + comment.commentid + ', deleted_at = ' + comment.deleted_at) ;
         }
@@ -3524,7 +3549,7 @@ angular.module('gifts', [])
             // from rails Comment.show_cancel_new_deal_link?
             if (comment.new_deal != true) return false ;
             if (comment.accepted) return false ;
-            var login_user_ids = Gofreerev.get_login_userids() ;
+            var login_user_ids = userService.get_login_userids() ;
             if ($(login_user_ids).filter(comment.user_ids).length == 0) return false ;
             if (gift.direction == 'both') return false ;
             return true ;
@@ -3538,7 +3563,7 @@ angular.module('gifts', [])
             // from rails Comment.show_accept_new_deal_link?
             if (comment.new_deal != true) return false ;
             if (typeof comment.accepted != 'undefined') return false ; // true or false
-            var login_user_ids = Gofreerev.get_login_userids() ;
+            var login_user_ids = userService.get_login_userids() ;
             if (gift.direction == 'both') return false ;
             var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
             var user_ids = $(login_user_ids).filter(gift_user_ids) ;
@@ -3548,7 +3573,7 @@ angular.module('gifts', [])
             // friends relation can have changed - or maybe not logged in with the correct users to accept deal proposal
             var user ;
             for (i=0 ; i<user_ids.length ; i++) {
-                user = Gofreerev.get_user(user_ids[i]) ;
+                user = userService.get_user(user_ids[i]) ;
                 if (user && (user.friend <= 2)) return true ; // friends
             }
             // no longer friends
@@ -3558,7 +3583,7 @@ angular.module('gifts', [])
             if (!self.show_accept_new_deal_link(gift,comment)) return false ; // accept link no longer active!
             if (!confirm(self.texts.comments.confirm_accept_new_deal)) return ; // operation cancelled
             // from utilController.
-            var login_user_ids = Gofreerev.get_login_userids() ;
+            var login_user_ids = userService.get_login_userids() ;
             var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
             comment.accepted = true ;
             comment.updated_by = $(login_user_ids).filter(gift_user_ids) ;
@@ -3572,13 +3597,13 @@ angular.module('gifts', [])
             if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
             // from utilController.reject_new_deal
             comment.accepted = false ;
-            comment.updated_by = Gofreerev.get_login_userids() ;
+            comment.updated_by = userService.get_login_userids() ;
         }
 
         self.show_new_deal_checkbox = function (gift) {
             // see also formatNewProposalTitle
             if (gift.direction == 'both') return false ; // closed deal
-            var login_user_ids = Gofreerev.get_login_userids() ;
+            var login_user_ids = userService.get_login_userids() ;
             if (gift.direction == 'giver') {
                 if ($(login_user_ids).filter(gift.giver_user_ids).length > 0) return false ; // login user(s) is giver
             }
@@ -3592,14 +3617,14 @@ angular.module('gifts', [])
         function init_new_gift () {
             self.new_gift = {
                 direction: 'giver',
-                currency: Gofreerev.get_users_currency(),
+                currency: userService.get_users_currency(),
                 is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
                 file_upload_title: function () {
                     if (Gofreerev.is_file_upload_disabled()) return I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}) ;
                     else return I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}) ;
                 },
                 show: function () {
-                    var currency = Gofreerev.get_users_currency() ;
+                    var currency = userService.get_users_currency() ;
                     // console.log('currency = ' + JSON.stringify(currency)) ;
                     return (currency != null) ;
                 }
@@ -3720,8 +3745,8 @@ angular.module('gifts', [])
                 show: true,
                 new_comment: {comment: ""}
             };
-            if (gift.direction == 'giver') gift.giver_user_ids = Gofreerev.get_login_userids() ;
-            else gift.receiver_user_ids = Gofreerev.get_login_userids() ;
+            if (gift.direction == 'giver') gift.giver_user_ids = userService.get_login_userids() ;
+            else gift.receiver_user_ids = userService.get_login_userids() ;
             self.gifts.unshift(gift) ;
             init_new_gift() ;
         }
@@ -3733,7 +3758,7 @@ angular.module('gifts', [])
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
             var new_comment = {
                 commentid: Gofreerev.next_local_comment_id(),
-                user_ids: Gofreerev.get_login_userids(),
+                user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
                 created_at: unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
@@ -3800,14 +3825,14 @@ angular.module('gifts', [])
             return I18n.t('js.comments.optional_price', {price: formatPrice(p, precision) }) ;
         }
     }])
-    .filter('formatDirection', [function() {
+    .filter('formatDirection', ['UserService', function(userService) {
         // format direction - direction with short giver/receiver user name
         // from application_controller.format_direction_with_user
         // used in formatGiftLinkText filter
         return function (gift) {
             // console.log('formatDirection. gift = ' + JSON.stringify(gift)) ;
-            var giver = Gofreerev.find_giver(gift) ;
-            var receiver = Gofreerev.find_receiver(gift) ;
+            var giver = userService.find_giver(gift) ;
+            var receiver = userService.find_receiver(gift) ;
             var x = I18n.t('js.gifts.direction_' + gift.direction,
                 {givername: giver ? giver.short_user_name : 'no name',
                 receivername: receiver ? receiver.short_user_name : 'no name'}) ;
@@ -3846,14 +3871,14 @@ angular.module('gifts', [])
             return JSON.stringify(balance) ;
         }
     }])
-    .filter('formatUserImgTitle', ['formatBalanceFilter', function (formatBalance) {
+    .filter('formatUserImgTitle', ['formatBalanceFilter', 'UserService', function (formatBalance, userService) {
         return function (user_ids) {
             var pgm = 'GiftsCtrl.formatUserImgTitle: ' ;
             // format mouseover title in user <div><img> tags in gifts/index page etc
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             // console.log(pgm + 'typeof user_ids = ' + (typeof user_ids)) ;
             if (typeof user_ids == 'undefined') return null ;
-            var user = Gofreerev.get_user(user_ids[0]);
+            var user = userService.get_user(user_ids[0]);
             if (!user) return; // error - user not found in users array
             // translation keys js.user_div.title_friends_click etc
             var keys = {
@@ -3870,10 +3895,10 @@ angular.module('gifts', [])
             return I18n.t(key, {username: username, apiname: apiname, balance: balance});
         }
     }])
-    .filter('formatUserImgSrc', [function () {
+    .filter('formatUserImgSrc', ['UserService', function (userService) {
         return function (user_ids) {
             // format scr in user <div><img> tags in gifts/index page etc
-            var user = Gofreerev.get_user(user_ids[0]);
+            var user = userService.get_user(user_ids[0]);
             if (!user) return ''; // error - user not found in users array
             return user.api_profile_picture_url;
         }
@@ -3890,7 +3915,7 @@ angular.module('gifts', [])
                 return I18n.t('js.comments.comment_text', {date: date, optional_price: optional_price, text: comment.comment}) ;
         }
     }])
-    .filter('formatNewProposalTitle', [function () {
+    .filter('formatNewProposalTitle', ['UserService', function (userService) {
         return function (gift) {
             var pgm = 'GiftsCtrl.formatNewProposalTitle: gift id = ' + gift.gift_id + '. ' ;
             // see also GiftsCtrl.show_new_deal_checkbox
@@ -3898,7 +3923,7 @@ angular.module('gifts', [])
                 console.log(pgm + 'error. invalid direction') ;
                 return '' ;
             }
-            var login_user_ids = Gofreerev.get_login_userids() ;
+            var login_user_ids = userService.get_login_userids() ;
             var other_user_ids ;
             if (gift.direction == 'giver') other_user_ids = $(login_user_ids).not(gift.giver_user_ids) ;
             else other_user_ids = $(login_user_ids).not(gift.receiver_user_ids) ;
@@ -3909,7 +3934,7 @@ angular.module('gifts', [])
                 return '' ;
             }
             var other_user_id = other_user_ids[0] ;
-            var other_user = Gofreerev.get_user(other_user_id) ;
+            var other_user = userService.get_user(other_user_id) ;
             // console.log(pgm + 'other_user_id = ' + JSON.stringify(other_user_id)) ;
             // console.log(pgm + 'other_user = ' + JSON.stringify(other_user)) ;
             if (!other_user) {

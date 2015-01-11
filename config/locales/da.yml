@@ -110,14 +110,13 @@ da:
         invite_friend_mailto_body: "Kære %{to_username}\n\nJeg vil gerne inviterer dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}"
      invite_friends:
         no_friends_was_found_html: "<p>Der blev ikke fundet nogle %{appname} venner. Du skal invitere en eller flere af dine gode<br />venner til at bruge %{appname}. Enten ved at sende en invitation med nedenstående link<br />eller ved at sende en personlig invitation til at bruge %{appname}. En personlig invitation<br />er det bedste, da mange mennesker vil afvise uopfordrede spil-invitationer.</p>" # todo: angularJS - moved to js.gifts.no_friends_was_found_html
-        invite_friends_prompt: "Inviter venner:"
-        invite_friends_link_title: "Brug dette link til at inviterer dine %{apiname} venner til at bruge %{appname}"
-        invite_friends_message_title: "Inviter dine venner til %{appname}"
-        invite_friends_message_body: "Prøv et spil om at hjælpe hinanden og dele hinandens ressourcer på en ny anderledes måde og et spil med en ny slags penge, der kan forandre vores verden, inspireret af ideer fra Charles Eisensteins bog Sacred Economics"
-
-        invite_friends_mailto_email: "x"
-        invite_friends_mailto_subject: "%{appname} spil invitation"
-        invite_friends_mailto_body: "Kære ven\n\nJeg vil gerne invitere dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}"
+        invite_friends_prompt: "Inviter venner:" # todo: angularJS - moved to js.gifts.invite_friends_prompt
+        invite_friends_link_title: "Brug dette link til at inviterer dine %{apiname} venner til at bruge %{appname}" # todo: angularJS - moved to js.gifts.invite_friends_link_title
+        invite_friends_message_title: "Inviter dine venner til %{appname}" # todo: angular JS - moved to js.gifts.invite_friends_message_title
+        invite_friends_message_body: "Prøv et spil om at hjælpe hinanden og dele hinandens ressourcer på en ny anderledes måde og et spil med en ny slags penge, der kan forandre vores verden, inspireret af ideer fra Charles Eisensteins bog Sacred Economics" # todo: angular JS - moved to js.gifts.invite_friends_message_body
+        invite_friends_mailto_email: "x" # todo: angularJS - moved to js.gifts.invite_friends_mailto_email
+        invite_friends_mailto_subject: "%{appname} spil invitation" # todo: angularJS - moved to js.gifts.invite_friends_mailto_subject
+        invite_friends_mailto_body: "Kære ven\n\nJeg vil gerne invitere dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}" # todo: angularJS - moved to js.gifts.invite_friends_mailto_body
         invalid_call: "ugyldigt kald - login bruger manglede i kald af invite_friends_url"
         not_implemented: "inviter %{apiname} venner er endnu ikke implementeret"
      providers:
@@ -1309,6 +1308,13 @@ da:
         show_older_comments: "Vis %{no_older_comments} ældre kommentarer"
         no_gifts_was_found_html: "<p>Der blev ikke fundet nogle opslag. Hverken du eller dine venner har endnu oprettet<br />nogle opslag herinde i %{appname}. For at komme i gang bør du nu oprette et eller flere opslag<br />med noget, du gerne vil dele med dine venner eller med noget, du søger eller mangler<br />, og som du tror dine venner måske kan hjælpe dig med.</p>"
         no_friends_was_found_html: "<p>Der blev ikke fundet nogle %{appname} venner. Du skal invitere en eller flere af dine gode<br />venner til at bruge %{appname}. Enten ved at sende en invitation med nedenstående link<br />eller ved at sende en personlig invitation til at bruge %{appname}. En personlig invitation<br />er det bedste, da mange mennesker vil afvise uopfordrede spil-invitationer.</p>"
+        invite_friends_prompt: "Inviter venner:"
+        invite_friends_link_title: "Brug dette link til at inviterer dine %{apiname} venner til at bruge %{appname}"
+        invite_friends_message_title: "Inviter dine venner til %{appname}"
+        invite_friends_message_body: "Prøv et spil om at hjælpe hinanden og dele hinandens ressourcer på en ny anderledes måde og et spil med en ny slags penge, der kan forandre vores verden, inspireret af ideer fra Charles Eisensteins bog Sacred Economics"
+        invite_friends_mailto_email: "x" # todo: angularJS - moved to js.gifts.invite_friends_mailto_email
+        invite_friends_mailto_subject: "%{appname} spil invitation" # todo: angularJS - moved to js.gifts.invite_friends_mailto_subject
+        invite_friends_mailto_body: "Kære ven\n\nJeg vil gerne invitere dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}" # todo: angularJS - moved to js.gifts.invite_friends_mailto_body
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil

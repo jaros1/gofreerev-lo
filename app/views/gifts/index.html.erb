@@ -43,13 +43,18 @@
 
 <%# special messages to new users how to get started -%>
   <div id="no-gifts-div" ng-show="ctrl.no_gifts()" style="width: 100%">
-    <span ng-bind-html="ctrl.texts.gifts.no_gifts_was_found_html"/>
+    <span ng-bind-html="ctrl.texts.gifts.no_gifts_was_found_html"></span>
   </div>
   <div ng-show="ctrl.no_friends()" style="width: 100%">
-    <span ng-bind-html="ctrl.texts.gifts.no_friends_was_found_html"/>
+    <span ng-bind-html="ctrl.texts.gifts.no_friends_was_found_html"></span>
     <table>
       <tr>
-        <%= hr = true ; render :partial => 'shared/invite_friends_links' %>
+        <td>{{ctrl.texts.gifts.invite_friends_prompt}}</td>
+        <td>
+          <span ng-repeat="login_user in ctrl.login_users()">
+            <span ng-bind-html="login_user|formatInviteFriendsLink"></span>
+          </span>
+        </td>
       </tr>
     </table>
   </div>
@@ -208,7 +213,7 @@
               <div style="max-height: 150px; overflow: hidden" id="gift-{{gift.gift_id}}-overflow-text">
                 <a href="/{{ctrl.language}}/gifts/{{gift.gift_id}}" title="{{ctrl.texts.gifts.link_title}}">
                   {{gift | formatGiftLinkText:2}}
-                </a> : <span ng-bind-html="gift.description | formatGiftDescription"/>
+                </a> : <span ng-bind-html="gift.description | formatGiftDescription"></span>
               </div>
             </td>
           </tr>

@@ -109,13 +109,13 @@ en:
         invite_friend_mailto_body: "Hi %{to_username}\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards %{from_username}"
      invite_friends:
         no_friends_was_found_html: "<p>There was not found any %{appname} friends. Invite some of your friends to use %{appname}.<br />Either by sending a personal message or by using the link below to invite your friends to use %{appname}.<br>A personal message is to prefere as many people will ignore or reject game invitations.</p>" # todo: angularJS - moved to js.gifts.no_friends_was_found_html
-        invite_friends_prompt: "Invite friends:"
-        invite_friends_link_title: "Use this link to invite your %{apiname} friends to use %{appname}"
-        invite_friends_message_title: "Invite your friends to play %{appname}" # facebook
-        invite_friends_message_body: "Try a game about helping each other and sharing each others resources in a new different way and a game with a new kind of money that will change our world inspired by the ideas of Charles Eisenstein's book Sacred Economics" # facebook
-        invite_friends_mailto_email: "x"
-        invite_friends_mailto_subject: "%{appname} game invitation"
-        invite_friends_mailto_body: "Dear friend\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards\n%{from_username}"
+        invite_friends_prompt: "Invite friends:" # todo: angularJS - moved to js.gifts.invite_friends_prompt
+        invite_friends_link_title: "Use this link to invite your %{apiname} friends to use %{appname}" # todo: angularJS - moved to js.gifts.invite_friends_link_title
+        invite_friends_message_title: "Invite your friends to play %{appname}" # facebook todo: angular JS - moved to js.gifts.invite_friends_message_title
+        invite_friends_message_body: "Try a game about helping each other and sharing each others resources in a new different way and a game with a new kind of money that will change our world inspired by the ideas of Charles Eisenstein's book Sacred Economics" # facebook todo: angular JS - moved to js.gifts.invite_friends_message_body
+        invite_friends_mailto_email: "x" # todo: angularJS - moved to js.gifts.invite_friends_mailto_email
+        invite_friends_mailto_subject: "%{appname} game invitation" # todo: angularJS - moved to js.gifts.invite_friends_mailto_subject
+        invite_friends_mailto_body: "Dear friend\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards\n%{from_username}" # todo: angularJS - moved to js.gifts.invite_friends_mailto_body
         invalid_call: "invalid call - login_user was missing in invite_friends_url call"
         not_implemented: "invite %{apiname} friends is not implemented"
      providers:
@@ -1306,6 +1306,13 @@ en:
         show_older_comments: "Show %{no_older_comments} older comments"
         no_gifts_was_found_html: "<p>There was not found any posts. Neither you nor your friends have yet created<br />any posts here in %{appname}. To get started, you must now create a few posts<br />with something you want to share with your friends or with something you are looking<br />for or are missing, and with which you think your friends might be able to help you.</p>"
         no_friends_was_found_html: "<p>There was not found any %{appname} friends. Invite some of your friends to use %{appname}.<br />Either by sending a personal message or by using the link below to invite your friends to use %{appname}.<br>A personal message is to prefere as many people will ignore or reject game invitations.</p>"
+        invite_friends_prompt: "Invite friends:"
+        invite_friends_link_title: "Use this link to invite your %{apiname} friends to use %{appname}"
+        invite_friends_message_title: "Invite your friends to play %{appname}"
+        invite_friends_message_body: "Try a game about helping each other and sharing each others resources in a new different way and a game with a new kind of money that will change our world inspired by the ideas of Charles Eisenstein's book Sacred Economics"
+        invite_friends_mailto_email: "x"
+        invite_friends_mailto_subject: "%{appname} game invitation"
+        invite_friends_mailto_body: "Dear friend\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards\n%{from_username}"
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil

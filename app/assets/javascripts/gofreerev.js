@@ -2995,6 +2995,14 @@ angular.module('gifts', [])
             }
             return user ;
         }
+        var get_login_users = function () {
+            var login_users = [] ;
+            if (typeof users == 'undefined') return ogin_users ;
+            for (var i=0 ; i<users.length ; i++) {
+                if (users[i].friend == 1) login_users.push(users[i]) ;
+            }
+            return login_users ;
+        }
         var get_login_userids = function () {
             if (typeof users == 'undefined') return [] ;
             var userids = []
@@ -3088,6 +3096,7 @@ angular.module('gifts', [])
         return {
             is_logged_in: is_logged_in,
             no_friends: no_friends,
+            get_login_users: get_login_users,
             get_login_userids: get_login_userids,
             get_user: get_user,
             get_users_currency: get_users_currency,
@@ -3101,6 +3110,8 @@ angular.module('gifts', [])
     .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', function ($location, $http, $document, $window, $sce, userService) {
         console.log('GiftsCtrl loaded') ;
         var self = this;
+
+        var appname = Gofreerev.rails['APP_NAME'];
 
         // language specific gift controller constants
         // todo: client side change language without page refresh?
@@ -3146,8 +3157,11 @@ angular.module('gifts', [])
                     confirm_delete_gift_2: I18n.t('js.gifts.confirm_delete_gift_2'),  // confirm without warning
                     hide_gift: I18n.t('js.gifts.hide_gift'),
                     confirm_hide_gift: I18n.t('js.gifts.confirm_hide_gift'),
-                    no_gifts_was_found_html: $sce.trustAsHtml(I18n.t('js.gifts.no_gifts_was_found_html', {appname: Gofreerev.rails['APP_NAME']})),
-                    no_friends_was_found_html: $sce.trustAsHtml(I18n.t('js.gifts.no_friends_was_found_html', {appname: Gofreerev.rails['APP_NAME']}))
+                    no_gifts_was_found_html: $sce.trustAsHtml(I18n.t('js.gifts.no_gifts_was_found_html', {appname: appname})),
+                    no_friends_was_found_html: $sce.trustAsHtml(I18n.t('js.gifts.no_friends_was_found_html', {appname: appname})),
+                    invite_friends_prompt: I18n.t('js.gifts.invite_friends_prompt'),
+                    invite_friends_message_title: I18n.t('js.gifts.invite_friends_message_title', {appname: appname}),
+                    invite_friends_message_body: I18n.t('js.gifts.invite_friends_message_body')
                 },
                 comments: {
                     comment_text: I18n.t('js.comments.comment_text'),
@@ -3176,6 +3190,9 @@ angular.module('gifts', [])
         }
         self.no_friends = function () {
             return userService.no_friends() ;
+        }
+        self.login_users = function () {
+            return userService.get_login_users() ;
         }
         self.login_user_ids = function () {
             return userService.get_login_userids() ;
@@ -3624,8 +3641,8 @@ angular.module('gifts', [])
                 direction: 'giver',
                 currency: userService.get_users_currency(),
                 file_upload_title: function () {
-                    if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}) ;
-                    else return I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}) ;
+                    if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: appname}) ;
+                    else return I18n.t('js.new_gift.file_title_false', {appname: appname}) ;
                 },
                 show: function () {
                     var currency = userService.get_users_currency() ;
@@ -3948,5 +3965,42 @@ angular.module('gifts', [])
             var title = I18n.t('js.new_comment.proposal_title', {username: other_user.short_user_name}) ;
             // console.log(pgm + 'gift id = ' + gift.gift_id + ', title = ' + JSON.stringify(title)) ;
             return title ;
+        }
+    }])
+    .filter('formatInviteFriendsLink', ['$window', '$sce', function ($window, $sce) {
+        var pgm = 'GiftsCtrl.formatInviteFriendsLink: ';
+        return function (login_user) {
+            var appname = Gofreerev.rails['APP_NAME'];
+            var apiname = Gofreerev.rails['API_DOWNCASE_NAME'][login_user.provider];
+            var link_title = I18n.t('js.gifts.invite_friends_link_title', {appname: appname, apiname: apiname});
+            // console.log(pgm + 'appname = ' + appname + ', apiname = ' + apiname + ', link_title = ' + link_title);
+            var href;
+            if (login_user.provider == 'facebook') {
+                // facebook invite friends dialog form
+                href = "https://" + Gofreerev.rails['KOALA_CONFIG_DIALOG_HOST'] + "/dialog/apprequests" +
+                "?app_id=" + encodeURIComponent(Gofreerev.rails['API_ID'].facebook) +
+                "&redirect_uri=" + encodeURIComponent($window.location.href) +
+                    // "&title=" + encodeURIComponent(I18n.t('js.gifts.invite_friends_message_title', {appname: Gofreerev.rails['APP_NAME']})) +
+                "&message=" + encodeURIComponent(I18n.t('js.gifts.invite_friends_message_body')) +
+                "&filters=" + encodeURIComponent("['app_non_users']");
+                // console.log(pgm + 'url = ' + href);
+            }
+            else {
+                // mailto link
+                var email = I18n.t('js.gifts.invite_friends_mailto_email');
+                var subject = I18n.t('js.gifts.invite_friends_mailto_subject', {appname: appname, apiname: apiname});
+                var url = $window.location.protocol + '//' + $window.location.host + '/' + I18n.locale + '/gifts' ;
+                var body = I18n.t('js.gifts.invite_friends_mailto_body', {
+                    appname: appname,
+                    apiname: apiname,
+                    from_username: login_user.user_name,
+                    url: url
+                });
+                href = "mailto:' + encodeURIComponent(email) +" +
+                "?subject=" + encodeURIComponent(subject) +
+                "&amp;body=" + encodeURIComponent(body);
+            }
+            var a = '<a href="' + href + '" title="' + link_title + '">' + apiname + '<a>'
+            return $sce.trustAsHtml(a);
         }
     }]);

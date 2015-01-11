@@ -387,18 +387,12 @@
 
     <%# empty "old" gifts_tbody block used by old show-more-rows functionality %>
     <tbody id="gifts_tbody">
-
-    <%# ajax: dummy row - placeholder for object id for last row in html table. Used in ajax request for next set of rows -%>
-    <% if @last_row_id -%>
-        <tr style="display: none" id='<%= "last-row-id-#{@last_row_id}" %>'>
-          <td colspan="4"></td>
-        </tr>
-    <% else -%>
-        <tr style="display: none">
-          <td colspan="4"></td>
-        </tr>
-    <% end -%>
-
+    <%# ajax: dummy row - placeholder for object id for last row in html table. Used in ajax request for next set of rows
+        todo: angularJS - remove - was used in gofreerev-fb version - not relevant in gofreerev-lo versio
+    -%>
+    <tr style="display: none" id='last-row-id-999999999'>
+      <td colspan="4"></td>
+    </tr>
     </tbody>
     <tfoot>
     <tr id="show-more-rows-spinner">
@@ -418,15 +412,12 @@
   </table>
 </div>
 
-
-
-
 <%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows. set DEBUG_AJAX to true in initializers/constraints.rb to get more ajax debug information -%>
-<%= link_to "show-more-rows", "/gifts?last_row_id=#{@last_row_id}",
-            :remote => true, :data => { :type => :script }, :format => :js,
-            :id => "show-more-rows-link", :style => "display: none" %>
-<%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'gifts'} %>
-
+  <a data-remote="true" data-type="script" format="js" href="/gifts?last_row_id=999999999" id="show-more-rows-link" style="display: none">show-more-rows</a>
+  <script>
+      setTimeout(Gofreerev.report_missing_api_picture_urls, 2000) ;
+      Gofreerev.setup_ajax_expanding_page('gifts', false) ;
+  </script>
 
 
 <!--

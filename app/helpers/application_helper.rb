@@ -247,6 +247,7 @@ module ApplicationHelper
   end # invite_friend_url
 
   # todo: generalize, different url for each API (FB, GP, LI etc)
+  # todo: angularJS - moved to formatInviteFriendsLink filter
   def invite_friends_url (login_user)
     if login_user.class != User
       # invalid call - login_user was missing in invite_friends_url call
@@ -293,6 +294,7 @@ module ApplicationHelper
     end
   end
 
+  # todo: angularJS - moved to formatInviteFriendsLink filter
   def invite_friends_link (login_user)
     if %w(facebook).index(login_user.provider)
       # use API invite functionality - only facebook has implemented this

@@ -373,6 +373,9 @@ var Gofreerev = (function() {
     var check_new_messages_interval ; // interval in seconds between each new messages check
     var check_new_messages_interval_id ; // interval id for setInterval function
     var last_user_ajax_comment_at ; // timestamp (JS Date) for last new comment created by user
+    // todo: reset last_user_ajax_comment_at was used in old gofreerev-fb version with turbolinks
+    //       and turbolinks are not relevant in angularJS version (using routes)
+    //
     function reset_last_user_ajax_comment_at () {
         last_user_ajax_comment_at = null ;
     }
@@ -2103,22 +2106,6 @@ var Gofreerev = (function() {
     } // move_tasks_errors2
 
 
-    // show/hide new gift file field in gifts/index page
-    // enable after granting write permission to api wall
-    // disable after revoking last write permission to api wall
-    var file_upload_enabled = true ;
-    function set_file_upload_enabled (boolean) {
-        add2log('set_file_upload_enabled: boolean = ' + boolean) ;
-        file_upload_enabled = boolean ; // save flag for angularJS
-    } // set_file_upload_enabled
-    // check if file upload has been disabled. Used by angularJS ng-show and ng-hide
-    function is_file_upload_disabled () {
-        // add2log('is_file_upload_disabled: ' + (!file_upload_enabled)) ;
-        return (!file_upload_enabled) ;
-    } // is_file_upload_disabled
-
-
-
     // display cookie_note div for the first SHOW_COOKIE_NOTE seconds when a new user visits gofreerev
     function hide_cookie_note() {
         var cookie_node = document.getElementById('cookie_note') ;
@@ -2942,8 +2929,6 @@ var Gofreerev = (function() {
         imgonerror: imgonerror, // check invalid or missing pictures - used in gifts/index page
         show_debug_log_checkbox: show_debug_log_checkbox, // show/hide debug log in html page
         add2log: add2log, // used in angularjs module
-        set_file_upload_enabled: set_file_upload_enabled,
-        is_file_upload_disabled: is_file_upload_disabled,
         // view helpers
         onchange_currency: onchange_currency, // ajax update currency in users/edit page
         inIframe: inIframe, // Fix bug. App is displayed in a iFrame for opera < 12.16
@@ -2983,9 +2968,20 @@ angular.module('gifts', [])
             users = array ;
             users_index_by_user_id = {}
             for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+
+            // todo: temporary inject fb logged in status into Gofreerev - used in model login dialog form
+            // remove when all login functionality are moved to UserService and NavCtrl
+            Gofreerev.set_fb_logged_in_account(fb_logged_in_account()) ;
         }
-        var get_users = function  () {
-            return users ;
+        var is_logged_in = function () {
+            if (typeof users == 'undefined') return false ;
+            for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
+            return false ;
+        }
+        var no_friends = function () {
+            if (!is_logged_in()) return false ;
+            for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 2) return false ;
+            return true ;
         }
         var get_user = function (user_id) {
             if (typeof users == 'undefined') return null ;
@@ -3049,6 +3045,7 @@ angular.module('gifts', [])
             return false ;
         }
 
+
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
         //   1) logged in user         - show detailed info + clickable user div
@@ -3088,10 +3085,9 @@ angular.module('gifts', [])
             }
         ]);
 
-        // todo: temporary inject fb logged in status into Gofreerev - used in model login dialog form
-        Gofreerev.set_fb_logged_in_account(fb_logged_in_account()) ;
-
         return {
+            is_logged_in: is_logged_in,
+            no_friends: no_friends,
             get_login_userids: get_login_userids,
             get_user: get_user,
             get_users_currency: get_users_currency,
@@ -3102,7 +3098,8 @@ angular.module('gifts', [])
     .controller('NavCtrl', [function() {
         console.log('NavCtrl loaded') ;
     }])
-    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', 'UserService', function ($location, $http, $document, $window, userService) {
+    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', function ($location, $http, $document, $window, $sce, userService) {
+        console.log('GiftsCtrl loaded') ;
         var self = this;
 
         // language specific gift controller constants
@@ -3148,7 +3145,9 @@ angular.module('gifts', [])
                     confirm_delete_gift_1: I18n.t('js.gifts.confirm_delete_gift_1'), // confirm with warning (balance changed)
                     confirm_delete_gift_2: I18n.t('js.gifts.confirm_delete_gift_2'),  // confirm without warning
                     hide_gift: I18n.t('js.gifts.hide_gift'),
-                    confirm_hide_gift: I18n.t('js.gifts.confirm_hide_gift')
+                    confirm_hide_gift: I18n.t('js.gifts.confirm_hide_gift'),
+                    no_gifts_was_found_html: $sce.trustAsHtml(I18n.t('js.gifts.no_gifts_was_found_html', {appname: Gofreerev.rails['APP_NAME']})),
+                    no_friends_was_found_html: $sce.trustAsHtml(I18n.t('js.gifts.no_friends_was_found_html', {appname: Gofreerev.rails['APP_NAME']}))
                 },
                 comments: {
                     comment_text: I18n.t('js.comments.comment_text'),
@@ -3168,18 +3167,18 @@ angular.module('gifts', [])
                     submit_button_text: I18n.t('js.new_comment.submit_button_text')
                 }
             };
-        };
+        }
         init_language_constants();
         self.default_no_comments = 3 ;
 
-
-
-
+        self.is_logged_in = function () {
+            return userService.is_logged_in() ;
+        }
+        self.no_friends = function () {
+            return userService.no_friends() ;
+        }
         self.login_user_ids = function () {
-            var pgm = 'GiftsCtrl.login_user_ids: ' ;
-            var user_ids = userService.get_login_userids() ;
-            // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
-            return user_ids ;
+            return userService.get_login_userids() ;
         }
 
         // test data - gifts
@@ -3282,6 +3281,12 @@ angular.module('gifts', [])
             if (gift.deleted_at) return false ;
             if (!gift.show) return false ;
             return true ;
+        }
+
+        self.no_gifts = function() {
+            if (typeof self.gifts == 'undefined') return true  ;
+            if (typeof self.gifts.length == 'undefined') return true ;
+            return (self.gifts.length == 0) ;
         }
 
         // comments filter. hide deleted comments. used in ng-repeat
@@ -3618,10 +3623,9 @@ angular.module('gifts', [])
             self.new_gift = {
                 direction: 'giver',
                 currency: userService.get_users_currency(),
-                is_file_upload_disabled: function () { return Gofreerev.is_file_upload_disabled() },
                 file_upload_title: function () {
-                    if (Gofreerev.is_file_upload_disabled()) return I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}) ;
-                    else return I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}) ;
+                    if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: Gofreerev.rails['APP_NAME']}) ;
+                    else return I18n.t('js.new_gift.file_title_false', {appname: Gofreerev.rails['APP_NAME']}) ;
                 },
                 show: function () {
                     var currency = userService.get_users_currency() ;

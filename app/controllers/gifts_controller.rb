@@ -246,7 +246,6 @@ class GiftsController < ApplicationController
   end
 
   def index
-    @ng_app = 'gifts'
 
     if !logged_in?
       if xhr?

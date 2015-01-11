@@ -1,11 +1,31 @@
-<%= hidden_field_tag :newest_gift_id, @newest_gift_id, :id => "newest-gift-id" %>
-<%= hidden_field_tag :newest_status_update_at, @newest_status_update_at, :id => "newest-status-update-at" %>
+<%#
+   todo:
+   newest_gift_id and newest_status_update_at was used in old gofreerev-lo version to ajax inject gifts created or updated after page startup
+   see JS function start_check_new_messages and rails method new_messages_count in util controller
+   newest_gift_id (las  Gift id) and newest_status_update_at (Sequence.status_update_at) are not relevant in angularJS version
+   there are only sync. gifts between online devices (compare gift ids for owners and mutual friends)
+   server should make the comparing - only server can secure that friend relations are not violated
+-%>
+<input id="newest-gift-id" name="newest_gift_id" type="hidden">
+<input id="newest-status-update-at" name="newest_status_update_at" type="hidden">
 
 <script>
-    Gofreerev.reset_last_user_ajax_comment_at ;
+    <%#
+       todo: remove Gofreerev.reset_last_user_ajax_comment_at. was used in gofreerev-fb version with turbolinks
+             not relevant in angularJS version where ng-route are used
+    -%>
+    // Gofreerev.reset_last_user_ajax_comment_at ;
+
+    <%#
+       todo: what to do with picture errors in gofreerev-lo version?
+             pictures are not any longer posted on api walls as gift texts only are available on client
+             pictures must be stored on gofreerev-lo server(s) or in cloud (xxxx)
+             long random path to picture /images/perm/gt/aw/ue/k5/ob/y5/or/lt/mh/j8.jpeg
+             or could be password protected folders for each api user
+    -%>
     <%=
       # recheck invalid picture urls with owner permissions
-      @missing_api_picture_urls
+      # @missing_api_picture_urls
     %>
 
     // localStorage.clear() ;
@@ -17,43 +37,25 @@
 
 <div ng-controller="GiftsCtrl as ctrl">
 
-
-<%#
-  #  inject file upload status from rails to angularJS and File Upload Plugin (drag & drop)
-  #  is post on wall / image upload allowed? show/hide image upload elements in html page
-  #  todo: angularJS: move post_image_allowed? code to client so that this rails => JS injection can be removed
--%>
-<script>
-    Gofreerev.set_file_upload_enabled(<%= post_image_allowed? %>) ;
-</script>
-
-<%# Modernizr.progressbar is required -%>
-<!--<div class="demo-wrapper html5-progress-bar" id="progressbar-div" style="display: none">-->
-  <!--<div class="progress-bar-wrapper">-->
-    <!--<progress id="progressbar" value="0" max="100"></progress>-->
-    <!--<span class="progress-value">0%</span>-->
-  <!--</div>-->
-<!--</div>-->
 <div style="width: 100%">
   <hr>
 </div>
 
 <%# special messages to new users how to get started -%>
-<% if @api_gifts.size == 0
-     hr = true
--%>
-    <div id="no-gifts-div" style="width: 100%">
-      <%= t '.no_gifts_was_found_html', :appname => APP_NAME %>
-    </div>
-<% end -%>
-<% if User.no_app_friends(@users) == 0 -%>
-    <%= hr = true ; render :partial => 'shared/no_app_friends' %>
-<% end -%>
-<% if hr -%>
-    <div style="width: 100%">
-      <hr>
-    </div>
-<% end -%>
+  <div id="no-gifts-div" ng-show="ctrl.no_gifts()" style="width: 100%">
+    <span ng-bind-html="ctrl.texts.gifts.no_gifts_was_found_html"/>
+  </div>
+  <div ng-show="ctrl.no_friends()" style="width: 100%">
+    <span ng-bind-html="ctrl.texts.gifts.no_friends_was_found_html"/>
+    <table>
+      <tr>
+        <%= hr = true ; render :partial => 'shared/invite_friends_links' %>
+      </tr>
+    </table>
+  </div>
+  <div ng-show="(ctrl.no_gifts() || ctrl.no_friends())" style="width: 100%">
+    <hr>
+  </div>
 
 <%# gifts table -%>
 <div style="width: 100%">
@@ -107,24 +109,24 @@
                 </tr>
                 <tr title="{{ctrl.new_gift.file_upload_title()}}">
                   <td>
-                    <div class="fileupload bottom" ng-hide="ctrl.new_gift.is_file_upload_disabled()">
+                    <div class="fileupload bottom" ng-show="ctrl.is_logged_in()">
                       {{ctrl.texts.new_gift.file_prompt}}
                       <input type="file" id="gift_file" name="gift_file" accept=".gif,.jpg,.jpeg,.png,.bmp,capture=camera" class="upload">
                       <%# todo: remove - was used in a old double submit workaround for rails and file upload plug-in. See GiftsController.create -%>
                       <input name="gift[datatype]" type="hidden">
                     </div>
-                    <div ng-show="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt1}}</div>
+                    <div ng-hide="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt1}}</div>
                   </td>
                   <td>
                     <table>
                       <tbody>
                       <tr>
-                        <td><input type="text" id="disp_gift_file" placeholder='{{ctrl.texts.new_gift.file_placeholder}}' ng-hide="ctrl.new_gift.is_file_upload_disabled()" disabled="" style="line-height:16px;"></td>
+                        <td><input type="text" id="disp_gift_file" placeholder='{{ctrl.texts.new_gift.file_placeholder}}' ng-show="ctrl.is_logged_in()" disabled="" style="line-height:16px;"></td>
                         <td>
                           <table class="new_gift_link_large">
                             <tbody>
                             <tr>
-                              <td><div ng-hide="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt2}}</div></td>
+                              <td><div ng-show="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt2}}</div></td>
                               <td>
                                 <input type="url" size="28" maxlength="200" ng-model="ctrl.new_gift.open_graph_url" id="gift_open_graph_url1"
                                        placeholder="{{ctrl.texts.new_gift.link_placeholder}}" ng-change="ctrl.new_gift_open_graph_url_change()">
@@ -140,8 +142,8 @@
                 </tr>
                 <tr class="new_gift_link_small">
                   <td>
-                    <div ng-show="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt1}}</div>
-                    <div ng-hide="ctrl.new_gift.is_file_upload_disabled()">{{ctrl.texts.new_gift.link_prompt2}}</div>
+                    <div ng-hide="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt1}}</div>
+                    <div ng-show="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt2}}</div>
                   </td>
                   <td>
                     <input type="url" size="28" maxlength="200" ng-model="ctrl.new_gift.open_graph_url" id="gift_open_graph_url2"
@@ -411,9 +413,6 @@
   </table>
 </div>
 
-</div><%# end of GiftsCtrl -%>
-
-<br/>
 
 
 
@@ -483,9 +482,12 @@
             var disp_gift_file = document.getElementById('disp_gift_file');
             $.each(data.files.reverse(), function (index, file) {
                 var filetype = data.originalFiles[index].type ;
-                if (Gofreerev.is_file_upload_disabled() || (!(/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)))) {
+                var is_logged_in = angular.element(disp_gift_file).controller().is_logged_in()
+                var is_file_upload_disabled = !is_logged_in ;
+                // console.log('is_file_upload_disabled = ' + is_file_upload_disabled) ;
+                if (is_file_upload_disabled || (!(/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)))) {
                     // file upload disabled or invalid filetype - remove from file arrays
-                    if (Gofreerev.is_file_upload_disabled()) Gofreerev.add2log('File upload plugin - file upload is disabled') ;
+                    if (is_file_upload_disabled) Gofreerev.add2log('File upload plugin - file upload is disabled') ;
                     else Gofreerev.add2log('File upload plugin - invalid file type ' + filetype) ;
                     data.originalFiles.splice(index,1) ;
                     data.files.splice(index,1) ;
@@ -576,5 +578,9 @@
         }).prop('disabled', !$.support.fileInput)
                 .parent().addClass($.support.fileInput ? undefined : 'disabled');
     });
+
 </script>
 
+</div><%# end of GiftsCtrl -%>
+
+<br/>

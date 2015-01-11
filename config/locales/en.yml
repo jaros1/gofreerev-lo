@@ -108,7 +108,7 @@ en:
         invite_friend_mailto_subject: "%{appname} game invitation"
         invite_friend_mailto_body: "Hi %{to_username}\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards %{from_username}"
      invite_friends:
-        no_friends_was_found_html: "<p>There was not found any %{appname} friends. Invite some of your friends to use %{appname}.<br />Either by sending a personal message or by using the link below to invite your friends to use %{appname}.<br>A personal message is to prefere as many people will ignore or reject game invitations.</p>"
+        no_friends_was_found_html: "<p>There was not found any %{appname} friends. Invite some of your friends to use %{appname}.<br />Either by sending a personal message or by using the link below to invite your friends to use %{appname}.<br>A personal message is to prefere as many people will ignore or reject game invitations.</p>" # todo: angularJS - moved to js.gifts.no_friends_was_found_html
         invite_friends_prompt: "Invite friends:"
         invite_friends_link_title: "Use this link to invite your %{apiname} friends to use %{appname}"
         invite_friends_message_title: "Invite your friends to play %{appname}" # facebook
@@ -431,7 +431,7 @@ en:
         pending_gift_popup_msg: "Change currency? Select Cancel if you wish to complete your wall posting. Select OK to ignore the not saved post and change currency."
         description_required_text: "Text is required."
         price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
-        no_gifts_was_found_html: "<p>There was not found any posts. Neither you nor your friends have yet created<br />any posts here in %{appname}. To get started, you must now create a few posts<br />with something you want to share with your friends or with something you are looking<br />for or are missing, and with which you think your friends might be able to help you.</p>"
+        no_gifts_was_found_html: "<p>There was not found any posts. Neither you nor your friends have yet created<br />any posts here in %{appname}. To get started, you must now create a few posts<br />with something you want to share with your friends or with something you are looking<br />for or are missing, and with which you think your friends might be able to help you.</p>" # todo: angularJS: moved to js.gifts.no_gifts_was_found_html
         comment_comment_required_text: "Comment is required"
         comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
         http_invalid_last_row_id: "System error. last_row_id must be blank in first http request. last_row_id = \"%{last_row_id}\"."
@@ -1304,6 +1304,8 @@ en:
         confirm_hide_gift: "Hide post?"
         show_older_comment: "Show older comment"
         show_older_comments: "Show %{no_older_comments} older comments"
+        no_gifts_was_found_html: "<p>There was not found any posts. Neither you nor your friends have yet created<br />any posts here in %{appname}. To get started, you must now create a few posts<br />with something you want to share with your friends or with something you are looking<br />for or are missing, and with which you think your friends might be able to help you.</p>"
+        no_friends_was_found_html: "<p>There was not found any %{appname} friends. Invite some of your friends to use %{appname}.<br />Either by sending a personal message or by using the link below to invite your friends to use %{appname}.<br>A personal message is to prefere as many people will ignore or reject game invitations.</p>"
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil

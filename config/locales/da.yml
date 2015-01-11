@@ -109,7 +109,7 @@ da:
         invite_friend_mailto_subject: "%{appname} spil invitation"
         invite_friend_mailto_body: "Kære %{to_username}\n\nJeg vil gerne inviterer dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}"
      invite_friends:
-        no_friends_was_found_html: "<p>Der blev ikke fundet nogle %{appname} venner. Du skal invitere en eller flere af dine gode<br />venner til at bruge %{appname}. Enten ved at sende en invitation med nedenstående link<br />eller ved at sende en personlig invitation til at bruge %{appname}. En personlig invitation<br />er det bedste, da mange mennesker vil afvise uopfordrede spil-invitationer.</p>"
+        no_friends_was_found_html: "<p>Der blev ikke fundet nogle %{appname} venner. Du skal invitere en eller flere af dine gode<br />venner til at bruge %{appname}. Enten ved at sende en invitation med nedenstående link<br />eller ved at sende en personlig invitation til at bruge %{appname}. En personlig invitation<br />er det bedste, da mange mennesker vil afvise uopfordrede spil-invitationer.</p>" # todo: angularJS - moved to js.gifts.no_friends_was_found_html
         invite_friends_prompt: "Inviter venner:"
         invite_friends_link_title: "Brug dette link til at inviterer dine %{apiname} venner til at bruge %{appname}"
         invite_friends_message_title: "Inviter dine venner til %{appname}"
@@ -434,7 +434,7 @@ da:
         pending_gift_popup_msg: "Ret valuta? Svar Cancel for at vende tilbage og lave opslag færdig. Svar OK for at kassere det indtastede og opdatere valuta."
         description_required_text: "Tekst skal udfyldes."
         price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
-        no_gifts_was_found_html: "<p>Der blev ikke fundet nogle opslag. Hverken du eller dine venner har endnu oprettet<br />nogle opslag herinde i %{appname}. For at komme i gang bør du nu oprette et eller flere opslag<br />med noget, du gerne vil dele med dine venner eller med noget, du søger eller mangler<br />, og som du tror dine venner måske kan hjælpe dig med.</p>"
+        no_gifts_was_found_html: "<p>Der blev ikke fundet nogle opslag. Hverken du eller dine venner har endnu oprettet<br />nogle opslag herinde i %{appname}. For at komme i gang bør du nu oprette et eller flere opslag<br />med noget, du gerne vil dele med dine venner eller med noget, du søger eller mangler<br />, og som du tror dine venner måske kan hjælpe dig med.</p>" # todo: angularJS: moved to js.gifts.no_gifts_was_found_html
         comment_comment_required_text: "Kommentar felt skal udfyldes"
         comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
         http_invalid_last_row_id: "Systemfejl. last_row_id skal være tom ved første http kald. last_row_id = %{last_row_id}."
@@ -1307,6 +1307,8 @@ da:
         confirm_hide_gift: "Skjul opslag?"
         show_older_comment: "Vis ældre kommentar"
         show_older_comments: "Vis %{no_older_comments} ældre kommentarer"
+        no_gifts_was_found_html: "<p>Der blev ikke fundet nogle opslag. Hverken du eller dine venner har endnu oprettet<br />nogle opslag herinde i %{appname}. For at komme i gang bør du nu oprette et eller flere opslag<br />med noget, du gerne vil dele med dine venner eller med noget, du søger eller mangler<br />, og som du tror dine venner måske kan hjælpe dig med.</p>"
+        no_friends_was_found_html: "<p>Der blev ikke fundet nogle %{appname} venner. Du skal invitere en eller flere af dine gode<br />venner til at bruge %{appname}. Enten ved at sende en invitation med nedenstående link<br />eller ved at sende en personlig invitation til at bruge %{appname}. En personlig invitation<br />er det bedste, da mange mennesker vil afvise uopfordrede spil-invitationer.</p>"
      comments:
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil

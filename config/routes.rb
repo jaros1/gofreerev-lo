@@ -2,6 +2,11 @@ GofreerevFb::Application.routes.draw do
 
   filter :locale
 
+  # angularJS pages
+  get "main/index"
+  get "main/gifts"
+  get "main/auth"
+
   get "about/index"
   get "about/unsubscribe"
   get 'cookie/decline_cookies'
@@ -45,10 +50,12 @@ GofreerevFb::Application.routes.draw do
 
   # You can have the root of your site routed with "root"
   root :to => 'auth#index', :via => :all, :constraints => RoleConstraint.new(:empty, :not_logged_in), :as => 'root1'
-  root :to => 'gifts#index', :via => :all, :constraints => RoleConstraint.new(:empty, :logged_in), :as => 'root2'
+  # root :to => 'gifts#index', :via => :all, :constraints => RoleConstraint.new(:empty, :logged_in), :as => 'root2'
+  root :to => 'main#index', :via => :all, :constraints => RoleConstraint.new(:empty, :logged_in), :as => 'root2'
   root :to => 'facebook#create', :via => :all, :constraints => RoleConstraint.new(:fb_locale, :signed_request), :as => 'root3'
   root :to => 'auth#index', :via => :all, :constraints => RoleConstraint.new(:not_logged_in), :as => 'root4'
-  root :to => 'gifts#index', :via => :all, :constraints => RoleConstraint.new(:logged_in), :as => 'root5'
+  # root :to => 'gifts#index', :via => :all, :constraints => RoleConstraint.new(:logged_in), :as => 'root5'
+  root :to => 'main#index', :via => :all, :constraints => RoleConstraint.new(:logged_in), :as => 'root5'
 
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'
@@ -59,7 +66,7 @@ GofreerevFb::Application.routes.draw do
   # Example resource route (maps HTTP verbs to controller actions automatically):
   # todo: remove gifts_old1 and comments_old1
   scope "(:locale)" do
-    resources :gifts, :users, :inbox, :comments, :facebook, :gifts_old1, :comments_old1
+    resources :main, :gifts, :users, :inbox, :comments, :facebook, :gifts_old1, :comments_old1
   end
 
   # Example resource route with options:

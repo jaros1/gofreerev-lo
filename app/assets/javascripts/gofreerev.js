@@ -2956,7 +2956,18 @@ var Gofreerev = (function() {
 
 // angularJS code
 
-angular.module('gifts', [])
+angular.module('gifts', ['ngRoute'])
+    .config(function ($routeProvider) {
+        $routeProvider.when('/gifts', {
+            templateUrl: 'main/gifts',
+            controller: 'GiftsCtrl as ctrl'
+        })
+            .when('/auth', {
+                templateUrl: 'main/auth',
+                controller: 'AuthCtrl as ctrl'
+            });
+        $routeProvider.otherwise({redirectTo: '/gifts'});
+    })
     .factory('UserService', [function() {
         console.log('UserService loaded') ;
 
@@ -2976,6 +2987,12 @@ angular.module('gifts', [])
         var is_logged_in = function () {
             if (typeof users == 'undefined') return false ;
             for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
+            return false ;
+        }
+        var is_logged_in_with_provider = function (provider) {
+            if (typeof users == 'undefined') return false ;
+            if (provider == 'gofreerev') return is_logged_in() ;
+            for (var i=0 ; i< users.length ; i++ ) if ((users[i].provider == provider) && (users[i].friend == 1)) return true ;
             return false ;
         }
         var no_friends = function () {
@@ -3046,13 +3063,17 @@ angular.module('gifts', [])
         // returns: true: use fb notifications, false: use email
         // todo: auth/index page is not yet included in angularJS (users array is empty)
         var fb_logged_in_account = function () {
-            if (!users) return false ;
-            for (var i=0 ; i<users.length ; i++) {
-                if (users[i].provider=='facebook') return (users[i].friend==1) ;
-            }
-            return false ;
+            return is_logged_in_with_provider('facebook') ;
         }
-
+        var logout = function (provider) {
+            if (provider == 'gofreerev') {
+                init_users([]) ;
+                return ;
+            }
+            var new_users = [] ;
+            for (var i=0 ; i < users.length ; i++) if (users[i].provider != provider) new_users.push(users[i]) ;
+            init_users(new_users) ;
+        }
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3095,17 +3116,42 @@ angular.module('gifts', [])
 
         return {
             is_logged_in: is_logged_in,
+            is_logged_in_with_provider: is_logged_in_with_provider,
             no_friends: no_friends,
             get_login_users: get_login_users,
             get_login_userids: get_login_userids,
             get_user: get_user,
             get_users_currency: get_users_currency,
             find_giver: find_giver,
-            find_receiver: find_receiver
+            find_receiver: find_receiver,
+            logout: logout
         }
     }])
-    .controller('NavCtrl', [function() {
+    .controller('NavCtrl', ['UserService', function(userService) {
         console.log('NavCtrl loaded') ;
+        var self = this ;
+        self.userService = userService ;
+    }])
+    .controller('AuthCtrl', ['UserService', '$window', function(userService, $window) {
+        console.log('AuthCtrl loaded') ;
+        var self = this ;
+        self.userService = userService ;
+        self.providers = [] ;
+        self.providers.push({provider: 'gofreerev', name: 'Gofreerev'}) ;
+        var api_names = Gofreerev.rails['API_DOWNCASE_NAME'] ;
+        for (var key in api_names) {
+            if (api_names.hasOwnProperty(key)) {
+                self.providers.push({provider: key, name: api_names[key]}) ;
+            }
+        }
+        self.login = function (provider) {
+            if (userService.is_logged_in_with_provider(provider.provider)) return ;
+            $window.location.href = '/auth/' + provider.provider ;
+        }
+        self.logout = function (provider) {
+            if (!userService.is_logged_in_with_provider(provider.provider)) return ;
+            userService.logout(provider.provider) ;
+        }
     }])
     .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', function ($location, $http, $document, $window, $sce, userService) {
         console.log('GiftsCtrl loaded') ;
@@ -4003,4 +4049,32 @@ angular.module('gifts', [])
             var a = '<a href="' + href + '" title="' + link_title + '">' + apiname + '<a>'
             return $sce.trustAsHtml(a);
         }
-    }]);
+    }])
+    .filter('formatProviderSrc', [function () {
+        return function (provider) {
+            return '/images/' + provider.provider + '.png';
+        }
+    }])
+    .filter('formatProviderTraficLightSrc', ['UserService', function (userService) {
+        return function (provider) {
+            if (userService.is_logged_in_with_provider(provider.provider)) return '/images/connected.png';
+            else return '/images/disconnected.png';
+        }
+    }])
+    .filter('formatProviderLoginSrc', ['UserService', function (userService) {
+        return function (provider) {
+            if (userService.is_logged_in_with_provider(provider.provider)) return '/images/invisible-picture.gif';
+            else return '/images/connect.png';
+        }
+    }])
+    .filter('formatProviderLogoutSrc', ['UserService', function (userService) {
+        return function (provider) {
+            if (userService.is_logged_in_with_provider(provider.provider)) return '/images/disconnect.png';
+            else return '/images/invisible-picture.gif';
+        }
+    }])
+    .filter('formatProviderLoginHref', ['UserService', function (userService) {
+        return function (provider) {
+            return '/auth/' + provider.provider ;
+        }
+    }])

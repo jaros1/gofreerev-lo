@@ -1,0 +1,19 @@
+<div ng-controller="AuthCtrl as ctrl" style="width: 100%">
+
+    <table>
+        <tbody ng-repeat="provider in ctrl.providers">
+        <tr ng-show="provider.provider == 'gofreerev'"><td colspan="5"><b>Device login:</b></td></tr>
+        <tr>
+            <td>{{provider.name}} :</td>
+            <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
+            <td><img ng-src="{{provider|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
+            <td><img ng-src="{{provider|formatProviderLoginSrc}}" ng-click="ctrl.login(provider)" class="small_pro_pic"></td>
+            <td><img ng-src="{{provider|formatProviderLogoutSrc}}" ng-click="ctrl.logout(provider)" class="small_pro_pic"></td>
+        </tr>
+        <tr ng-show="provider.provider == 'gofreerev'"><td colspan="5">&nbsp;</td></tr>
+        <tr ng-show="provider.provider == 'gofreerev'"><td colspan="5"><b>API login:</b></td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div style="width: 100%"><hr></div>

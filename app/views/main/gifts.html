@@ -1,0 +1,528 @@
+<input id="newest-gift-id" name="newest_gift_id" type="hidden">
+<input id="newest-status-update-at" name="newest_status_update_at" type="hidden">
+
+<a href="#" id="share_gift" style="display: none">share gift</a>
+
+<div>
+
+    <div style="width: 100%">
+        <hr>
+    </div>
+
+    <div id="no-gifts-div" ng-show="ctrl.no_gifts()" style="width: 100%">
+        <span ng-bind-html="ctrl.texts.gifts.no_gifts_was_found_html"></span>
+    </div>
+    <div ng-show="ctrl.no_friends()" style="width: 100%">
+        <span ng-bind-html="ctrl.texts.gifts.no_friends_was_found_html"></span>
+        <table>
+            <tr>
+                <td>{{ctrl.texts.gifts.invite_friends_prompt}}</td>
+                <td>
+          <span ng-repeat="login_user in ctrl.login_users()">
+            <span ng-bind-html="login_user|formatInviteFriendsLink"></span>
+          </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div ng-show="(ctrl.no_gifts() || ctrl.no_friends())" style="width: 100%">
+        <hr>
+    </div>
+
+    <div style="width: 100%">
+        <table  id="gifts" style="table-layout:fixed;">
+            <thead>
+            <tr style="vertical-align: bottom;">
+                <th style="width: 52px; text-align: center">{{ctrl.texts.gifts.header.giver}}</th>
+                <th style="width: 52px; text-align: center">{{ctrl.texts.gifts.header.receiver}}</th>
+                <th style="width: 52px; text-align: center"></th>
+                <th>{{ctrl.texts.gifts.header.link_and_text}}</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr>
+                <td style="vertical-align: top">
+                    <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" ng-show="(ctrl.new_gift.direction == 'giver')" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
+                    <img src="/images/invisible-picture.gif" ng-hide="(ctrl.new_gift.direction == 'giver')" class="small_profile_picture"/>
+                </td>
+                <td style="vertical-align: top">
+                    <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" ng-show="(ctrl.new_gift.direction == 'receiver')" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
+                    <img src="/images/invisible-picture.gif" ng-hide="(ctrl.new_gift.direction == 'receiver')" class="small_profile_picture"/>
+                </td>
+                <td colspan="2">
+
+                    <div style="width: 100%" ng-show="ctrl.new_gift.show()">
+                        {{ctrl.texts.new_gift.header_line}}<br>
+                        <form name="new_gift_form" ng-submit="ctrl.create_new_gift()">
+                            <table>
+                                <tr title="{{ctrl.texts.new_gift.price_title}}">
+                                    <td>{{ctrl.texts.new_gift.price_prompt}}</td>
+                                    <td>
+                                        <input ng-model="ctrl.new_gift.price" type="number" min="0" step="0.01" size="10" placeholder="{{ctrl.texts.new_gift.price_placeholder}}" />
+                                        {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}} &nbsp;&nbsp;&nbsp;
+                                        <div style="text-wrap: none">
+                                            {{ctrl.texts.new_gift.direction_giver_prompt}} <input type="radio" ng-model="ctrl.new_gift.direction" value="giver"> &nbsp;&nbsp;
+                                            {{ctrl.texts.new_gift.direction_receiver_prompt}} <input type="radio" ng-model="ctrl.new_gift.direction" value="receiver">
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr title="{{ctrl.texts.new_gift.description_title}}">
+                                    <td style="vertical-align: top">{{ctrl.texts.new_gift.description_prompt}}</td>
+                                    <td>
+                    <textarea ng-model="ctrl.new_gift.description" cols="60" rows="2" required=""
+                              placeholder="{{ctrl.texts.new_gift.description_placeholder}}" onfocus="Gofreerev.autoresize_text_field(this)"></textarea>
+                                        <input type="submit" value="{{ctrl.texts.new_gift.submit_button_text}}" ng-disabled="new_gift_form.$invalid" class="new_gift_submit_large">
+                                    </td>
+                                </tr>
+                                <tr title="{{ctrl.new_gift.file_upload_title()}}">
+                                    <td>
+                                        <div class="fileupload bottom" ng-show="ctrl.is_logged_in()">
+                                            {{ctrl.texts.new_gift.file_prompt}}
+                                            <input type="file" id="gift_file" name="gift_file" accept=".gif,.jpg,.jpeg,.png,.bmp,capture=camera" class="upload">
+                                            <input name="gift[datatype]" type="hidden">
+                                        </div>
+                                        <div ng-hide="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt1}}</div>
+                                    </td>
+                                    <td>
+                                        <table>
+                                            <tbody>
+                                            <tr>
+                                                <td><input type="text" id="disp_gift_file" placeholder='{{ctrl.texts.new_gift.file_placeholder}}' ng-show="ctrl.is_logged_in()" disabled="" style="line-height:16px;"></td>
+                                                <td>
+                                                    <table class="new_gift_link_large">
+                                                        <tbody>
+                                                        <tr>
+                                                            <td><div ng-show="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt2}}</div></td>
+                                                            <td>
+                                                                <input type="url" size="28" maxlength="200" ng-model="ctrl.new_gift.open_graph_url" id="gift_open_graph_url1"
+                                                                       placeholder="{{ctrl.texts.new_gift.link_placeholder}}" ng-change="ctrl.new_gift_open_graph_url_change()">
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr class="new_gift_link_small">
+                                    <td>
+                                        <div ng-hide="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt1}}</div>
+                                        <div ng-show="ctrl.is_logged_in()">{{ctrl.texts.new_gift.link_prompt2}}</div>
+                                    </td>
+                                    <td>
+                                        <input type="url" size="28" maxlength="200" ng-model="ctrl.new_gift.open_graph_url" id="gift_open_graph_url2"
+                                               placeholder="{{ctrl.texts.new_gift.link_placeholder}}" ng-change="ctrl.new_gift_open_graph_url_change()">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">
+                                        <div id="gift_preview1">
+                                            <table>
+                                                <tbody>
+                                                <tr ng-show="ctrl.new_gift.open_graph_image">
+                                                    <td><img width="200" ng-src="{{ctrl.new_gift.open_graph_image}}"></td>
+                                                </tr>
+                                                <tr ng-show="ctrl.new_gift.open_graph_title">
+                                                    <td><b>{{ctrl.new_gift.open_graph_title}}</b></td>
+                                                </tr>
+                                                <tr ng-show="ctrl.new_gift.open_graph_description">
+                                                    <td>{{ctrl.new_gift.open_graph_description}}</td>
+                                                </tr>
+                                                <tr ng-show="ctrl.new_gift.open_graph_error">
+                                                    <td>{{ctrl.new_gift.open_graph_error}}</td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div id="gift_preview2" class="files"></div>
+                                    </td>
+                                </tr>
+                                <tr class="new_gift_submit_small">
+                                    <td></td>
+                                    <td><input type="submit" value="{{ctrl.texts.new_gift.submit_button_text}}" ng-disabled="new_gift_form.$invalid"></td>
+                                </tr>
+                            </table>
+                        </form>
+                    </div>
+
+
+                </td>
+            </tr>
+
+
+
+            <tr><td colspan="4"><hr/></td></tr>
+            </tbody>
+
+            <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter">
+            <tr style="vertical-align: top" id="gift-{{gift.gift_id}}-header" >
+                <td>
+                    <img ng-src="{{gift.giver_user_ids | formatUserImgSrc}}" ng-show='gift.giver_user_ids' class="small_pro_pic" title="{{gift.giver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.giver_user_ids)"/>
+                    <img src="/images/invisible-picture.gif" ng-hide='gift.giver_user_ids' class="small_profile_picture"/>
+                </td>
+                <td>
+                    <img ng-src="{{gift.receiver_user_ids | formatUserImgSrc}}" ng-show='gift.receiver_user_ids' class="small_pro_pic" title="{{gift.receiver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.receiver_user_ids)"/>
+                    <img src="/images/invisible-picture.gif" ng-hide='gift.receiver_user_ids' class="small_profile_picture"/>
+                </td>
+                <td colspan="2" class="wrapword" style="vertical-align: top;">
+                    <table>
+                        <tr>
+                            <td>
+                                <div style="max-height: 150px; overflow: hidden" id="gift-{{gift.gift_id}}-overflow-text">
+                                    <a href="/{{ctrl.language}}/gifts/{{gift.gift_id}}" title="{{ctrl.texts.gifts.link_title}}">
+                                        {{gift | formatGiftLinkText:2}}
+                                    </a> : <span ng-bind-html="gift.description | formatGiftDescription"></span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr ng-show="ctrl.show_full_gift_link(gift,1)">
+                            <td style="text-align: center">
+                                <div style="float: none">
+                                    <a href ng-click="ctrl.show_full_gift_click(gift.gift_id)">{{ctrl.texts.gifts.show_full_text}}</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr ng-show="ctrl.show_api_picture_url(gift)">
+                            <td>
+                                <img id="gift-{{gift.gift_id}}" ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+                            </td>
+                        </tr>
+                        <tr ng-show="ctrl.show_open_graph_image(gift)">
+                            <td>
+                                <a href="{{gift.open_graph_url}}" target="_blank">
+                                    <img id="gift-{{gift.gift_id}}-image" ng-src="{{gift.open_graph_image}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+                                </a>
+                            </td>
+                        </tr>
+                        <tr ng-show="ctrl.show_open_graph_title(gift)">
+                            <td>
+                                <b>{{gift.open_graph_title}}</b>
+                            </td>
+                        </tr>
+                        <tr ng-show="ctrl.show_open_graph_description(gift)">
+                            <td>
+                                {{gift.open_graph_description}}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr id='gift-{{gift.gift_id}}-links'>
+                <td colspan="2"></td>
+                <td colspan="2">
+                    <div ng-show="ctrl.show_full_gift_link(gift,2)">
+                        <a href ng-click="ctrl.show_full_gift_click(gift.gift_id)">{{ctrl.texts.gifts.show_full_text}}</a> -&nbsp;
+                    </div>
+                    <div ng-hide="gift.like">
+                        <a href ng-click="ctrl.like_gift(gift)">{{ctrl.texts.gifts.like_gift}}</a> -&nbsp;
+                    </div>
+                    <div ng-show="gift.like">
+                        <a href ng-click="ctrl.unlike_gift(gift)">{{ctrl.texts.gifts.unlike_gift}}</a> -&nbsp;
+                    </div>
+                    <div ng-hide="gift.follow">
+                        <a href ng-click="ctrl.follow_gift(gift)">{{ctrl.texts.gifts.follow_gift}}</a>
+                    </div>
+                    <div ng-show="gift.follow">
+                        <a href ng-click="ctrl.unfollow_gift(gift)">{{ctrl.texts.gifts.unfollow_gift}}</a>
+                    </div>
+                    <div ng-show="ctrl.show_delete_gift(gift)">
+                        &nbsp;- <a href ng-click="ctrl.delete_gift(gift)">{{ctrl.texts.gifts.delete_gift}}</a>
+                    </div>
+                    <div>
+                        &nbsp;- <a href ng-click="ctrl.hide_gift(gift)">{{ctrl.texts.gifts.hide_gift}}</a>
+                    </div>
+                    <div ng-show="ctrl.show_older_comments(gift)">
+                        &nbsp;- <a href ng-click="ctrl.show_older_comments_click(gift)">{{ctrl.show_older_comments_text(gift)}}</a>
+                    </div>
+                </td>
+            </tr>
+            <tr ng-repeat="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments))">
+                <td colspan="2">
+
+
+                    <div style="text-align: right;">
+                        <table style="text-align: left; margin-left: auto; margin-right: 10px;">
+                            <tbody>
+                            <tr ng-show="ctrl.show_cancel_new_deal_link(gift,comment)">
+                                <td><a href ng-click="ctrl.cancel_new_deal(gift,comment)">{{ctrl.texts.comments.cancel_new_deal}}</a></td>
+                            </tr>
+                            <tr ng-show="ctrl.show_accept_new_deal_link(gift,comment)">
+                                <td><a href ng-click="ctrl.accept_new_deal(gift,comment)">{{ctrl.texts.comments.accept_new_deal}}</a></td>
+                            </tr>
+                            <tr ng-show="ctrl.show_reject_new_deal_link(gift,comment)">
+                                <td><a href ng-click="ctrl.reject_new_deal(gift,comment)">{{ctrl.texts.comments.reject_new_deal}}</a></td>
+                            </tr>
+                            <tr ng-show="ctrl.show_delete_comment_link(gift,comment)">
+                                <td><a href ng-click="ctrl.delete_comment(gift,comment)">{{ctrl.texts.comments.delete_comment}}</a></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+
+                </td>
+                <td style="vertical-align: top;">
+                    <img ng-src="{{comment.user_ids | formatUserImgSrc}}" class="small_pro_pic" title="{{comment.user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(comment.userids)"/>
+                </td>
+                <td class="wrapword" style="text-align: left; vertical-align: top">
+                    <table>
+                        <tr>
+                            <td>
+                                <div style="max-height: 150px; overflow: hidden" class="overflow" id="comment-{{comment.commentid}}-overflow-text">
+                                    {{comment | formatComment:2}}
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: center">
+                                <div ng-show="ctrl.show_full_comment_link(comment)" style="float: none">
+                                    <a href ng-click="ctrl.show_full_comment_click(comment.commentid)">{{ctrl.texts.comments.show_full_text}}</a>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr id='gift-{{gift.gift_id}}-comment-new'>
+                <td colspan="2" style="text-align: right; vertical-align: top">
+                    <div ng-show="ctrl.show_new_deal_checkbox(gift)" title="{{(gift|formatNewProposalTitle)}}">
+                        <table>
+                            <tr>
+                                <td>{{ctrl.texts.new_comment.check_box_prompt}}</td>
+                                <td><input type="checkbox" ng-model="gift.new_comment.new_deal"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+                <td style="vertical-align: top">
+                    <img ng-src="{{ctrl.login_user_ids() | formatUserImgSrc}}" class="small_pro_pic" title="{{ctrl.login_user_ids() | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
+                </td>
+                <td style="text-align: left; vertical-align: top">
+                    <form name="gift-{{gift.gift_id}}-new-comment-form" ng-submit="ctrl.create_new_comment(gift)">
+                        <table style="border-spacing: 0;">
+                            <tr ng-show="gift.new_comment.new_deal">
+                                <td colspan="2">
+                                    <input ng-model="gift.new_comment.price" type="number" min="0" step="0.01" size="10" placeholder="{{ctrl.texts.new_gift.price_placeholder}}" />
+                                    {{ctrl.texts.new_gift.price_free}} {{ctrl.new_gift.currency}}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                  <textarea ng-model="gift.new_comment.comment" cols="60" rows="1" required=""
+                            placeholder="{{ctrl.texts.new_comment.comment_placeholder}}" onfocus="Gofreerev.autoresize_text_field(this)">
+                  </textarea>
+                                </td>
+                                <td>
+                                    <input type="submit" value="{{ctrl.texts.new_comment.submit_button_text}}" ng-disabled="gift-{{gift.gift_id}}-new-comment-form.$invalid" class="submit_comment_large">
+                                </td>
+                            </tr>
+                            <tr class="submit_comment_small">
+                                <td colspan="2">
+                                    <input type="submit" value="{{ctrl.texts.new_comment.submit_button_text}}" ng-disabled="gift-{{gift.gift_id}}-new-comment-form.$invalid">
+                                </td>
+                            </tr>
+                        </table>
+                    </form>
+                </td>
+            </tr>
+
+            <tr id="gift-{{gift.gift_id}}-footer-1">
+                <td colspan="4">
+                    <hr/>
+                </td>
+            </tr>
+            </tbody>
+
+            <tbody id="gifts_tbody">
+            <tr style="display: none" id='last-row-id-999999999'>
+                <td colspan="4"></td>
+            </tr>
+            </tbody>
+            <tfoot>
+            <tr id="show-more-rows-spinner">
+                <td colspan="4">
+                    <img src="/images/ajax-loading-64.gif"/>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <table>
+                        <tbody id='show-more-rows-errors' class="ajax_errors">
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <a data-remote="true" data-type="script" format="js" href="/gifts?last_row_id=999999999" id="show-more-rows-link" style="display: none">show-more-rows</a>
+    <script>
+        setTimeout(Gofreerev.report_missing_api_picture_urls, 2000) ;
+        Gofreerev.setup_ajax_expanding_page('gifts', false) ;
+    </script>
+
+
+    <!--
+      The File Upload processing plugin
+      https://blueimp.github.io/jQuery-File-Upload/
+      Some scripts have to be included here!
+    -->
+
+    <script src="/assets/jquery.fileupload-process.js"></script>
+    <script src="/assets/jquery.fileupload-image.js"></script>
+    <script src="/assets/jquery.fileupload-validate.js"></script>
+
+    <script>
+        /*jslint unparam: true, regexp: true */
+        /*global window, $ */
+        $(function () {
+            'use strict';
+            // Change this url to the location of your server-side upload handler:
+            var url = '/gifts/',
+                    uploadButton = $('<button/>')
+                            .addClass('btn btn-primary')
+                            .prop('disabled', true)
+                            .prop('id', 'gift_file_button')
+                            .css('display', 'none')
+                            .text('Processing...')
+                            .on('click', function () {
+                                console.log('uploadButton, onclick: start') ;
+                                debug_file_upload_plugin();
+                                var $this = $(this),
+                                        data = $this.data();
+                                $this
+                                        .off('click')
+                                        .text('Abort')
+                                        .on('click', function () {
+                                            $this.remove();
+                                            data.abort();
+                                        });
+                                console.log('uploadButton, onclick: data = ' + JSON.stringify(data)) ;
+                                data.submit().always(function () {
+                                    $this.remove();
+                                });
+                            }) ;
+            $('#gift_file').fileupload({
+                url: url,
+                dataType: 'json',
+                autoUpload: false,
+                acceptFileTypes: /(\.|\/)(gif|jpe?g|png|bmp)$/i,
+                maxFileSize: 5000000, // 5 MB
+                // Enable image resizing, except for Android and Opera,
+                // which actually support image resizing, but fail to
+                // send Blob objects via XHR requests:
+                disableImageResize: /Android(?!.*Chrome)|Opera/
+                        .test(window.navigator.userAgent),
+                previewMaxWidth: 100,
+                previewMaxHeight: 100,
+                previewCrop: true
+            }).on('fileuploadadd', function (e, data) {
+                var disp_gift_file = document.getElementById('disp_gift_file');
+                $.each(data.files.reverse(), function (index, file) {
+                    var filetype = data.originalFiles[index].type ;
+                    var is_logged_in = angular.element(disp_gift_file).controller().is_logged_in()
+                    var is_file_upload_disabled = !is_logged_in ;
+                    // console.log('is_file_upload_disabled = ' + is_file_upload_disabled) ;
+                    if (is_file_upload_disabled || (!(/^image\/(gif|jpe?g|png|bmp)$/.test(filetype)))) {
+                        // file upload disabled or invalid filetype - remove from file arrays
+                        if (is_file_upload_disabled) Gofreerev.add2log('File upload plugin - file upload is disabled') ;
+                        else Gofreerev.add2log('File upload plugin - invalid file type ' + filetype) ;
+                        data.originalFiles.splice(index,1) ;
+                        data.files.splice(index,1) ;
+                    }
+                    else {
+                        // filetype ok - keep only "last" file in gift_preview2
+                        $('#gift_preview2').empty();
+
+                        // dirty File Upload plugin/angular integration ==>
+                        // clear any old open graph url
+                        var open_graph_url = $('#gift_open_graph_url1');
+                        if (open_graph_url) {
+                            if (open_graph_url.val() != '') {
+                                open_graph_url.val('');
+                                open_graph_url.trigger('input')
+                            }
+                        }
+                        else {
+                            open_graph_url = open_graph_url = $('#gift_open_graph_url2');
+                            if (open_graph_url) {
+                                if (open_graph_url.val() != '') {
+                                    open_graph_url.val('');
+                                    open_graph_url.trigger('input')
+                                }
+                            }
+                        }
+                        // <== dirty File Upload plugin/angular integration
+
+                        // preview file
+                        data.context = $('<div/>').appendTo('#gift_preview2');
+                        var node = $('<p/>') ;
+                        //        .append($('<span/>').text(file.name));
+                        if (disp_gift_file) disp_gift_file.value = file.name ;
+                        if (!index) {
+                            node
+                                    .append(uploadButton.clone(true).data(data));
+                        }
+                        node.appendTo(data.context);
+                    }
+                });
+            }).on('fileuploadprocessalways', function (e, data) {
+                var index = data.index,
+                        file = data.files[index],
+                        node = $(data.context.children()[index]);
+                if (file.preview) {
+                    node
+                            .prepend('<br>')
+                            .prepend(file.preview);
+                }
+                if (file.error) {
+                    node
+                            .append('<br>')
+                            .append($('<span class="text-danger"/>').text(file.error));
+                }
+                if (index + 1 === data.files.length) {
+                    data.context.find('button')
+                            .text('Upload')
+                            .prop('disabled', !!data.files.error);
+                }
+            }).on('fileuploadprogressall', function (e, data) {
+                var progress = parseInt(data.loaded / data.total * 100, 10);
+                $('#progress .progress-bar').css(
+                        'width',
+                        progress + '%'
+                );
+            }).on('fileuploaddone', function (e, data) {
+                $.each(data.result.files, function (index, file) {
+                    if (file.url) {
+                        var link = $('<a>')
+                                .attr('target', '_blank')
+                                .prop('href', file.url);
+                        $(data.context.children()[index])
+                                .wrap(link);
+                    } else if (file.error) {
+                        var error = $('<span class="text-danger"/>').text(file.error);
+                        $(data.context.children()[index])
+                                .append('<br>')
+                                .append(error);
+                    }
+                });
+            }).on('fileuploadfail', function (e, data) {
+                $.each(data.files, function (index) {
+                    var error = $('<span class="text-danger"/>').text('File upload failed.');
+                    $(data.context.children()[index])
+                            .append('<br>')
+                            .append(error);
+                });
+            }).prop('disabled', !$.support.fileInput)
+                    .parent().addClass($.support.fileInput ? undefined : 'disabled');
+        });
+
+    </script>
+
+</div>
+
+<br/>

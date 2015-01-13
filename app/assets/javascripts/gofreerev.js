@@ -2968,7 +2968,7 @@ angular.module('gifts', ['ngRoute'])
             });
         $routeProvider.otherwise({redirectTo: '/gifts'});
     })
-    .factory('UserService', [function() {
+    .factory('UserService', ['$window', function($window) {
         console.log('UserService loaded') ;
 
         // users - read from local storage - used in angularJS filter functions
@@ -2989,9 +2989,21 @@ angular.module('gifts', ['ngRoute'])
             for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
             return false ;
         }
+        var get_device_user_id = function() {
+            return 0 ;
+            if (!$window.sessionStorage) return 0 ;
+            var userid = $window.sessionStorage.getItem('userid') ;
+            if (typeof userid == 'undefined') return 0 ;
+            if (userid == null) return 0 ;
+            userid = parseInt(userid) ;
+            return userid ;
+        }
+        var is_logged_in_with_device = function () {
+            return (get_device_user_id() > 0) ;
+        }
         var is_logged_in_with_provider = function (provider) {
+            if (provider == 'gofreerev') return is_logged_in_with_device() ;
             if (typeof users == 'undefined') return false ;
-            if (provider == 'gofreerev') return is_logged_in() ;
             for (var i=0 ; i< users.length ; i++ ) if ((users[i].provider == provider) && (users[i].friend == 1)) return true ;
             return false ;
         }
@@ -3116,6 +3128,7 @@ angular.module('gifts', ['ngRoute'])
 
         return {
             is_logged_in: is_logged_in,
+            is_logged_in_with_device: is_logged_in_with_device,
             is_logged_in_with_provider: is_logged_in_with_provider,
             no_friends: no_friends,
             get_login_users: get_login_users,
@@ -3138,19 +3151,41 @@ angular.module('gifts', ['ngRoute'])
         self.userService = userService ;
         self.providers = [] ;
         self.providers.push({provider: 'gofreerev', name: 'Gofreerev'}) ;
-        var api_names = Gofreerev.rails['API_DOWNCASE_NAME'] ;
+        var api_names = Gofreerev.rails['API_CAMELIZE_NAME'] ;
         for (var key in api_names) {
             if (api_names.hasOwnProperty(key)) {
                 self.providers.push({provider: key, name: api_names[key]}) ;
             }
         }
+        self.is_gofreerev = function (provider) {
+            return (provider.provider == 'gofreerev')
+        };
+        self.show_device_password = function(provider) {
+            if (!self.is_gofreerev(provider)) return false ;
+            return true ;
+            if (userService.is_logged_in_with_device()) return false ;
+            return true ;
+        };
+        self.device_password = '' ;
+        self.confirm_device_password = '' ;
+        self.device_login = function() {
+            alert('device login. password = ' + self.device_password + ', confirm password = ' + self.confirm_device_password) ;
+        };
         self.login = function (provider) {
             if (userService.is_logged_in_with_provider(provider.provider)) return ;
             $window.location.href = '/auth/' + provider.provider ;
-        }
+        };
         self.logout = function (provider) {
             if (!userService.is_logged_in_with_provider(provider.provider)) return ;
             userService.logout(provider.provider) ;
+        }
+        self.create_new_account_disabled = function () {
+            // todo: refactor to a angularJS directive
+            var device_password = $window.document.getElementById('device_password').value ;
+            if (device_password.length < 10) return true ;
+            if (device_password.length > 50) return true ;
+            var confirm_device_password = $window.document.getElementById('confirm_device_password').value ;
+            return (device_password != confirm_device_password) ;
         }
     }])
     .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', function ($location, $http, $document, $window, $sce, userService) {
@@ -4078,3 +4113,8 @@ angular.module('gifts', ['ngRoute'])
             return '/auth/' + provider.provider ;
         }
     }])
+    .filter('formatProviderHomeUrl', [function () {
+        return function (provider) {
+            return Gofreerev.rails['API_URL'][provider.provider] ;
+        }
+    }]) ;

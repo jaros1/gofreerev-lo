@@ -1,19 +1,66 @@
 <div ng-controller="AuthCtrl as ctrl" style="width: 100%">
-
-    <table>
-        <tbody ng-repeat="provider in ctrl.providers">
-        <tr ng-show="provider.provider == 'gofreerev'"><td colspan="5"><b>Device login:</b></td></tr>
-        <tr>
-            <td>{{provider.name}} :</td>
-            <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
-            <td><img ng-src="{{provider|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
-            <td><img ng-src="{{provider|formatProviderLoginSrc}}" ng-click="ctrl.login(provider)" class="small_pro_pic"></td>
-            <td><img ng-src="{{provider|formatProviderLogoutSrc}}" ng-click="ctrl.logout(provider)" class="small_pro_pic"></td>
-        </tr>
-        <tr ng-show="provider.provider == 'gofreerev'"><td colspan="5">&nbsp;</td></tr>
-        <tr ng-show="provider.provider == 'gofreerev'"><td colspan="5"><b>API login:</b></td></tr>
-        </tbody>
-    </table>
+    <form name="device_login_form" ng-submit="ctrl.device_login()">
+        <table>
+            <thead>
+            <tr>
+                <th></th>
+                <th style="width:52px"></th>
+                <th style="width:52px"></th>
+                <th style="width:52px"></th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody ng-repeat="provider in ctrl.providers">
+            <tr ng-show="provider.provider == 'gofreerev'">
+                <td colspan="5"><b>Device login:</b></td>
+            </tr>
+            <tr>
+                <td>
+                    <span ng-show="ctrl.is_gofreerev(provider)">Gofreerev</span>
+                    <a href="{{provider|formatProviderHomeUrl}}" ng-hide="ctrl.is_gofreerev(provider)"
+                       target="_blank">{{provider.name}}</a>
+                </td>
+                <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
+                <td><img ng-src="{{provider|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
+                <td>
+                    <img ng-hide="ctrl.is_gofreerev(provider)" ng-src="{{provider|formatProviderLoginSrc}}"
+                         ng-click="ctrl.login(provider)" class="small_pro_pic">
+                    <input ng-show="ctrl.is_gofreerev(provider)" type="image"
+                           ng-src="{{provider|formatProviderLoginSrc}}" ng-disabled="device_login_form.$invalid"
+                           class="small_pro_pic">
+                </td>
+                <td><img ng-src="{{provider|formatProviderLogoutSrc}}" ng-click="ctrl.logout(provider)"
+                         class="small_pro_pic"></td>
+            </tr>
+            <tr ng-show="ctrl.show_device_password(provider)">
+                <td>Password:</td>
+                <td colspan="3">
+                    <input type="password" id="device_password" ng-model="ctrl.device_password"
+                                       required="" ng-minlength="10" ng-maxlength="50" placeholder="Enter password"
+                                       style="width: 145px">
+                </td>
+                <td><input type="submit" value="Log in" ng-disabled="device_login_form.$invalid"></td>
+            </tr>
+            <tr ng-show="ctrl.show_device_password(provider)">
+                <td>Confirm:</td>
+                <td colspan="3">
+                    <input type='password' id="confirm_device_password" ng-model="ctrl.confirm_device_password"
+                           placeholder="Confirm new account password"
+                           style="width: 145px">
+                </td>
+                <td><input type="submit" value="Create" ng-disabled="ctrl.create_new_account_disabled()"></td>
+            </tr>
+            <tr ng-show="ctrl.is_gofreerev(provider)">
+                <td colspan="5">&nbsp;</td>
+            </tr>
+            <tr ng-show="ctrl.is_gofreerev(provider)">
+                <td colspan="5"><b>Social network login:</b></td>
+            </tr>
+            </tbody>
+        </table>
+    </form>
 </div>
 
-<div style="width: 100%"><hr></div>
+<div style="width: 100%">
+    <hr>
+</div>

@@ -3002,6 +3002,8 @@ angular.module('gifts', ['ngRoute'])
             return (get_device_user_id() > 0) ;
         }
         var is_logged_in_with_provider = function (provider) {
+            if (typeof provider == 'undefined') return is_logged_in_with_device() ;
+            if (provider == null) return is_logged_in_with_device() ;
             if (provider == 'gofreerev') return is_logged_in_with_device() ;
             if (typeof users == 'undefined') return false ;
             for (var i=0 ; i< users.length ; i++ ) if ((users[i].provider == provider) && (users[i].friend == 1)) return true ;
@@ -3150,42 +3152,64 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         self.userService = userService ;
         self.providers = [] ;
-        self.providers.push({provider: 'gofreerev', name: 'Gofreerev'}) ;
+        // self.providers.push({provider: 'gofreerev', name: 'Gofreerev'}) ;
         var api_names = Gofreerev.rails['API_CAMELIZE_NAME'] ;
         for (var key in api_names) {
             if (api_names.hasOwnProperty(key)) {
-                self.providers.push({provider: key, name: api_names[key]}) ;
+                self.providers.push(key) ;
             }
         }
         self.is_gofreerev = function (provider) {
             return (provider.provider == 'gofreerev')
         };
-        self.show_device_password = function(provider) {
-            if (!self.is_gofreerev(provider)) return false ;
+        self.show_device_password = function() {
             return true ;
             if (userService.is_logged_in_with_device()) return false ;
             return true ;
         };
+
+        // radio group login or register?
+        var passwords_a ;
+        if (localStorage.getItem("passwords") === null) {
+            passwords_a = [] ;
+        }
+        else {
+            passwords_a = JSON.parse(localStorage.getItem("passwords")) ;
+        }
+        if (passwords_a.length == 0) self.register = 'x' ;
+        else self.register = '' ;
+
         self.device_password = '' ;
         self.confirm_device_password = '' ;
         self.device_login = function() {
             alert('device login. password = ' + self.device_password + ', confirm password = ' + self.confirm_device_password) ;
         };
-        self.login = function (provider) {
-            if (userService.is_logged_in_with_provider(provider.provider)) return ;
-            $window.location.href = '/auth/' + provider.provider ;
-        };
-        self.logout = function (provider) {
-            if (!userService.is_logged_in_with_provider(provider.provider)) return ;
-            userService.logout(provider.provider) ;
+        self.is_logged_in = function (provider) {
+            return userService.is_logged_in_with_provider(provider)
         }
-        self.create_new_account_disabled = function () {
-            // todo: refactor to a angularJS directive
+        self.login = function (provider) {
+            if (userService.is_logged_in_with_provider(provider)) return ;
+            $window.location.href = '/auth/' + provider ;
+        };
+        self.is_logged_off = function (provider) {
+            return !userService.is_logged_in_with_provider(provider)
+        }
+        self.logout = function (provider) {
+            if (!userService.is_logged_in_with_provider(provider)) return ;
+            console.log('AuthCtrl: logout provider ' + provider) ;
+            userService.logout(provider) ;
+        }
+
+        self.register_disabled = function() {
             var device_password = $window.document.getElementById('device_password').value ;
             if (device_password.length < 10) return true ;
             if (device_password.length > 50) return true ;
             var confirm_device_password = $window.document.getElementById('confirm_device_password').value ;
             return (device_password != confirm_device_password) ;
+        }
+        self.login_or_register = function() {
+            if (self.register == '') alert('device login') ;
+            else alert('device register') ;
         }
     }])
     .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', function ($location, $http, $document, $window, $sce, userService) {
@@ -4085,21 +4109,34 @@ angular.module('gifts', ['ngRoute'])
             return $sce.trustAsHtml(a);
         }
     }])
+    .filter('formatProviderName', [function() {
+        var appname = Gofreerev.rails['APP_NAME'] ;
+        var providers = Gofreerev.rails['API_CAMELIZE_NAME'] ;
+        return function (provider) {
+            return (providers[provider] || appname) ;
+        }
+    }])
     .filter('formatProviderSrc', [function () {
         return function (provider) {
-            return '/images/' + provider.provider + '.png';
+            return '/images/' + (provider || 'gofreerev') + '.png';
         }
     }])
     .filter('formatProviderTraficLightSrc', ['UserService', function (userService) {
         return function (provider) {
-            if (userService.is_logged_in_with_provider(provider.provider)) return '/images/connected.png';
+            if (userService.is_logged_in_with_provider(provider)) return '/images/connected.png';
             else return '/images/disconnected.png';
         }
     }])
-    .filter('formatProviderLoginSrc', ['UserService', function (userService) {
-        return function (provider) {
-            if (userService.is_logged_in_with_provider(provider.provider)) return '/images/invisible-picture.gif';
-            else return '/images/connect.png';
+    .filter('formatLoginSrc', [function () {
+        return function (logged_in) {
+            if (logged_in) return '/images/invisible-picture.gif' ;
+            else return '/images/connect.png' ;
+        }
+    }])
+    .filter('formatLogoutSrc', [function () {
+        return function (logged_out) {
+            if (logged_out) return '/images/invisible-picture.gif' ;
+            else return '/images/disconnect.png' ;
         }
     }])
     .filter('formatProviderLogoutSrc', ['UserService', function (userService) {

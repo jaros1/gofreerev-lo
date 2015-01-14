@@ -1,5 +1,5 @@
 <div ng-controller="AuthCtrl as ctrl" style="width: 100%">
-    <form name="device_login_form" ng-submit="ctrl.device_login()">
+    <form name="device_login_form" ng-submit="ctrl.login_or_register()">
         <table>
             <thead>
             <tr>
@@ -10,51 +10,70 @@
                 <th></th>
             </tr>
             </thead>
-            <tbody ng-repeat="provider in ctrl.providers">
-            <tr ng-show="provider.provider == 'gofreerev'">
+
+            <!-- first row with device login (local storage) -->
+            <tbody>
+            <tr>
+            <tr>
                 <td colspan="5"><b>Device login:</b></td>
             </tr>
-            <tr>
+                <td>{{null|formatProviderName}}</td>
+                <td><img ng-src="{{null|formatProviderSrc}}" class="small_pro_pic"></td>
+                <td><img ng-src="{{null|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
                 <td>
-                    <span ng-show="ctrl.is_gofreerev(provider)">Gofreerev</span>
-                    <a href="{{provider|formatProviderHomeUrl}}" ng-hide="ctrl.is_gofreerev(provider)"
-                       target="_blank">{{provider.name}}</a>
+                    <input type="image" ng-src="{{ctrl.is_logged_in(null)|formatLoginSrc}}" ng-disabled="device_login_form.$invalid" class="small_pro_pic">
                 </td>
-                <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
-                <td><img ng-src="{{provider|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
                 <td>
-                    <img ng-hide="ctrl.is_gofreerev(provider)" ng-src="{{provider|formatProviderLoginSrc}}"
-                         ng-click="ctrl.login(provider)" class="small_pro_pic">
-                    <input ng-show="ctrl.is_gofreerev(provider)" type="image"
-                           ng-src="{{provider|formatProviderLoginSrc}}" ng-disabled="device_login_form.$invalid"
-                           class="small_pro_pic">
+                    <img ng-src="{{ctrl.is_logged_out(null)|formatLogoutSrc}}" ng-click="ctrl.logout(provider)" class="small_pro_pic">
                 </td>
-                <td><img ng-src="{{provider|formatProviderLogoutSrc}}" ng-click="ctrl.logout(provider)"
-                         class="small_pro_pic"></td>
             </tr>
-            <tr ng-show="ctrl.show_device_password(provider)">
+            <tr ng-show="ctrl.show_device_password()">
                 <td>Password:</td>
                 <td colspan="3">
                     <input type="password" id="device_password" ng-model="ctrl.device_password"
-                                       required="" ng-minlength="10" ng-maxlength="50" placeholder="Enter password"
-                                       style="width: 145px">
-                </td>
-                <td><input type="submit" value="Log in" ng-disabled="device_login_form.$invalid"></td>
-            </tr>
-            <tr ng-show="ctrl.show_device_password(provider)">
-                <td>Confirm:</td>
-                <td colspan="3">
-                    <input type='password' id="confirm_device_password" ng-model="ctrl.confirm_device_password"
-                           placeholder="Confirm new account password"
+                           required="" ng-minlength="10" ng-maxlength="50" placeholder="Enter device password"
                            style="width: 145px">
                 </td>
-                <td><input type="submit" value="Create" ng-disabled="ctrl.create_new_account_disabled()"></td>
+                <td><input type="submit" value="Log in" ng-hide="ctrl.register" ng-disabled="device_login_form.$invalid"></td>
             </tr>
-            <tr ng-show="ctrl.is_gofreerev(provider)">
+            <tr ng-show="ctrl.register">
+                <td>Confirm<br>password:</td>
+                <td colspan="3">
+                    <input type='password' id="confirm_device_password" ng-model="ctrl.confirm_device_password"
+                           ng-minlength="10" ng-maxlength="50" placeholder="Confirm new password"
+                           style="width: 145px">
+                </td>
+                <td><input type="submit" value="Create" ng-disabled="ctrl.register_disabled()"></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">
+                    Log in <input type="radio" ng-model="ctrl.register" value=""> &nbsp;&nbsp;
+                    Register <input type="radio" ng-model="ctrl.register" value="x">
+                </td>
+            </tr>
+
+            <tr>
                 <td colspan="5">&nbsp;</td>
             </tr>
-            <tr ng-show="ctrl.is_gofreerev(provider)">
+            <tr>
                 <td colspan="5"><b>Social network login:</b></td>
+            </tr>
+            </tbody>
+
+            <!-- rows with logins to social networks -->
+            <tbody>
+            <tr ng-repeat="provider in ctrl.providers">
+                <td><a href="{{provider|formatProviderHomeUrl}}" target="_blank">{{provider|formatProviderName}}</a></td>
+                <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
+                <td><img ng-src="{{provider|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
+                <td>
+                    <img ng-src="{{ctrl.is_logged_in(provider)|formatLoginSrc}}" class="small_pro_pic"
+                         ng-click="ctrl.login(provider)">
+                </td>
+                <td><img ng-src="{{ctrl.is_logged_off(provider)|formatLogoutSrc}}" class="small_pro_pic"
+                         ng-click="ctrl.logout(provider)">
+                </td>
             </tr>
             </tbody>
         </table>

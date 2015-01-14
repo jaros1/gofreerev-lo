@@ -19,12 +19,12 @@
             </tr>
                 <td>{{null|formatProviderName}}</td>
                 <td><img ng-src="{{null|formatProviderSrc}}" class="small_pro_pic"></td>
-                <td><img ng-src="{{null|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
+                <td><img ng-src="{{ctrl.trafic_light_status(null)|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
                 <td>
-                    <input type="image" ng-src="{{ctrl.is_logged_in(null)|formatLoginSrc}}" ng-disabled="device_login_form.$invalid" class="small_pro_pic">
+                    <input type="image" ng-src="{{ctrl.is_logged_in(null)|formatLoginSrc}}" ng-hide="ctrl.is_logged_in(null)" ng-disabled="device_login_form.$invalid" class="small_pro_pic">
                 </td>
                 <td>
-                    <img ng-src="{{ctrl.is_logged_out(null)|formatLogoutSrc}}" ng-click="ctrl.logout(provider)" class="small_pro_pic">
+                    <img ng-src="{{ctrl.is_logged_out(null)|formatLogoutSrc}}" ng-click="ctrl.logout(null)" class="small_pro_pic">
                 </td>
             </tr>
             <tr ng-show="ctrl.show_device_password()">
@@ -45,28 +45,27 @@
                 </td>
                 <td><input type="submit" value="Create" ng-disabled="ctrl.register_disabled()"></td>
             </tr>
-            <tr>
+            <tr ng-show="ctrl.show_device_password()">
                 <td></td>
                 <td colspan="4">
                     Log in <input type="radio" ng-model="ctrl.register" value=""> &nbsp;&nbsp;
                     Register <input type="radio" ng-model="ctrl.register" value="x">
                 </td>
             </tr>
+            </tbody>
 
+            <!-- rows with logins to social networks -->
+            <tbody>
             <tr>
                 <td colspan="5">&nbsp;</td>
             </tr>
             <tr>
                 <td colspan="5"><b>Social network login:</b></td>
             </tr>
-            </tbody>
-
-            <!-- rows with logins to social networks -->
-            <tbody>
             <tr ng-repeat="provider in ctrl.providers">
                 <td><a href="{{provider|formatProviderHomeUrl}}" target="_blank">{{provider|formatProviderName}}</a></td>
                 <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
-                <td><img ng-src="{{provider|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
+                <td><img ng-src="{{ctrl.trafic_light_status(provider)|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>
                 <td>
                     <img ng-src="{{ctrl.is_logged_in(provider)|formatLoginSrc}}" class="small_pro_pic"
                          ng-click="ctrl.login(provider)">

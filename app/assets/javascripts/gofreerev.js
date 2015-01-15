@@ -3285,7 +3285,8 @@ angular.module('gifts', ['ngRoute'])
         }
         self.login = function (provider) {
             if (userService.is_logged_in_with_provider(provider)) return ;
-            $window.location.href = '/auth/' + provider ;
+            var userid = sessionStorage.getItem('userid') ;
+            $window.location.href = '/auth/' + provider + '?client_userid=' + userid ;
         };
         self.is_logged_off = function (provider) {
             return !userService.is_logged_in_with_provider(provider)

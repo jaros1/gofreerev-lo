@@ -15,6 +15,7 @@ class ApplicationController < ActionController::Base
   # For APIs, you may want to use :null_session instead.
   protect_from_forgery with: :exception
   before_filter :request_url_for_header
+  before_filter :get_client_userid
   before_filter :fetch_users
   before_action :set_locale_from_params
   before_action :get_timezone
@@ -60,6 +61,22 @@ class ApplicationController < ActionController::Base
   private
   def add_dummy_user
     @users << User.find_or_create_dummy_user('gofreerev') if @users.size == 0
+  end
+
+  # split session storage in a section for each client userid
+  # done to bring rails session storage more in sync with JS sessionStorage
+  # not 100% bulletproof as there can be simultaneous transactions in two different browser tabs
+  private
+  def get_client_userid
+    if params[:client_userid].to_s =~ /^[1-9][0-9]*$/
+      session[:client_userid] = params[:client_userid].to_s.to_i
+    elsif env['omniauth.params'] and (env['omniauth.params']["client_userid"].to_s =~ /^[1-9][0-9]*$/)
+      session[:client_userid] = env['omniauth.params']["client_userid"].to_s.to_i
+    else
+      logger.debug2 'client_userid was not found'
+    end
+    logger.debug2 "session[:client_userid] = #{session[:client_userid]}"
+    session[:client_userid]
   end
 
   # fetch user info. initialize @users array. One user with each login API. Used in page heading, security etc

@@ -74,14 +74,14 @@ class AuthController < ApplicationController
     if env['action_dispatch.request.unsigned_session_cookie']
       omniauth_status = env['action_dispatch.request.unsigned_session_cookie']['omniauth.state']
     end
-    # logger.debug2 "omniauth_status = #{omniauth_status}"
-    # logger.debug2 "params[:state] = #{params[:state]}"
+    logger.debug2 "omniauth_status = #{omniauth_status}"
+    logger.debug2 "params[:state] = #{params[:state]}"
     # use key auth.create.invalid_state_login in case of invalid state
     if (params.has_key?(:state) or omniauth_status) and params[:state] != omniauth_status
       # oauth2 and invalid state
       logger.debug2 "invalid state after omniauth login. omniauth_status = #{omniauth_status}, params[:state] = #{params[:state]}"
       save_flash_key ".invalid_state_login", :apiname => provider_downcase(provider)
-      redirect_to :controller => :auth, :action => :index
+      redirect_to "/#{I18n.locale}/main#/auth"
       return
     end
 
@@ -117,10 +117,10 @@ class AuthController < ApplicationController
       user = User.find_by_user_id(user_id)
       if @users.size == 1 and !user.share_account_id
         # singleton user login - continue to gifts page
-        redirect_to :controller => :gifts, :action => :index
+        redirect_to "/#{I18n.locale}/main#/gifts"
       else
         # multi user login - stay on login page for other logins, check expired access tokens, share share level, find friends etc
-        redirect_to :controller => :auth, :action => :index
+        redirect_to "/#{I18n.locale}/main#/auth"
       end
     else
       # login failed
@@ -132,7 +132,7 @@ class AuthController < ApplicationController
         logger.debug2  "invalid response from User.find_or_create_from_auth_hash. Must be nil or a valid input to translate. Response: #{user}"
         save_flash_key '.find_or_create_from_auth_hash', :response => user, :exception => e.message.to_s
       end
-      redirect_to :controller => :auth, :action => :index
+      redirect_to "/#{I18n.locale}/main#/auth"
     end
   end # create
 

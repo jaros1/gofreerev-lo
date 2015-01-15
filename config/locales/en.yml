@@ -1262,7 +1262,7 @@ en:
         href_vkontakte: "https://vkontakte.ru/share.php?url=%{link}"
      open_graph:
         ajax_error: "Cannot check url. %{error}. More information in server log."
-     new_gift: # from gifts.index.* - for angularJS
+     new_gift: # main/gifts page - from gifts.index.* - for angularJS
         header_line: "Help each other and the environment. Share your resources. Give, rent, loan, sell."
         price_title: "Price in virtual free money. Optional. Can be set now or later. Best set be buyer / receiver so that the price becomes a measure of how much the thing / help was appreciated. Free virtual national money with a negative interest is being used here. %{min_interest}% per year with a positive balance and %{max_interest}% per year for a negative balance. One goal of the negative rate is to ensure that money and resources circulates. The negative interest rate makes it possible with a society without growth, overconsumption and with plenty of leisure to all."
         price_prompt: "Price:"
@@ -1281,11 +1281,11 @@ en:
         link_prompt1: "Link:"
         link_prompt2: "or link:"
         link_placeholder: "copy/paste url" # todo: angularJS - moved to js.new_gift.placeholder
-     gifts_header: # from gifts.table_header.* - for angularJS
+     gifts_header: # main/gifts page - from gifts.table_header.* - for angularJS
         giver: "From:"
         receiver: "To:"
         link_and_text: "Text:"
-     gifts: # from gifts.api_gift.* - for angularJS
+     gifts: # main/gifts page - from gifts.api_gift.* - for angularJS
         direction_giver: "%{givername} offers"
         direction_receiver: "%{receivername} seeks"
         direction_both: "from %{givername} to %{receivername}"
@@ -1313,7 +1313,7 @@ en:
         invite_friends_mailto_email: "x"
         invite_friends_mailto_subject: "%{appname} game invitation"
         invite_friends_mailto_body: "Dear friend\n\nI would like to invite you to try this app.\n%{url}\n\nIt is a game inspired by Charles Eisenstein's book Sacred Economics.\nThe goal is to help each other, the environment and to create a new and better kind of money.\n\nKind regards\n%{from_username}"
-     comments:
+     comments: # main/gifts page
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Show more text"
@@ -1325,13 +1325,26 @@ en:
         confirm_reject_new_deal: "Reject proposal?"
         delete_comment: "Delete"
         confirm_delete_comment: "Delete comment?"
-     new_comment:
+     new_comment: # main/gifts page
         proposal_title: "Use agreement proposal checkbox if you wish to make a deal proposal to %{username}. Enter an optional price if you wish to use free money in this deal. %{username} will be notified about your proposal and can accept or reject your offer."
         check_box_prompt: "Agreement proposal"
         comment_placeholder: "Enter a comment ..."
         submit_button_text: "Save"
-     user_div: # from shared.user_div.* - for angularJS
+     user_div: # main/gifts page - from shared.user_div.* - for angularJS
         title_non_friend: "%{username}/%{apiname}."
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #
         title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."
         title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info."
+     auth: # main/auth page
+        app_login_header: "%{appname} log in:"
+        app_login_title: "%{appname} login is used to protect data stored in your browser. Password and your data is stored encrypted in your browser. Important: Remember your password. There is no help if you forget password and entered data can in more or less extent have been lost. \"Register\" can after forgotten password be used to create a new empty %{appname} account. Please choose a secure password (10-50 characters). The password  protects among other things %{appname} authorization to your social networks (friends lists) and communication with other %{appname} users."
+        password_prompt: "Password"
+        password_placeholder: "Enter password"
+        log_in_button: "Log in"
+        confirm_password_prompt: "Confirm<br>password"
+        confirm_password_placeholder: "Confirm password"
+        register_button: "Create"
+        radio_log_in_prompt: "Log in"
+        radio_register_prompt: "Register"
+        provider_login_header: "Social network log in:"
+        provider_login_title: "Use social network log in to download one or more friends lists to be used when sharing gifts in %{appname}."

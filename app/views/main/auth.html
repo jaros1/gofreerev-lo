@@ -10,12 +10,10 @@
                 <th></th>
             </tr>
             </thead>
-
-            <!-- first row with device login (local storage) -->
-            <tbody>
+            <tbody title="{{ctrl.texts.auth.app_login_title}}">
             <tr>
             <tr>
-                <td colspan="5"><b>Device login:</b></td>
+                <td colspan="5"><b>{{ctrl.texts.auth.app_login_header}}</b></td>
             </tr>
                 <td>{{null|formatProviderName}}</td>
                 <td><img ng-src="{{null|formatProviderSrc}}" class="small_pro_pic"></td>
@@ -27,40 +25,38 @@
                     <img ng-src="{{ctrl.is_logged_out(null)|formatLogoutSrc}}" ng-click="ctrl.logout(null)" class="small_pro_pic">
                 </td>
             </tr>
-            <tr ng-show="ctrl.show_device_password()">
-                <td>Password:</td>
+            <tr ng-hide="ctrl.is_logged_in(null)">
+                <td>{{ctrl.texts.auth.password_prompt}}</td>
                 <td colspan="3">
                     <input type="password" id="device_password" ng-model="ctrl.device_password"
-                           required="" ng-minlength="10" ng-maxlength="50" placeholder="Enter device password"
+                           required="" ng-minlength="10" ng-maxlength="50" placeholder="{{ctrl.texts.auth.password_placeholder}}"
                            style="width: 145px">
                 </td>
-                <td><input type="submit" value="Log in" ng-hide="ctrl.register" ng-disabled="device_login_form.$invalid"></td>
+                <td><input type="submit" value="{{ctrl.texts.auth.log_in_button}}" ng-hide="ctrl.register" ng-disabled="device_login_form.$invalid"></td>
             </tr>
             <tr ng-show="ctrl.register">
-                <td>Confirm<br>password:</td>
+                <td><span ng-bind-html="ctrl.texts.auth.confirm_password_prompt"></span></td>
                 <td colspan="3">
                     <input type='password' id="confirm_device_password" ng-model="ctrl.confirm_device_password"
-                           ng-minlength="10" ng-maxlength="50" placeholder="Confirm new password"
+                           ng-minlength="10" ng-maxlength="50" placeholder="{{ctrl.texts.auth.confirm_password_placeholder}}"
                            style="width: 145px">
                 </td>
-                <td><input type="submit" value="Create" ng-disabled="ctrl.register_disabled()"></td>
+                <td><input type="submit" value="{{ctrl.texts.auth.register_button}}" ng-disabled="ctrl.register_disabled()"></td>
             </tr>
-            <tr ng-show="ctrl.show_device_password()">
+            <tr ng-hide="ctrl.is_logged_in(null)">
                 <td></td>
                 <td colspan="4">
-                    Log in <input type="radio" ng-model="ctrl.register" value=""> &nbsp;&nbsp;
-                    Register <input type="radio" ng-model="ctrl.register" value="x">
+                    {{ctrl.texts.auth.radio_log_in_prompt}} <input type="radio" ng-model="ctrl.register" value=""> &nbsp;&nbsp;
+                    {{ctrl.texts.auth.radio_register_prompt}} <input type="radio" ng-model="ctrl.register" value="x">
                 </td>
             </tr>
             </tbody>
-
-            <!-- rows with logins to social networks -->
-            <tbody>
+            <tbody ng-show="ctrl.is_logged_in(null)" title="{{ctrl.texts.auth.provider_login_title}}">
             <tr>
                 <td colspan="5">&nbsp;</td>
             </tr>
             <tr>
-                <td colspan="5"><b>Social network login:</b></td>
+                <td colspan="5"><b>{{ctrl.texts.auth.provider_login_header}}</b></td>
             </tr>
             <tr ng-repeat="provider in ctrl.providers">
                 <td><a href="{{provider|formatProviderHomeUrl}}" target="_blank">{{provider|formatProviderName}}</a></td>

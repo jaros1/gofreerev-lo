@@ -67,7 +67,7 @@ da:
   # application layout with page header and footer
   layouts:
      application:
-        cookie_note_title: "%{appname} anvender temporære cookies i forbindelse med log in. I temporær session cookie gemmes information om starttidspunkt, login API adgangsoplysninger, sprog, tidszone. Temporære cookies slettes, når browseren lukkes. Eneste cookie, der gemmes blivende, er accept af anvendelse af cookies."
+        cookie_note_title: "%{appname} anvender temporære cookies i forbindelse med log ind. I temporær session cookie gemmes information om starttidspunkt, login API adgangsoplysninger, sprog, tidszone. Temporære cookies slettes, når browseren lukkes. Eneste cookie, der gemmes blivende, er accept af anvendelse af cookies."
         cookie_note_text_html: "%{appname} anvender cookies som en del af tjenesten. Se <a href=\"%{url}\">cookies</a>."
         cookie_accept_text: "Ok"
         cookie_reject_text: "Afvis"
@@ -1264,7 +1264,7 @@ da:
         href_vkontakte:
      open_graph:
         ajax_error: "Kan ikke tjekke link. %{error}. Mere information i server log."
-     new_gift: # from gifts.index - for AngularJS
+     new_gift: # main/gifts page - from gifts.index - for AngularJS
         header_line: "Hjælp hinanden og miljøet. Del jeres ressourcer. Giv, lån/lej ud, sælg etc."
         price_title: "Pris i virtuelle frie penge. Valgfri. Kan sættes nu eller senere. Bedst, hvis køber/modtager sætter pris, der så bliver et mål for, hvor meget pris vedkommende satte på den modtagne ting/hjælp. Der anvendes frie virtuelle nationale penge herinde med en negativ rente. %{min_interest}% om året for en positiv saldo og %{max_interest}% om året for en negativ saldo. Et formål med den negative rente er at sikre, at penge og ressourcer cirkulerer. Den negative rente gør det muligt med et samfund uden vækst, uden overforbrug og med mere fritid."
         price_prompt: "Pris:"
@@ -1283,11 +1283,11 @@ da:
         link_prompt1: "Link:"
         link_prompt2: "eller link:"
         link_placeholder: "kopier/indsæt url" # todo: angularJS - moved to js.new_gift.placeholder
-     gifts_header: # from gifts.table_header
+     gifts_header: # main/gifts page - from gifts.table_header
         giver: "Fra:"
         receiver: "Til:"
         link_and_text: "Tekst:"
-     gifts: # from gifts.api_gift - for AngularJS filter
+     gifts: # main/gifts page - from gifts.api_gift - for AngularJS filter
         direction_giver: "%{givername} tilbyder"
         direction_receiver: "%{receivername} søger"
         direction_both: "fra %{givername} til %{receivername}"
@@ -1315,7 +1315,7 @@ da:
         invite_friends_mailto_email: "x" # todo: angularJS - moved to js.gifts.invite_friends_mailto_email
         invite_friends_mailto_subject: "%{appname} spil invitation" # todo: angularJS - moved to js.gifts.invite_friends_mailto_subject
         invite_friends_mailto_body: "Kære ven\n\nJeg vil gerne invitere dig til at prøve denne app.\n%{url}\n\nDet er et spil inspireret af Charles Eisenstein's bog Sacred Economics.\nSpillet går ud på at hjælpe hinanden, miljøet og om at skabe en ny og bedre slags penge.\n\nKH %{from_username}" # todo: angularJS - moved to js.gifts.invite_friends_mailto_body
-     comments:
+     comments: # main/gifts page
         optional_price: "/ %{price}"
         comment_text: "%{date} %{optional_price} : %{text}" # new_deal_yn == nil
         show_full_text: "Vis mere tekst"
@@ -1327,7 +1327,7 @@ da:
         confirm_reject_new_deal: "Afvis forslag?"
         delete_comment: "Slet"
         confirm_delete_comment: "Slet kommentar?"
-     new_comment:
+     new_comment: # main/gifts page
         proposal_title: "Anvend \"Foreslå aftale\" tjekboks, hvis du ønsker at foreslå %{username} en aftale. Indtast en pris i frie penge, hvis du ønsker at anvende frie penge i denne aftale. %{username} vil få besked om dit tilbud og kan accepterer eller afvise dit forslag."
         check_box_prompt: "Foreslå aftale"
         comment_placeholder: "Skriv en kommentar..."
@@ -1337,4 +1337,17 @@ da:
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."
         title_non_friend_click: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
         title_friend_click: "%{username}/%{apiname}. Saldo %{balance}. Klik her for at se brugeroplysninger."
+     auth: # main/auth page
+        app_login_header: "%{appname} log ind:"
+        app_login_title: "%{appname} log ind bruges til at beskytte data gemt i din browser. Kodeord og dine data gemmes krypteret i din browser. Vigtigt: Husk dit kodeord. Der er ingen hjælp ved glemt kodeord og indtastede data kan i større eller mindre omfang være tabt. Ved glemt kodeord kan \"Opret konto\" anvendes til at oprette en ny tom %{appname} konto. Vælg gerne et sikkert kodeord (10-50 tegn). Kodeordet beskytter bl.a. %{appname} autorisation til dine sociale netværk (vennelister) og kommunikationen med andre %{appname} brugere."
+        password_prompt: "Kodeord"
+        password_placeholder: "Indtast kodeord"
+        log_in_button: "Log ind"
+        confirm_password_prompt: "Gentag<br>kodeord"
+        confirm_password_placeholder: "Gentag kodeord"
+        register_button: "Opret"
+        radio_log_in_prompt: "Log ind"
+        radio_register_prompt: "Opret konto"
+        provider_login_header: "Log ind til sociale netværk:"
+        provider_login_title: "Brug log ind til sociale netværk til at hente den eller de vennelister der skal benyttes ved deling af resourcer i %{appname}."
 

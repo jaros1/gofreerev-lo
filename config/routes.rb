@@ -18,8 +18,7 @@ GofreerevFb::Application.routes.draw do
     flash = Flash.new
     flash.message = params[:message] # if using sinatra-flash or rack-flash
     flash.save!
-    # todo: can application controller methods be used in routes.rb?
-    session[:flash_id] = flash.id
+    set_session_value(:flash_id, flash.id)
     redirect '/auth'
   end
   get '/auth', :to => 'auth#index'

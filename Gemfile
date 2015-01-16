@@ -30,6 +30,7 @@ gem 'flickraw' # flickr API calls - https://github.com/hanklords/flickraw
 # 3) foursquare
 # register : https://foursquare.com/developers/apps
 # reference: https://developer.foursquare.com/docs/
+# dependency problem between foursquare2 and linkedin: unsolved hashie dependency - foursquare2 (>= 0) depends on hashie (~> 1.0.0) - linkedin (= 1.0.0) depends on hashie (3.0.0)
 gem 'omniauth-foursquare' # https://github.com/arunagw/omniauth-foursquare
 gem 'foursquare2' # foursquare API calls - https://github.com/mattmueller/foursquare2
 
@@ -53,6 +54,8 @@ gem 'instagram' #, '0.10.0' # Instagram API calls  - https://github.com/Instagra
 gem 'omniauth-linkedin' # https://github.com/skorks/omniauth-linkedin
 # gem 'linkedin', '0.4.4' # LinkedIn API calls - https://rubygems.org/gems/linkedin
 gem 'linkedin', '0.4.4', :path => 'vendor/gems/linkedin-0.4.4' # LinkedIn API calls - https://rubygems.org/gems/linkedin (*)
+# gem 'linkedin', '0.4.7' # still map error
+# gem 'linkedin', '1.0.0' # unsolved hashie dependency - foursquare2 (>= 0) depends on hashie (~> 1.0.0) - linkedin (= 1.0.0) depends on hashie (3.0.0)
 
 # 7) twitter
 # register : https://apps.twitter.com/

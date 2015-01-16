@@ -23,24 +23,9 @@ class ApplicationController < ActionController::Base
   # generic session setter/getter
   # some data are stored in different sections for each client_userid
   # some data are stored encrypted in database
-  private
-  def get_session_value (key)
-    session[key]
-  end
+  # see /config/initializers/action_controller_extensions.rb
   helper_method :get_session_value
-  def get_session_array_value (key, index)
-    session[key][index]
-  end
-  def set_session_value (name, value)
-    session[name] = value
-    value
-  end
-  def set_session_array_value (name, value, index)
-    session[name][index] = value
-  end
-  def delete_session_array_value( name, index)
-    session[name].delete(index)
-  end
+  helper_method :get_sessionid
 
   # render to language specific pages.
   # viewname=create, session[:language] = da => call create-da.html.erb if the page exists
@@ -110,7 +95,7 @@ class ApplicationController < ActionController::Base
     # logger.debug2  "start. sessionid = #{request.session_options[:id]}"
     # logger.debug2  "I18n.locale = #{I18n.locale}"
 
-    # cookie note in page header for the first n seconds for a new session
+    # cookie note in page header for the first 30 seconds for a new session
     # eu cookie law - also called Directive on Privacy and Electronic Communications
     # accepted cookie is a permanent cookie set if user accepts cookies
     if SHOW_COOKIE_NOTE and SHOW_COOKIE_NOTE > 0 and cookies[:cookies] != 'accepted'
@@ -509,11 +494,6 @@ class ApplicationController < ActionController::Base
   helper_method :provider_url
 
 
-  private
-  def get_sessionid
-    request.session_options[:id]
-  end
-  helper_method :get_sessionid
 
 
   private

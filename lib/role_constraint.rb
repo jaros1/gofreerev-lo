@@ -4,13 +4,19 @@
 # 3) login from FB app => use fb/create
 # roles:
 class RoleConstraint
+
+
   def initialize(*roles)
     @roles = roles
   end
 
+  def session
+    @session
+  end
+
   def matches?(request)
     params = request.params
-    session = request.session
+    @session = request.session
     # logger.debug2  "roles = #{@roles}, roles.class = #{@roles.class}"
     # logger.debug2  "request = #{@request}, request.class = #{request.class}"
     # logger.debug2  "request.methods = #{request.methods.sort.join(', ')}"
@@ -20,7 +26,8 @@ class RoleConstraint
       # todo: should use session helper methods from applicaiton controller (get_session_value)
       #       this will not work after splitting session storage in one section for each client_userid
       #       this will not work if :userids is moved to database session storage
-      user_ids = session[:user_ids] || []
+      user_ids = get_session_value(:user_ids) || []
+      logger.warn2 "WARNING: using get_session_value method from ActionControllerExtensions in routes/RoleConstraint. Not tested. user_ids = #{user_ids}"
       if user_ids.length == 0
         users = []
       else
@@ -33,7 +40,7 @@ class RoleConstraint
     empty = (@roles.index(:empty) != nil and empty?(params) or @roles.index(:empty) == nil)
     # logger.debug2  "empty = #{empty}"
     logged_in = (@roles.index(:logged_in) != nil and users.length > 0 or @roles.index(:logged_in) == nil)
-    # logger.debug2  "logged_in = #{logged_in}"
+    logger.debug2  "logged_in = #{logged_in}"
     not_logged_in = (@roles.index(:not_logged_in) != nil and users.length == 0 or @roles.index(:not_logged_in) == nil)
     # logger.debug2  "not_logged_in = #{not_logged_in}"
     fb_locale = (@roles.index(:fb_locale) != nil and params[:fb_locale].to_s != '' or @roles.index(:fb_locale) == nil)

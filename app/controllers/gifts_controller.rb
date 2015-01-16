@@ -187,13 +187,7 @@ class GiftsController < ApplicationController
       end
 
       # post on api wall(s) - priority = 5
-      # status:
-      # - facebook ok -
-      # - google+ not implemented - The Google+ API is at current time a read only API
-      # - linkedin - ok
-      # - twitter - todo
       # note that post_on_<provider> is called even if post_gift_allowed? is false (ajax inject link to grant missing permission)
-      no_walls = 0
       tokens = get_session_value(:tokens) || {}
       tokens.keys.each do |provider|
         next unless API_GIFT_PICTURE_STORE[provider] # skip readonly API's
@@ -206,14 +200,7 @@ class GiftsController < ApplicationController
         else
           add_task "generic_post_on_wall('#{provider}',#{gift.id})", 5
         end
-        no_walls += 1
       end # each provider
-
-      # write only warning once about missing write on wall privs. once
-      if no_walls == 0
-        add_error_key '.no_api_walls', :appname => APP_NAME unless get_session_value(:walls) == false
-      end
-      set_session_value(:walls, (no_walls > 0))
 
       # disable file upload button if post on provider wall was rejected for all apis
       # enable file upload button if post on wall was allowed for one provider

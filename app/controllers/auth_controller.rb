@@ -67,6 +67,9 @@ class AuthController < ApplicationController
     @auth_hash = auth_hash
     logger.secret2 "auth_hash = #{auth_hash}"
 
+    # angularJS single page url: main#/auth or main#/gifts:_)
+    angular_url = "/#{I18n.locale}/main?client_userid=#{get_client_userid}#/"
+
     provider = auth_hash.get_provider
 
     # check state - only relevant for auth 2.0 - maybe already done in omniauth-oauth2?
@@ -81,7 +84,7 @@ class AuthController < ApplicationController
       # oauth2 and invalid state
       logger.debug2 "invalid state after omniauth login. omniauth_status = #{omniauth_status}, params[:state] = #{params[:state]}"
       save_flash_key ".invalid_state_login", :apiname => provider_downcase(provider)
-      redirect_to "/#{I18n.locale}/main#/auth"
+      redirect_to "#{angular_url}auth"
       return
     end
 
@@ -117,10 +120,10 @@ class AuthController < ApplicationController
       user = User.find_by_user_id(user_id)
       if @users.size == 1 and !user.share_account_id
         # singleton user login - continue to gifts page
-        redirect_to "/#{I18n.locale}/main#/gifts"
+        redirect_to "#{angular_url}gifts"
       else
         # multi user login - stay on login page for other logins, check expired access tokens, share share level, find friends etc
-        redirect_to "/#{I18n.locale}/main#/auth"
+        redirect_to "#{angular_url}auth"
       end
     else
       # login failed
@@ -132,7 +135,7 @@ class AuthController < ApplicationController
         logger.debug2  "invalid response from User.find_or_create_from_auth_hash. Must be nil or a valid input to translate. Response: #{user}"
         save_flash_key '.find_or_create_from_auth_hash', :response => user, :exception => e.message.to_s
       end
-      redirect_to "/#{I18n.locale}/main#/auth"
+      redirect_to "#{angular_url}auth"
     end
   end # create
 

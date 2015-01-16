@@ -65,37 +65,6 @@ API_ID     = api_id.with_indifferent_access     # A
 API_SECRET = api_secret.with_indifferent_access # B
 API_TOKEN  = api_token.with_indifferent_access
 
-# dynamic oauth setup for google+. Google access token expires after one hour.
-# request online access without refresh token for share level 0-2
-# request offline access (refresh token) for share level 3 (batch friend list update) and 4 (single sign-on)
-# todo: could not get google+ login with online access to work. offline access is being used
-GOOGLE_OAUTH2_SETUP = lambda do |env|
-  request = Rack::Request.new(env)
-  session = request.session
-  session[:user_ids] = [] unless session[:user_ids]
-  login_user_ids = session[:user_ids]
-  if login_user_ids.size > 0
-    us = User.where(:user_id => login_user_ids)
-    max_share_level = us.collect { |u| u.share_account ? u.share_account.share_level : 0 }.max
-  end
-  max_share_level = 0 unless max_share_level
-  env['omniauth.strategy'].options[:client_id] = API_ID[:google_oauth2]
-  env['omniauth.strategy'].options[:client_secret] = API_SECRET[:google_oauth2]
-  env['omniauth.strategy'].options[:scope] = 'plus.login userinfo.profile'
-  if max_share_level < 3
-    # request online access (no refresh token)
-    # todo: could not get google+ login with online access to work. offline access is being used
-    # env['omniauth.strategy'].options[:access_type] = 'online'
-    # env['omniauth.strategy'].options[:approval_prompt] = 'force'
-    env['omniauth.strategy'].options[:access_type] = 'offline'
-    env['omniauth.strategy'].options[:prompt] = 'consent'
-  else
-    # request offline access (refresh token to renew access token once every hour)
-    env['omniauth.strategy'].options[:access_type] = 'offline'
-    env['omniauth.strategy'].options[:prompt] = 'consent'
-  end
-end # GOOGLE_OAUTH2_SETUP
-
 # facebook oauth 2.2 - facebook friends list is empty in oauth 2.x - friend list only includes friends that also are app users
 # - false : don't ask for user_friends permission
 # - true  : ask for user_friends permission
@@ -116,8 +85,8 @@ Rails.application.config.middleware.use OmniAuth::Builder do
            }
   provider :flickr, API_ID[:flickr], API_SECRET[:flickr], :scope => 'read'
   provider :foursquare, API_ID[:foursquare], API_SECRET[:foursquare]
-  # provider :google_oauth2, API_ID[:google_oauth2], API_SECRET[:google_oauth2], :scope => 'plus.login userinfo.profile', :access_type => 'offline', :prompt => 'consent'
-  provider :google_oauth2, :setup => GOOGLE_OAUTH2_SETUP
+  provider :google_oauth2, API_ID[:google_oauth2], API_SECRET[:google_oauth2], :scope => 'plus.login userinfo.profile', :access_type => 'offline', :prompt => 'consent'
+  # provider :google_oauth2, :setup => GOOGLE_OAUTH2_SETUP
   provider :instagram, API_ID[:instagram], API_SECRET[:instagram]
   provider :linkedin, API_ID[:linkedin], API_SECRET[:linkedin], :scope => "r_basicprofile r_network", :fields => ['id', 'first-name', 'last-name', 'picture-url', 'public-profile-url', 'location']
   provider :twitter, API_ID[:twitter], API_SECRET[:twitter], {:image_size => 'bigger', :authorize_params => {:x_auth_access_type => 'write'}}

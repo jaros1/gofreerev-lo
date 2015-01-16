@@ -184,7 +184,7 @@ class UtilController < ApplicationController
       #    2b) invalid url and api_gift_id and deleted_at_api != 'Y' and not
 
       # todo: 3 - max request picture url once every hour
-      tokens = session[:tokens]
+      tokens = get_session_value(:tokens)
       return format_response_key('.mis_api_pic_no_tokens') unless tokens
       api_clients = {}
       api_gifts.each do |api_gift|
@@ -798,7 +798,7 @@ class UtilController < ApplicationController
   def do_tasks
     begin
       # todo: debug why IE is not setting state before redirecting to facebook in facebook/autologin
-      logger.debug2 "session[:session_id] = #{session[:session_id]}, session[:state] = #{session[:state]}"
+      logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
       # save timezone received from javascript
       set_timezone(params[:timezone])
       # todo: debug problems with session[:last_row_id]
@@ -806,7 +806,7 @@ class UtilController < ApplicationController
       # cleanup old tasks
       Task.where("created_at < ? and ajax = ?", 2.minute.ago, 'Y').destroy_all
       Task.where("created_at < ? and ajax = ?", 10.minute.ago, 'N').destroy_all
-      Task.where("session_id = ? and ajax = ?", session[:session_id], 'Y').order('priority, id').each do |at|
+      Task.where("session_id = ? and ajax = ?", get_sessionid, 'Y').order('priority, id').each do |at|
         at.destroy
         if !logged_in?
           logger.warn2 "not logged in. Ignoring task #{at.task}"
@@ -887,7 +887,7 @@ class UtilController < ApplicationController
             'util.do_tasks.login_user_id_unknown',
             {:provider => provider, :apiname => provider_downcase(provider), :user_id => login_user_id, :task => task}] unless login_user
     # get token for api requests
-    token = (session[:tokens] || {})[provider]
+    token = (get_session_value(:tokens) || {})[provider]
     return [login_user, token,
             'util.do_tasks.login_token_not_found',
             {:provider => provider, :apiname => provider_downcase(provider), :task => task}] if token.to_s == ""
@@ -1756,10 +1756,10 @@ class UtilController < ApplicationController
         # c) check that access token is not expired
         # d) share_level 3 (dynamic friend lists) is allowed with negative expires_at loaded from database - re-login not required
         # e) share_level 4 (single sign-on) is not allowed with negative expires_at loaded from database - re-login required
-        tokens = session[:tokens] || {}
-        expires_at = session[:expires_at] || {}
-        logger.debug2 "expires_at = #{session[:expires_at]}"
-        refresh_tokens = session[:refresh_tokens] || {}
+        tokens = get_session_value(:tokens) || {}
+        expires_at = get_session_value(:expires_at) || {}
+        logger.debug2 "expires_at = #{expires_at}"
+        refresh_tokens = get_session_value(:refresh_tokens) || {}
         reconnect_required = []
         @users.each do |user|
           provider = user.provider

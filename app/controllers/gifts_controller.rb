@@ -194,7 +194,7 @@ class GiftsController < ApplicationController
       # - twitter - todo
       # note that post_on_<provider> is called even if post_gift_allowed? is false (ajax inject link to grant missing permission)
       no_walls = 0
-      tokens = session[:tokens] || {}
+      tokens = get_session_value(:tokens) || {}
       tokens.keys.each do |provider|
         next unless API_GIFT_PICTURE_STORE[provider] # skip readonly API's
         # check permissions
@@ -211,9 +211,9 @@ class GiftsController < ApplicationController
 
       # write only warning once about missing write on wall privs. once
       if no_walls == 0
-        add_error_key '.no_api_walls', :appname => APP_NAME unless session[:walls] == false
+        add_error_key '.no_api_walls', :appname => APP_NAME unless get_session_value(:walls) == false
       end
-      session[:walls] = (no_walls > 0)
+      set_session_value(:walls, (no_walls > 0))
 
       # disable file upload button if post on provider wall was rejected for all apis
       # enable file upload button if post on wall was allowed for one provider

@@ -20,11 +20,33 @@ class ApplicationController < ActionController::Base
   before_action :set_locale_from_params
   before_action :get_timezone
 
+  # generic session setter/getter
+  # some data are stored in different sections for each client_userid
+  # some data are stored encrypted in database
+  private
+  def get_session_value (key)
+    session[key]
+  end
+  helper_method :get_session_value
+  def get_session_array_value (key, index)
+    session[key][index]
+  end
+  def set_session_value (name, value)
+    session[name] = value
+    value
+  end
+  def set_session_array_value (name, value, index)
+    session[name][index] = value
+  end
+  def delete_session_array_value( name, index)
+    session[name].delete(index)
+  end
+
   # render to language specific pages.
   # viewname=create, session[:language] = da => call create-da.html.erb if the page exists
   private
   def render_with_language(viewname)
-    language = session[:language]
+    language = set_session_value(:language)
     # logger.debug2  "language = #{language}"
     if !language or language == BASE_LANGUAGE
       # logger.debug2 "Render #{viewname}"
@@ -69,15 +91,16 @@ class ApplicationController < ActionController::Base
   private
   def get_client_userid
     if params[:client_userid].to_s =~ /^[1-9][0-9]*$/
-      session[:client_userid] = params[:client_userid].to_s.to_i
+      set_session_value(:client_userid, params[:client_userid].to_s.to_i)
     elsif env['omniauth.params'] and (env['omniauth.params']["client_userid"].to_s =~ /^[1-9][0-9]*$/)
-      session[:client_userid] = env['omniauth.params']["client_userid"].to_s.to_i
+      set_session_value(:client_userid, env['omniauth.params']["client_userid"].to_s.to_i)
     else
       logger.debug2 'client_userid was not found'
     end
-    logger.debug2 "session[:client_userid] = #{session[:client_userid]}"
-    session[:client_userid]
+    logger.debug2 "session[:client_userid] = #{get_session_value(:client_userid)}"
+    get_session_value(:client_userid)
   end
+
 
   # fetch user info. initialize @users array. One user with each login API. Used in page heading, security etc
   private
@@ -91,27 +114,27 @@ class ApplicationController < ActionController::Base
     # eu cookie law - also called Directive on Privacy and Electronic Communications
     # accepted cookie is a permanent cookie set if user accepts cookies
     if SHOW_COOKIE_NOTE and SHOW_COOKIE_NOTE > 0 and cookies[:cookies] != 'accepted'
-      session[:created] = Time.new unless session[:created].class == Time
-      cookie_note = SHOW_COOKIE_NOTE - (Time.new - session[:created])
+      set_session_value(:created, Time.new) unless get_session_value(:created).class == Time
+      cookie_note = SHOW_COOKIE_NOTE - (Time.new - get_session_value(:created))
       @cookie_note = cookie_note if cookie_note >= 0.5
     end
 
     # initialize empty session variables for new session
-    session[:user_ids] = [] unless session[:user_ids] # array with user_ids
-    session[:tokens] = {} unless session[:tokens] # hash with oauth access token index by provider
-    session[:expires_at] = {} unless session[:expires_at] # hash with unix expire timestamp for oauth access token index by provider
-    session[:refresh_tokens] = {} unless session[:refresh_tokens] # hash with "refresh token" (google+ only ) index by provider
+    set_session_value(:user_ids, []) unless get_session_value(:user_ids) # array with user_ids
+    set_session_value(:tokens, {}) unless get_session_value(:tokens) # hash with oauth access token index by provider
+    set_session_value(:expires_at, {}) unless get_session_value(:expires_at) # hash with unix expire timestamp for oauth access token index by provider
+    set_session_value(:refresh_tokens, {}) unless get_session_value(:refresh_tokens) # hash with "refresh token" (google+ only ) index by provider
 
     # remove logged in users with expired access token
     login_user_ids.each do |user_id|
       uid, provider = user_id.split('/')
       next if uid == 'gofreerev' # dummy user for not connected session
-      expires_at = (session[:expires_at] || {})[provider]
+      expires_at = (get_session_value(:expires_at) || {})[provider]
       # refresh google+ access token once every hour
       # http://stackoverflow.com/questions/12572723/rails-google-client-api-unable-to-exchange-a-refresh-token-for-access-token
       if expires_at and (expires_at.abs < Time.now.to_i) and (provider == 'google_oauth2')
         logger.debug2 "refreshing expired google+ access token"
-        refresh_tokens = session[:refresh_tokens] || {}
+        refresh_tokens = get_session_value(:refresh_tokens) || {}
         refresh_token = refresh_tokens[provider]
         if refresh_token
           api_client = Google::APIClient.new(
@@ -149,9 +172,10 @@ class ApplicationController < ActionController::Base
             logger.debug2 "res2.methods = #{res2.methods.sort.join(', ')}"
             logger.secret2 "res2.access_token = #{res2.access_token}"
             logger.debug2 "res2.expires_at = #{res2.expires_at}"
-            session[:tokens][provider] = res2.access_token
+            set_session_array_value(:tokens, res2.access_token, provider)
             sign = expires_at >= 0 ? 1 : -1 # keep sign for expires_at (positive=web login, negative=single sign-on)
-            session[:expires_at][provider] = expires_at = sign * res2.expires_at.to_i
+            expires_at = sign * res2.expires_at.to_i
+            set_session_array_value(:expires_at, expires_at, provider)
             logger.debug2 'google+ access token was refreshed'
             # save new access token
             user = User.find_by_user_id(user_id)
@@ -171,9 +195,9 @@ class ApplicationController < ActionController::Base
         logger.debug2 "found login user with missing or expired access token. provider = #{provider}, expires_at = #{expires_at}"
         add_error_key 'auth.destroy.expired_access_token',
                       :provider => provider, :apiname => provider_downcase(provider), :appname => APP_NAME
-        session[:user_ids].delete(user_id)
-        session[:tokens].delete(provider)
-        session[:expires_at].delete(provider)
+        delete_session_array_value(:user_ids, user_id)
+        delete_session_array_value(:tokens, provider)
+        delete_session_array_value(:expires_at, provider)
       end
     end
 
@@ -187,11 +211,11 @@ class ApplicationController < ActionController::Base
     # check for deleted users - user(s) deleted in an other session/browser
     if login_user_ids.length != @users.length
       login_user_ids_tmp = @users.collect { |user| user.user_id }
-      tokens = session[:tokens] || {}
+      tokens = get_session_value(:tokens) || {}
       new_tokens = {}
       @users.each { |user| new_tokens[user.provider] = tokens[user.provider] }
-      session[:user_ids] = login_user_ids_tmp
-      session[:tokens] = new_tokens
+      set_session_value(:user_ids, login_user_ids_tmp)
+      set_session_value(:tokens, new_tokens)
     end
 
     # refresh and check authorization information from db
@@ -200,9 +224,9 @@ class ApplicationController < ActionController::Base
       if user.share_account and [3, 4].index(user.share_account.share_level) and user.access_token and user.access_token_expires
         # keep sign for session[:expires_at] (positive for web page login users, negative for single sign-on users)
         provider = user.provider
-        sign = session[:expires_at][provider] >= 0 ? 1 : -1
-        session[:tokens][provider] = YAML::load(user.access_token)
-        session[:expires_at][provider] = sign * user.access_token_expires
+        sign = get_session_array_value(:expires_at, provider) >= 0 ? 1 : -1
+        set_session_array_value(:tokens, (YAML::load(user.access_token)), provider)
+        set_session_array_value(:expires_at, (sign * user.access_token_expires), provider)
       end
       # post on wall. two sessions with common users can have different post on wall selection
       # session post is loaded into session variable at login
@@ -290,8 +314,9 @@ class ApplicationController < ActionController::Base
   def set_locale_from_params
     logger.debug2 "start"
     params[:locale] = nil if params.has_key?(:locale) and xhr?
-    session[:language] = valid_locale(params[:locale]) || session[:language]
-    I18n.locale = valid_locale(params[:locale]) || valid_locale(session[:language]) || valid_locale(I18n.default_locale) || 'en'
+    language = valid_locale(params[:locale]) || get_session_value(:language)
+    set_session_value(:language, language)
+    I18n.locale = valid_locale(params[:locale]) || valid_locale(language) || valid_locale(I18n.default_locale) || 'en'
     # logger.debug2  "I18n.locale = #{I18n.locale}. params[:locale] = #{params[:locale]}, session[:language] = #{session[:language]}, "
 
     # save language for batch notifications - for example friends find with friends suggestions
@@ -485,8 +510,15 @@ class ApplicationController < ActionController::Base
 
 
   private
+  def get_sessionid
+    request.session_options[:id]
+  end
+  helper_method :get_sessionid
+
+
+  private
   def add_task (task, priority=5)
-    Task.add_task(session[:session_id], task, priority)
+    Task.add_task(get_sessionid, task, priority)
   end
 
   private
@@ -592,27 +624,31 @@ class ApplicationController < ActionController::Base
     # user login ok
     first_login = !logged_in?
     # save user id, access token and expires_at - multiple logins allowed - one for each login provider
+
+    # todo: 1) must split session storage in one section for each client_userid / each local browser account
+    # todo: 2) cookie limit 4kb. Should save few data in session cookie and bigger data encrypted in session table
+
     login_user_ids = login_user_ids().clone
     login_user_ids.delete_if { |user_id2| user_id2.split('/').last == provider }
     login_user_ids << user.user_id
-    tokens = session[:tokens] || {}
+    tokens = get_session_value(:tokens) || {}
     tokens[provider] = token
-    expires = session[:expires_at] || {}
+    expires = get_session_value(:expires_at) || {}
     expires[provider] = expires_at.to_i # positive sign for current login user
-    session[:user_ids] = login_user_ids
-    session[:tokens] = tokens
-    session[:expires_at] = expires
+    set_session_value(:user_ids, login_user_ids)
+    set_session_value(:tokens, tokens)
+    set_session_value(:expires_at, expires)
     logger.secret2 "expires_at = #{expires}"
     # refresh token is only used for google+
-    session[:refresh_tokens][provider] = options[:refresh_token] if options[:refresh_token] # only google+
-    logger.debug2 "session[:refresh_tokens] = #{session[:refresh_tokens]}"
+    set_session_array_value(:refresh_tokens, options[:refresh_token], provider)  if options[:refresh_token] # only google+
+    logger.debug2 "session[:refresh_tokens] = #{get_session_value(:refresh_tokens)}"
     # copy post_on_wall status to session (cookie or table)
     # - to allow different post_on_wall_yn selection for two browser sessions with same user
     # - wrrite warning in top of gifts/index age if post on wall authorization is changed in an other browser session for same user
     set_post_on_wall_selected((user.post_on_wall_yn == 'Y'), provider, true)
     set_post_on_wall_authorized(user.post_on_wall_authorized?, provider, true)
     # fix invalid or missing language for translate
-    session[:language] = valid_locale(language) unless valid_locale(session[:language])
+    set_session_value(:language, valid_locale(language)) unless valid_locale(get_session_value(:language))
     set_locale_from_params
 
     return nil if user.deleted_at # no post login tasks for delete marked users
@@ -642,11 +678,12 @@ class ApplicationController < ActionController::Base
             # disconnect user3 before single sign-on login with user2
             logger.debug2 "single sign-off: disconnecting old #{user3.debug_info} user"
             provider2 = user2.provider
-            session[:user_ids] = login_user_ids.delete_if { |user_id3| user_id3.split('/').last == provider2 }
+            user_ids_tmp = login_user_ids.delete_if { |user_id3| user_id3.split('/').last == provider2 }
+            set_session_value(:user_ids, user_ids_tmp)
             @users.delete_if { |user3| user3.provider == provider2 }
-            session[:tokens].delete(provider2)
-            session[:expires_at].delete(provider2)
-            session[:refresh_tokens].delete(provider2)
+            delete_session_array_value(:tokens, provider2)
+            delete_session_array_value(:expires_at, provider2)
+            delete_session_array_value(:refresh_tokens, provider2)
             clear_post_on_wall_selected(provider2)
           end # if
           # single sign-on for user2
@@ -689,10 +726,12 @@ class ApplicationController < ActionController::Base
         next if user2.id == user.id
         user2.update_attribute :currency, currency if user2.currency != currency
         user2.update_attribute :last_login_at, user.last_login_at
-        session[:user_ids] << user2.user_id
-        session[:tokens][user2.provider] = YAML::load(user2.access_token)
-        session[:expires_at][user2.provider] = -user2.access_token_expires # negative sign (auth info loaded from db)
-        session[:refresh_tokens][user2.provider] = user2.refresh_token # only google+
+        user_ids_tmp = get_session_value(:user_ids)
+        user_ids_tmp << user2.user_id
+        set_session_value(:user_ids, user_ids_tmp)
+        set_session_array_value(:tokens, (YAML::load(user2.access_token)), user2.provider)
+        set_session_array_value(:expires_at, -user2.access_token_expires, user2.provider)  # negative sign (auth info loaded from db)
+        set_session_array_value(:refresh_tokens, user2.refresh_token, user2.provider)  # only google+
         # copy post_on_wall status to session (cookie or table)
         # - to allow different post_on_wall_yn selection for two browser sessions with same user
         # - wrrite warning in top of gifts/index age if post on wall authorization is changed in an other browser session for same user
@@ -700,7 +739,7 @@ class ApplicationController < ActionController::Base
         set_post_on_wall_authorized(user2.post_on_wall_authorized?, user2.provider, true)
         @users << user2
       end
-      logger.debug2 "expires_at = #{session[:expires_at]}"
+      logger.debug2 "expires_at = #{get_session_value(:expires_at)}"
     end
 
     # flash with login message. Login messages:
@@ -805,9 +844,11 @@ class ApplicationController < ActionController::Base
       add_dummy_user
       return
     end
-    session[:user_ids].delete_if { |user_id| user_id.split('/').last == provider}
-    session[:tokens].delete(provider)
-    session[:expires_at].delete(provider)
+    user_ids_tmp = get_session_value(:user_ids)
+    user_ids_tmp = user_ids_tmp.delete_if { |user_id| user_id.split('/').last == provider}
+    set_session_value(:user_ids, user_ids_tmp)
+    delete_session_array_value(:tokens, provider)
+    delete_session_array_value(:expires_at, provider)
     clear_post_on_wall_selected(provider)
     @users.delete_if { |user| user.provider == provider }
     add_dummy_user if @users.size == 0
@@ -824,9 +865,10 @@ class ApplicationController < ActionController::Base
   # three methods that saves state in session cookie store
   private
   def set_state_cookie_store (context)
-    state = session[:state].to_s
-    state = session[:state] = String.generate_random_string(30) unless state.length == 30
-    logger.debug2 "session[:session_id] = #{session[:session_id]}, session[:state] = #{session[:state]}"
+    state = get_session_value(:state).to_s
+    state = String.generate_random_string(30) unless state.length == 30
+    set_session_value(:state, state)
+    logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
     "#{state}-#{context}"
   end
   def clear_state_cookie_store
@@ -835,9 +877,9 @@ class ApplicationController < ActionController::Base
     get_linkedin_api_client() if logged_in?
   end
   def invalid_state_cookie_store?
-    logger.debug2 "session[:session_id] = #{session[:session_id]}, session[:state] = #{session[:state]}, params[:state] = #{params[:state]}"
+    logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}, params[:state] = #{params[:state]}"
     state = params[:state].to_s
-    return true unless session[:state].to_s == state.first(30)
+    return true unless get_session_value(:state).to_s == state.first(30)
     false
   end
 
@@ -848,10 +890,10 @@ class ApplicationController < ActionController::Base
   private
   def set_state_tasks_store (context)
     task_name = 'facebook_state'
-    t = Task.find_by_session_id_and_task(session[:session_id], task_name)
+    t = Task.find_by_session_id_and_task(get_sessionid, task_name)
     t.destroy if t
     t = Task.new
-    t.session_id = session[:session_id]
+    t.session_id = get_sessionid
     t.task = task_name
     t.priority = 5
     t.ajax = 'N'
@@ -862,7 +904,7 @@ class ApplicationController < ActionController::Base
   end # set_state_tasks_store
   def invalid_state_tasks_store?
     task_name = 'facebook_state'
-    t = Task.find_by_session_id_and_task(session[:session_id], task_name)
+    t = Task.find_by_session_id_and_task(get_sessionid, task_name)
     t.destroy if t
     return true unless t
     return true if t.created_at < 1.minute.ago
@@ -884,10 +926,10 @@ class ApplicationController < ActionController::Base
   def save_flickr_api_client (client, token)
     logger.debug2 "start #{Time.now}"
     task_name = 'flickr_write'
-    t = Task.find_by_session_id_and_task(session[:session_id], task_name)
+    t = Task.find_by_session_id_and_task(get_sessionid, task_name)
     t.destroy if t
     t = Task.new
-    t.session_id = session[:session_id]
+    t.session_id = get_sessionid
     t.task = task_name
     t.priority = 5
     t.ajax = 'N'
@@ -898,7 +940,7 @@ class ApplicationController < ActionController::Base
   def get_flickr_api_client
     logger.debug2 "start #{Time.now}"
     task_name = 'flickr_write'
-    t = Task.where("session_id = ? and task = ? and created_at > ?", session[:session_id], task_name, 10.minutes.ago).first
+    t = Task.where("session_id = ? and task = ? and created_at > ?", get_sessionid, task_name, 10.minutes.ago).first
     return nil unless t
     client = YAML::load(t.task_data)
     t.destroy
@@ -913,10 +955,10 @@ class ApplicationController < ActionController::Base
   private
   def save_linkedin_api_client (client)
     task_name = 'linkedin_rw_nus'
-    t = Task.find_by_session_id_and_task(session[:session_id], task_name)
+    t = Task.find_by_session_id_and_task(get_sessionid, task_name)
     t.destroy if t
     t = Task.new
-    t.session_id = session[:session_id]
+    t.session_id = get_sessionid
     t.task = task_name
     t.priority = 5
     t.ajax = 'N'
@@ -925,7 +967,7 @@ class ApplicationController < ActionController::Base
   end # save_linkedin_client
   def get_linkedin_api_client
     task_name = 'linkedin_rw_nus'
-    t = Task.where("session_id = ? and task = ? and created_at > ?", session[:session_id], task_name, 10.minutes.ago).first
+    t = Task.where("session_id = ? and task = ? and created_at > ?", get_sessionid, task_name, 10.minutes.ago).first
     return nil unless t
     client = YAML::load(t.task_data)
     t.destroy
@@ -938,8 +980,8 @@ class ApplicationController < ActionController::Base
 
   private
   def login_user_ids
-    session[:user_ids] = [] unless session[:user_ids]
-    session[:user_ids]
+    set_session_value(:user_ids, []) unless get_session_value(:user_ids)
+    get_session_value(:user_ids)
   end
   helper_method :login_user_ids
 
@@ -961,7 +1003,7 @@ class ApplicationController < ActionController::Base
   def get_timezone
     # logger.debug2 "before: Time.zone = #{Time.zone}, Time.now = #{Time.now}, Time.zone.now = #{Time.zone.now}"
     # logger.debug2 "session[:timezone] = #{session[:timezone]}"
-    Time.zone = session[:timezone] if session[:timezone]
+    Time.zone = get_session_value(:timezone) if get_session_value(:timezone)
     # logger.debug2 "after: Time.zone = #{Time.zone}, Time.now = #{Time.now}, Time.zone.now = #{Time.zone.now}"
   end
 
@@ -985,7 +1027,9 @@ class ApplicationController < ActionController::Base
     timezones = ActiveSupport::TimeZone.all.collect { |tz| (tz.tzinfo.current_period.utc_offset / 60.0 / 60.0).to_s }.uniq
     return add_error_key '.unknown_timezone', :timezone => timezone unless timezones.index(timezone)
     logger.debug2  "timezone = #{timezone}"
-    Time.zone = session[:timezone] = timezone.to_f
+    timezone_f = timezone.to_f
+    set_session_value(:timezone, timezone_f)
+    Time.zone = timezone_f
   end
 
   # get/set last_row_id
@@ -994,18 +1038,18 @@ class ApplicationController < ActionController::Base
   private
   def set_last_row_id (last_row_id)
     session.delete(:last_row_id) if session.has_key?(:last_row_id)
-    s = Session.find_by_session_id(session[:session_id])
+    s = Session.find_by_session_id(get_sessionid)
     if !s
       s = Session.new
-      s.session_id = session[:session_id]
+      s.session_id = get_sessionid
     end
     s.last_row_id = last_row_id
     s.save!
     last_row_id
   end
   def get_last_row_id
-    set_last_row_id(session[:last_row_id]) if session.has_key?(:last_row_id)
-    s = Session.find_by_session_id(session[:session_id])
+    set_last_row_id(get_session_value(:last_row_id)) if get_session_value(:last_row_id).to_s != ''
+    s = Session.find_by_session_id(get_sessionid)
     return nil unless s
     s.last_row_id
   end
@@ -1017,21 +1061,21 @@ class ApplicationController < ActionController::Base
   def set_last_row_at (last_row_at)
     logger.debug "last_row_at = #{last_row_at}"
     session.delete(:last_row_at) if session.has_key?(:last_row_at)
-    s = Session.find_by_session_id(session[:session_id])
+    s = Session.find_by_session_id(get_sessionid)
     if !s
       s = Session.new
-      s.session_id = session[:session_id]
+      s.session_id = get_sessionid
     end
     s.last_row_at = last_row_at
     s.save!
-    logger.debug2 "last_row_at = #{last_row_at}, Time.new.seconds_since_midnight = #{Time.new.seconds_since_midnight}, session_id = #{session[:session_id]}"
+    logger.debug2 "last_row_at = #{last_row_at}, Time.new.seconds_since_midnight = #{Time.new.seconds_since_midnight}, session_id = #{get_sessionid}"
     last_row_at
   end
   def get_last_row_at
-    set_last_row_at(session[:last_row_at]) if session.has_key?(:last_row_at)
-    s = Session.find_by_session_id(session[:session_id])
+    set_last_row_at(get_session_value(:last_row_at)) if get_session_value(:last_row_at).to_s != ''
+    s = Session.find_by_session_id(get_sessionid)
     last_row_at = s.last_row_at if s
-    logger.debug2 "last_row_at = #{last_row_at}, Time.new.seconds_since_midnight = #{Time.new.seconds_since_midnight}, session_id = #{session[:session_id]}"
+    logger.debug2 "last_row_at = #{last_row_at}, Time.new.seconds_since_midnight = #{Time.new.seconds_since_midnight}, session_id = #{get_sessionid}"
     last_row_at
   end
 
@@ -1040,14 +1084,14 @@ class ApplicationController < ActionController::Base
   # makes is possible to have different post_on_wall selection in two different browser sessions with same userid
   private
   def init_post_on_wall_selected
-    s = Session.find_by_session_id(session[:session_id])
+    s = Session.find_by_session_id(get_sessionid)
     if !s
       s = Session.new
-      s.session_id = session[:session_id]
+      s.session_id = get_sessionid
     end
-    if session[:post_on_wall_selected]
+    if get_session_value(:post_on_wall_selected)
       # new session store for post_on_wall_selected info
-      s.post_on_wall_selected = session[:post_on_wall_selected]
+      s.post_on_wall_selected = get_session_value(:post_on_wall_selected)
       session.delete(:post_on_wall_selected)
     end
     s.post_on_wall_selected = {} unless s.post_on_wall_selected
@@ -1091,14 +1135,14 @@ class ApplicationController < ActionController::Base
   # user should get a warning if authorization to post on wall is changed without an active user action
   private
   def init_post_on_wall_authorized
-    s = Session.find_by_session_id(session[:session_id])
+    s = Session.find_by_session_id(get_sessionid)
     if !s
       s = Session.new
-      s.session_id = session[:session_id]
+      s.session_id = get_sessionid
     end
-    if session[:post_on_wall_authorized]
+    if get_session_value(:post_on_wall_authorized)
       # new session store for post_on_wall_authorized info
-      s.post_on_wall_authorized = session[:post_on_wall_authorized]
+      s.post_on_wall_authorized = get_session_value(:post_on_wall_authorized)
       session.delete(:post_on_wall_authorized)
     end
     s.post_on_wall_authorized = {} unless s.post_on_wall_authorized
@@ -2279,7 +2323,7 @@ class ApplicationController < ActionController::Base
   private
   def save_flash_key (key, options = {})
     # delete old flash
-    flash_id = session[:flash_id]
+    flash_id = get_session_value(:flash_id)
     if flash_id
       f = Flash.find_by_id(flash_id)
       f.destroy if f
@@ -2289,14 +2333,14 @@ class ApplicationController < ActionController::Base
     f = Flash.new
     f.message = t key, options
     f.save!
-    session[:flash_id] = f.id
-    logger.debug2 "flash.id = #{f.id}, session[:flash_id] = #{session[:flash_id]}, message = #{f.message}"
+    set_session_value(:flash_id, f.id)
+    logger.debug2 "flash.id = #{f.id}, session[:flash_id] = #{get_session_value(:flash_id)}, message = #{f.message}"
   end
 
   private
   def save_flash_text (text)
     # delete old flash
-    flash_id = session[:flash_id]
+    flash_id = get_session_value(:flash_id)
     if flash_id
       f = Flash.find_by_id(flash_id)
       f.destroy if f
@@ -2306,14 +2350,14 @@ class ApplicationController < ActionController::Base
     f = Flash.new
     f.message = text
     f.save!
-    session[:flash_id] = f.id
-    logger.debug2 "flash.id = #{f.id}, session[:flash_id] = #{session[:flash_id]}, message = #{f.message}"
+    set_session_value(:flash_id, f.id)
+    logger.debug2 "flash.id = #{f.id}, session[:flash_id] = #{get_session_value(:flash_id)}, message = #{f.message}"
   end
 
 
   private
   def get_flash
-    flash_id = session[:flash_id]
+    flash_id = get_session_value(:flash_id)
     logger.debug "flash_id = #{flash_id}"
     return nil unless flash_id
     f = Flash.find_by_id(flash_id)
@@ -2375,7 +2419,7 @@ class ApplicationController < ActionController::Base
       else
         # merge any flash message with any @errors messages into a (new) flash message
         if @errors.size > 0
-          flash_id = session[:flash_id]
+          flash_id = get_session_value(:flash_id)
           f = Flash.find_by_id(flash_id) if flash_id
           errors = []
           errors = errors + get_flash.to_s.split('<br>') if f
@@ -2384,7 +2428,7 @@ class ApplicationController < ActionController::Base
           f = Flash.new
           f.message = errors.join('<br>')
           f.save!
-          session[:flash_id] = f.id
+          get_session_value(:flash_id, f.id)
           @errors = []
         end
         format.html

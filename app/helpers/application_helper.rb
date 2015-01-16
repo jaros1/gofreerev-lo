@@ -19,7 +19,7 @@ module ApplicationHelper
 
   # partial helpers
   def render_partial_with_language (folder, partialname)
-    language = session[:language]
+    language = get_session_value(:language)
     logger.debug2  "folder = #{folder}, partialname = #{partialname}, language = #{language}"
     language = nil if language == BASE_LANGUAGE
     unless language
@@ -311,8 +311,8 @@ module ApplicationHelper
 
   def ajax_tasks?
     return false if @disable_ajax_tasks # facebook autologin page - wait with ajax tasks to gifts/index page
-    ajax_tasks = (Task.where("session_id = ? and ajax = ?", session[:session_id], 'Y').count > 0)
-    # logger.debug2 "session_id = #{session[:session_id]}, ajax_tasks = #{ajax_tasks}"
+    ajax_tasks = (Task.where("session_id = ? and ajax = ?", get_sessionid, 'Y').count > 0)
+    # logger.debug2 "session_id = #{get_sessionid}, ajax_tasks = #{ajax_tasks}"
     ajax_tasks
   end
 

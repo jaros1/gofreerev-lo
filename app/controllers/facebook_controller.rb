@@ -72,8 +72,8 @@ class FacebookController < ApplicationController
     # fix invalid or missing language for translate
     locale = hash['user']['locale']
     language = locale.to_s.first(2)
-    session[:language] = valid_locale(language) unless valid_locale(session[:language])
-    logger.debug2  "session[:language] = #{session[:language]}"
+    set_session_value(:language, valid_locale(language)) unless valid_locale(get_session_value(:language))
+    logger.debug2  "session[:language] = #{get_session_value(:language)}"
 
     # todo: check if user already has authorized the required FB privileges
     # hash: hash = {"algorithm"=>"HMAC-SHA256", "expires"=>1373374800, "issued_at"=>1373370798,

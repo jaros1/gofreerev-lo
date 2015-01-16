@@ -267,16 +267,6 @@ class FacebookController < ApplicationController
         # user.save
         context = 'read_stream_skip' unless status == 'granted'
       end
-      if context == 'publish_actions'
-        # add publish_actions to facebook user before redirecting to gifts/index page
-        # permissions will be updated in post_login_facebook task, but that is to late for this redirect
-        # adding publish_actions enables file upload in gifts/index page now
-        # permissions["publish_actions"] = 1
-        # user.permissions = api_response['permissions']['data']
-        # user.save!
-        # permissions = [{"permission"=>"public_profile", "status"=>"granted"}, {"permission"=>"user_friends", "status"=>"granted"}]
-        context = 'publish_actions_skip' unless get_post_on_wall_authorized(user.provider)
-      end
       save_flash_key ".ok_#{context}", user.app_and_apiname_hash
       if context == 'friends_find'
         redirect_to :controller => :users, :friends => 'find'

@@ -32,21 +32,6 @@ class GiftsOld1Controller < ApplicationController
       return format_response_key '.deleted_user' if users2.size == 0
       @users = users2 if @users.size != users2.size
 
-      # write warning if post_on_wall is selected and write permission on wall has been removed
-      # write note if post_on_wall priv has been added in an other session and
-      @users.each do |user|
-        next unless get_post_on_wall_selected(user.provider) # ignore API's where post_on_wall has not been selected
-        next if user.post_on_wall_authorized? == get_post_on_wall_authorized(user.provider) # no change in write permission
-        if get_post_on_wall_authorized(user.provider)
-          # write permission after login - now read permission - write priv. deselected or detected in an other browser session
-          add_error_key '.post_on_wall_deauthorized', user.app_and_apiname_hash
-          set_post_on_wall_authorized(false, user.provider, true)
-        else
-          # read permission after login - now write permission - write priv. added in an other browser session
-          # managed in grant_write_link method
-        end
-      end
-
       # initialize gift
       gift = Gift.new
       gift.price = params[:gift][:price].gsub(',', '.').to_f unless invalid_price?(params[:gift][:price])
@@ -66,12 +51,6 @@ class GiftsOld1Controller < ApplicationController
       end
       gift_file = params[:gift_file]
       picture = (gift_file.class.name == 'ActionDispatch::Http::UploadedFile')
-      if picture and !get_post_on_wall_authorized(nil)
-        add_error_key '.file_upload_not_allowed',
-                      :appname => APP_NAME,
-                      :apiname => (@users.length > 1 ? 'login provider' : @users.first.apiname)
-        picture = false # continue post without picture
-      end
       if picture
         filetype = FastImage.type(gift_file.path).to_s
         if !%w(jpg jpeg gif png bmp).index(filetype)
@@ -86,7 +65,7 @@ class GiftsOld1Controller < ApplicationController
       if picture
         # perm or temp picture store - for example perm for linkedin and temp for facebook
         # ( configuration in hash constant API_GIFT_PICTURE_STORE - /config/initializers/omniauth.rb )
-        picture_rel_path = new_temp_or_perm_rel_path filetype
+        picture_rel_path = Picture.new_perm_rel_path filetype
         if picture_rel_path
           gift.app_picture_rel_path = picture_rel_path
           logger.debug2 "gift.app_picture_rel_path = #{gift.app_picture_rel_path}"
@@ -185,31 +164,6 @@ class GiftsOld1Controller < ApplicationController
           end
         end
       end
-
-      # post on api wall(s) - priority = 5
-      # status:
-      # - facebook ok -
-      # - google+ not implemented - The Google+ API is at current time a read only API
-      # - linkedin - ok
-      # - twitter - todo
-      # note that post_on_<provider> is called even if post_gift_allowed? is false (ajax inject link to grant missing permission)
-      tokens = get_session_value(:tokens) || {}
-      tokens.keys.each do |provider|
-        next unless API_GIFT_PICTURE_STORE[provider] # skip readonly API's
-        # check permissions
-        next if get_write_on_wall_action(provider) == ApplicationController::WRITE_ON_WALL_NO # user has deselected post on api wall
-        # schedule post_on_<provider> or generic_post_on_wall task
-        task_name = "post_on_#{provider}"
-        if UtilController.new.private_methods.index(task_name.to_sym)
-          add_task "#{task_name}(#{gift.id})", 5
-        else
-          add_task "generic_post_on_wall('#{provider}',#{gift.id})", 5
-        end
-      end # each provider
-
-      # disable file upload button if post on provider wall was rejected for all apis
-      # enable file upload button if post on wall was allowed for one provider
-      add_task "disable_enable_file_upload", 5
 
       # delete picture after posting on api wall(s) - priority = 10
       add_task "delete_local_picture(#{gift.id})", 10 if picture and Picture.temp_app_url?(picture_url)
@@ -341,15 +295,6 @@ class GiftsOld1Controller < ApplicationController
       AjaxComment.where("user_id in (?)", login_user_ids).delete_all if login_user_ids.length > 0
       # insert dummy profile pictures in first row - force fixed size for empty from or to columns
       @first_gift = true
-      # check write on wall settings
-      @users.each do |user|
-        if get_write_on_wall_action(user.provider) == ApplicationController::WRITE_ON_WALL_MISSING_PRIVS
-          key, options = grant_write_link(user.provider)
-          logger.secret2 "grant_write_link: key = #{key}, options = #{options}"
-          add_error_key key, options if key
-        end # if
-      end # each user
-      logger.secret2 "@errors = #{@errors}" # use logger.secret2 - @errors can have request write on wall priv. links
     end
 
     if false

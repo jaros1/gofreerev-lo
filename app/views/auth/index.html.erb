@@ -21,8 +21,7 @@
               <%= t '.access_th' %>
             </th>
             <th style="width: 10px"></th>
-            <th title="<%= t ".post_th_title", :appname => APP_NAME %>">
-              <%= t '.post_th' %>
+            <th>
             </th>
           </tr>
           <% @providers.each do |x| ; provider, logged_in, access, post_on_wall = x -%>
@@ -44,7 +43,7 @@
                   <%= link_to t(".access_link_text_#{access}"), API_APP_SETTING_URL[provider] || '#', :target => '_blank', :id => "access_a_#{provider}" %>
                 </td>
                 <td></td>
-                <td style="text-align: center"><%= post_on_wall_checkbox(provider, post_on_wall) %></td>
+                <td style="text-align: center"></td>
               </tr>
           <% end -%>
 <% if false -%>

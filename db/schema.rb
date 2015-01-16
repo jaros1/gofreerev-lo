@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20141108083008) do
+ActiveRecord::Schema.define(version: 20150116151016) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -177,7 +177,7 @@ ActiveRecord::Schema.define(version: 20141108083008) do
   create_table "open_graph_links", force: true do |t|
     t.text     "url"
     t.string   "title"
-    t.text     "description"
+    t.text     "description", limit: 255
     t.text     "image"
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -193,13 +193,11 @@ ActiveRecord::Schema.define(version: 20141108083008) do
   add_index "sequences", ["name"], name: "index_sequences_on_name", unique: true, using: :btree
 
   create_table "sessions", force: true do |t|
-    t.string   "session_id",              limit: 32
+    t.string   "session_id",  limit: 32
     t.integer  "last_row_id"
     t.float    "last_row_at"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.text     "post_on_wall_selected"
-    t.text     "post_on_wall_authorized"
   end
 
   add_index "sessions", ["session_id"], name: "index_session_session_id", unique: true, using: :btree
@@ -247,7 +245,6 @@ ActiveRecord::Schema.define(version: 20141108083008) do
     t.text     "negative_interest"
     t.text     "api_profile_url"
     t.text     "api_profile_picture_url"
-    t.string   "post_on_wall_yn",         limit: 1
     t.datetime "deleted_at"
     t.datetime "last_login_at"
     t.datetime "deauthorized_at"

@@ -300,10 +300,6 @@ class User < ActiveRecord::Base
 
   # api_profile_picture_url_was
 
-  # 13) post_on_wall_yn - allow post on api wall - default is Y unless readonly API (google+)
-  # string in model and db
-  validates_presence_of :post_on_wall_yn
-  validates_inclusion_of :post_on_wall_yn, :allow_blank => true, :in => %w(Y N)
 
 
   # 14) deleted_at
@@ -490,7 +486,6 @@ class User < ActiveRecord::Base
     # user.profile_picture_name = "#{provider}.png"
     user.api_profile_picture_url = "#{SITE_URL}/images/#{provider}.png".gsub('//images', '/images')
     user.balance = {BALANCE_KEY => 0.0}
-    user.post_on_wall_yn = 'N'
     user.save!
     user
   end
@@ -584,7 +579,6 @@ class User < ActiveRecord::Base
     end # outer if
     user.balance = {BALANCE_KEY => 0.0} unless user.balance
     user.balance_at = Date.parse(Sequence.get_last_exchange_rate_date) unless user.balance_at
-    user.post_on_wall_yn = API_POST_PERMITTED[provider] == API_POST_NOT_ALLOWED ? 'N' : 'Y' unless user.post_on_wall_yn
     # facebook profile image is set in post login task / post_login_update_friends
     # ( unless new facebook user without profile picture )
     user.api_profile_picture_url = image unless provider == 'facebook' and user.api_profile_picture_url.to_s != ''
@@ -934,64 +928,6 @@ class User < ActiveRecord::Base
 
   # currency_with_text
 
-  # has user granted app privs wall postings?
-  # information is copied to session after login
-  def post_on_wall_authorized?
-    permissions = self.permissions
-    return false if API_GIFT_PICTURE_STORE[provider] == nil # readonly api: google+ and instagram
-    return true if permissions.to_s == 'write' # flickr and twitter
-    # API SETUP - keep comment for source code search when adding new provider
-    case provider
-      when "facebook"
-        if !permissions
-          logger.debug2 "Found #{provider} user without permissions. post_login_#{provider} method must have failed"
-          return false
-        end
-        if permissions.class == Array
-          # new oauth 2.2 permission array
-          return true if permissions.find { |p| p['permission'] == 'publish_actions' and p['status'] == 'granted' }
-        else
-          # unknown permissions
-          logger.debug2 "unknown facebook permissions object #{permissions}"
-          false
-        end
-      when "linkedin"
-        permissions.to_s.split(',').index('rw_nus') != nil
-      else
-        logger.error2 "post_on_wall? not implemented for #{provider}"
-        logger.error2 "API_GIFT_PICTURE_STORE[provider] = #{API_GIFT_PICTURE_STORE[provider]}, permissions = #{permissions}"
-        logger.error2 "time = #{Time.now}"
-        false
-    end # case
-  end # post_on_wall_authorized?
-
-
-  # post_on_wall privs. have been moved to session.
-  # User.post_on_wall_authorized? has been moved to app controller - see get_post_on_wall_authorized(nil)
-  # def self.post_on_wall_authorized? (users)
-  #   return false unless [Array, ActiveRecord::Relation::ActiveRecord_Relation_User].index(users.class) and users.length > 0
-  #   users.each do |user|
-  #     next unless API_POST_PERMITTED[user.provider]
-  #     return true if user.post_on_wall_authorized?
-  #   end
-  #   false
-  # end # self.post_on_wall_authorized?
-
-
-  # has user authorized and enabled post on wall?
-  # used in Picture.self.find_picture_store
-  # todo: post_on_wall privs. have been moved to session. Move post_on_wall_allowed? to applicationController
-  # def post_on_wall_allowed?
-  #   post_on_wall_yn == 'Y' and post_on_wall_authorized?
-  # end
-  # def self.post_on_wall_allowed? (login_users)
-  #   return false if login_users.size == 0 or login_users.size == 1 and login_users.first.dummy_user?
-  #   login_users.each do |login_user|
-  #     return true if login_user.post_on_wall_allowed?
-  #   end
-  #   return false
-  # end
-
   # post_on_wall privs. have been moved to session.
   # class method Picture.find_picture_store should be moved to application controller
   # move class method User.post_image_allowed? to application controller
@@ -1013,36 +949,6 @@ class User < ActiveRecord::Base
   end
 
   # read_gifts_allowed?
-
-  # post_on_wall privs. have been moved to session. WRITE_ON_WALL_* ruby constants and get_write_on_wall_action have been moved to application controller
-
-  # write on api wall helpers
-  # WRITE_ON_WALL_YES = 1
-  # WRITE_ON_WALL_NO = 2
-  # WRITE_ON_WALL_MISSING_PRIVS = 3
-
-  # def get_write_on_wall_action
-  #   # check user privs before post in provider wall
-  #   # that is user.permissions and user.post_on_wall_yn settings
-  #   if post_on_wall_authorized?
-  #     # user has authorized post on provider wall
-  #     if post_on_wall_yn != 'Y'
-  #       logger.debug2 "User has authorized post on #{provider} but has selected not to post on #{provider} wall"
-  #       return User::WRITE_ON_WALL_NO
-  #     end
-  #     # write priv ok - continue with post on provider wall
-  #     return User::WRITE_ON_WALL_YES
-  #   else
-  #     # user has not authorized post on provider wall
-  #     if post_on_wall_yn == 'Y'
-  #       # inject link to authorize post on provider wall
-  #       return User::WRITE_ON_WALL_MISSING_PRIVS
-  #     else
-  #       logger.debug2 "Ignore post_on_#{provider}. User has not authorzed post on #{provider} wall and has also selected not to post on #{provider} wall"
-  #       return User::WRITE_ON_WALL_NO
-  #     end
-  #   end
-  # end # check_write_on_wall_privs
 
 
   # relation helpers

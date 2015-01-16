@@ -2124,33 +2124,6 @@ var Gofreerev = (function() {
     })
 
 
-    // send post_on_wall y/n choice to server - only feedback after ajax errors
-    // used in auth/index and in users/edit pages
-    function post_on_wall_ajax(checkbox) {
-        var provider = checkbox.name.substr(5) ;
-        var post_on_wall = checkbox.checked ;
-        // alert('checkbox = provider = ' + provider + ', post_on_wall = ' + post_on_wall) ;
-        clear_flash_and_ajax_errors();
-        $.ajax({
-            url: "/util/post_on_wall_yn.js",
-            type: "POST",
-            dataType: 'script',
-            data: { provider: provider, post_on_wall: post_on_wall },
-    //        success: function (responseText, statusText, xhr, $form) {
-    //            var pgm = 'post_on_wall_ajax:success: ' ;
-    //            add2log(pgm + 'start') ;
-    //        }, // success
-            error: function (jqxhr, textStatus, errorThrown) {
-                var pgm = 'post_on_wall_ajax:error: ' ;
-                if (leaving_page) return ;
-                var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
-                add_to_tasks_errors(I18n.t('js.post_on_wall.ajax_error', {error: err, location: 17, debug: 0}));
-            }
-        });
-    } // post_on_wall_ajax
-
-
-
     // from https://jqueryui.com/resources/demos/dialog/modal-form.html - Copyright 2014 jQuery Foundation and other contributors; Licensed MIT
     // modal dialog form used in share accounts share level 3 and 4
     // used must accept that access tokens are stored on server + optional email notifications with friend suggestions
@@ -2570,39 +2543,6 @@ var Gofreerev = (function() {
         else debug_log.style.display = 'none' ;
     }
 
-    // catch ajax:error for any grant write ajax links
-    // gift_posted_3b_html key translate key used for twitter & vkontakte.
-    $(document).ready(function() {
-        var id = ".grant_write_ajax_link" ;
-        var pgm, msg ;
-        $(id).unbind("ajax:beforeSend") ;
-        $(id).bind("ajax:beforeSend", function (xhr, settings) {
-            var pgm = id + '.ajax:beforeSend: ' ;
-            clear_flash_and_ajax_errors() ;
-        })
-        $(id).unbind("ajax:error") ;
-        $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
-            pgm = id + '::ajax:error: ' ;
-            try {
-                if (leaving_page) return ;
-                var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown);
-                var url = '' + jqxhr.target + '' ;
-                // http://localhost/util/grant_write_vkontakte
-                // http://localhost/util/grant_write_twitter
-                var url_a = url.split('_') ;
-                var provider = url_a[url_a.length-1] ;
-                var valid_providers = ['vkontakte', 'twitter'] ;
-                if (valid_providers.indexOf(provider) == -1) var key = 'js.grant_write.ajax_error' ;
-                else var key = 'js.grant_write.' + provider + '_ajax_error' ;
-                add_to_tasks_errors(I18n.t(key, {error: err, url: url, location: 18, debug: 1})) ;
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err) ;
-                add_to_tasks_errors(I18n.t('js.grant_write.js_error', {error: err, location: 18, debug: 2})) ;
-            }
-        }) // ajax:error
-    })
-
     // workaround for doublet language code in url, /en/en/<controller>/<action>
     // error must be in /config/routes.rb and/or how url_for is being used in app
     // do not add controllers with 2 letter name
@@ -2932,7 +2872,6 @@ var Gofreerev = (function() {
         // view helpers
         onchange_currency: onchange_currency, // ajax update currency in users/edit page
         inIframe: inIframe, // Fix bug. App is displayed in a iFrame for opera < 12.16
-        post_on_wall_ajax: post_on_wall_ajax, // send post_on_wall y/n choice to server - auth/index and in users/edit pages
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
         autoresize_text_field: autoresize_text_field,
         get_share_gift_link: get_share_gift_link,

@@ -65,38 +65,6 @@ class Picture < ActiveRecord::Base
     end
   end
 
-  # todo: post_to_wall privs. have been moved to session.
-  # user method has been moved to application controller
-  # move class methods Picture.find_picture_store and Picture.new_temp_or_perm_rel_path to application controller
-  # ==>
-
-  # def self.find_picture_store (login_users)
-  #   providers = login_users.collect { |u| u.provider }
-  #   # :local picture store?
-  #   login_users.each do |login_user|
-  #     next unless API_GIFT_PICTURE_STORE[login_user.provider] == :local
-  #     return :local if login_user.post_on_wall_allowed?
-  #   end
-  #   # :api picture store?
-  #   login_users.each do |login_user|
-  #     next unless API_GIFT_PICTURE_STORE[login_user.provider] == :api
-  #     return :api if login_user.post_on_wall_allowed?
-  #   end
-  #   # fallback option when :local or :api picture store was not available
-  #   return :local if API_GIFT_PICTURE_STORE[:fallback] == :local
-  #   # no fallback - could be a readonly API as google+ or instagram - image upload is not allowed
-  #   nil
-  # end
-
-  # def self.new_temp_or_perm_rel_path (login_users, image_type)
-  #   case Picture.find_picture_store(login_users)
-  #     when :local then Picture.new_perm_rel_path image_type
-  #     when :api then Picture.new_temp_rel_path image_type
-  #     else nil # error - no picture store - could be google+ - image upload is not allowed
-  #   end
-  # end # self.new_temp_or_perm_rel_path
-
-  # <==
 
 
   # test helpers

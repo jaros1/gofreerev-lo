@@ -13,7 +13,6 @@ def find_create_user (user_id, user_name)
     user.user_name = user_name
     user.currency = BASE_CURRENCY
     user.balance = { BALANCE_KEY => 0.0 }
-    user.post_on_wall_yn = 'N'
     user.save!
     friend = Friend.new
     friend.user_id_giver = user_id

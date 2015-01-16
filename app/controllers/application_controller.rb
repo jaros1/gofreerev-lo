@@ -213,11 +213,6 @@ class ApplicationController < ActionController::Base
         set_session_array_value(:tokens, (YAML::load(user.access_token)), provider)
         set_session_array_value(:expires_at, (sign * user.access_token_expires), provider)
       end
-      # post on wall. two sessions with common users can have different post on wall selection
-      # session post is loaded into session variable at login
-      # session post on wall choice is available from session variable
-      # last user post on wall choice is saved in db and is used after next login
-      user.post_on_wall_yn = get_post_on_wall_selected(user.provider) ? 'Y' : 'N'
     end
 
     # friends information is used many different places
@@ -622,11 +617,6 @@ class ApplicationController < ActionController::Base
     # refresh token is only used for google+
     set_session_array_value(:refresh_tokens, options[:refresh_token], provider)  if options[:refresh_token] # only google+
     logger.debug2 "session[:refresh_tokens] = #{get_session_value(:refresh_tokens)}"
-    # copy post_on_wall status to session (cookie or table)
-    # - to allow different post_on_wall_yn selection for two browser sessions with same user
-    # - wrrite warning in top of gifts/index age if post on wall authorization is changed in an other browser session for same user
-    set_post_on_wall_selected((user.post_on_wall_yn == 'Y'), provider, true)
-    set_post_on_wall_authorized(user.post_on_wall_authorized?, provider, true)
     # fix invalid or missing language for translate
     set_session_value(:language, valid_locale(language)) unless valid_locale(get_session_value(:language))
     set_locale_from_params
@@ -664,7 +654,6 @@ class ApplicationController < ActionController::Base
             delete_session_array_value(:tokens, provider2)
             delete_session_array_value(:expires_at, provider2)
             delete_session_array_value(:refresh_tokens, provider2)
-            clear_post_on_wall_selected(provider2)
           end # if
           # single sign-on for user2
           if user2.access_token and user2.access_token_expires and user2.access_token_expires > Time.now.to_i
@@ -712,11 +701,6 @@ class ApplicationController < ActionController::Base
         set_session_array_value(:tokens, (YAML::load(user2.access_token)), user2.provider)
         set_session_array_value(:expires_at, -user2.access_token_expires, user2.provider)  # negative sign (auth info loaded from db)
         set_session_array_value(:refresh_tokens, user2.refresh_token, user2.provider)  # only google+
-        # copy post_on_wall status to session (cookie or table)
-        # - to allow different post_on_wall_yn selection for two browser sessions with same user
-        # - wrrite warning in top of gifts/index age if post on wall authorization is changed in an other browser session for same user
-        set_post_on_wall_selected((user2.post_on_wall_yn == 'Y'), user2.provider,true)
-        set_post_on_wall_authorized(user2.post_on_wall_authorized?, user2.provider, true)
         @users << user2
       end
       logger.debug2 "expires_at = #{get_session_value(:expires_at)}"
@@ -797,8 +781,6 @@ class ApplicationController < ActionController::Base
         logger.debug2 "no post_login_#{provider2} method was found in util controller - using generic post login task"
       end
     end # each provider2
-    # 3) enable file upload button if new user can write on api wall
-    add_task "disable_enable_file_upload", 5
     # 4) refresh user(s) balance
     today = Date.parse(Sequence.get_last_exchange_rate_date)
     if !user.balance_at or user.balance_at != today
@@ -819,7 +801,6 @@ class ApplicationController < ActionController::Base
       session.delete(:user_ids)
       session.delete(:tokens)
       session.delete(:expires_at)
-      clear_post_on_wall_selected()
       @users = []
       add_dummy_user
       return
@@ -829,11 +810,8 @@ class ApplicationController < ActionController::Base
     set_session_value(:user_ids, user_ids_tmp)
     delete_session_array_value(:tokens, provider)
     delete_session_array_value(:expires_at, provider)
-    clear_post_on_wall_selected(provider)
     @users.delete_if { |user| user.provider == provider }
     add_dummy_user if @users.size == 0
-    # check if file upload button should be disabled - last user with write access to api wall logs out
-    add_task "disable_enable_file_upload", 5
   end # logout
 
   # protection from Cross-site Request Forgery
@@ -1059,134 +1037,6 @@ class ApplicationController < ActionController::Base
     last_row_at
   end
 
-  # get/set post_on_wall_selected. check box in auth/index page. now in db session store.
-  # loaded from user.post_on_wall_yn into session store (cookie or table) after login
-  # makes is possible to have different post_on_wall selection in two different browser sessions with same userid
-  private
-  def init_post_on_wall_selected
-    s = Session.find_by_session_id(get_sessionid)
-    if !s
-      s = Session.new
-      s.session_id = get_sessionid
-    end
-    if get_session_value(:post_on_wall_selected)
-      # new session store for post_on_wall_selected info
-      s.post_on_wall_selected = get_session_value(:post_on_wall_selected)
-      session.delete(:post_on_wall_selected)
-    end
-    s.post_on_wall_selected = {} unless s.post_on_wall_selected
-    s.save!
-    s
-  end # init_post_on_wall_selected
-  def set_post_on_wall_selected (post_on_wall_selected, provider, login)
-    if login and post_on_wall_selected and API_POST_PERMITTED[provider] == API_POST_PERMISSION_IN_APP
-      # login in progress for a provider where post_on_wall priv. is handled internal in app (twitter and vkontakte)
-      # always start with post_on_wall_selected = false
-      # logger.debug2 "#{provider} login. post_on_wall set to false (speciel rule for twitter and vkontakte)"
-      post_on_wall_selected = false
-    end
-    s = init_post_on_wall_selected
-    hash = s.post_on_wall_selected
-    hash[provider] = post_on_wall_selected
-    s.post_on_wall_selected = hash
-    s.save!
-  end
-  def get_post_on_wall_selected (provider)
-    s = init_post_on_wall_selected
-    s.post_on_wall_selected[provider]
-  end
-  def clear_post_on_wall_selected (provider=nil)
-    s = init_post_on_wall_selected
-    if provider
-      # clear post_on_wall_selected for provider
-      hash = s.post_on_wall_selected
-      hash.delete(provider)
-      s.post_on_wall_selected = hash
-    else
-      # clear post_on_wall_selected for all providers
-      s.post_on_wall_selected = {}
-    end
-    s.save!
-  end
-
-  # get/set :post_on_wall_autorized. (read/write access to api wall) now in db session store.
-  # keep a copy of user.post_on_wall_authorized? in session to detect change in user.post_on_wall_authorized?
-  # for example user permissions in an other browser session
-  # user should get a warning if authorization to post on wall is changed without an active user action
-  private
-  def init_post_on_wall_authorized
-    s = Session.find_by_session_id(get_sessionid)
-    if !s
-      s = Session.new
-      s.session_id = get_sessionid
-    end
-    if get_session_value(:post_on_wall_authorized)
-      # new session store for post_on_wall_authorized info
-      s.post_on_wall_authorized = get_session_value(:post_on_wall_authorized)
-      session.delete(:post_on_wall_authorized)
-    end
-    s.post_on_wall_authorized = {} unless s.post_on_wall_authorized
-    s.save!
-    # logger.debug2 "session[:post_on_wall_authorized] = #{session[:post_on_wall_authorized]}"
-    # logger.debug2 "s.post_on_wall_authorized = #{s.post_on_wall_authorized}"
-    s
-  end # init_post_on_wall_authorized
-  def set_post_on_wall_authorized (post_on_wall_authorized, provider, login)
-    s = init_post_on_wall_authorized
-    hash = s.post_on_wall_authorized
-    hash[provider] = post_on_wall_authorized
-    s.post_on_wall_authorized = hash
-    # logger.debug2 "s.post_on_wall_authorized = #{s.post_on_wall_authorized}"
-    s.save!
-  end
-  def get_post_on_wall_authorized (provider=nil)
-    if !provider
-      # generic check - check all logged in users
-      logger.debug2 "generic check - check all logged in users"
-      @users.each do |user|
-        if get_post_on_wall_authorized(user.provider)
-          # logger.debug2 "get_post_on_wall_authorized(nil) = true"
-          return true
-        end
-      end
-      # logger.debug2 "get_post_on_wall_authorized(nil) = false"
-      return false
-    end
-    s = init_post_on_wall_authorized
-    # logger.debug2 "get_post_on_wall_authorized(#{provider}) = #{s.post_on_wall_authorized[provider]}"
-    s.post_on_wall_authorized[provider]
-  end
-  def clear_post_on_wall_authorized (provider=nil)
-    s = init_post_on_wall_authorized
-    if provider
-      # clear post_on_wall_authorized for provider
-      hash = s.post_on_wall_authorized
-      hash.delete(provider)
-      s.post_on_wall_authorized = hash
-    else
-      # clear post_on_wall_authorized for all providers
-      s.post_on_wall_authorized = {}
-    end
-    # logger.debug2 "clear_post_on_wall_authorized: done"
-    s.save!
-  end # clear_post_on_wall_authorized
-
-
-  # used in api posts
-  # private
-  # def format_direction_without_user (api_gift)
-  #   api_gift.gift.human_value(:direction)
-  #   # gift = api_gift.gift
-  #   # case gift.direction
-  #   #   when 'giver'
-  #   #     t 'gifts.index.direction_giver_prompt' # Offers:
-  #   #   when 'receiver'
-  #   #     t 'gifts.index.direction_receiver_prompt' # Seeks:
-  #   #   else
-  #   #     ""
-  #   # end # case
-  # end # format_direction
-
   # used in gifts/index
   # todo: moved to AngularJS GiftsCtrl, formatDirection filter
   private
@@ -1294,99 +1144,6 @@ class ApplicationController < ActionController::Base
       # return friends has to post_login_<provider> - see also Friend.update_api_friends_from_hash
       [friends_hash, nil, nil]
     end # gofreerev_get_friends
-    # add gofreerev_post_on_wall - used in post_on_<provider> / generic_post_on_wall
-    # cache facebook login user - used in gofreerev_post_on_wall error handling
-    login_user = @users.find { |user| user.provider == provider }
-    api_client.define_singleton_method :gofreerev_post_on_wall do |options|
-      # get params
-      logger = options[:logger]
-      api_gift = options[:api_gift]
-      gift = api_gift.gift
-      picture = options[:picture]
-      # format message (direction + description + deep link) - only one text field message when posting on facebook
-      message_lng = API_POST_MAX_TEXT_LENGTHS[provider]
-      is_open_graph = gift.open_graph_title ? true : false
-      message, truncated = api_gift.get_wall_post_text_fields(is_open_graph, [message_lng])
-      logger.debug2 "message = #{message}"
-      # post on wall with or without picture
-      begin
-        if is_open_graph
-          # post open graph link
-          # https://developers.facebook.com/docs/graph-api/reference/v2.2/user/feed
-          api_response = api_client.put_connections('me', 'feed',
-                                                    :message => message, :picture => gift.open_graph_image, :name => gift.open_graph_title, :description => gift.open_graph_description,
-                                                    :link => api_gift.deep_link, :caption => SITE_URL)
-          api_gift_id = api_response['id']
-        elsif picture
-          # post with picture attachment
-          filetype = picture.split('.').last
-          content_type = "image/#{filetype}"
-          api_response = api_client.put_picture(picture, content_type, {:message => message}, login_user.uid)
-          # api_response = {"id"=>"1396226023933952", "post_id"=>"100006397022113_1396195803936974"} (Hash)
-          api_gift_id = api_response['post_id']
-        else
-          # simple post message
-          # logger.debug2 'status post without picture'
-          # gift.description = "#{gift.description} - #{link}" # link only as text
-          # gift.description = "<a href='#{link}'>#{gift.description}</a>" # html code as text
-          api_response = api_client.put_connections('me', 'feed', :message => message)
-          # api_response = {"id"=>"100006397022113_1396235850599636"}
-          api_gift_id = api_response['id']
-        end
-        logger.debug2 "api_response = #{api_response} (#{api_response.class.name})"
-      rescue Koala::Facebook::ClientError => e
-        e.logger = logger
-        e.puts_exception("#{__method__}: ")
-        if e.fb_error_type == 'OAuthException' && e.fb_error_code == 506
-          # delete gift and ignore error OAuthException, code: 506, message: (#506) Duplicate status message [HTTP 400]
-          # gift_posted_on_wall_api_wall = 4 # Gift posted in here but not on your facebook wall. Duplicate status message on facebook wall.
-          # error should not happen any longer as deep link now is included in message
-          raise DupPostOnWall
-        elsif e.fb_error_type == 'OAuthException' && e.fb_error_code == 200
-          # e.response_body = {"error":{"message":"(#200) The user hasn't authorized the application to perform this action","type":"OAuthException","code":200}}
-          # check if permission to post on api wall has been removed
-          error = e.to_s
-          login_user.get_permissions_facebook(api_client)
-          if !login_user.post_on_wall_authorized?
-            # permission to post on api wall has been removed.
-            # set_post_on_wall_authorized(false, provider, false)
-            # show request_post_gift_priv_link link in gifts/index page
-            raise PostNotAllowed
-          else
-            # permission to post on api wall has NOT been removed. Unknown error
-            # gift_posted_on_wall_api_wall = 1 # unknown error. no translation
-            api_gift.clear_deep_link
-            raise
-          end
-        elsif e.fb_error_type == 'OAuthException' && e.fb_error_code == 190
-          # user has deauthorized gofreerev / removed gofreerev in facebook app setting page
-          # Koala::Facebook::ClientError
-          # fb_error_type    = OAuthException (String)
-          # fb_error_code    = 190 (Fixnum)
-          # fb_error_subcode = 458 (Fixnum)
-          # fb_error_message = Error validating access token: The user has not authorized application 193177257554775. (String)
-          # http_status      = 400 (Fixnum)
-          # response_body    = {"error":{"message":"Error validating access token: The user has not authorized application 193177257554775.","type":"OAuthException","code":190,"error_subcode":458}}
-          # logout and return error message to user
-          # logout(provider)
-          # gift_posted_on_wall_api_wall = 8
-          raise AppNotAuthorized
-        else
-          # unhandled exceptions
-          gift_posted_on_wall_api_wall = 1 # unknown error. no translation
-          error = e.to_s
-          api_gift.clear_deep_link
-          raise
-        end
-      rescue Koala::Facebook::ServerError => e
-        e.logger = logger
-        e.puts_exception("#{__method__}: ")
-        api_gift.clear_deep_link
-        raise
-      end # rescue
-      # ok
-      [ api_gift_id, nil, truncated ] # api_gift_url will be looked up in generic_post_on_wall
-    end
     # return api client
     api_client
   end # init_api_client_facebook
@@ -1425,62 +1182,6 @@ class ApplicationController < ActionController::Base
       # return friends has to post_login_<provider> - see also Friend.update_api_friends_from_hash
       [friends_hash, nil, nil]
     end # gofreerev_get_friends
-
-    # add gofreerev_post_on_wall - used in post_on_<provider> / generic_post_on_wall
-    api_client.define_singleton_method :gofreerev_post_on_wall do |options|
-      # get params
-      api_gift = options[:api_gift]
-      logger = options[:logger]
-      picture = options[:picture]
-      raise ImageNotFound unless picture # picture required for flickr
-      # format message (direction + description + deep link) - use title and description when posting on flickr
-      if API_POST_MAX_TEXT_LENGTHS[:flickr]
-        title_lng = API_POST_MAX_TEXT_LENGTHS[:flickr][:title]
-        description_lng = API_POST_MAX_TEXT_LENGTHS[:flickr][:description]
-      end
-      gift = api_gift.gift
-      if gift.open_graph_title
-        # post with open graph link:
-        # flickr title       = gofreerev direction + gofreerev description
-        # flickr description = link (a href) with gift open graph title + open graph description
-        title, truncated = api_gift.get_wall_post_text_fields true, [title_lng]
-        description = "<a href='#{api_gift.deep_link}' target='_blank'>#{gift.open_graph_title}</a> #{gift.open_graph_description}"
-      else
-        # post without open graph link - use flickr description part for gofreerev deep link
-        title, description, truncated = api_gift.get_wall_post_text_fields true, [title_lng, description_lng]
-        if description
-          description += ' '
-        else
-          description = ''
-        end
-        description += "<a href='#{api_gift.deep_link}' target='api_gift.deep_link'></a>"
-      end
-
-      logger.debug2 "title = #{title}, description = #{description}"
-      # post picture on flickr (always post with pictures)
-      begin
-        api_gift_id = self.upload_photo picture, :title => title, :description => description
-      rescue FlickRaw::OAuthClient::FailedResponse => e
-        logger.debug2 "exception (1): #{e.message} (#{e.message.class})"
-        # logger.debug2 "e.methods = #{e.methods.sort.join(', ')}"
-        if e.message == 'token_rejected'
-          # user has deauthorized app in app settings page http://www.flickr.com/services/auth/list.gne
-          raise AppNotAuthorized
-        end
-        # other unhandled errors
-        raise
-      rescue FlickRaw::FailedResponse => e
-        logger.debug2 "exception (2): #{e.message} (#{e.message.class})"
-        if e.message =~/Invalid auth token/
-          # user has deauthorized app in app settings page http://www.flickr.com/services/auth/list.gne
-          raise AppNotAuthorized
-        end
-        # other unhandled errors
-        raise
-      end
-      api_gift_url = "#{API_URL[provider]}photos/gofreerev/#{api_gift_id}/"
-      [api_gift_id, api_gift_url, truncated]
-    end # gofreerev_post_on_wall
 
     # return api client
     api_client
@@ -1684,111 +1385,6 @@ class ApplicationController < ActionController::Base
       [friends_hash, nil, nil]
     end # gofreerev_get_friends
 
-    # add gofreerev_post_on_wall - used in post_on_<provider> / generic_post_on_wall
-    api_client.define_singleton_method :gofreerev_post_on_wall do |options|
-      # get params
-      logger = options[:logger]
-      api_gift = options[:api_gift]
-      picture = options[:picture]
-      open_graph = options[:open_graph] # array - OG title, description from app. controller
-      deep_link = api_gift.deep_link
-
-      # format message (direction + description + deep link) - use open graph title, description when posting on linkedin
-      # texts are taken from open_graph:
-      # - text without deep link
-      # - max lengths for title and description are taken from API_OG_TITLE_SIZE and API_OG_DESC_SIZE
-      # - max lengths for title and description are not taken from API_MAX_TEXT_LENGTHS
-      # comment is displayed above title and description in linkedin post and is only used for deep link
-      title, description, truncated = open_graph
-      comment = deep_link
-      logger.debug2 "title = #{title}, description = #{description}, comment = #{comment}"
-
-      begin
-
-        # http://stackoverflow.com/questions/15183107/rails-linked-post-message
-        # http://developer.linkedin.com/documents/share-api#toggleview:id=ruby
-        # Node                Parent Node    Value 	Notes
-        # comment             share          Text of member's comment.        Post must contain comment and/or (content/title and content/submitted-url).
-        #                                                                     Max length is 700 characters.
-        # content             share          Parent node for information on shared document
-        # title               share/content  Title of shared document         Post must contain comment and/or (content/title and content/submitted-url).
-        #                                                                     Max length is 200 characters.
-        # submitted-url       share/content  URL for shared content           Post must contain comment and/or (content/title and content/submitted-url).
-        # submitted-image-url share/content  URL for image of shared content  Invalid without (content/title and content/submitted-url).
-        # description         share/content  Description of shared content    Max length of 256 characters.
-        # note that linkedin uses meta property="og:description as default description
-        # the 4 share/content fields must be open graph fields
-        gift = api_gift.gift
-        if gift.open_graph_title
-          # open graph link - use gofreerev deep link instead of original open graph url
-          comment = "#{gift.human_value(:direction)}#{gift.description}"
-          content = { "title" => gift.open_graph_title,
-                      "description" => gift.open_graph_description,
-                      "submitted-url" => deep_link,
-                      "submitted-image-url" => gift.open_graph_image }
-        else
-          logger.debug2 "picture = #{picture}"
-          image_url = Picture.url :full_os_path => picture if picture
-          # logger.debug2 "image_url = #{image_url}"
-          image_url = SITE_URL + image_url.from(1) if image_url and image_url.first == '/'
-          logger.debug2 "image_url = #{image_url}"
-
-          content = {"submitted-url" => deep_link, "title" => title, "description" => description}
-          content["submitted-image-url"] = image_url if api_gift.picture?
-        end
-        logger.debug2 "content = #{content}, comment = #{comment}"
-        x = self.add_share :content => content, :comment => comment
-      rescue LinkedIn::Errors::AccessDeniedError => e
-        logger.debug2 "LinkedIn::Errors::AccessDeniedError"
-        logger.debug2 "e.message = #{e.message}"
-        api_gift.clear_deep_link
-        if e.message.to_s =~ /^\(403\)/
-          # e.message = (403): Access to posting shares denied
-          # inject link in tasks_errors table in gifts/index page to allow user to grant missing write permission
-          raise PostNotAllowed
-        end
-        raise
-      rescue LinkedIn::Errors::UnauthorizedError => e
-        logger.debug2 "LinkedIn::Errors::UnauthorizedError"
-        logger.debug2 "e.message = #{e.message}"
-        api_gift.clear_deep_link
-        if e.message.to_s =~ /^\(401\)/
-          # e.message =  (401): [unauthorized]. The token used in the OAuth request is not valid.
-          # user has removed app from app settings page https://www.linkedin.com/secure/settings?userAgree=&goback=.nas_*1_*1_*1
-          raise AppNotAuthorized
-        end
-        raise
-      end
-
-      # check response from client.add_share request
-      if x.class != Net::HTTPCreated
-        api_gift.clear_deep_link
-        logger.debug2 "no exception from client.add_share, but post was not created"
-        logger.debug2 "x = #{x} (#{x.class})"
-        logger.debug2 "x.body = #{x.body} (#{x.body.class})"
-        raise x.body
-        # return ['.gift_posted_1_html', {:apiname => provider, :error => x.body}]
-      end
-
-      # post on linkedin ok
-      logger.debug2 "x = #{x} (#{x.class})"
-      # logger.debug2 "x.methods = #{x.methods.sort.join(', ')}"
-      logger.debug2 "x.body = #{x.body} (#{x.body.class})"
-      #post_on_linkedin: x.body = {
-      #    "updateKey": "UNIU-310307710-5824797827771314176-SHARE",
-      #    "updateUrl": "http://www.linkedin.com/updates?discuss=&scope=310307710&stype=M&topic=5824797827771314176&type=U&a=omJz"
-      #}
-
-      # extract update post id and post url - url for image is not relevant for linkedin - picture is stored at gofreerev
-      # todo: update_url redirects to linkedin login page
-      update_key = $1 if x.body.to_s =~ /"updateKey": "(.*?)"/
-      update_url = $1 if x.body.to_s =~ /"updateUrl": "(.*?)"/
-      logger.debug2 "update key = #{update_key}, update_url = #{update_url}"
-      api_gift_id = update_key
-      api_gift_url = update_url # note that post on linkedin wall is created in a batch process. Will work in one or 2 minutes
-      [api_gift_id, api_gift_url, truncated]
-    end
-
     # return api client
     api_client
   end # init_api_client_linkedin
@@ -1829,63 +1425,6 @@ class ApplicationController < ActionController::Base
       [friends_hash, nil, nil]
     end # gofreerev_get_friends
 
-    # add gofreerev_post_on_wall - used in post_on_<provider> / generic_post_on_wall
-    api_client.define_singleton_method :gofreerev_post_on_wall do |options|
-      # get params
-      api_gift = options[:api_gift]
-      logger = options[:logger]
-      picture = options[:picture]
-      # format message (direction + description + deep link) - only one text field tweet when posting on twitter
-      # twitter has some special restrictions on tweet length
-      # max tweet length 140 characters
-      # 23 characters is reserved for picture url if picture attachment
-      # deep_link url is shortened to 23 characters in app. server is public available
-      tweet_lng = API_POST_MAX_TEXT_LENGTHS[:twitter] - (picture ? 23 : 0)
-      tweet, truncated = api_gift.get_wall_post_text_fields(false,[tweet_lng])
-      logger.debug2 "tweet = #{tweet}"
-      # post tweet
-      x = nil
-      begin
-        if picture
-          # http://rubydoc.info/github/jnunemaker/twitter/Twitter/Client:update_with_media
-          logger.debug2 "update_with_media: tweet.length = #{tweet.length}, bytesize = #{tweet.bytesize}"
-          logger.debug2 "picture = #{picture}"
-          x = self.update_with_media(tweet, File.new(picture))
-        else
-          logger.debug2 "update: tweet.length = #{tweet.length}, bytesize = #{tweet.bytesize}"
-          x = self.update(tweet)
-        end
-      rescue Twitter::Error::Unauthorized => e
-        # # user has removed app from app settings page - https://twitter.com/settings/applications
-        logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-        raise AppNotAuthorized if e.message == 'Invalid or expired token'
-        raise
-      rescue Twitter::Error::Forbidden => e
-        # Unable to verify your credentials (Twitter::Error::Forbidden)
-        logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-        if e.message == 'Unable to verify your credentials'
-          # could be expired access token - force log out + log in
-          raise AccessTokenExpired
-        end
-        raise
-      rescue Twitter::Error, Timeout::Error => e
-        # maybe a problem with timeout for twitter post.
-        # https://github.com/sferik/twitter/issues/516
-        # https://github.com/sferik/twitter/issues/401
-        # todo: Could return warning to user and repeat post on twitter a few times
-        logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-        logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-        raise
-      end
-      raise Twitter::Error.new "Expected Twitter::Tweet. Found #{x.class}" if x.class != Twitter::Tweet
-
-      # save post id and picture url
-      # api_picture_url = x.media.first.media_url.to_s if api_gift.picture?
-      # todo: add api_picture_url to return?
-      api_gift_id  = x.id.to_s
-      api_gift_url = x.url.to_s
-      [api_gift_id, api_gift_url, truncated]
-    end
     # return api client
     api_client
   end # init_api_client_twitter
@@ -1928,157 +1467,6 @@ class ApplicationController < ActionController::Base
       # return friends has to post_login_<provider> - see also Friend.update_api_friends_from_hash
       [friends_hash, nil, nil]
     end # gofreerev_get_friends
-    # add gofreerev_post_on_wall - used in post_on_<provider> / generic_post_on_wall
-    api_client.define_singleton_method :gofreerev_post_on_wall do |options|
-      # get params
-      api_gift = options[:api_gift]
-      logger = options[:logger]
-      picture = options[:picture]
-      raise ImageNotFound unless picture # picture required for flickr
-      direction = options[:direction] # offers / seeks
-      open_graph = options[:open_graph]
-      # wall: false: post to Gofreerev album, true: post to VK wall.
-      # no errors but is do not looks like upload to VK wall is working.
-      # todo: check from a smartphone
-      wall = false
-      # format message (direction + description + deep link) - only one text field caption when posting on vkontakte
-      caption_lng = API_POST_MAX_TEXT_LENGTHS[:vkontakte]
-      caption, truncated = api_gift.get_wall_post_text_fields(false, [caption_lng])
-      logger.debug2 "caption = #{caption}"
-
-      # Upload to vkontakte is done in 4 steps:
-      # a) find/create album with gofreerev pictures
-      # b) get upload server
-      # c) upload - maybe vkontakte gem has a method for this?!
-      # d) save uploaded photo in album
-
-      # a) find/create album with gofreerev pictures
-      # http://vk.com/developers.php?oid=-17680044&p=photos.getAlbums
-      begin
-        albums = self.photos.getAlbums
-      rescue Vkontakte::App::VkException => e
-        if e.message_options.class == HTTParty::Response and
-            e.message_options['error'] and
-            e.message_options['error']['error_code'] == 5 and
-            e.message_options['error']['error_msg'].to_s =~ /expired/
-          logger.debug2 'access token has expired'
-          # todo: should log user out of vkontakte
-          raise AccessTokenExpired.new(provider)
-        end
-        logger.debug2 "exception: #{e.message} (#{e.class})"
-        logger.debug2 "e.message_options = #{e.message_options} (#{e.message_options.class})"
-        raise VkontakteAlbumMissing.new "#{e.class}: #{e.message}"
-      rescue => e
-        raise VkontakteAlbumMissing.new "#{e.class}: #{e.message}"
-      end
-      # logger.debug2 "albums = #{albums}"
-      album = albums.find { |a| a["title"] == APP_NAME }
-      if !album
-        # http://vk.com/developers.php?oid=-17680044&p=photos.createAlbum
-        begin
-          album = self.photos.createAlbum :title => APP_NAME, :description => SITE_URL
-        rescue => e
-          raise VkontakteCreateAlbum.new "#{e.class}: #{e.message}"
-        end
-        if album.class != Hash or !album.has_key?('aid')
-          raise VkontakteCreateAlbum.new "album = #{album}"
-        end
-      end
-      # logger.debug2 "album = #{album}"
-      aid = album['aid']
-      if aid.to_s == ''
-        logger.debug2 "album = #{album}"
-        raise VkontakteAlbumMissing.new "#{APP_NAME} album not found"
-      end
-      logger.debug2 "aid = #{aid}"
-      # get full os path for image
-      gift = api_gift.gift
-
-      # b) get upload server
-      begin
-        if wall
-          # http://vk.com/developers.php?oid=-17680044&p=photos.getWallUploadServer
-          uploadserver = self.photos.getWallUploadServer
-        else
-          # http://vk.com/developers.php?oid=-17680044&p=photos.getUploadServer
-          uploadserver = self.photos.getUploadServer :aid => aid
-        end
-      rescue => e
-        raise VkontakteUploadserver.new "#{e.class}: #{e.message}"
-      end
-      if uploadserver.class != Hash or !uploadserver.has_key?('upload_url')
-        raise VkontakteUploadserver.new "uploadserver = #{uploadserver} (#{uploadserver.class})"
-      end
-      logger.debug2 "uploadserver = #{uploadserver}"
-      logger.debug2 "uploadserver.class = #{uploadserver.class}"
-      url = uploadserver['upload_url']
-      logger.debug2 "url = #{url}"
-
-      # c) upload - maybe vkontakte gem has a method for this?!
-      # http://vk.com/developers.php?oid=-17680044&p=Uploading_Files_to_the_VK_Server_Procedure
-      begin
-        # note that RestClient 1.7.3 is using SSLv3 as default and facebook has disabled SSLv3 (SSLv3 POODLE vulnerability)
-        # check solution in User.find_friends_batch if VK also disables SSLv3 and RestClient is not upgrated
-        # error message: SSL_connect returned=1 errno=0 state=SSLv3 read server hello A: sslv3 alert handshake failure (OpenSSL::SSL::SSLError)
-        upload_res1 = RestClient.post url, :file1 => File.new(picture)
-      rescue => e
-        raise VkontaktePhotoPost.new "#{e.class}: #{e.message}"
-      end
-      if upload_res1.code.to_s != '200'
-        raise VkontaktePhotoPost.new "response code #{upload_res1.code}. body = #{upload_res1.body}"
-      end
-      # check yml upload response
-      begin
-        upload_res2 = YAML::load(upload_res1.body)
-      rescue => e
-        logger.debug2 "upload_res1.class = #{upload_res1.class}"
-        logger.debug2 "upload_res1.body = #{upload_res1.body}"
-        raise VkontaktePhotoPost.new "#{e.class}: #{e.message}. Excepted yaml response"
-      end
-      if !upload_res2.has_key?('server') or !upload_res2.has_key?('hash')
-        logger.debug2 "upload_res2 = #{upload_res2}"
-        logger.debug2 "upload_res2.class = #{upload_res2.class}"
-        raise VkontaktePhotoPost.new "upload_res2 = #{upload_res2}"
-      end
-      if wall and !upload_res2.has_key?('photo') or !wall and !upload_res2.has_key?('photos_list')
-        logger.debug2 "upload_res2 = #{upload_res2}"
-        logger.debug2 "upload_res2.class = #{upload_res2.class}"
-        raise VkontaktePhotoPost.new "upload_res2 = #{upload_res2}"
-      end
-
-      # d) save uploaded photo in album
-      # save uploaded photo on wall or in gofreerev album
-      # http://vk.com/developers.php?oid=-17680044&p=photos.save
-      server = upload_res2['server']
-      photo = upload_res2['photo']
-      photos_list = upload_res2['photos_list']
-      hash = upload_res2['hash']
-      begin
-        if wall
-          # http://vk.com/developers.php?oid=-17680044&p=photos.saveWallPhoto
-          save_res = self.photos.saveWallPhoto :server => server, :photo => photo, :hash => hash
-        else
-          # http://vk.com/developers.php?oid=-17680044&p=photos.save
-          save_res = self.photos.save :aid => aid, :server => server, :photos_list => photos_list, :hash => hash, :caption => caption
-        end
-      rescue exception => e
-        raise VkontaktePhotoSave.new "#{e.class}: #{e.message}"
-      end
-      if save_res.class != Array or save_res.length != 1
-        raise VkontaktePhotoSave.new "Expected array with one photo. save_res = #{save_res} (#{save_res.class})"
-      end
-      logger.debug2 "save_res = #{save_res} (#{save_res.class})"
-      logger.debug2 "save_res.length = #{save_res.length})"
-      save_res = save_res.first
-      if !save_res.has_key?('owner_id') or !save_res.has_key?('pid')
-        raise VkontaktePhotoSave.new "Expected hash with owner_id and pid. save_res = #{save_res}"
-      end
-
-      # ok response
-      api_gift_id = "#{save_res['owner_id']}_#{save_res['pid']}"
-      api_gift_url = "#{API_URL[provider]}photo#{api_gift_id}"
-      [ api_gift_id, api_gift_url, truncated ]
-    end # gofreerev_post_on_wall
     # return api client
     api_client
   end # init_api_client_vkontakte
@@ -2090,211 +1478,6 @@ class ApplicationController < ActionController::Base
     send(method, token)
   end
 
-
-  # define grant write links
-  # a grant write link is a link that is ajax injected into gifts/index page to request write permission to api wall
-  # there must be a grant write link for each api provider where post on wall is implemented
-  # link is ajax injected into tasks_errors table in page header
-  # injected text should have a mouse over text, a prompt, a grant write link and a hide link
-  # normally grant write link is a link to api provider authorize dialog box
-  # can also be link to a JS confirm dialog box if read/write privs. are handled within Gofreerev
-
-  # internal Gofreerev method for grant write permission to api
-  # used for twitter and vkontakte where read/write in handled in Gofreerev
-  # also used for some api's if post on wall permission has been granted in an other browser session and log out + log in is not possible
-  def gift_posted_3b (provider)
-    url = "/util/grant_write?provider=#{provider}"
-    confirm = t 'util.do_tasks.confirm_grant_write', :apiname => provider_downcase(provider)
-    hide_url = "/util/hide_grant_write?provider=#{provider}"
-
-    # ajax inject link in gifts/index page
-    return ['util.do_tasks.gift_posted_3b_html',
-            { :appname => APP_NAME,
-              :apiname => provider_downcase(provider),
-              :provider => provider,
-              :url => url, :confirm => confirm,
-              :hide_url => hide_url}]
-  end # grant_write_link_internal
-
-  # special case. permission to post on wall has been granted in an other browser session
-  # user should reconnect to update permissions and allow Gofreerev to post on wall also in this browser session
-  # return key and options for gift_posted_3c_html div
-  # alert to user to log out + log in to update permissions
-  def gift_posted_3c (user)
-    url = url_for(:controller=> :auth, :action => :index)
-    provider = user.provider
-    hide_url = "/util/hide_grant_write?provider=#{provider}"
-    return ['util.do_tasks.gift_posted_3c_html', user.app_and_apiname_hash.merge(:url => url, :provider => provider, :hide_url => hide_url)]
-  end # gift_posted_3c_key_and_options
-
-  # special case. permission to post on wall has been granted in an other browser session
-  # user should click on util/grant_write link to allow Gofreerev to post on wall also in this browser session
-  # return key and options for gift_posted_3c_html div
-  # alert to user to log out + log in to update permissions
-  def gift_posted_3d (user)
-    provider = user.provider
-    url = url_for(:controller=> :util, :action => :grant_write, :provider => provider)
-    confirm = t 'util.do_tasks.confirm_grant_write', :apiname => provider_downcase(provider)
-    hide_url = "/util/hide_grant_write?provider=#{provider}"
-    return ['util.do_tasks.gift_posted_3d_html', user.app_and_apiname_hash.merge(:url => url, :confirm => confirm, :provider => provider, :hide_url => hide_url)]
-  end # gift_posted_3d_key_and_options
-
-
-  # return [key, options] with @errors ajax to grant write access to facebook wall
-  # link is injected in tasks_errors table in page header
-  private
-  def grant_write_link_facebook
-    logger.debug2 "start"
-    provider = 'facebook'
-    # changed authorisation in an other browser session?
-    # that is post_on_wall is not authorized in session + post_on_wall is authorized in db (user.permissions)
-    # todo: move test to grant_write_link method
-    # if !get_post_on_wall_authorized(provider) and (user=@users.find { |u| u.provider == provider }) and user.post_on_wall_authorized?
-    #   # post_on_wall permission has been authorized in an other browser session
-    #   # return link to Log in page - reconnect to allow post on api wall in this session
-    #   key, options = gift_posted_3c_key_and_options(user)
-    #   return key, options
-    # end
-    oauth = Koala::Facebook::OAuth.new(API_ID[provider], API_SECRET[provider], API_CALLBACK_URL[provider])
-    url = oauth.url_for_oauth_code(:permissions => 'publish_actions', :state => set_state_cookie_store('publish_actions'))
-    hide_url = "/util/hide_grant_write?provider=#{provider}"
-    ['util.do_tasks.gift_posted_3_html', {:apiname => provider_downcase(provider),
-                             :url => url,
-                             :provider => provider,
-                             :appname => APP_NAME,
-                             :hide_url => hide_url}]
-  end # grant_write_link_facebook
-
-  # return [key, options] with @errors ajax to grant write access to facebook wall
-  # link is injected in tasks_errors table in page header
-  private
-  def grant_write_link_flickr
-    provider = 'flickr'
-    # check if post on wall permissions has been granted in an other browser session
-    # todo: move test to grant_write_link method
-    # if !get_post_on_wall_authorized(provider) and (user=@users.find {|u| u.provider == provider}) and user.post_on_wall_authorized?
-    #   # post on wall permission has been granted in an other browser session
-    #   # use Gofreerev internal grant write authorization - normally only used for twitter and vkontakte
-    #   key, options = gift_posted_3d_key_and_options(user)
-    #   return key, options
-    # end
-    # https://github.com/hanklords/flickraw#authentication
-    scope = 'write'
-    # can not use init_api_client_flickr here
-    # we are setting up a new flickr login link with extended permissions
-    FlickRaw.api_key = API_ID[:flickr]
-    FlickRaw.shared_secret = API_SECRET[:flickr]
-    api_client = flickr
-    request_token = api_client.get_request_token :oauth_callback => API_CALLBACK_URL[provider]
-    logger.debug2 "request_token = #{request_token}"
-    url = api_client.get_authorize_url(request_token['oauth_token'], :perms => scope)
-    hide_url = "/util/hide_grant_write?provider=#{provider}"
-    # save client - client object is used for authorization when/if user returns from flickr with write permission to flickr wall
-    # too big for session cookie - to saved in task_data
-    save_flickr_api_client(api_client, request_token)
-    # ajax inject link in gifts/index page
-    ['util.do_tasks.gift_posted_3_html', { :appname => APP_NAME,
-                              :apiname => provider_downcase(provider),
-                              :provider => provider,
-                              :url => url,
-                              :hide_url => hide_url}]
-  end # grant_write_link_flickr
-
-  # return [key, options] with @errors ajax to grant write access to linkedin wall
-  # link is injected in tasks_errors table in page header
-  # old linkedin access token expires when a new linkedin access token is given
-  # two different browser for same linked account does not work for share level 1 and 2.
-  # ok for share level 3 and 4 where access token is stored in db
-  private
-  def grant_write_link_linkedin
-    provider = 'linkedin'
-    # http://railscarma.com/blog/rails-3/how-to-use-linkedin-api-in-rails-applications/
-    scope = 'r_basicprofile r_network rw_nus'
-    # can not use init_api_client_linkedin here
-    # we are setting up a new linkedin login link with extended permissions
-    api_client = LinkedIn::Client.new API_ID[provider], API_SECRET[provider]
-    request_token = api_client.request_token({:oauth_callback => API_CALLBACK_URL[provider]}, :scope => scope)
-    api_client.authorize_from_access(request_token.token, request_token.secret)
-    url = api_client.request_token.authorize_url
-    hide_url = "/util/hide_grant_write?provider=#{provider}"
-    # save client - client object is used for authorization when/if user returns from linkedin with write permission to linkedin wall
-    # too big for session cookie - to saved in task_data
-    save_linkedin_api_client(api_client)
-    # ajax inject link in gifts/index page
-    ['util.do_tasks.gift_posted_3_html', { :appname => APP_NAME,
-                              :apiname => provider_downcase(provider),
-                              :provider => provider,
-                              :url => url,
-                              :hide_url => hide_url}]
-  end # grant_write_link_linkedin
-
-
-  # return [key, options] with @errors ajax to grant write access to twitter wall
-  # link is injected in tasks_errors table in page header
-  # read/write authorization in twitter is a gofreerev concept - omniauth login is with write permission to twitter wall
-  # private
-  # def grant_write_link_twitter
-  #   return grant_write_link_internal('twitter')
-  # end # grant_write_link_twitter
-
-  # return [key, options] with @errors ajax to grant write access to vkontakte wall
-  # link is injected in tasks_errors table in page header
-  # read/write authorization in vkontakte is a gofreerev concept - omniauth login is with write permission to vkontakte wall
-  # private
-  # def grant_write_link_vkontakte
-  #   return grant_write_link_internal('vkontakte')
-  # end # grant_write_link_vkontakte
-
-  # private
-  # def grant_write_method (provider)
-  #   "grant_write_#{provider}".to_sym
-  # end
-
-  # # check if link util.grant_write_<providfer> exists
-  # # post_on_wall priv. is handled internally in app for twitter and vkontakte
-  # private
-  # def grant_write_link_exists? (provider)
-  #   method = grant_write_method(provider)
-  #   index = UtilController.new.public_methods.index(method)
-  #   # logger.debug2 "provider = #{provider}, index = #{index}"
-  #   (index ? true : false)
-  # end # grant_write_link_exists?
-
-  private
-  def grant_write_link (provider)
-    # API_GIFT_PICTURE_STORE: nil (no picture/readonly api), :api (use api picture url) or :local (keep local copy of picture)
-    return nil unless [:local, :api].index(API_GIFT_PICTURE_STORE[provider])
-    # use internal grant write link? twitter, vkontakte and some changes when write permission has been granted in an other browser session
-    if get_post_on_wall_selected(provider) and
-        !get_post_on_wall_authorized(provider) and
-        (login_user = @users.find {|u| u.provider == provider}) and
-        login_user.post_on_wall_authorized?
-      # write permission has been granted in an other browser session
-      if API_POST_PERMITTED[provider] == API_POST_PERMISSION_IN_API
-        # permission to grant write permission on API wall is handled by API
-        # log out + log in to refresh write permission from database in this browser session
-        key, options = gift_posted_3c(login_user)
-      else
-        # permission to grant write permission on API wall is handled by Gofreerev
-        # use internal internal grant write link to enable post on wall permission also in this browser session
-        key, options = gift_posted_3d(login_user)
-      end
-      return key, options
-    end
-    if API_POST_PERMITTED[provider] == API_POST_PERMISSION_IN_APP
-      # twitter + vkontakte - use internal grant write link with normal text
-      key, options = gift_posted_3b(provider)
-      return key, options
-    end
-    # use external grant write link
-    # call method for api specific link for requesting post on wall permission
-    method = "grant_write_link_#{provider}".to_sym
-    # logger.debug2 "private_methods = #{private_methods.join(', ')}"
-    return ['.grant_write_link_missing', :provider => provider, :apiname => provider_downcase(provider)] unless private_methods.index(method)
-    key, options = send(method)
-    logger.debug2 "key = #{key}, options = #{options}"
-    [key, options]
-  end # grant_write_link
 
   # use flash table to prevent CookieOverflow for big flash messages when using session cookie
   # use save_flash before redirect
@@ -2462,55 +1645,6 @@ class ApplicationController < ActionController::Base
   end
   helper_method :show_find_friends_link?
 
-  # write on api wall helpers
-  WRITE_ON_WALL_YES = 1
-  WRITE_ON_WALL_NO = 2
-  WRITE_ON_WALL_MISSING_PRIVS = 3
-  WRITE_ON_WALL_CHANGED_PRIVS = 4
-
-  private
-  def get_write_on_wall_action (provider)
-    # check user privs before post in provider wall
-    # that is user.permissions and user.post_on_wall_yn settings
-    if get_post_on_wall_authorized(provider)
-      # user has authorized post on provider wall
-      if !get_post_on_wall_selected(provider)
-        logger.debug2 "User has authorized post on #{provider} but has selected not to post on #{provider} wall"
-        return ApplicationController::WRITE_ON_WALL_NO
-      end
-      # write priv ok - continue with post on provider wall
-      return ApplicationController::WRITE_ON_WALL_YES
-    elsif !get_post_on_wall_selected(provider)
-      logger.debug2 "Ignore post_on_#{provider}. User has not authorzed post on #{provider} wall and has also selected not to post on #{provider} wall"
-      return ApplicationController::WRITE_ON_WALL_NO
-    else
-      # user has not authorized post on provider wall, but post on wall checkbox in auth/index page is checked
-      # inject link to authorize post on provider wall
-      # that is gift_posted_3*_html translate keys
-      return ApplicationController::WRITE_ON_WALL_MISSING_PRIVS
-    end
-  end # check_write_on_wall_privs
-
-  # <== post_on_wall privs. are moved to session. Remove WRITE_ON_WALL_* ruby constants and get_write_on_wall_action from User model
-
-
-
-  # post_on_wall privs. have been moved to session.
-  # method post_on_wall_wallled? have been moved from User to application controller
-  # ==>
-
-  private
-  def post_on_wall_allowed? (provider=nil)
-    if !provider
-      # generic post_on_wall_allowed? request - true if allowed for one api wall
-      @users.each do |user|
-        return if post_on_wall_allowed?(user.provider)
-      end
-      return false
-    end
-    # provider specific post_on_wall_allowed? request
-    (get_post_on_wall_selected(provider) and get_post_on_wall_authorized(provider))
-  end # post_on_wall_allowed?
 
   # <==
 
@@ -2519,54 +1653,6 @@ class ApplicationController < ActionController::Base
   # call methods Picture.find_picture_store and Picture.new_temp_or_perm_rel_path have been moved to application controller
   # ==>
 
-  private
-  def find_picture_store
-    providers = @users.collect { |u| u.provider }
-    # :local picture store?
-    @users.each do |login_user|
-      next unless API_GIFT_PICTURE_STORE[login_user.provider] == :local
-      return :local if post_on_wall_allowed?(login_user.provider)
-    end
-    logger.debug2 "No provider with local picture store was found for logged in users"
-    # :api picture store?
-    @users.each do |login_user|
-      next unless API_GIFT_PICTURE_STORE[login_user.provider] == :api
-      return :api if  post_on_wall_allowed?(login_user.provider)
-    end
-    logger.debug2 "No provider with api picture store was found for logged in users"
-    # fallback option when :local or :api picture store was not available
-    return :local if API_GIFT_PICTURE_STORE[:fallback] == :local
-    logger.debug2 "Fallback to local picture store was disabled"
-    # no fallback - could be a readonly API as google+ or instagram - image upload is not allowed
-    nil
-  end # find_picture_store
-
-  private
-  def new_temp_or_perm_rel_path (image_type)
-    case find_picture_store()
-      when :local then Picture.new_perm_rel_path image_type
-      when :api then Picture.new_temp_rel_path image_type
-      else
-        logger.warn2 "error - no picture store - could be google+ - image upload is not allowed"
-        nil
-    end
-  end # new_temp_or_perm_rel_path
-
-  # <==
-
-  # post_on_wall privs. have been moved to session.
-  # Call method User.post_image_allowed? has been moved to application controller
-  # ==>
-
-  private
-  def post_image_allowed?
-    x = find_picture_store() ;
-    logger.debug2 "picture_store = #{x} (#{x.class})"
-    (x != nil)
-  end # post_image_allowed?
-  helper_method "post_image_allowed?"
-
-  # <==
 
 
   # called from partial /shared/user_div - check if balance for friend should be recalculated

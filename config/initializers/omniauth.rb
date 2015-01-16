@@ -33,10 +33,7 @@ end # OmniAuth
 #     check if auth_hash information is written correct to user record in auth/create
 #  6) add init_api_client_<provider> method to application controller
 #     you must as minimum supply a gofreerev_get_friends instance method to new api_client
-#     you must supply a gofreerev_post_on_wall instance method to api_client if api supports upload
-#  7) add grant_write_link_<provider> methods to application controller if new API supports post on wall
-#     note that post in wall priv. is handled inside Gofreerev for som API's and in API for other API's
-#  8) search source code for "API SETUP" and check if new provider should be added to ruby statements
+#  7) search source code for "API SETUP" and check if new provider should be added to ruby statements
 
 # initialize A) API_ID and B) API_SECRET hashes to be used in omni authorization and API requests
 api_id     = {} # A)

@@ -35,11 +35,11 @@
           <td><%= f.text_area :description, :size => '60x2', :placeholder => t('.description_placeholder'), :onfocus => 'Gofreerev.autoresize_text_field(this)', :class => 'new_gift_text' %>
             <%= f.submit t('.gift_submit_button_text'), :onclick => '{Gofreerev.csv_gift();return false}', :name => 'commit_gift', :class => 'new_gift_submit_large' %></td>
         </tr>
-        <tr title="<%= t ".file_title_#{post_image_allowed?()}", :appname => APP_NAME %>">
+        <tr title="<%= t ".file_title_true", :appname => APP_NAME %>">
           <td>
             <div class="fileupload bottom">
               <%= t '.file_prompt' %>
-              <%= file_field_tag :gift_file, :disabled => !post_image_allowed?(), :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
+              <%= file_field_tag :gift_file, :id => "gift_file", :class => "upload", :accept => ".gif,.jpg,.jpeg,.png,.bmp,capture=camera" %>
               <%= f.hidden_field :datatype %>
             </div>
           </td>

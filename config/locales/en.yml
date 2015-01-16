@@ -393,7 +393,6 @@ en:
      create:
         not_logged_in: "You are not logged in and you cannot create new posts. Please refresh web page."
         deleted_user: "You account is being deleted and you cannot create new posts"
-        post_on_wall_deauthorized: "%{appname}'s write permission to your %{apiname} wall has been removed."
         file_upload_not_allowed: "File upload not allowed. %{appname} lack access to write on your %{apiname} wall."
         invalid_pic_store: "Sorry. File upload is not possible. Possible causes: 1) missing X in \"Post?\" checkbox in login page, 2) missing permission to post on API wall or 3) the problem with API_GIFT_PICTURE_STORE setup on the server."
         unsupported_filetype: "Unsupported filetype %{filetype} in file upload. Supported filetypes are jpg, gif, png and bmp."
@@ -484,7 +483,6 @@ en:
      create:
         not_logged_in: "You are not logged in and you cannot create new posts. Please refresh web page."
         deleted_user: "You account is being deleted and you cannot create new posts"
-        post_on_wall_deauthorized: "%{appname}'s write permission to your %{apiname} wall has been removed."
         file_upload_not_allowed: "File upload not allowed. %{appname} lack access to write on your %{apiname} wall."
         unsupported_filetype: "Unsupported filetype %{filetype} in file upload. Supported filetypes are jpg, gif, png and bmp."
         file_is_too_big: "File is too big. Max allowed picture size is %{maxsize}."
@@ -907,8 +905,6 @@ en:
         page_header_text_html: "<p>Update user information</p>"
         currency_title: "Select the currency you want to use for prices and balance (internal all amounts are stored in USD)."
         currency_prompt: "Currency"
-        post_on_wall_title: "Use this checkbox to enable or disable post on %{apiname} wall."
-        post_on_wall_prompt: "Post on wall?"
         share_balance_title: "Use this checkbox to enable and disable shared balance accross login providers. You should be logged in with all the login providers that you are using in %{appname} when you are updating this choice."
         share_balance_prompt: "Share balance?"
         log_out_title: "Close your %{apiname} connection to %{appname}. Remember to use \"log out\" function in %{apiname} if your also wish to log out of %{apiname}."
@@ -991,28 +987,11 @@ en:
         post_login_new_user: "Your friend list is ready. Please refresh page to see any posts from your friends."
         post_login_no_friends: "Your %{apiname} friend list is empty or %{appname} is not authorized to see your %{apiname} friend list. No %{apiname} friends and no post from %{apiname} friends are displayed in %{appname}."
         # post on wall
-        grant_write_link_missing: "System error. Cannot insert link to grant permission to post on %{apiname} wall. Either private method grant_write_link_%{provider} is missing in application controller or API_GIFT_PICTURE_STORE[:%{provider}] should be set to nil if %{apiname} API does not support post on %{apiname} wall."
-        confirm_grant_write: "Allow post on your %{apiname} wall?" #
         api_client_gofreerev_post_on_wall: "System error. Cannot post on %{apiname} wall. Instance method gofreerev_post_on_wall is missing for %{apiname} API client."
         post_on_api_unknown_gift_id: "System error. Unknown post id %{id} when posting on %{provider} wall."
         post_on_api_invalid_gift_id: "Invalid post id %{id} when posting on %{provider} wall (1)."
         post_on_api_old_gift: "System error. Old post id %{id} when posting on %{provider} wall."
         post_on_api_deleted_gift: "Id %{id} for deleted post when posting on %{provider} wall."
-        gift_posted_1_html: "Gift posted in here but not on your %{apiname} wall (%{error})." # unhandled error message
-        gift_posted_2_html: "Gift posted in here and on your %{apiname} wall."
-        gift_posted_2b_html: "Gift posted in here and on your %{apiname} wall. Please note that text has been truncated in %{apiname} post."
-        gift_posted_3_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to post on my behalf!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # missing privileges
-        gift_posted_3b_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall. <a href=\"%{url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\" data-confirm=\"%{confirm}\" class=\"grant_write_ajax_link\">Allow %{appname} to post on my behalf!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # missing privileges
-        gift_posted_3c_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall right now but permission to post updates on your %{apiname} wall has been granted in an other browser session. Use %{apiname} <a href=\"%{url}\">log out + log in</a> to update your permissions and allow %{appname} to post on your behalf also in this browser session! <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # changed privileges (facebook)
-        gift_posted_3d_html: "<div title='%{appname} lack access to write on your %{apiname} wall. You can share your resources with your friends in here, but postings will only appear here and not on your %{apiname} wall. This means your message is likely to be seen by few friends. You should therefore allow %{appname} permission to write on your wall. %{appname} will only make the postings you ask for. Pictures are uploaded to %{apiname}. Pictures cannot be uploaded without permission to write on your %{apiname} wall. Select hide if you do not want to see this message.' id='grant_write_div_%{provider}'>Cannot post updates on your %{apiname} wall right now but permission to post updates on your %{apiname} wall has been granted in an other browser session. <a href=\"%{url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\" data-confirm=\"%{confirm}\" class=\"grant_write_ajax_link\">Allow %{appname} to post on my behalf also in this browser session!</a> <a href=\"%{hide_url}\" data-remote=\"true\" format=\"js\" data-type=\"script\" data-method=\"post\">(hide)</a></div>" # changed privileges (flickr and linkedin)
-        gift_posted_4_html: "Gift posted in here but not on your %{apiname} wall. Duplicate status message on %{apiname} wall"
-        gift_posted_5_html: "Gift posted in here but not on your %{apiname} wall. Posting on %{apiname} has not yet been implemented"
-        gift_posted_6_html: "Gift with picture was not posted on your %{apiname} wall. Internal error. Picture was not found."
-        gift_posted_7_html: "Gift was not posted on your %{apiname} wall. Error in deep <a href='%{link}'>link</a>. Error: \"%{error}\"."
-        gift_posted_8_html: "Gift posted here but not on your %{apiname}. You have removed %{appname} from %{apiname} and you no longer have access to %{appname} using your %{apiname} account. You should refresh the page as access rights have changed."
-        gift_posted_9_html: "Gift posted here but not on your %{apiname} wall. Post on %{apiname} requires a photo attachment or that text to image convert is enabled (API_TEXT_TO_PICTURE)."
-        gift_posted_10_html: "Gift posted here but not in your %{apiname} wall. Authorization expired. Please log in again to renew your authorization."
-        gift_posted_11_html: "Gift posted here but not on your %{apiname} wall. Post on %{apiname} requires a photo attachment or that text to image software is working on server. Text to picture convert program phantomjs was not found on server. Please install phantomjs or disable text to picture convert (API_TEXT_TO_PICTURE)."
         get_api_picture_url_missing: "System error. Posted on %{apiname} wall but did not found method get_api_picture_%{provider}. Photo cannot be displayed in %{appname}."
         no_api_picture_url: "Picture uploaded, but did not get a picture url from #{apiname}"
         fb_pic_post_declined_permission_html: "Gift was posted on your %{apiname} wall but picture cannot be displayed on your %{appname} wall. %{appname} do not have permission to read posts on your %{apiname} wall."
@@ -1113,25 +1092,6 @@ en:
         invalid_updated_by: "System error. Did not find any valid \"updated by\" users."
         ok: "Proposal has been accepted."
         exception: "System error. Cannot accept proposal. %{error}. More information in server log."
-     grant_write:
-        ok: "%{appname} was granted permission to write on your %{apiname} wall."
-        invalid_provider: "Invalid request. Could not grant write permission to your API wall. Invalid login provider."
-        not_allowed: "%{appname} not was granted permission to write on your %{apiname} wall. Please refresh page."
-        exception: "System error. Could not grant write permission to your %{apiname} wall. %{error}. More information in server log."
-#     grant_write_twitter:
-#        ok: "%{appname} was granted permission to write on your %{apiname} wall."
-#        exception: "System error. Could not grant write permission to your %{apiname} wall. %{error}. More information in server log."
-#     grant_write_vkontakte:
-#        ok: "%{appname} was granted permission to write on your %{apiname} wall."
-#        exception: "System error. Could not grant write permission to your %{apiname} wall. %{error}. More information in server log."
-     hide_grant_write:
-        unknown_provider: "System error. Could not hide %{provider} grant write link. Unknown login provider."
-        ok: "%{appname} will in future not ask for permission to make postings on your %{apiname} wall. You can later allow %{appname} to make postings on your %{apiname} wall by checking \"Post?\" checkbox in \"Log in\" page."
-        exception: "System error. Could not hide %{apiname} grant write link. %{error}. More information in server log."
-     post_on_wall_yn:
-        unknown_provider: "System error. Unknown login provider %{apiname}. Change in Post? has not been saved."
-        unknown_post_on_wall: "System error. Unknown choice for login provider %{apiname}. Change in Post? has not been saved."
-        exception: "System error. Could not change Post? choice. %{error}. More information in server log."
      share_accounts:
         not_logged_in: "Cannot change \"Share accounts?\" choice. You are not logged in. Please refresh page."
         unknown_share_accounts: "System error. Unknown choice for share accounts. Change in Share accounts? has not been saved."
@@ -1207,11 +1167,6 @@ en:
         click_js_error: "Minor javascript error for comment link. %{error} (%{location},%{debug})."
      post_on_wall:
         ajax_error: "Error when changing \"Post?\" choice. %{error}. More information in server log."
-     grant_write:
-        vkontakte_ajax_error: "Cannot grant write access to vkontakte wall. %{error}. More information in server log."
-        twitter_ajax_error: "Cannot grant write access twitter wall. %{error}. More information in server log."
-        ajax_error: "Cannot grant write access wall. Fejl \"%{error}\" for ugyldig link %{url}. %{error}. More information in server log."
-        js_error: "Cannot grant write access wall. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
      share_accounts:
         lov_not_found: "System error when changing \"Share accounts?\" choice. Element share_level_lov was not found."
         ajax_error: "Cannot change \"Share accounts?\" choice. %{error}. More information in server log."

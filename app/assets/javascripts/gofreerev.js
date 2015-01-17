@@ -2898,15 +2898,25 @@ var Gofreerev = (function() {
 
 angular.module('gifts', ['ngRoute'])
     .config(function ($routeProvider) {
-        $routeProvider.when('/gifts', {
+        $routeProvider.when('/gifts/:userid?', {
             templateUrl: 'main/gifts',
             controller: 'GiftsCtrl as ctrl'
         })
-            .when('/auth', {
+            .when('/auth/:userid?', {
                 templateUrl: 'main/auth',
                 controller: 'AuthCtrl as ctrl'
             });
-        $routeProvider.otherwise({redirectTo: '/gifts'});
+        // $routeProvider.otherwise({redirectTo: '/gifts'});
+        $routeProvider.otherwise({
+            redirectTo: function (routeParams, path, search) {
+                var userid = sessionStorage.getItem('userid');
+                if (typeof userid == 'undefined') userid = 0 ;
+                else if (userid == null) userid = 0 ;
+                else if (userid == '') userid = 0 ;
+                else userid = parseInt(userid) ;
+                return '/gifts/' + userid;
+            }
+        });
     })
     .factory('TextService', ['$sce', function($sce) {
         console.log('TextService loaded') ;
@@ -2920,6 +2930,7 @@ angular.module('gifts', ['ngRoute'])
         self.init_language_constants = function () {
             self.language = I18n.locale || I18n.defaultLocale;
             self.texts = {
+                appname: appname,
                 new_gift: {
                     header_line: I18n.t('js.new_gift.header_line'),
                     price_title: I18n.t('js.new_gift.price_title',
@@ -2995,6 +3006,10 @@ angular.module('gifts', ['ngRoute'])
                     register_button: I18n.t('js.auth.register_button'),
                     radio_log_in_prompt: I18n.t('js.auth.radio_log_in_prompt'),
                     radio_register_prompt: I18n.t('js.auth.radio_register_prompt')
+                },
+                page_header: {
+                    home_link_text: I18n.t('js.page_header.home_link_text'),
+                    log_in_link_text: I18n.t('js.page_header.log_in_link_text')
                 }
             };
         }
@@ -3027,16 +3042,17 @@ angular.module('gifts', ['ngRoute'])
             for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
             return false ;
         }
-        var get_device_user_id = function() {
+        var client_userid = function() {
             if (!$window.sessionStorage) return 0 ;
             var userid = $window.sessionStorage.getItem('userid') ;
             if (typeof userid == 'undefined') return 0 ;
             if (userid == null) return 0 ;
+            if (userid == '') return 0 ;
             userid = parseInt(userid) ;
             return userid ;
         }
         var is_logged_in_with_device = function () {
-            var user_id = get_device_user_id() ;
+            var user_id = client_userid() ;
             // console.log('is_logged_in_with_device: user_id = ' + user_id) ;
             return (user_id > 0) ;
         }
@@ -3181,13 +3197,15 @@ angular.module('gifts', ['ngRoute'])
             get_users_currency: get_users_currency,
             find_giver: find_giver,
             find_receiver: find_receiver,
-            logout: logout
+            logout: logout,
+            client_userid: client_userid
         }
     }])
-    .controller('NavCtrl', ['UserService', function(userService) {
+    .controller('NavCtrl', ['TextService', 'UserService', function(textService, userService) {
         console.log('NavCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
+        self.texts = textService.texts ;
     }])
     .controller('AuthCtrl', ['TextService', 'UserService', '$window', function(textService, userService, $window) {
         console.log('AuthCtrl loaded') ;

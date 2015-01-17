@@ -77,13 +77,13 @@ en:
         header_balance_prompt: "Balance:"
         header_balance_free: "free"
         header_home_link_title: ''
-        header_home_link_text: 'Share'
+        header_home_link_text: 'Share' # todo: angularJS - moved to js.page_header.home_link_text
         header_inbox_link_title: ''
         header_inbox_link_text: 'Inbox'
         header_friends_link_title: ''
         header_friends_link_text: 'Friends'
         header_api_link_title: "Retur to %{apiname} WITHOUT logging out of %{appname}"
-        header_log_in_link_text: 'Log in'
+        header_log_in_link_text: 'Log in' # todo: angularJS - moved to js.page_header.log_in_link_text
         header_log_in_link_title: 'Log in'
         header_log_out_link_text: 'Log out'
         header_log_out_link_title: "Log out of %{appname}."
@@ -1303,3 +1303,6 @@ en:
         radio_register_prompt: "Register"
         provider_login_header: "Social network log in:"
         provider_login_title: "Use social network log in to download one or more friends lists to be used when sharing gifts in %{appname}."
+     page_header:
+        home_link_text: 'Share'
+        log_in_link_text: 'Log in'

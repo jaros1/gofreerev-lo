@@ -78,13 +78,13 @@ da:
         header_balance_prompt: "Saldo:"
         header_balance_free: 'frie'
         header_home_link_title: ''
-        header_home_link_text: 'Del'
+        header_home_link_text: 'Del' # todo: angularJS - moved to js.page_header.home_link_text
         header_inbox_link_title: ''
         header_inbox_link_text: 'Beskeder'
         header_friends_link_title: ''
         header_friends_link_text: 'Venner'
         header_api_link_title: "Returner til %{apiname} UDEN at logge ud af %{appname}"
-        header_log_in_link_text: 'Log ind'
+        header_log_in_link_text: 'Log ind' # todo: angularJS - moved to js.page_header.log_in_link_text
         header_log_in_link_title: 'Log ind'
         header_log_out_link_text: 'Log ud'
         header_log_out_link_title: "Log ud af %{appname}"
@@ -1305,4 +1305,6 @@ da:
         radio_register_prompt: "Opret konto"
         provider_login_header: "Log ind til sociale netværk:"
         provider_login_title: "Brug log ind til sociale netværk til at hente den eller de vennelister der skal benyttes ved deling af resourcer i %{appname}."
-
+     page_header:
+        home_link_text: 'Del'
+        log_in_link_text: 'Log ind'

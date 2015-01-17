@@ -100,21 +100,21 @@
             <span class="icon-bar"></span>
           </a>
           <%= @page_header = true ; @size = 'small' ; render '/shared/user_div', :user_div => user %>
-          <%= text = APP_NAME ; link_to text, '#/gifts', :class => "brand", data: { disable_with: text } %>
+          <a class="brand" data-disable-with="{{ctrl.texts.appname}}" href="#/gifts/{{ctrl.userService.client_userid()}}">{{ctrl.texts.appname}}</a>
           <div class="container-fluid nav-collapse">
             <table>
               <tbody>
               <tr>
                 <td>
                   <ul class="nav">
-                    <li><%= text = t('layouts.page_header.header_home_link_text') ; link_to text, '#/gifts', data: { disable_with: text } %></li>
+                    <li><a data-disable-with="{{ctrl.texts.page_header.home_link_text}}" href="#/gifts/{{ctrl.userService.client_userid()}}">{{ctrl.texts.page_header.home_link_text}}</a></li>
                     <li><%= text = t('layouts.page_header.header_inbox_link_text') ; link_to text, inbox_index_path, data: { disable_with: text } %></li>
                     <li><%= text = t('layouts.page_header.header_friends_link_text') ; link_to text, users_path(:friends => 'yes'), data: { disable_with: text }  %></li>
                   </ul>
                 </td>
                 <td>
                   <ul class="nav">
-                    <li><%= text = t('layouts.page_header.header_log_in_link_text') ; link_to text, '#/auth', data: { disable_with: text }  %></li>
+                    <li><a data-disable-with="{{ctrl.texts.page_header.log_in_link_text}}" href="#/auth/{{ctrl.userService.client_userid()}}">{{ctrl.texts.page_header.log_in_link_text}}</a></li>
                     <li><%= link_to_logout  %></li>
                     <li><%= text = 'About' ; link_to text, about_index_path, data: { disable_with: text }  %></li>
                   </ul>

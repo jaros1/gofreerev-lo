@@ -41,7 +41,8 @@ class AuthController < ApplicationController
     logger.secret2 "auth_hash = #{auth_hash}"
 
     # angularJS single page url: main#/auth or main#/gifts:_)
-    angular_url = "/#{I18n.locale}/main?client_userid=#{get_client_userid}#/"
+    # angular_url = "/#{I18n.locale}/main?client_userid=#{get_client_userid}#/"
+    angular_url = "/#{I18n.locale}/main#/"
 
     provider = auth_hash.get_provider
 

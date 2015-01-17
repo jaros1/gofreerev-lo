@@ -20,6 +20,8 @@ gem 'omniauth-facebook' # https://github.com/mkdynamic/omniauth-facebook
 # gem 'koala', '1.10.0rc' # facebook API calls - https://github.com/arsduo/koala/wiki/Koala-on-Rails
 # gem 'koala', '1.9.0' # facebook API calls - https://github.com/arsduo/koala/wiki/Koala-on-Rails
 gem 'koala' # facebook API calls - https://github.com/arsduo/koala/wiki/Koala-on-Rails
+gem 'rest_client'
+gem 'rest-client' # used in FB notifications. todo: drop notifications?
 
 # 2) flickr
 # register : http://www.flickr.com/services/apps/create/
@@ -62,7 +64,7 @@ gem 'linkedin', '0.4.4', :path => 'vendor/gems/linkedin-0.4.4' # LinkedIn API ca
 # reference: https://dev.twitter.com/docs/api/1.1
 gem 'omniauth-twitter' # https://github.com/arunagw/omniauth-twitter
 gem 'twitter', '>= 5.5.1' # twitter API calls - http://sferik.github.io/twitter/
-gem 'twitter-text' # https://github.com/twitter/twitter-text-rb (truncate text & preserve tags)
+# gem 'twitter-text' # https://github.com/twitter/twitter-text-rb (truncate text & preserve tags)
 
 # 8) VKontakte
 # register : http://vk.com/dev
@@ -71,7 +73,6 @@ gem 'twitter-text' # https://github.com/twitter/twitter-text-rb (truncate text &
 gem 'omniauth-vkontakte' # https://github.com/mamantoha/omniauth-vkontakte
 gem 'httparty' # used in vkontakte
 gem 'vkontakte', '0.0.3' , :path => 'vendor/gems/vkontakte-0.0.3' # http://rubygems.org/gems/vkontakte (*)
-gem 'rest_client' # for post multipart in vkontakte_api uploads
 
 gem 'mysql2' # laptop and dev2 server
 

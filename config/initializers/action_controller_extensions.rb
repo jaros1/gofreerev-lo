@@ -4,16 +4,35 @@ module ActionControllerExtensions
   def get_sessionid
     request.session_options[:id]
   end
+  def get_client_userid
+    session[:client_userid] || 0
+  end
+  def get_secret
+    session[:secret] = String.generate_random_string(256) unless session[:secret]
+    logger.debug2 "secret = #{session[:secret]}"
+    session[:secret]
+  end
+
+  def find_or_create_session
+    s = Session.find_by_session_id_and_client_userid(get_sessionid, get_client_userid)
+    s = Session.new unless s
+    s.secret = get_secret unless s.secret
+    s.session_id = get_sessionid if s.new_record?
+    s.client_userid = get_client_userid if s.new_record?
+    s
+  end
 
   # generic session setter/getter
   # some session data are stored in different sections for each client_userid
   # some session data are stored encrypted in database (4kb limit for cookies)
   # keys:
-  #   :client_userid - 1, 2 etc. From client local storage login - sent to rails all client get/post requests
+  #   :client_userid - 0, 1, 2 etc. From client local storage login - sent to rails all client get/post requests
   #   :created - show cookie note in page header for new sessions - hidden after 30 seconds
   #   :expires_at - unix timestamps for API access tokens
   #   :flash_id - id to current flash message
   #   :language - en, da etc
+  #   :last_row_at - old show-more-rows functionality - see get_last_row_at/set_last_row_at
+  #   :last_row_id - old show-more-rows functionality - see get_last_row_id/set_last_row_id
   #   :refresh_tokens - API refresh tokens - only used for Google+
   #   :state - random string :state in oauth API requests. set before calling API and check after returning from API
   #   :timezone - timezone from JS or oauth login
@@ -22,20 +41,41 @@ module ActionControllerExtensions
 
   private
   def get_session_value (key)
-    session[key]
+    key = key.to_sym
+    return session[key] if [:client_userid, :timezone].index(key)
+    s = find_or_create_session()
+    s.save if s.changed?
+    eval("s.#{key}")
   end
   def get_session_array_value (key, index)
-    session[key][index]
+    s = find_or_create_session()
+    s.save if s.changed?
+    eval("s.#{key}")[index]
   end
-  def set_session_value (name, value)
-    session[name] = value
+  def set_session_value (key, value)
+    key = key.to_sym
+    if [:client_userid, :timezone].index(key)
+      session[key] = value
+    else
+      s = find_or_create_session()
+      s.set_column_value(key, value)
+      s.save!
+    end
     value
   end
-  def set_session_array_value (name, value, index)
-    session[name][index] = value
+  def set_session_array_value (key, value, index)
+    key = key.to_sym
+    hash = get_session_value(key)
+    hash[index] = value
+    set_session_value(key, hash)
+    value
   end
-  def delete_session_array_value( name, index)
-    session[name].delete(index)
+  def delete_session_array_value( key, index)
+    key = key.to_sym
+    hash = get_session_value(key)
+    value = hash.delete(index)
+    set_session_value(key, hash)
+    value
   end
 
 end

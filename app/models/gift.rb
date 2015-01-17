@@ -1,7 +1,5 @@
 class Gift < ActiveRecord::Base
 
-  include Twitter::Extractor
-
   has_many :comments, :class_name => 'Comment', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
   has_many :api_comments, :class_name => 'ApiComment', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
   # todo: :dependent => :destroy does not work for api_gifts. Has added a after_destroy callback to fix this problem

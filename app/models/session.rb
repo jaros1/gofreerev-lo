@@ -17,6 +17,9 @@ class Session < ActiveRecord::Base
   #   t.datetime "updated_at"
   # end
 
+  # timestamps are updated manual in ActionControllerExtensions
+  self.record_timestamps = false
+
   crypt_keeper :created, :expires_at, :encryptor => :aes, :key => ENCRYPT_KEYS[0]
 
   # 1) session_id - string 32 characters = request.session_options[:id

@@ -14,12 +14,20 @@ module ActionControllerExtensions
   end
 
   def find_or_create_session
-    s = Session.find_by_session_id_and_client_userid(get_sessionid, get_client_userid)
-    s = Session.new unless s
-    s.secret = get_secret unless s.secret
-    s.session_id = get_sessionid if s.new_record?
-    s.client_userid = get_client_userid if s.new_record?
-    s
+    return @s if @s
+    @s = Session.find_by_session_id_and_client_userid(get_sessionid, get_client_userid)
+    @s = Session.new unless @s
+    @s.secret = get_secret unless @s.secret
+    @s.created_at = Time.zone.now if @s.new_record?
+    @s.session_id = get_sessionid if @s.new_record?
+    @s.client_userid = get_client_userid if @s.new_record?
+    @s
+  end
+  def save_session
+    if @s.new_record? or @s.changed?
+      @s.updated_at = Time.zone.now
+      @s.save
+    end
   end
 
   # generic session setter/getter
@@ -43,23 +51,24 @@ module ActionControllerExtensions
   def get_session_value (key)
     key = key.to_sym
     return session[key] if [:client_userid, :timezone].index(key)
-    s = find_or_create_session()
-    s.save if s.changed?
-    eval("s.#{key}")
+    find_or_create_session()
+    save_session()
+    eval("@s.#{key}")
   end
   def get_session_array_value (key, index)
-    s = find_or_create_session()
-    s.save if s.changed?
-    eval("s.#{key}")[index]
+    find_or_create_session()
+    save_session()
+    eval("@s.#{key}")[index]
   end
   def set_session_value (key, value)
     key = key.to_sym
     if [:client_userid, :timezone].index(key)
+      @s = nil if key == :client_userid and (session[key] || 0) != (value || 0) # client_userid has changed
       session[key] = value
     else
-      s = find_or_create_session()
-      s.set_column_value(key, value)
-      s.save!
+      find_or_create_session()
+      @s.set_column_value(key, value)
+      save_session()
     end
     value
   end

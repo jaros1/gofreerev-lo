@@ -7,7 +7,8 @@ class UtilController < ApplicationController
                 :except => [:new_messages_count,
                             :like_gift, :unlike_gift, :follow_gift, :unfollow_gift, :hide_gift, :delete_gift,
                             :cancel_new_deal, :reject_new_deal, :accept_new_deal,
-                            :do_tasks, :share_gift, :open_graph]
+                            :do_tasks, :share_gift, :open_graph,
+                            :logout]
 
   # update new message count in menu line in page header
   # called from hidden new_messages_count_link link in page header once every 15, 60 or 300 seconds
@@ -2001,6 +2002,33 @@ class UtilController < ApplicationController
   public
   def upload
     logger.debug2 "params = #{params}"
+  end
+
+  # angularJS logout.
+  public
+  def logout
+    logger.debug2 "params = #{params}"
+    find_or_create_session
+    if @s.new_record?
+      # don't save new session
+      render :nothing => true
+      return
+    end
+    provider = params[:provider]
+    provider = nil unless valid_omniauth_provider?(provider)
+    if provider
+      # api provider log out
+      delete_session_array_value :tokens, provider
+      delete_session_array_value :expires_at, provider
+      delete_session_array_value :refresh_tokens, provider
+      user_ids = get_session_value :user_ids
+      user_ids = user_ids.delete_if { |user_id| (user_id.split('/').last == provider) }
+      set_session_value :user_ids, user_ids
+    else
+      # local log out - log out for all providers
+      @s.destroy unless @s.new_record?
+    end
+    render :nothing => true
   end
 
 

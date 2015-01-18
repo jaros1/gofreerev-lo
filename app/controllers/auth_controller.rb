@@ -38,10 +38,11 @@ class AuthController < ApplicationController
   # omniauth callback on success (login was started from rails)
   def create
     @auth_hash = auth_hash
+    client_userid = get_client_userid()
+
     logger.secret2 "auth_hash = #{auth_hash}"
 
-    # angularJS single page url: main#/auth or main#/gifts:_)
-    # angular_url = "/#{I18n.locale}/main?client_userid=#{get_client_userid}#/"
+    # angularJS single page url: main#/auth/:client_userid or main#/gifts/:client_userid
     angular_url = "/#{I18n.locale}/main#/"
 
     provider = auth_hash.get_provider
@@ -58,7 +59,7 @@ class AuthController < ApplicationController
       # oauth2 and invalid state
       logger.debug2 "invalid state after omniauth login. omniauth_status = #{omniauth_status}, params[:state] = #{params[:state]}"
       save_flash_key ".invalid_state_login", :apiname => provider_downcase(provider)
-      redirect_to "#{angular_url}auth"
+      redirect_to "#{angular_url}auth/#{client_userid}"
       return
     end
 
@@ -94,10 +95,10 @@ class AuthController < ApplicationController
       user = User.find_by_user_id(user_id)
       if @users.size == 1 and !user.share_account_id
         # singleton user login - continue to gifts page
-        redirect_to "#{angular_url}gifts"
+        redirect_to "#{angular_url}gifts/#{client_userid}"
       else
         # multi user login - stay on login page for other logins, check expired access tokens, share share level, find friends etc
-        redirect_to "#{angular_url}auth"
+        redirect_to "#{angular_url}auth/#{client_userid}"
       end
     else
       # login failed
@@ -109,7 +110,7 @@ class AuthController < ApplicationController
         logger.debug2  "invalid response from User.find_or_create_from_auth_hash. Must be nil or a valid input to translate. Response: #{user}"
         save_flash_key '.find_or_create_from_auth_hash', :response => user, :exception => e.message.to_s
       end
-      redirect_to "#{angular_url}auth"
+      redirect_to "#{angular_url}auth/#{client_userid}"
     end
   end # create
 

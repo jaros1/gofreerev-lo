@@ -867,7 +867,8 @@ var Gofreerev = (function() {
             if (!tasks_sleep) return ;
             // execute some more tasks - for example post status on api wall(s)
             debug = 120 ;
-            trigger_tasks_form(tasks_sleep);
+            // todo: angularJS tasks_form dropped. util/do_tasks is now called from angularJS NavCtrl
+            // trigger_do_tasks(tasks_sleep);
         }
         catch (err) {
             add2log(pgm + 'failed with JS exception ' + err + ', debug = ' + debug) ;
@@ -1218,19 +1219,6 @@ var Gofreerev = (function() {
     } // check_uncheck_new_deal_checkbox
 
 
-    //$(document).ready(function() {
-    //    $("#tasks_form").unbind("ajax:error") ;
-    //    $("#tasks_form").bind("ajax:error", function(jqxhr, textStatus, errorThrown){
-    //        add2log('#tasks_form.error');
-    //        add2log('jqxhr = ' + jqxhr);
-    //        add2log('textStatus = ' + textStatus);
-    //        add2log('errorThrown = ' + errorThrown);
-    //        add_to_tasks_errors('tasks_form.error: ' + errorThrown + '. check server log for more information.') ;
-    //    })
-    //})
-
-
-
 
     // http://stackoverflow.com/questions/10944396/how-to-calculate-ms-since-midnight-in-javascript
     function getMsSinceMidnight() {
@@ -1501,80 +1489,10 @@ var Gofreerev = (function() {
 
 
 
-
+    // todo: move to angularJS NavCtrl
     function get_js_timezone() {
         return -(new Date().getTimezoneOffset()) / 60.0 ;
     }
-
-    function start_tasks_form_spinner()
-    {
-        var spinner_id = 'ajax-tasks-spinner' ;
-        var spinner = document.getElementById(spinner_id) ;
-        if (spinner) spinner.style.display = '' ;
-        else add2log('start_tasks_form_spinner: spinner was not found') ;
-    } // start_tasks_form_spinner
-
-    function stop_tasks_form_spinner()
-    {
-        var spinner_id = 'ajax-tasks-spinner' ;
-        var spinner = document.getElementById(spinner_id) ;
-        if (spinner) spinner.style.display = 'none' ;
-        else add2log('stop_tasks_form_spinner: spinner was not found') ;
-    } // stop_tasks_form_spinner
-
-
-    // request server to execute any task in task queue
-    // called from bottom of application layout and from  insert_update_gifts after gift create (posting on api wall)
-    // tasks: get currency rates, download api information (picture, permissions, friend list), post on api walls
-    function trigger_tasks_form (sleep) {
-        add2log("trigger_tasks_form: sleep = " + sleep) ;
-        if (!sleep) sleep=1000 ;
-        var timezone = document.getElementById("timezone") ;
-        if (!timezone) {
-            add2log('trigger_tasks_form. hidden field with id timezone was not found') ;
-            return ;
-        }
-        timezone.value = get_js_timezone();
-        window.setTimeout(function(){start_tasks_form_spinner();$('#tasks_form').trigger('submit.rails');}, sleep);
-    } // trigger_tasks_form
-
-    // error callback for executing tasks - write to debug log + page header
-    // debug log in bottom of page is shown if DEBUG_AJAX = true (constants.rb)
-    $(document).ready(function() {
-        var id = "#tasks_form" ;
-        $(id).unbind("ajax:success");
-        $(id).bind("ajax:success", function (evt, data, status, xhr) {
-            var pgm = id + '.ajax.success: ' ;
-            try {
-                stop_tasks_form_spinner();
-            }
-            catch (err) {
-                var msg = pgm + 'failed with JS error: ' + err;
-                add2log(msg);
-                add_to_tasks_errors(msg);
-                return;
-            }
-        }); // ajax:success
-        $(id).unbind("ajax:error") ;
-        $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
-            var pgm = id + '.ajax.error: ' ;
-            try {
-                if (leaving_page) return ;
-                stop_tasks_form_spinner();
-                add2log(pgm);
-                add2log('jqxhr = ' + jqxhr);
-                add2log('textStatus = ' + textStatus);
-                add2log('errorThrown = ' + errorThrown);
-                add_to_tasks_errors('tasks_form.error: ' + errorThrown + '. check server log for more information.') ;
-            }
-            catch (err) {
-                var msg = pgm + 'failed with JS error: ' + err;
-                add2log(msg);
-                add_to_tasks_errors(msg);
-                return;
-            }
-        }) ; // ajax:error
-    })
 
     // delete old messages before inserting new identical error message
     function delete_old_error (table, error) {
@@ -2877,7 +2795,6 @@ var Gofreerev = (function() {
         get_share_gift_link: get_share_gift_link,
         share_gift: share_gift,
         // show more rows functionality - "endless" ajax expanding pages (gifts and users)
-        start_tasks_form_spinner: start_tasks_form_spinner,
         setup_ajax_expanding_page: setup_ajax_expanding_page,
         set_missing_api_picture_urls: set_missing_api_picture_urls,
         report_missing_api_picture_urls: report_missing_api_picture_urls,
@@ -2898,13 +2815,38 @@ var Gofreerev = (function() {
 
 angular.module('gifts', ['ngRoute'])
     .config(function ($routeProvider) {
+        var get_local_userid = function() {
+            var userid = sessionStorage.getItem('userid');
+            if (typeof userid == 'undefined') return '0' ;
+            else if (userid == null) return '0' ;
+            else if (userid == '') return '0' ;
+            else return ('' + parseInt(userid)) ;
+        };
         $routeProvider.when('/gifts/:userid?', {
             templateUrl: 'main/gifts',
-            controller: 'GiftsCtrl as ctrl'
+            controller: 'GiftsCtrl as ctrl',
+            resolve: {
+                check_userid: ['$route', '$location', function($route, $location) {
+                    var userid = get_local_userid() ;
+                    if (userid != $route.current.params.userid) {
+                        $location.path('/gifts/' + userid) ;
+                        $location.replace() ;
+                    }
+                }]
+            }
         })
             .when('/auth/:userid?', {
                 templateUrl: 'main/auth',
-                controller: 'AuthCtrl as ctrl'
+                controller: 'AuthCtrl as ctrl',
+                resolve: {
+                    check_userid: ['$route', '$location', function($route, $location) {
+                        var userid = get_local_userid() ;
+                        if (userid != $route.current.params.userid) {
+                            $location.path('/auth/' + userid) ;
+                            $location.replace() ;
+                        }
+                    }]
+                }
             });
         // $routeProvider.otherwise({redirectTo: '/gifts'});
         $routeProvider.otherwise({
@@ -3021,7 +2963,7 @@ angular.module('gifts', ['ngRoute'])
             init_language_constants: self.init_language_constants
         }
     }])
-    .factory('UserService', ['$window', function($window) {
+    .factory('UserService', ['$window', '$http', function($window, $http) {
         console.log('UserService loaded') ;
 
         // users - read from local storage - used in angularJS filter functions
@@ -3139,12 +3081,14 @@ angular.module('gifts', ['ngRoute'])
                 // device log out
                 sessionStorage.removeItem('password') ;
                 sessionStorage.removeItem('userid') ;
-                return ;
             }
-            // api log out
-            var new_users = [] ;
-            for (var i=0 ; i < users.length ; i++) if (users[i].provider != provider) new_users.push(users[i]) ;
-            init_users(new_users) ;
+            else {
+                // api log out
+                var new_users = [] ;
+                for (var i=0 ; i < users.length ; i++) if (users[i].provider != provider) new_users.push(users[i]) ;
+                init_users(new_users) ;
+            }
+            $http.post('/util/logout?client_userid=' + client_userid(), {provider: provider || ''}) ;
         }
 
         // test data - users - todo: receive array with users after login (login users and friends)
@@ -3201,13 +3145,50 @@ angular.module('gifts', ['ngRoute'])
             client_userid: client_userid
         }
     }])
-    .controller('NavCtrl', ['TextService', 'UserService', function(textService, userService) {
+    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', function(textService, userService, $timeout, $http) {
         console.log('NavCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
+
+        var get_js_timezone = function () {
+            return -(new Date().getTimezoneOffset()) / 60.0 ;
+        }
+        var start_do_tasks_spinner = function ()
+        {
+            var spinner_id = 'ajax-tasks-spinner' ;
+            var spinner = document.getElementById(spinner_id) ;
+            if (spinner) spinner.style.display = '' ;
+            else Gofreerev.add2log('start_do_tasks_spinner: spinner was not found') ;
+        } // start_do_tasks_spinner
+        var stop_do_tasks_spinner = function ()
+        {
+            var spinner_id = 'ajax-tasks-spinner' ;
+            var spinner = document.getElementById(spinner_id) ;
+            if (spinner) spinner.style.display = 'none' ;
+            else Gofreerev.add2log('stop_tasks_form_spinner: spinner was not found') ;
+        } // stop_tasks_form_spinner
+
+        // post page - execute som ajax tasks and get some json data from server
+        var do_tasks = function () {
+            var pgm = 'NavCtrl.do_tasks: ' ;
+            console.log(pgm + 'start');
+            start_do_tasks_spinner();
+            $http.post('/util/do_tasks?client_userid=' + userService.client_userid(), {timezone: get_js_timezone()})
+                .then(function (response) {
+                    console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                    stop_do_tasks_spinner() ;
+                },
+                function (error) {
+                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
+                    stop_do_tasks_spinner() ;
+                }) ;
+
+        }
+        $timeout(do_tasks, 1000);
+
     }])
-    .controller('AuthCtrl', ['TextService', 'UserService', '$window', function(textService, userService, $window) {
+    .controller('AuthCtrl', ['TextService', 'UserService', '$window', '$location', function(textService, userService, $window, $location) {
         console.log('AuthCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
@@ -3249,10 +3230,10 @@ angular.module('gifts', ['ngRoute'])
             return !userService.is_logged_in_with_provider(provider)
         }
         self.logout = function (provider) {
-            // console.log('AuthCtrl: logout provider (1) ' + provider) ;
             if (!userService.is_logged_in_with_provider(provider)) return ;
-            // console.log('AuthCtrl: logout provider (2) ' + provider) ;
             userService.logout(provider) ;
+            $location.path('/auth/0') ;
+            $location.replace() ;
         }
         self.trafic_light_status = function (provider) {
             if (userService.is_logged_in_with_provider(provider)) return 'connected' ;
@@ -3268,16 +3249,21 @@ angular.module('gifts', ['ngRoute'])
         self.login_or_register = function() {
             var create_new_account = (self.register != '') ;
             var userid = Gofreerev.client_login(self.device_password, create_new_account) ;
-            if (userid == 0) alert('Invalid password') ;
+            if (userid == 0) {
+                alert('Invalid password');
+            }
             else {
                 sessionStorage.setItem('password', self.device_password) ;
                 sessionStorage.setItem('userid', userid) ;
                 self.device_password = '' ;
                 self.confirm_device_password = '' ;
                 self.register = '' ;
-                console.log('AuthCtrl.login_or_register: userid = ' + userid) ;
+                // console.log('AuthCtrl.login_or_register: userid = ' + userid) ;
+                $location.path('/auth/' + userid) ;
+                $location.replace();
             }
         }
+
     }])
     .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', 'TextService', function ($location, $http, $document, $window, $sce, userService, textService) {
         console.log('GiftsCtrl loaded') ;

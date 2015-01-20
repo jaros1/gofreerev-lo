@@ -132,7 +132,7 @@
                                                     <td>{{ctrl.new_gift.open_graph_description}}</td>
                                                 </tr>
                                                 <tr ng-show="ctrl.new_gift.open_graph_error">
-                                                    <td>{{ctrl.new_gift.open_graph_error}}</td>
+                                                    <td><span ng-bind-html="ctrl.new_gift.open_graph_error"></span></td>
                                                 </tr>
                                                 </tbody>
                                             </table>

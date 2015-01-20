@@ -1342,19 +1342,23 @@ class User < ActiveRecord::Base
     # logger.debug2 "get friends. user_ids = #{user_ids.join(', ')}"
     users_app_friends = {'Y' => [], 'F' => [], 'S' => [], 'N' => [], 'P' => []}
     friends = Friend.where("user_id_giver in (?)", user_ids)
+    # remove old oauth 1.x facebook friends. oauth 2.x only returns fb friends that also are using the app (very few friends)
+    friends = friends.delete_if { |f| ((f.user_id_giver.split('/').last == 'facebook') and (f.api_friend == 'N') and !f.app_friend) }
     friends.each do |f|
       friend_status_code = f.friend_status_code
       users_app_friends[friend_status_code] = [] unless users_app_friends.has_key?(friend_status_code)
       users_app_friends[friend_status_code] << f.user_id_receiver # save userids in Y, F, S and N arrays
     end
+    # logger.debug2 "users_app_friends = #{users_app_friends}"
     # logger.debug2 "get friends of mutual friends"
     friends_of_friends_ids = Friend.
         where('user_id_giver in (?)', users_app_friends['Y']).
         find_all { |f| (f.app_friend || f.api_friend) == 'Y' }.
         collect { |f| f.user_id_receiver }
     # 7) friends proposal is a special category of 6) friends og friends
+    # logger.debug2 "friends proposals (1) = #{users_app_friends['P']}"
     users_app_friends['P'].delete_if { |user_id| !friends_of_friends_ids.index(user_id) }
-    # logger.debug2 "friends proposals = #{users_app_friends['P']}"
+    # logger.debug2 "friends proposals (2) = #{users_app_friends['P']}"
     friends_of_friends_ids = friends_of_friends_ids - users_app_friends['P']
     friends_hash = {}
     login_users.each do |user|

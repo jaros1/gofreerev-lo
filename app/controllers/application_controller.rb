@@ -5,7 +5,7 @@ require 'money/bank/google_currency'
 #noinspection RubyResolve
 class ApplicationController < ActionController::Base
 
-  before_filter :setup_errors
+  before_filter :setup_json_and_errors
   before_filter :request_start_time
 
   # protect cookie information on public web servers
@@ -1566,12 +1566,14 @@ class ApplicationController < ActionController::Base
 
   private
   def format_response (options = {})
+    logger.debug2 "options = #{options}"
+    logger.debug2 "request.path_parameters[:format] = #{request.path_parameters[:format]}"
     action = options.delete(:action) if options
     action = params[:action] unless action
     respond_to do |format|
-      #logger.debug2 "format = #{format}, request.xhr? = #{request.xhr?}, xhr? = #{xhr?}" +
-      #                  ", HTTP_X_REQUESTED_WITH = #{request.headers['HTTP_X_REQUESTED_WITH']}" +
-      #                  ", request.format = #{request.format}"
+      logger.debug2 "format = #{format}, request.xhr? = #{request.xhr?}, xhr? = #{xhr?}" +
+                        ", HTTP_X_REQUESTED_WITH = #{request.headers['HTTP_X_REQUESTED_WITH']}" +
+                        ", request.format = #{request.format}"
       if xhr?
         # fix for ie8/ie9 error:
         #  "to help protect your security internet explorer blocked this site from downloading files to your computer"
@@ -1580,6 +1582,7 @@ class ApplicationController < ActionController::Base
         logger.debug2 "format.js: action = #{action}"
         format.js {render action, :content_type => "text/plain" }
       else
+        # html or json
         # merge any flash message with any @errors messages into a (new) flash message
         if @errors.size > 0
           flash_id = get_session_value(:flash_id)
@@ -1591,10 +1594,19 @@ class ApplicationController < ActionController::Base
           f = Flash.new
           f.message = errors.join('<br>')
           f.save!
-          get_session_value(:flash_id, f.id)
+          set_session_value(:flash_id, f.id)
           @errors = []
         end
-        format.html
+        if request.path_parameters[:format] == 'json'
+          if f
+            @json[:error] = f.message
+            f.destroy
+            set_session_value(:flash_id, nil)
+          end
+          format.json { render json: @json }
+        else
+          format.html
+        end
       end
     end
     nil
@@ -1620,9 +1632,10 @@ class ApplicationController < ActionController::Base
 
   # use @errors array to report ajax errors
   private
-  def setup_errors
+  def setup_json_and_errors
     # logger.debug2 "request.xhr? = #{request.xhr?}, HTTP_X_REQUESTED_WITH = #{request.headers['HTTP_X_REQUESTED_WITH']}"
     @errors = []
+    @json = {}
   end
 
   # show/hide find friends link

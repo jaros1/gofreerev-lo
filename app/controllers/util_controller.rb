@@ -8,7 +8,7 @@ class UtilController < ApplicationController
                             :like_gift, :unlike_gift, :follow_gift, :unfollow_gift, :hide_gift, :delete_gift,
                             :cancel_new_deal, :reject_new_deal, :accept_new_deal,
                             :do_tasks, :share_gift, :open_graph,
-                            :logout]
+                            :logout, :login]
 
   # update new message count in menu line in page header
   # called from hidden new_messages_count_link link in page header once every 15, 60 or 300 seconds
@@ -850,6 +850,8 @@ class UtilController < ApplicationController
         # logger.debug2  "task = #{at.task}, res = #{res}"
       end
       logger.debug2 "@errors.size = #{@errors.size}"
+      format_response
+      return
       if @errors.size == 0
         render :nothing => true
       else
@@ -963,6 +965,13 @@ class UtilController < ApplicationController
     return [login_user, api_client, friends_hash, new_user, key, options] if key
     login_user_id = login_user.user_id
 
+    # send oauth authorization to client. saved encrypted in locale storage
+    # refresh token is only relevant for google+
+    @json[:oauth] = {} unless @json[:oauth]
+    @json[:oauth][provider] = {:token          => get_session_array_value(:tokens, provider),
+                               :expires_at     => get_session_array_value(:expires_at, provider)}
+    @json[:oauth][provider][:refresh_tokens] = get_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
+
     # update user
     # note what many fields are updated in User.find_or_create_user doing login
     # only use this method for fields that are not updated in login process
@@ -1010,11 +1019,25 @@ class UtilController < ApplicationController
       login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
       #logger.debug2 "login_user   = #{login_user}"
       #logger.debug2 "api_client   = #{api_client}"
-      #logger.debug2 "friends_hash = #{friends_hash}"
+      logger.debug2 "friends_hash = #{friends_hash}"
       #logger.debug2 "new_user     = #{new_user}"
       #logger.debug2 "key          = #{key}"
       #logger.debug2 "options      = #{options}"
       return add_error_key(key, options) if key
+
+      # return json object with relevant user info. see list with friends categories in User.cache_friend_info
+      User.cache_friend_info([login_user])
+      users = User.where(:user_id => login_user.friends_hash.keys)
+      @json[:users] = [] unless @json[:users]
+      @json[:users] += users.collect do |user|
+        { :user_id => user.id,
+          :provider => user.provider,
+          :user_name => user.user_name,
+          :balance => nil,
+          :api_profile_picture_url => user.api_profile_picture_url,
+          :friend => login_user.friends_hash[user.user_id],
+          :currency => user.currency }
+      end
 
       # update number of friends.
       # facebook: number of friends is not 100 % correct as not all friends are returned from facebook api
@@ -1960,42 +1983,26 @@ class UtilController < ApplicationController
     end
   end # find_friends_batch
 
-
   # check external url from gifts/index page (create new gift)
   # get open graph tags from html page and json with preview info or json with error message
   public
   def open_graph
-    table = "tasks_errors" # ajax error table in page header
-    # x = 1 / 0 # todo: remove
     begin
-      # sleep 10 # todo: remove
-      if !logged_in?
-        error = t '.not_logged_in', {}
-        render :json => { :error => error }
-        return
-      end
-      # return format_response_key('.not_logged_in', {}) unless logged_in?
+      return format_response_key('.not_logged_in', {}) if !logged_in?
       url = params[:url]
       logger.debug2 "url = #{url}"
       og = OpenGraphLink.find_or_create_link(url)
-      if !og
-        # invalid url or server not responding
-        render :json => { }.to_json
-        return
-      end
-      # format_response
-      render :json => {
-                 :url  => og.url,
-                 :title => og.title.to_s.sanitize,
-                 :description => og.description.to_s.sanitize,
-                 :image => og.image
-             }.to_json
+      return format_response unless og # url not found - empty json response
+      @json = { :url  => og.url,
+                :title => og.title.to_s.sanitize,
+                :description => og.description.to_s.sanitize,
+                :image => og.image
+             }
+      format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
-      error = t '.exception', :error => e.message, :table => table
-      render :json => { :error => error }
-      # format_response_key '.exception', :error => e.message, :table => table
+      format_response_key '.exception', :error => e.message
     end
   end # open_graph
 
@@ -2004,16 +2011,14 @@ class UtilController < ApplicationController
     logger.debug2 "params = #{params}"
   end
 
-  # angularJS logout.
+  # client logout. either global log out for all providers or log out for one login provider
+  # remove oauth information from session
+  # always an empty json response
   public
   def logout
     logger.debug2 "params = #{params}"
     find_or_create_session
-    if @s.new_record?
-      # don't save new session
-      render :nothing => true
-      return
-    end
+    return format_response if @s.new_record? # don't save and delete new session
     provider = params[:provider]
     provider = nil unless valid_omniauth_provider?(provider)
     if provider
@@ -2028,7 +2033,13 @@ class UtilController < ApplicationController
       # local log out - log out for all providers
       @s.destroy unless @s.new_record?
     end
-    render :nothing => true
+    format_response
+  end # logout
+
+  public
+  def login
+    logger.debug2 "params = #{params}"
+    format_response
   end
 
 

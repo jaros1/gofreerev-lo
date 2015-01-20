@@ -42,6 +42,7 @@ GofreerevFb::Application.routes.draw do
   post 'util/open_graph'
   post 'util/upload'
   post 'util/logout'
+  post 'util/login'
 
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".

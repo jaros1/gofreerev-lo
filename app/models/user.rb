@@ -828,7 +828,7 @@ class User < ActiveRecord::Base
     user_id.split('/').last
   end
 
-  # true if dummy user
+  # true if dummy  user
   # gofreerev/gofreerev or gofreerev/<provider>
   # dummy user is used for dummy page header, deep links and unmatched providers when closing deal between two users
   def dummy_user?

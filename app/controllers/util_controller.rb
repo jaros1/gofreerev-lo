@@ -2084,12 +2084,12 @@ class UtilController < ApplicationController
       fetch_users
       @json[:users] = []
       providers.each do |provider|
+        # get hash with user_id and friend category
         login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
         if key
           add_error_key(key, options)
           next
         end
-
         # return json object with relevant user info. see list with friends categories in User.cache_friend_info
         User.cache_friend_info([login_user])
         users = User.where(:user_id => login_user.friends_hash.keys)
@@ -2103,7 +2103,8 @@ class UtilController < ApplicationController
             :currency => user.currency }
         end
       end # each provider
-
+      # format json response. oauth is irrelevant in this context
+      @json.delete :oauth
       format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"

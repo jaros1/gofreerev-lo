@@ -3291,11 +3291,14 @@ angular.module('gifts', ['ngRoute'])
             // send oauth hash to server
             return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
                 .then(function (response) {
-                    console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
+                    // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) {
                         console.log(pgm + 'post login error = ' + response.data.error) ;
                         return $q.reject(response.data.error)
                     }
+                    // insert relevant user info info js array
+                    console.log(pgm + 'login. users = ' + JSON.stringify(response.data.users)) ;
+                    init_users(response.data.users) ;
                 },
                 function (error) {
                     console.log(pgm + 'post login error = ' + JSON.stringify(error)) ;

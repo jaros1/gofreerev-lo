@@ -1115,6 +1115,10 @@ en:
      open_graph:
         not_logged_in: "Could not check link. You are not logged in. Please refresh page."
         exception: "System error. Could not check link. %{error}. More information in server log."
+     login:
+        exception: "System error. Could not complete log in on server. %{error}. More information in server log."
+     logout:
+        exception: "System error. Could not complete log out on server. %{error}. More information in server log."
 
   # translation keys used in javascript (error) messages
   js:

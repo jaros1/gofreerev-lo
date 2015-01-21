@@ -2967,7 +2967,8 @@ angular.module('gifts', ['ngRoute'])
         }
         // end TextService
     }])
-    .factory('UserService', ['$window', '$http', function($window, $http) {
+    .factory('UserService', ['$window', '$http', '$q', function($window, $http, $q) {
+        var self = this ;
         console.log('UserService loaded') ;
 
         // users - read from local storage - used in angularJS filter functions
@@ -3146,12 +3147,16 @@ angular.module('gifts', ['ngRoute'])
             }
             else {
                 // log in provider log out
-                var new_users = [] ;
-                for (var i=0 ; i < users.length ; i++) if (users[i].provider != provider) new_users.push(users[i]) ;
-                init_users(new_users) ;
+                // remove users
+                for (var i=users.length-1 ; i >= 0 ; i--) if (users[i].provider == provider) users.splice(i, 1);
+                users_index_by_user_id = {}
+                for (i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+                // remove provider from local encrypted oauth hash
+                remove_oauth(provider) ;
             }
+            // update oauth info in server session
             $http.post('/util/logout.json?client_userid=' + client_userid(), {provider: provider || ''}) ;
-        }
+        } // logout
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -3171,7 +3176,7 @@ angular.module('gifts', ['ngRoute'])
             api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623',
             friend: 1, // me=logged in user
             currency: 'DKK'
-        },
+            },
             {
                 user_id: 791,
                 provider: 'linkedin',
@@ -3192,45 +3197,73 @@ angular.module('gifts', ['ngRoute'])
             }
         ]);
 
-        // save oauth authorization received from server in local storage
-        // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
-        var save_oauth = function (new_oauth) {
-            var pgm = 'UserService.save_oauth: ' ;
-            // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
+        self.expires_at = {} ;
+
+        // get encrypted oauth hash from local storage - returns null if errors
+        var get_oauth = function () {
+            var pgm = 'UserService.get_oauth: ' ;
             // get client_userid and password for current local login
             var userid = client_userid() ;
             if (userid == 0) {
-                console.log(pgm + 'device userid was not found. oauth was not saved') ;
-                return ;
+                console.log(pgm + 'device userid was not found.') ;
+                return null ;
             }
             var password = client_password() ;
             if (password == '') {
-                console.log(pgm + 'device password was not found. oauth was not saved') ;
+                console.log(pgm + 'device password was not found.') ;
                 return ;
             }
             // get old oauth (encrypted SON.stringify)
             var oauth_key = userid + '_oauth' ;
-            var old_enc_oauth = $window.localStorage.getItem(oauth_key) ;
-            var old_oauth_str, oauth ;
-            if ((typeof old_enc_oauth == 'undefined') || (old_enc_oauth == null) || (old_enc_oauth == '')) oauth = {} ;
+            var oauth_enc_str = $window.localStorage.getItem(oauth_key) ;
+            var oauth_str, oauth ;
+            if ((typeof oauth_enc_str == 'undefined') || (oauth_enc_str == null) || (oauth_enc_str == '')) oauth = {} ;
             else {
-                old_oauth_str = Gofreerev.client_sym_decrypt(old_enc_oauth, password) ;
-                oauth = JSON.parse(old_oauth_str) ;
+                oauth_str = Gofreerev.client_sym_decrypt(oauth_enc_str, password) ;
+                oauth = JSON.parse(oauth_str) ;
             }
-            // merge new oauth into current oauth - loop for each login provider
-            for (var key in new_oauth) {
-                if (new_oauth.hasOwnProperty(key)) oauth[key] = new_oauth[key] ;
-            }
-            // debug - output current tokens
-            for (var key in oauth) {
-                if (oauth.hasOwnProperty(key)) console.log(pgm + 'provider ' + key + ' was found') ;
-            }
+            return oauth ;
+
+        } // get_oauth
+        var save_oauth = function (oauth) {
             // encrypt and save updated oauth
             var oauth_str = JSON.stringify(oauth) ;
-            var oauth_enc = Gofreerev.client_sym_encrypt(oauth_str, password) ;
-            $window.localStorage.setItem(oauth_key, oauth_enc) ;
-        } // save_oauth
-
+            var oauth_enc_str = Gofreerev.client_sym_encrypt(oauth_str, client_password()) ;
+            var oauth_key = client_userid() + '_oauth' ;
+            $window.localStorage.setItem(oauth_key, oauth_enc_str) ;
+        }
+        // save oauth received from server into oauth in local storage
+        // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
+        var add_oauth = function (new_oauth) {
+            var pgm = 'UserService.add_oauth: ' ;
+            // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
+            var oauth = get_oauth() ;
+            if (oauth == null) {
+                console.log(pgm + 'old oauth was not found. see previous error. new oauth was not added') ;
+                return ;
+            }
+            // merge new oauth into current oauth - loop for each login provider
+            for (var key in new_oauth) if (new_oauth.hasOwnProperty(key)) oauth[key] = new_oauth[key] ;
+            save_oauth(oauth) ;
+            // extract expires_at so that timestamps can be check without decrypt
+            for (var key in oauth) if (oauth.hasOwnProperty(key)) self.expires_at[key] = oauth[key].expires_at ;
+            console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
+        } // add_oauth
+        var remove_oauth = function (provider) {
+            var pgm = 'UserService.remove_oauth: ' ;
+            console.log(pgm + 'provider = ' + provider) ;
+            var oauth = get_oauth() ;
+            if (oauth == null) {
+                console.log(pgm + 'old oauth was not found. see previous error. oauth was not changed') ;
+                return ;
+            }
+            // remove provider and save
+            delete oauth[provider] ;
+            save_oauth(oauth) ;
+            // update unencrypted has with expires_at timestamps
+            delete self.expires_at[provider] ;
+            console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
+        }
         // after local login - send local oauth to server - server rechecks tokens and copy tokens to session
         var send_oauth = function () {
             var pgm = 'UserService.send_oauth: ' ;
@@ -3256,13 +3289,17 @@ angular.module('gifts', ['ngRoute'])
             var oauth_str = Gofreerev.client_sym_decrypt(oauth_enc, password) ;
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash to server
-            $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
+            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
                 .then(function (response) {
-                    console.log(pgm + 'post response = ' + JSON.stringify(response)) ;
+                    console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
+                    if (response.data.error) {
+                        console.log(pgm + 'post login error = ' + response.data.error) ;
+                        return $q.reject(response.data.error)
+                    }
                 },
                 function (error) {
-                    console.log(pgm + 'pos error = ' + JSON.stringify(error)) ;
-                    stop_do_tasks_spinner() ;
+                    console.log(pgm + 'post login error = ' + JSON.stringify(error)) ;
+                    return $q.reject(JSON.stringify(error)) ;
                 }) ;
 
         }
@@ -3281,7 +3318,8 @@ angular.module('gifts', ['ngRoute'])
             logout: logout,
             client_userid: client_userid,
             replace_users: replace_users,
-            save_oauth: save_oauth,
+            add_oauth: add_oauth,
+            remove_oauth: remove_oauth,
             send_oauth: send_oauth
         }
         // end UserService
@@ -3322,7 +3360,7 @@ angular.module('gifts', ['ngRoute'])
                     if (oauth) {
                         // new oauth token(s) received from util.generic_post_login task (token, expires_at and refresh token)
                         // console.log('post login. oauth = ' + oauth) ;
-                        userService.save_oauth(oauth) ;
+                        userService.add_oauth(oauth) ;
                     }
                     var new_users = response.data.users ;
                     if (new_users) {
@@ -3399,7 +3437,16 @@ angular.module('gifts', ['ngRoute'])
             var confirm_device_password = $window.document.getElementById('confirm_device_password').value ;
             return (device_password != confirm_device_password) ;
         }
+        self.login_or_register_error = '' ;
+        var set_login_or_register_error = function (error) {
+            // todo: not working - error from userService.send_oauth is NOT injected into view!
+            self.login_or_register_error = error ;
+            // workaround - use old tasks error table in page header
+            if (error != '') Gofreerev.add_to_tasks_errors(error) ;
+        }
+        set_login_or_register_error('') ;
         self.login_or_register = function() {
+            var pgm = 'AuthCtrl.login_or_register: ' ;
             var create_new_account = (self.register != '') ;
             var userid = Gofreerev.client_login(self.device_password, create_new_account) ;
             if (userid == 0) {
@@ -3412,10 +3459,19 @@ angular.module('gifts', ['ngRoute'])
                 self.confirm_device_password = '' ;
                 self.register = '' ;
                 // console.log('AuthCtrl.login_or_register: userid = ' + userid) ;
+                // send old oauth to server for recheck and copy to session
+                // todo: userService should return a promise, and this promise should be used to inject any error messages into auth page
+                // console.log(pgm + 'calling send_oauth') ;
+                set_login_or_register_error('') ;
+                userService.send_oauth().then(function (response) {
+                    console.log(pgm + 'send_oauth ok') ;
+                }, function (error) {
+                    console.log(pgm + 'send oauth error = ' + error) ;
+                    set_login_or_register_error(error) ;
+                });
+                // console.log(pgm + 'send_oauth was called') ;
                 $location.path('/auth/' + userid) ;
                 $location.replace();
-                // send old oauth to server for recheck and copy to session
-                userService.send_oauth() ;
             }
         }
         // end AuthCtrl

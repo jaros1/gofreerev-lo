@@ -1566,20 +1566,20 @@ class ApplicationController < ActionController::Base
 
   private
   def format_response (options = {})
-    logger.debug2 "options = #{options}"
-    logger.debug2 "request.path_parameters[:format] = #{request.path_parameters[:format]}"
+    # logger.debug2 "options = #{options}"
+    # logger.debug2 "request.path_parameters[:format] = #{request.path_parameters[:format]}"
     action = options.delete(:action) if options
     action = params[:action] unless action
     respond_to do |format|
-      logger.debug2 "format = #{format}, request.xhr? = #{request.xhr?}, xhr? = #{xhr?}" +
-                        ", HTTP_X_REQUESTED_WITH = #{request.headers['HTTP_X_REQUESTED_WITH']}" +
-                        ", request.format = #{request.format}"
+      # logger.debug2 "format = #{format}, request.xhr? = #{request.xhr?}, xhr? = #{xhr?}" +
+      #                   ", HTTP_X_REQUESTED_WITH = #{request.headers['HTTP_X_REQUESTED_WITH']}" +
+      #                   ", request.format = #{request.format}"
       if xhr?
         # fix for ie8/ie9 error:
         #  "to help protect your security internet explorer blocked this site from downloading files to your computer"
         # (x.js.erb response is being downloaded instead of being executed)
         # only a problem in remote forms (new gifts and new comments)
-        logger.debug2 "format.js: action = #{action}"
+        # logger.debug2 "format.js: action = #{action}"
         format.js {render action, :content_type => "text/plain" }
       else
         # html or json

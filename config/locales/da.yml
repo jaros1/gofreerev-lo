@@ -1119,6 +1119,10 @@ da:
      open_graph:
         not_logged_in: "Kan ikke tjekke link. Du er ikke logget ind. Opdater venligst siden."
         exception: "Systemfejl. Kunne ikke tjekke link. %{error}. Mere information i server log."
+     login:
+        exception: "Systemfejl. Kunne ikke fuldføre log ind på server. %{error}. Mere information i server log."
+     logout:
+        exception: "Systemfejl. Kunne ikke fuldføre log ud på server. %{error}. Mere information i server log."
 
   # translation keys used in javascript (error) messages
   js:

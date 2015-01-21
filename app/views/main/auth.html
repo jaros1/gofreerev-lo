@@ -1,4 +1,4 @@
-<div ng-controller="AuthCtrl as ctrl" style="width: 100%">
+<div style="width: 100%">
     <form name="device_login_form" ng-submit="ctrl.login_or_register()">
         <table>
             <thead>
@@ -49,6 +49,10 @@
                     {{ctrl.texts.auth.radio_log_in_prompt}} <input type="radio" ng-model="ctrl.register" value=""> &nbsp;&nbsp;
                     {{ctrl.texts.auth.radio_register_prompt}} <input type="radio" ng-model="ctrl.register" value="x">
                 </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="4">{{ctrl.login_or_register_error}}</td>
             </tr>
             </tbody>
             <tbody ng-show="ctrl.is_logged_in(null)" title="{{ctrl.texts.auth.provider_login_title}}">

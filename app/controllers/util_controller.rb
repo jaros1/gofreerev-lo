@@ -968,9 +968,10 @@ class UtilController < ApplicationController
     # send oauth authorization to client. saved encrypted in locale storage
     # refresh token is only relevant for google+
     @json[:oauth] = {} unless @json[:oauth]
-    @json[:oauth][provider] = {:token          => get_session_array_value(:tokens, provider),
-                               :expires_at     => get_session_array_value(:expires_at, provider)}
-    @json[:oauth][provider][:refresh_tokens] = get_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
+    @json[:oauth][provider] = {:user_id    => login_user.user_id,
+                               :token      => get_session_array_value(:tokens, provider),
+                               :expires_at => get_session_array_value(:expires_at, provider)}
+    @json[:oauth][provider][:refresh_token] = get_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
 
     # update user
     # note what many fields are updated in User.find_or_create_user doing login
@@ -2016,31 +2017,100 @@ class UtilController < ApplicationController
   # always an empty json response
   public
   def logout
-    logger.debug2 "params = #{params}"
-    find_or_create_session
-    return format_response if @s.new_record? # don't save and delete new session
-    provider = params[:provider]
-    provider = nil unless valid_omniauth_provider?(provider)
-    if provider
-      # api provider log out
-      delete_session_array_value :tokens, provider
-      delete_session_array_value :expires_at, provider
-      delete_session_array_value :refresh_tokens, provider
-      user_ids = get_session_value :user_ids
-      user_ids = user_ids.delete_if { |user_id| (user_id.split('/').last == provider) }
-      set_session_value :user_ids, user_ids
-    else
-      # local log out - log out for all providers
-      @s.destroy unless @s.new_record?
+    begin
+      logger.debug2 "params = #{params}"
+      find_or_create_session
+      return format_response if @s.new_record? # don't save and delete new session
+      provider = params[:provider]
+      provider = nil unless valid_omniauth_provider?(provider)
+      if provider
+        # api provider log out
+        delete_session_array_value :tokens, provider
+        delete_session_array_value :expires_at, provider
+        delete_session_array_value :refresh_tokens, provider
+        user_ids = get_session_value :user_ids
+        user_ids = user_ids.delete_if { |user_id| (user_id.split('/').last == provider) }
+        set_session_value :user_ids, user_ids
+      else
+        # local log out - log out for all providers
+        @s.destroy unless @s.new_record?
+      end
+      format_response
+    rescue => e
+      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
+      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
+      format_response_key '.exception', :error => e.message
     end
-    format_response
   end # logout
 
+  # client login. receive oauth hash from client, insert oauth in server session and update/download friends information
   public
   def login
-    logger.debug2 "params = #{params}"
-    format_response
-  end
+    begin
+      # logger.secret2 "params = #{params}"
+      oauth = params[:oauth]
+      tokens = get_session_value(:tokens)
+      expires_at = get_session_value(:expires_at)
+      refresh_tokens = get_session_value(:refresh_tokens)
+      # logger.secret2 "old tokens = #{tokens}"
+      # logger.debug2 "old expires_at = #{expires_at}"
+      # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
+
+      # insert oauth received from client local storage into server session
+      providers = oauth.keys
+      new_user_ids = []
+      providers.each do |provider|
+        # logger.secret2 "oauth[#{provider}] = #{oauth[provider]}"
+        new_user_ids << oauth[provider]["user_id"]
+        set_session_array_value(:tokens, oauth[provider]["token"], provider)
+        set_session_array_value(:expires_at, oauth[provider]["expires_at"], provider)
+        set_session_array_value(:refresh_tokens, oauth[provider]["refresh_token"], provider) if provider == 'google_oauth2'
+      end
+      set_session_value(:user_ids, new_user_ids)
+
+      # remove any old not authorized providers from server session (missing or failed server logout)
+      tokens = get_session_value(:tokens)
+      (tokens.keys - providers).each { |provider| delete_session_array_value(:tokens, provider) }
+      expires_at = get_session_value(:expires_at)
+      (expires_at.keys - providers).each { |provider| delete_session_array_value(:expires_at, provider) }
+      refresh_tokens = get_session_value(:refresh_tokens)
+      (refresh_tokens.keys - providers).each { |provider| delete_session_array_value(:refresh_tokens, provider) }
+      # logger.secret2 "new tokens = #{tokens}"
+      # logger.debug2 "new expires_at = #{expires_at}"
+      # logger.secret2 "new refresh_tokens = #{refresh_tokens}"
+      # update and download friends information
+
+      # check tokens / get updated friends info after new login
+      fetch_users
+      @json[:users] = []
+      providers.each do |provider|
+        login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
+        if key
+          add_error_key(key, options)
+          next
+        end
+
+        # return json object with relevant user info. see list with friends categories in User.cache_friend_info
+        User.cache_friend_info([login_user])
+        users = User.where(:user_id => login_user.friends_hash.keys)
+        @json[:users] += users.collect do |user|
+          { :user_id => user.id,
+            :provider => user.provider,
+            :user_name => user.user_name,
+            :balance => nil,
+            :api_profile_picture_url => user.api_profile_picture_url,
+            :friend => login_user.friends_hash[user.user_id],
+            :currency => user.currency }
+        end
+      end # each provider
+
+      format_response
+    rescue => e
+      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
+      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
+      format_response_key '.exception', :error => e.message
+    end
+  end # login
 
 
 end # UtilController

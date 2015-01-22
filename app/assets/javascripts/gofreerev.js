@@ -2318,6 +2318,7 @@ var Gofreerev = (function() {
         if ((typeof value == 'undefined') || (value == null)) return null ;
         // decrypt
         if (rule.encrypt) {
+            console.log(pgm + key + ' before decrypt = ' + value) ;
             var password = getItem('password') ;
             if ((typeof password == 'undefined') || (password == null) || (password == '')) {
                 console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
@@ -2326,8 +2327,12 @@ var Gofreerev = (function() {
             value = decrypt(value, password);
         }
         // decompress
-        if (rule.compress) value = decompress(value) ;
+        if (rule.compress) {
+            console.log(pgm + key + ' before decompress = ' + value) ;
+            value = decompress(value) ;
+        }
         // ready
+        if (rule.encrypt || rule.compress) console.log(pgm + key + ' after decrypt and decompress = ' + value) ;
         return value ;
     } // getItem
 
@@ -3127,26 +3132,27 @@ angular.module('gifts', ['ngRoute'])
 
         // local log out (provider=null) or log in provider log out (provider facebook,  google+, linkedin etc)
         var logout = function (provider) {
-            console.log('UserService.logout: debug 1') ;
+            var pgm = 'UserService.logout: ' ;
+            // console.log(pgm + 'debug 1') ;
             if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) {
                 // device log out = session log out - note that no local storage info are removed
-                console.log('UserService.logout: debug 2') ;
+                // console.log(pgm + 'debug 2') ;
                 Gofreerev.removeItem('password') ;
                 Gofreerev.removeItem('userid') ;
             }
             else {
                 // log in provider log out
                 // remove users
-                console.log('UserService.logout: debug 3') ;
+                // console.log(pgm + 'debug 3') ;
                 for (var i=users.length-1 ; i >= 0 ; i--) if (users[i].provider == provider) users.splice(i, 1);
                 users_index_by_user_id = {}
                 for (i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
                 // remove provider from local encrypted oauth hash
-                console.log('UserService.logout: debug 4') ;
+                // console.log(pgm + 'debug 4') ;
                 remove_oauth(provider) ;
             }
             // update oauth info in server session
-            console.log('UserService.logout: debug 5') ;
+            // console.log(pgm + 'debug 5') ;
             $http.post('/util/logout.json?client_userid=' + client_userid(), {provider: provider || ''}) ;
         } // logout
 
@@ -3217,12 +3223,12 @@ angular.module('gifts', ['ngRoute'])
         } // get_oauth
         var save_oauth = function (oauth) {
             var pgm = 'UserService.save_oauth: ' ;
-            console.log(pgm + 'debug 1') ;
+            // console.log(pgm + 'debug 1') ;
             // encrypt and save updated oauth
             var oauth_str = JSON.stringify(oauth) ;
-            console.log(pgm + 'debug 2') ;
+            // console.log(pgm + 'debug 2') ;
             Gofreerev.setItem('oauth', oauth_str) ;
-            console.log(pgm + 'debug 3') ;
+            // console.log(pgm + 'debug 3') ;
         }
         // save oauth received from server into oauth in local storage
         // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
@@ -3244,22 +3250,22 @@ angular.module('gifts', ['ngRoute'])
         var remove_oauth = function (provider) {
             var pgm = 'UserService.remove_oauth: ' ;
             console.log(pgm + 'provider = ' + provider) ;
-            console.log(pgm + 'debug 1') ;
+            // console.log(pgm + 'debug 1') ;
             var oauth = get_oauth() ;
-            console.log(pgm + 'debug 2') ;
+            // console.log(pgm + 'debug 2') ;
             if (oauth == null) {
                 console.log(pgm + 'old oauth was not found. see previous error. oauth was not changed') ;
                 return ;
             }
             // remove provider and save
-            console.log(pgm + 'debug 3') ;
+            // console.log(pgm + 'debug 3') ;
             delete oauth[provider] ;
-            console.log(pgm + 'debug 4') ;
+            // console.log(pgm + 'debug 4') ;
             save_oauth(oauth) ;
-            console.log(pgm + 'debug 5') ;
+            // console.log(pgm + 'debug 5') ;
             // update unencrypted has with expires_at timestamps
             delete self.expires_at[provider] ;
-            console.log(pgm + 'debug 6') ;
+            // console.log(pgm + 'debug 6') ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
         }
         // after local login - send local oauth to server - server rechecks tokens and copy tokens to session
@@ -3267,11 +3273,11 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'UserService.send_oauth: ' ;
             // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
             // get client_userid and password for current local login
-            //var userid = client_userid() ;
-            //if (userid == 0) {
-            //    console.log(pgm + 'device userid was not found. oauth was not saved') ;
-            //    return ;
-            //}
+            var userid = client_userid() ;
+            if (userid == 0) {
+                console.log(pgm + 'device userid was not found. oauth was not saved') ;
+                return ;
+            }
             //var password = client_password() ;
             //if (password == '') {
             //    console.log(pgm + 'device password was not found. oauth was not saved') ;
@@ -3283,6 +3289,7 @@ angular.module('gifts', ['ngRoute'])
                 console.log(pgm + 'no oauth to send to server') ;
                 return $q.reject('') ; // empty promise error response
             }
+            console.log(pgm + 'oauth_str = ' + oauth_str) ;
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash to server
             return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})

@@ -2210,18 +2210,177 @@ var Gofreerev = (function() {
 
     // local storage functions ==>
 
+    // values in sessionStorage:
+    // - data are discarded when user closes browser tab
+    // - only userid and password keys
+    // - never <userid> prefix before key
+    // - values are not compressed or encrypted
+
+    // values in localStorage:
+    // - data are preserved when user closes tab or browser
+    // - some values are global values without <userid> prefix. others are user specific values with <userid> prefix
+    // - some values are encrypted (keys, authorization and other sensible information)
+    // - some values are compressed (users and gifts arrays)
+    // - rules (local_storage_rules) are derived from key name
+    // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
+
+    var local_storage_rules = {
+        comment_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
+        gift_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
+        gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts
+        password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
+        passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
+        oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
+        prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
+        pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
+        uid: {session: false, userid: true, compress: false, encrypt: false}, // unique device+user id
+        userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
+        users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
+    };
+
+    // todo: how to handle "no more space" in local storage?
+    // 1) only keep newer gifts and relevant users in local storage
+    //    gifts and users arrays should be saved in local storage in one operation to allow automatic space management
+    //    add oldest_gift_at timestamp. Ignore gifts with timestamp before oldest_gift_id when sync. gifts with other devices
+    //    or oldest_gift_id pointer. Ignore gifts with gift_id < oldest_gift_ud when sync. gifts when other devices
+    // 2) a possibility is to store old blocks with gifts and users on server encrypted with pubkey
+    //    that is show-more-rows functionality at end of page
+    //    send a server request to get old data block. Return old data block and insert into users and gifts js arrays
+    //    old data block stored on server can be changed if user info changes, friendship changes, or gifts are change or are deleted
+
     // symmetric encrypt sensitive data in local storage.
-    // password is saved in session storage and is cleared when user closes tab in browser
-    function client_sym_encrypt (text, password) {
+    // password is saved in session storage and is deleted when user closes tab in browser
+    function encrypt (text, password) {
         var output_wa ;
         output_wa = CryptoJS.AES.encrypt(text, password, { format: CryptoJS.format.OpenSSL }); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
         return output_wa.toString(CryptoJS.format.OpenSSL) ;
-    } //
-    function client_sym_decrypt (text, password) {
+    }
+    function decrypt (text, password) {
         var output_wa ;
         output_wa = CryptoJS.AES.decrypt(text, password, { format: CryptoJS.format.OpenSSL }); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
         return output_wa.toString(CryptoJS.enc.Utf8) ;
-    } //
+    }
+
+    // compress and decompress strings (https://github.com/pieroxy/lz-string & http://pieroxy.net/blog/pages/lz-string/guide.html)
+    function compress (text) {
+        return LZString.compressToUTF16(text);
+    }
+    function decompress (text) {
+        return LZString.decompressFromUTF16(text) ;
+    }
+
+    function get_local_storage_rule (key) {
+        var pgm = 'Gofreerev.get_local_storage_rule: ' ;
+        var key_options ;
+        if (local_storage_rules.hasOwnProperty(key)) key_options = local_storage_rules[key] ;
+        else {
+            console.log(pgm + 'Warning. ' + key + ' was not found in local_storage_rules hash.') ;
+            key_options = {session: false, userid: true, compress: false, encrypt: false} ;
+        }
+        if (!key_options.hasOwnProperty('session')) {
+            console.log(pgm + 'Warning. using default value session=false for key ' + key) ;
+            key_options.session = false ;
+        }
+        if (!key_options.hasOwnProperty('userid')) {
+            key_options.userid = !key_options.session ;
+            console.log(pgm + 'Warning. using default value userid=' + key_options.userid + ' for key ' + key) ;
+        }
+        if (!key_options.hasOwnProperty('compress')) {
+            console.log(pgm + 'Warning. using default value compress=false for key ' + key) ;
+            key_options.compress = false ;
+        }
+        if (!key_options.hasOwnProperty('encrypt')) {
+            console.log(pgm + 'Warning. using default value encrpt=false for key ' + key) ;
+            key_options.encrypt = false ;
+        }
+        return key_options ;
+    }
+
+    // get/set item
+    function getItem (key) {
+        var pgm = 'Gofreerev.getItem: ' ;
+        var rule = get_local_storage_rule(key) ;
+        // sessionStorage or localStorage?
+        var storage = rule.session ? sessionStorage : localStorage ;
+        // userid prefix?
+        if (rule.userid) {
+            var userid = getItem('userid') ;
+            if ((typeof userid == 'undefined') || (userid == null) || (userid=='')) userid = 0 ;
+            else userid = parseInt(userid) ;
+            if (userid == 0) {
+                console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
+                return null ;
+            }
+            key = userid + '_' + key ;
+        }
+        // read value
+        var value = storage.getItem(key) ;
+        if ((typeof value == 'undefined') || (value == null)) return null ;
+        // decrypt
+        if (rule.encrypt) {
+            var password = getItem('password') ;
+            if ((typeof password == 'undefined') || (password == null) || (password == '')) {
+                console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
+                return null ;
+            }
+            value = decrypt(value, password);
+        }
+        // decompress
+        if (rule.compress) value = decompress(value) ;
+        // ready
+        return value ;
+    } // getItem
+
+    function setItem (key, value) {
+        var pgm = 'Gofreerev.setItem: ' ;
+        var rule = get_local_storage_rule(key) ;
+        // sessionStorage or localStorage?
+        var storage = rule.session ? sessionStorage : localStorage ;
+        // userid prefix?
+        if (rule.userid) {
+            var userid = getItem('userid') ;
+            if ((typeof userid == 'undefined') || (userid == null) || (userid=='')) userid = 0 ;
+            else userid = parseInt(userid) ;
+            if (userid == 0) {
+                console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
+                return null ;
+            }
+            key = userid + '_' + key ;
+        }
+        // compress?
+        if (rule.compress) value = compress(value) ;
+        // encrypt?
+        if (rule.encrypt) {
+            var password = getItem('password') ;
+            if ((typeof password == 'undefined') || (password == null) || (password == '')) {
+                console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
+                return null ;
+            }
+            value = encrypt(value, password);
+        }
+        // save
+        storage.setItem(key, value) ;
+    } // setItem
+
+    function removeItem (key) {
+        var pgm = 'Gofreerev.setItem: ' ;
+        var rule = get_local_storage_rule(key) ;
+        // sessionStorage or localStorage?
+        var storage = rule.session ? sessionStorage : localStorage ;
+        // userid prefix?
+        if (rule.userid) {
+            var userid = getItem('userid') ;
+            if ((typeof userid == 'undefined') || (userid == null) || (userid=='')) userid = 0 ;
+            else userid = parseInt(userid) ;
+            if (userid == 0) {
+                console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
+                return null ;
+            }
+            key = userid + '_' + key ;
+        }
+        // remove
+        storage.removeItem(key) ;
+    } // removeItem
 
     // client login (password from client-login-dialog-form)
     // 0 = invalid password, > 0 : userid
@@ -2231,20 +2390,19 @@ var Gofreerev = (function() {
         var password_sha256, passwords_s, passwords_a, i, userid, uid, crypt, pubkey, prvkey, prvkey_aes, giftid_key ;
         password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
         // passwords: array with hashed passwords. size = number of accounts
-        if (localStorage.getItem("passwords") === null) {
-            passwords_a = [] ;
-        }
-        else {
-            passwords_a = JSON.parse(localStorage.getItem("passwords")) ;
-        }
+        passwords_s = getItem('passwords') ;
+        if ((passwords_s == null) || (passwords_s == '')) passwords_a = [] ;
+        else passwords_a = JSON.parse(passwords_s) ;
         // check old accounts
         for (i=0 ; i<passwords_a.length ; i++) {
             if (password_sha256 == passwords_a[i]) {
                 // log in ok - account exists
                 userid = i+1 ;
+                // save login
+                setItem('userid', userid) ;
+                setItem('password', password) ;
                 // add new local storages keys to old accounts
-                giftid_key = userid + '_giftid' ;
-                if (localStorage.getItem(giftid_key) === null) localStorage.setItem(giftid_key, '0') ;
+                if (!getItem('gift_id')) setItem('gift_id', 0) ;
                 return userid ;
             }
         }
@@ -2252,6 +2410,10 @@ var Gofreerev = (function() {
         if ((passwords_a.length == 0) || create_new_account) {
             // create new account
             userid = passwords_a.length + 1 ; // sequence = number of user accounts in local storage
+            // save login
+            setItem('userid', userid) ;
+            setItem('password', password) ;
+            // setup new account
             uid = '' + new Date().getTime() + (Math.random() + 1).toString(10).substring(2,10) ; // unique device id
             // hash password
             passwords_a.push(password_sha256) ;
@@ -2261,194 +2423,56 @@ var Gofreerev = (function() {
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();
-            prvkey_aes = client_sym_encrypt(prvkey, password);
+            prvkey_aes = encrypt(prvkey, password);
             // ready to store new account information.
             // check prvkey encryption. do not create new user account if encryption does not work
-            localStorage.setItem(userid + '_prvkey', prvkey_aes) ; // symmetric encrypted private key
+            setItem('prvkey', prvkey_aes) ; // symmetric encrypted private key
             var prvkey2, prvkey_aes2 ;
-            prvkey_aes2 = localStorage.getItem(userid + '_prvkey') ;
+            prvkey_aes2 = getItem('prvkey') ;
             if (prvkey_aes != prvkey_aes2) {
                 add2log('client_login. create new user failed. prvkey_aes != prvkey_aes2') ;
-                localStorage.removeItem(userid + '_prvkey');
+                removeItem('prvkey');
                 return -1 ;
             }
-            prvkey2 = client_sym_decrypt(prvkey_aes2, password);
+            prvkey2 = decrypt(prvkey_aes2, password);
             if (prvkey != prvkey2) {
                 add2log('client_login. create new user failed. prvkey != prvkey2') ;
-                localStorage.removeItem(userid + '_prvkey');
+                removeItem('prvkey');
                 return -2 ;
             }
             // save user
-            localStorage.setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
-            localStorage.setItem(userid + '_uid', uid) ; // unique device id
-            localStorage.setItem(userid + '_pubkey', pubkey) ; // public key
-            localStorage.setItem(userid + '_gift_id', '0') ; // gift_id sequence
-            localStorage.setItem(userid + '_comment_id', '0') ; // gift_id sequence
+            setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
+            setItem('uid', uid) ; // unique device id
+            setItem('pubkey', pubkey) ; // public key
+            setItem('gift_id', '0') ; // gift_id sequence
+            setItem('comment_id', '0') ; // gift_id sequence
             return userid ;
         }
         // invalid password (create_new_account=false)
         return 0 ;
     } // client_login
 
-    // client side login modal form - login to html5 local storage account - password used for login and encryption
-    // normally only one client side user account
-    $(function() {
-
-        var dialog, form, login_button, create_button, cancel_button,
-
-        // From http://www.whatwg.org/specs/web-apps/current-work/multipage/states-of-the-type-attribute.html#e-mail-state-%28type=password%29
-            password = $( "#client-login-password" ),
-            allFields = $( [] ).add( password ),
-            tips = $( ".validateTips"),
-            login_text = I18n.t('js.client_login_dialog.login'),
-            create_text = I18n.t('js.client_login_dialog.create'),
-            cancel_text = I18n.t('js.client_login_dialog.cancel') ;
-
-        function updateTips( t ) {
-            tips
-                .text( t )
-                .addClass( "ui-state-highlight" );
-            setTimeout(function() {
-                tips.removeClass( "ui-state-highlight", 1500 );
-            }, 500 );
-        }
-
-        function checkLength( o, n, min, max ) {
-            if ( o.val().length > max || o.val().length < min ) {
-                o.addClass( "ui-state-error" );
-                updateTips(I18n.t('js.client_login_dialog.invalid_length', {field: n, min: min, max: max}));
-                return false;
-            } else {
-                return true;
-            }
-        }
-
-        function checkPassword( o, n,  create_new_account) {
-            var userid = client_login(o.val(), create_new_account);
-            if (userid <= 0) {
-                // login not ok - display error and add create account button
-                o.addClass( "ui-state-error" );
-                var postfix = (userid < 0) ? -userid : create_new_account ;
-                updateTips(I18n.t('js.client_login_dialog.invalid_password_' + postfix, {field: n}));
-                // add create button
-                var buttons = dialog.dialog("option", "buttons");
-                if (buttons.length == 2) dialog.dialog("option", "buttons", [login_button, create_button, cancel_button]);
-                return false;
-            } else {
-                // login ok - save password temporary in session store for encryption
-                sessionStorage.setItem('password', o.val()) ;
-                sessionStorage.setItem('userid', userid) ;
-                // todo: load local storage info for user into JS arrays (api authorization, users & gifts)
-                // used in angularJS GiftsCtrl
-                return true;
-            }
-        }
-
-        function login_or_create_new_account (create_new_account) {
-            var pgm='client-login-dialog-form.login: ';
-            try {
-                var valid = true;
-                allFields.removeClass("ui-state-error");
-                // password exists in dialog form and is not blank
-                valid = valid && checkLength(password, I18n.t('js.client_login_dialog.password'), 10, 50);
-                valid = valid && checkPassword(password, I18n.t('js.client_login_dialog.password'), create_new_account);
-                if (valid) dialog.dialog("close") ;
-                return valid
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors2('share_accounts_errors',I18n.t('js.client_login_dialog.js_error', {error: err, location: 25, debug: 1}));
-                return false;
-            }
-        }
-
-        function login() {
-            login_or_create_new_account(false)
-        } // login
-        function create() {
-            login_or_create_new_account(true)
-        } // create
-        function cancel() {
-            dialog.dialog( "close" );
-        } // cancel
-
-        login_button = {
-            text: login_text,
-            click: login
-        }
-        create_button = {
-            text: create_text,
-            click: create
-        }
-        cancel_button = {
-            text: cancel_text,
-            click: cancel
-        }
-
-        dialog = $( "#client-login-dialog-form" ).dialog({
-            autoOpen: false,
-            height: fb_logged_in_account() ? 225 : 300, // only show password for logins without fb account
-            width: 350,
-            modal: true,
-            buttons:[login_button, cancel_button],
-            close: function() {
-                form[ 0 ].reset();
-                allFields.removeClass( "ui-state-error" );
-            }
-        });
-
-        form = dialog.find( "form" ).on( "submit", function( event ) {
-            event.preventDefault();
-            login();
-        });
-
-        // local storage is supported?
-        if (typeof(Storage) == "undefined") {
-            $( "#client-login" ).button().on( "click", function() {
-                alert('Please use a browser when supports html 5 local storage') ;
-            });
-        }
-        else {
-            $( "#client-login" ).button().on( "click", function() {
-                dialog.dialog( "open" );
-            });
-        }
-
-    });
-
-    // auto trigger client login button
-    $(document).ready(function() {
-        var client_login = document.getElementById('client-login') ;
-        if (!client_login) return ; // not a login page
-        if (typeof(Storage) == "undefined") return ; // no html5 local storage support
-        // todo: check safari 5 workaround. See show_more_rows
-        if (sessionStorage.getItem("userid") === null) client_login.click() ; // not logged in
-        // already logged in
-    })
-
     function next_local_id (seq_name) {
-        var seq = parseInt(localStorage.getItem(seq_name)) ;
+        var seq = parseInt(getItem(seq_name)) ;
         seq = seq + 1 ;
-        localStorage.setItem(seq_name, '' + seq) ;
+        setItem(seq_name, '' + seq) ;
         return seq ;
     } // next_local_id
 
     // local sequences
     function next_local_gift_id() {
-        var userid = sessionStorage.getItem('userid') ;
+        var userid = getItem('userid') ;
         if (!userid) return ; // not logged in
-        return next_local_id(userid + '_gift_id') ;
+        return next_local_id('gift_id') ;
     }
 
     function next_local_comment_id() {
-        var userid = sessionStorage.getItem('userid') ;
+        var userid = getItem('userid') ;
         if (!userid) return ; // not logged in
-        return next_local_id(userid + '_comment_id') ;
+        return next_local_id('comment_id') ;
     }
 
     // local storage functions <==
-
-
 
     // show/hide ajax debug log checkbox in bottom of page. Only used if ajax_debug? / DEBUG_AJAX is true
     function show_debug_log_checkbox(checkbox) {
@@ -2722,45 +2746,6 @@ var Gofreerev = (function() {
     } // inIframe
 
 
-
-    // custom confirm box - for styling
-    // http://lesseverything.com/blog/archives/2012/07/18/customizing-confirmation-dialog-in-rails/
-    // http://www.pjmccormick.com/nicer-rails-confirm-dialogs-and-not-just-delete-methods
-    // tried with coffee script. Tried with javascript. not working.
-    /*
-     $.rails.allowAction = function(link) {
-     if (!link.attr('data-confirm')) {
-     return true;
-     }
-     $.rails.showConfirmDialog(link);
-     return false;
-     };
-
-     $.rails.confirmed = function(link) {
-     link.removeAttr('data-confirm');
-     return link.trigger('click.rails');
-     };
-
-     $.rails.showConfirmDialog = function(link) {
-     var html;
-     html = "<div id=\"dialog-confirm\" title=\"Are you sure you want to delete?\">\n  <p>These item will be permanently deleted and cannot be recovered. Are you sure?</p>\n</div>";
-     return $(html).dialog({
-     resizable: false,
-     modal: true,
-     buttons: {
-     OK: function() {
-     $.rails.confirmed(link);
-     return $(this).dialog("close");
-     },
-     Cancel: function() {
-     return $(this).dialog("close");
-     }
-     }
-     });
-     };
-     */
-
-
     // angularJS - used function is used in modal login dialog form, but info in stored in angular UserService
     // temporary get/set function until all login functionality are moved to angularJS
     var is_fb_logged_in_account = false
@@ -2801,13 +2786,17 @@ var Gofreerev = (function() {
         // client side validations
         csv_gift: csv_gift,
         csv_comment: csv_comment,
+        // local storage helpers
+        getItem: getItem,
+        setItem: setItem,
+        removeItem: removeItem,
         // angular helpers
         set_fb_logged_in_account: set_fb_logged_in_account,
         next_local_gift_id: next_local_gift_id,
         next_local_comment_id: next_local_comment_id,
         client_login: client_login,
-        client_sym_encrypt: client_sym_encrypt,
-        client_sym_decrypt: client_sym_decrypt
+        client_sym_encrypt: encrypt,
+        client_sym_decrypt: decrypt
     };
 })();
 // Gofreerev closure end
@@ -2818,7 +2807,7 @@ var Gofreerev = (function() {
 angular.module('gifts', ['ngRoute'])
     .config(function ($routeProvider) {
         var get_local_userid = function() {
-            var userid = sessionStorage.getItem('userid');
+            var userid = Gofreerev.getItem('userid');
             if (typeof userid == 'undefined') return '0' ;
             else if (userid == null) return '0' ;
             else if (userid == '') return '0' ;
@@ -2853,7 +2842,7 @@ angular.module('gifts', ['ngRoute'])
         // $routeProvider.otherwise({redirectTo: '/gifts'});
         $routeProvider.otherwise({
             redirectTo: function (routeParams, path, search) {
-                var userid = sessionStorage.getItem('userid');
+                var userid = Gofreerev.getItem('userid');
                 if (typeof userid == 'undefined') userid = 0 ;
                 else if (userid == null) userid = 0 ;
                 else if (userid == '') userid = 0 ;
@@ -3037,8 +3026,7 @@ angular.module('gifts', ['ngRoute'])
             return false ;
         }
         var client_userid = function() {
-            if (!$window.sessionStorage) return 0 ;
-            var userid = $window.sessionStorage.getItem('userid') ;
+            var userid = Gofreerev.getItem('userid') ;
             if (typeof userid == 'undefined') return 0 ;
             if (userid == null) return 0 ;
             if (userid == '') return 0 ;
@@ -3046,8 +3034,7 @@ angular.module('gifts', ['ngRoute'])
             return userid ;
         }
         var client_password = function () {
-            if (!$window.sessionStorage) return '' ;
-            var password = $window.sessionStorage.getItem('password') ;
+            var password = Gofreerev.getItem('password') ;
             if (typeof password == 'undefined') return '' ;
             if (password == null) return '' ;
             if (password == '') return '' ;
@@ -3140,21 +3127,26 @@ angular.module('gifts', ['ngRoute'])
 
         // local log out (provider=null) or log in provider log out (provider facebook,  google+, linkedin etc)
         var logout = function (provider) {
+            console.log('UserService.logout: debug 1') ;
             if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) {
                 // device log out = session log out - note that no local storage info are removed
-                $window.sessionStorage.removeItem('password') ;
-                $window.sessionStorage.removeItem('userid') ;
+                console.log('UserService.logout: debug 2') ;
+                Gofreerev.removeItem('password') ;
+                Gofreerev.removeItem('userid') ;
             }
             else {
                 // log in provider log out
                 // remove users
+                console.log('UserService.logout: debug 3') ;
                 for (var i=users.length-1 ; i >= 0 ; i--) if (users[i].provider == provider) users.splice(i, 1);
                 users_index_by_user_id = {}
                 for (i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
                 // remove provider from local encrypted oauth hash
+                console.log('UserService.logout: debug 4') ;
                 remove_oauth(provider) ;
             }
             // update oauth info in server session
+            console.log('UserService.logout: debug 5') ;
             $http.post('/util/logout.json?client_userid=' + client_userid(), {provider: provider || ''}) ;
         } // logout
 
@@ -3202,35 +3194,35 @@ angular.module('gifts', ['ngRoute'])
         // get encrypted oauth hash from local storage - returns null if errors
         var get_oauth = function () {
             var pgm = 'UserService.get_oauth: ' ;
-            // get client_userid and password for current local login
-            var userid = client_userid() ;
-            if (userid == 0) {
-                console.log(pgm + 'device userid was not found.') ;
-                return null ;
-            }
-            var password = client_password() ;
-            if (password == '') {
-                console.log(pgm + 'device password was not found.') ;
-                return ;
-            }
-            // get old oauth (encrypted SON.stringify)
-            var oauth_key = userid + '_oauth' ;
-            var oauth_enc_str = $window.localStorage.getItem(oauth_key) ;
-            var oauth_str, oauth ;
-            if ((typeof oauth_enc_str == 'undefined') || (oauth_enc_str == null) || (oauth_enc_str == '')) oauth = {} ;
+            //// get client_userid and password for current local login
+            //var userid = client_userid() ;
+            //if (userid == 0) {
+            //    console.log(pgm + 'device userid was not found.') ;
+            //    return null ;
+            //}
+            //var password = client_password() ;
+            //if (password == '') {
+            //    console.log(pgm + 'device password was not found.') ;
+            //    return ;
+            //}
+            // get old oauth
+            var oauth_str = Gofreerev.getItem('oauth') ;
+            var oauth ;
+            if ((typeof oauth_json == 'undefined') || (oauth_json == null) || (oauth_json == '')) oauth = {} ;
             else {
-                oauth_str = Gofreerev.client_sym_decrypt(oauth_enc_str, password) ;
                 oauth = JSON.parse(oauth_str) ;
             }
             return oauth ;
 
         } // get_oauth
         var save_oauth = function (oauth) {
+            var pgm = 'UserService.save_oauth: ' ;
+            console.log(pgm + 'debug 1') ;
             // encrypt and save updated oauth
             var oauth_str = JSON.stringify(oauth) ;
-            var oauth_enc_str = Gofreerev.client_sym_encrypt(oauth_str, client_password()) ;
-            var oauth_key = client_userid() + '_oauth' ;
-            $window.localStorage.setItem(oauth_key, oauth_enc_str) ;
+            console.log(pgm + 'debug 2') ;
+            Gofreerev.setItem('oauth', oauth_str) ;
+            console.log(pgm + 'debug 3') ;
         }
         // save oauth received from server into oauth in local storage
         // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
@@ -3252,16 +3244,22 @@ angular.module('gifts', ['ngRoute'])
         var remove_oauth = function (provider) {
             var pgm = 'UserService.remove_oauth: ' ;
             console.log(pgm + 'provider = ' + provider) ;
+            console.log(pgm + 'debug 1') ;
             var oauth = get_oauth() ;
+            console.log(pgm + 'debug 2') ;
             if (oauth == null) {
                 console.log(pgm + 'old oauth was not found. see previous error. oauth was not changed') ;
                 return ;
             }
             // remove provider and save
+            console.log(pgm + 'debug 3') ;
             delete oauth[provider] ;
+            console.log(pgm + 'debug 4') ;
             save_oauth(oauth) ;
+            console.log(pgm + 'debug 5') ;
             // update unencrypted has with expires_at timestamps
             delete self.expires_at[provider] ;
+            console.log(pgm + 'debug 6') ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
         }
         // after local login - send local oauth to server - server rechecks tokens and copy tokens to session
@@ -3269,24 +3267,22 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'UserService.send_oauth: ' ;
             // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
             // get client_userid and password for current local login
-            var userid = client_userid() ;
-            if (userid == 0) {
-                console.log(pgm + 'device userid was not found. oauth was not saved') ;
-                return ;
-            }
-            var password = client_password() ;
-            if (password == '') {
-                console.log(pgm + 'device password was not found. oauth was not saved') ;
-                return ;
-            }
-            // get old oauth (encrypted SON.stringify)
-            var oauth_key = userid + '_oauth' ;
-            var oauth_enc = $window.localStorage.getItem(oauth_key) ;
-            if ((typeof oauth_enc == 'undefined') || (oauth_enc == null) || (oauth_enc == '')) {
+            //var userid = client_userid() ;
+            //if (userid == 0) {
+            //    console.log(pgm + 'device userid was not found. oauth was not saved') ;
+            //    return ;
+            //}
+            //var password = client_password() ;
+            //if (password == '') {
+            //    console.log(pgm + 'device password was not found. oauth was not saved') ;
+            //    return ;
+            //}
+            // get old oauth
+            var oauth_str = Gofreerev.getItem('oauth') ;
+            if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '')) {
                 console.log(pgm + 'no oauth to send to server') ;
-                return ;
+                return $q.reject('') ; // empty promise error response
             }
-            var oauth_str = Gofreerev.client_sym_decrypt(oauth_enc, password) ;
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash to server
             return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
@@ -3372,10 +3368,12 @@ angular.module('gifts', ['ngRoute'])
                         userService.replace_users(new_users) ;
                     }
                     stop_do_tasks_spinner() ;
+                    console.log(pgm + 'stop');
                 },
                 function (error) {
                     console.log(pgm + 'error = ' + JSON.stringify(error)) ;
                     stop_do_tasks_spinner() ;
+                    console.log(pgm + 'stop');
                 }) ;
 
         }
@@ -3400,12 +3398,13 @@ angular.module('gifts', ['ngRoute'])
         };
 
         // radio group login or register?
+        var passwords_str = Gofreerev.getItem("passwords") ;
         var passwords_a ;
-        if (localStorage.getItem("passwords") === null) {
+        if (passwords_str === null) {
             passwords_a = [] ;
         }
         else {
-            passwords_a = JSON.parse(localStorage.getItem("passwords")) ;
+            passwords_a = JSON.parse(passwords_str) ;
         }
         if (passwords_a.length == 0) self.register = 'x' ;
         else self.register = '' ;
@@ -3417,7 +3416,7 @@ angular.module('gifts', ['ngRoute'])
         }
         self.login = function (provider) {
             if (userService.is_logged_in_with_provider(provider)) return ;
-            var userid = $window.sessionStorage.getItem('userid') ;
+            var userid = Gofreerev.getItem('userid') ;
             $window.location.href = '/auth/' + provider + '?client_userid=' + userid ;
         };
         self.is_logged_off = function (provider) {
@@ -3425,7 +3424,9 @@ angular.module('gifts', ['ngRoute'])
         }
         self.logout = function (provider) {
             if (!userService.is_logged_in_with_provider(provider)) return ;
+            console.log('AuthCtrl.logout: debug 2') ;
             userService.logout(provider) ;
+            console.log('AuthCtrl.logout: debug 3') ;
             $location.path('/auth/0') ;
             $location.replace() ;
         }
@@ -3456,8 +3457,6 @@ angular.module('gifts', ['ngRoute'])
                 alert('Invalid password');
             }
             else {
-                $window.sessionStorage.setItem('password', self.device_password) ;
-                $window.sessionStorage.setItem('userid', userid) ;
                 self.device_password = '' ;
                 self.confirm_device_password = '' ;
                 self.register = '' ;

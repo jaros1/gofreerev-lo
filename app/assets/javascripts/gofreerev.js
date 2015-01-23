@@ -2238,25 +2238,28 @@ var Gofreerev = (function() {
         users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
     };
 
-    // first character in stored value is an encryption/compression flag:
+    // first character in stored value is an encryption/compression storage flag
+    // storage flag makes it possible to select best compression method
+    // and storage flag makes it possible to later change storage rules for already saved values
     var storage_flags = {
         a: { compress: 0, encrypt: 0, sequence: 0}, // clear text - not compressed, not encrypted
-        b: { compress: 0, encrypt: 1,  sequence: 0}, // encrypted only - not compressed
-        c: { compress: 1, encrypt: 0, sequence: 0}, // LZString compression, not encrypted
-        d: { compress: 1, encrypt: 1,  sequence: 0}, // LZString compression, compress => encrypt
-        e: { compress: 1, encrypt: 1,  sequence: 1}, // LZString compression, encrypt => compress
-        f: { compress: 2, encrypt: 0, sequence: 0}, // LZMA level 1 compression, not encrypted
-        g: { compress: 2, encrypt: 1,  sequence: 0}, // LZMA level 1 compression, compress => encrypt
-        h: { compress: 2, encrypt: 1,  sequence: 1}, // LZMA level 1 compression, encrypt => compress
-        i: { compress: 3, encrypt: 0, sequence: 0}, // compression 3, not encrypted
-        j: { compress: 3, encrypt: 1,  sequence: 0}, // compression 3, compress => encrypt
-        k: { compress: 3, encrypt: 1,  sequence: 1}, // compression 3, encrypt => compress
-        l: { compress: 4, encrypt: 0, sequence: 0}, // compression 4, not encrypted
-        m: { compress: 4, encrypt: 1,  sequence: 0}, // compression 4, compress => encrypt
-        n: { compress: 4, encrypt: 1,  sequence: 1}  // compression 4, encrypt => compress
+        b: { compress: 0, encrypt: 1, sequence: 0}, // encrypted only - not compressed
+        c: { compress: 1, encrypt: 0, sequence: 0}, // LZString synchronous compression, not encrypted
+        d: { compress: 1, encrypt: 1, sequence: 0}, // LZString synchronous compression, compress => encrypt
+        e: { compress: 1, encrypt: 1, sequence: 1}, // LZString synchronous compression, encrypt => compress
+        f: { compress: 2, encrypt: 0, sequence: 0}, // LZMA level 1 asynchronous compression, not encrypted
+        g: { compress: 2, encrypt: 1, sequence: 0}, // LZMA level 1 asynchronous compression, compress => encrypt
+        h: { compress: 2, encrypt: 1, sequence: 1}, // LZMA level 1 asynchronous compression, encrypt => compress
+        i: { compress: 3, encrypt: 0, sequence: 0}, // compression 3, not encrypted (reserved / not implemented)
+        j: { compress: 3, encrypt: 1, sequence: 0}, // compression 3, compress => encrypt (reserved / not implemented)
+        k: { compress: 3, encrypt: 1, sequence: 1}, // compression 3, encrypt => compress (reserved / not implemented)
+        l: { compress: 4, encrypt: 0, sequence: 0}, // compression 4, not encrypted (reserved / not implemented)
+        m: { compress: 4, encrypt: 1, sequence: 0}, // compression 4, compress => encrypt (reserved / not implemented)
+        n: { compress: 4, encrypt: 1, sequence: 1}  // compression 4, encrypt => compress (reserved / not implemented)
     } ;
-    var storage_flag_index = {} ; // from binary index 0-19 to storage flag a-n
 
+    // reverse index - from compress*encrypt*sequence (binary 0-19) to storage flag a-n
+    var storage_flag_index = {} ;
     function storage_options_bin_key (storage_options) {
         return 4*storage_options.compress + 2*storage_options.encrypt + storage_options.sequence ;
     }
@@ -2270,19 +2273,6 @@ var Gofreerev = (function() {
             }
         }
     })();
-
-    // -   - (space) clear text - not encrypted - not compressed
-    // - x - symmetric encrypted only
-    // - a - compressed LZString + encrypted
-    // - A - encrypted + compressed LZString
-    // - b - compressed LZMA level 1 + encrypted (not implemented - has to run asynchronous)
-    // - B - encrypted + compressed LZMA level 1 (not implemented - has to run asynchronous)
-    // - etc - other compression algorithms
-    // in that way it is possible to enable/disable encrytion and compression for already stored data
-    // and it is possible to select best (minimum length) compression
-
-
-
 
     // todo: how to handle "no more space" in local storage?
     // 1) only keep newer gifts and relevant users in local storage
@@ -2307,14 +2297,86 @@ var Gofreerev = (function() {
         return output_wa.toString(CryptoJS.enc.Utf8) ;
     }
 
-    // compress and decompress strings (https://github.com/pieroxy/lz-string & http://pieroxy.net/blog/pages/lz-string/guide.html)
-    function compress (text) {
+    // LZString compress and decompress strings - fast and synchronous compress and decompress
+    // https://github.com/pieroxy/lz-string
+    // http://pieroxy.net/blog/pages/lz-string/guide.html)
+    function compress1 (text) {
         return LZString.compressToUTF16(text);
     }
-    function decompress (text) {
+    function decompress1 (text) {
         return LZString.decompressFromUTF16(text) ;
     }
 
+    // LZMA level 1 compress and decompress strings - not as fast as LZString - runs asynchronous
+    // setItem uses LZString in compression. At end setItem submit a asynchronous task to check if LZMA level 1 compress is better
+    // todo: LZMA disabled until I find a good method to convert byte array output from LZMA.compress into an utf-16 encoded string
+
+    // lzma_compress0 - sequence = 0 - not encrypted or normal compress => encrypt sequence
+    // lzma_compress1 - sequence = 1 - encrypted and reverse encrypt => compress sequence
+
+    // params:
+    // - key and value - original inputs to setItem
+    // - session: true: sessionStorage, false: localStorage
+    // - password: null: not encrypted, != null: encrypted
+    // - length: length of lzstring compressed value (without storage flag)
+    function lzma_compress1(key, value, session, password, length) {
+        var pgm = 'lzma_compress1: ';
+        value = encrypt(value, password);
+        // start compress
+        // var lzma = new LZMA;
+        LZMA.compress(value, 1, function (value) {
+            // compress result received
+            console.log(pgm + 'compress result received. value = ' + value) ;
+            if (value.length >= length) return;
+            // lzma compress sequence 2 was better than lzstring compress and/or lzma compress sequence = 0 (compress => encrypt)
+            console.log(pgm + 'key = ' + key + '. lzma compress sequence 2 was better than lzstring compress and/or lzma compress sequence = 0 (compress => encrypt)') ;
+            // find storage flag and save new compressed value
+            var storage_options = {compress: 2, encrypt: 1, sequence: 1}
+            var bin_key = storage_options_bin_key(storage_options);
+            var storage_flag = storage_flag_index[bin_key];
+            if (!storage_flag) {
+                console.log(pgm + 'Warning. key ' + key + ' was not optimized. Could not found storage flag for storage options = ' + JSON.stringify(storage_options));
+                return;
+            }
+            value = storage_flag + value;
+            // save
+            if (session) sessionStorage.setItem(key, value);
+            else localStorage.setItem(key, value);
+        }, null);
+    } // lzma_compress1
+    function lzma_compress0(key, value, session, password, length) {
+        var pgm = 'lzma_compress0: ';
+        var save_value = value;
+        // start compress
+        // var lzma = new LZMA;
+        LZMA.compress(value, 1, function (value) {
+            // compress result received
+            console.log(pgm + 'compress result received. value = ' + value) ;
+            if (password) value = encrypt(value, password);
+            if (value.length < length) {
+                // lzma compress was better than lzstring compress
+                console.log(pgm + 'key = ' + key + '. lzma compress was better than lzstring compress') ;
+                // find storage flag and save new compressed value
+                var storage_options = {compress: 2, encrypt: (password ? 1 : 0), sequence: 0}
+                var bin_key = storage_options_bin_key(storage_options);
+                var storage_flag = storage_flag_index[bin_key];
+                if (!storage_flag) {
+                    console.log(pgm + 'Warning. key ' + key + ' was not optimized. Could not found storage flag for storage options = ' + JSON.stringify(storage_options));
+                    return;
+                }
+                value = storage_flag + value;
+                // save
+                if (session) sessionStorage.setItem(key, value);
+                else localStorage.setItem(key, value);
+                length = value.length - 1;
+            }
+            ;
+            // start start_lzma_compress1 if encrypted - sequence = 1 - encrypt before compress
+            if (password) lzma_compress1(key, save_value, session, password, length);
+        }, null);
+    } // check_lzma_compress
+
+    // look storage rules for key. add default values and write warning to console log when using defaults
     function get_local_storage_rule (key) {
         var pgm = 'Gofreerev.get_local_storage_rule: ' ;
         var key_options ;
@@ -2376,7 +2438,7 @@ var Gofreerev = (function() {
         if ((storage_options.compress > 0) && (storage_options.sequence == 1)) {
             // reverse encrypt => compress sequence was used when saving this data. decompress before decrypt
             // console.log(pgm + key + ' before decompress = ' + value) ;
-            value = decompress(value) ;
+            value = decompress1(value) ;
         }
 
         // decrypt
@@ -2392,9 +2454,9 @@ var Gofreerev = (function() {
 
         // decompress
         if ((storage_options.compress > 0) && (storage_options.sequence == 0)) {
-            // normal compress => encrypt decompress was used when saving this data. decompress after decrypt
+            // normal compress => encrypt sequence was used when saving this data. decompress after decrypt
             // console.log(pgm + key + ' before decompress = ' + value) ;
-            value = decompress(value) ;
+            value = decompress1(value) ;
         }
 
         // ready
@@ -2404,6 +2466,7 @@ var Gofreerev = (function() {
 
     function setItem (key, value) {
         var pgm = 'Gofreerev.setItem: ' ;
+        var save_value = value ;
         var rule = get_local_storage_rule(key) ;
         // userid prefix?
         if (rule.userid) {
@@ -2430,8 +2493,8 @@ var Gofreerev = (function() {
             // compress and encrypt. find best sequence
             // sequence 0 : normal sequence - compress before encrypt
             // sequence 1 : reverse sequence - encrypt before compress
-            var value1 = encrypt(compress(value), password) ;
-            var value2 = compress(encrypt(value, password)) ;
+            var value1 = encrypt(compress1(value), password) ;
+            var value2 = compress1(encrypt(value, password)) ;
             if (value1.length <= value2.length) {
                 sequence = 0 ;
                 value = value1 ;
@@ -2444,7 +2507,7 @@ var Gofreerev = (function() {
         else {
             sequence = 0 ;
             // compress?
-            if (rule.compress) value = compress(value) ;
+            if (rule.compress) value = compress1(value) ;
             // encrypt?
             if (rule.encrypt) value = encrypt(value, password);
         }
@@ -2462,6 +2525,11 @@ var Gofreerev = (function() {
         // save
         if (rule.session) sessionStorage.setItem(key, value) ;
         else localStorage.setItem(key, value) ;
+        // optimize compression for saved value
+
+        // todo: disabled until I find a method to convert byte array returned from LZMA.compress into an valid utf-16 string
+        // check if lzma compress if better than lzstring compress
+        // if (rule.compress) lzma_compress0(key, save_value, rule.session, password, value.length-1) ;
     } // setItem
 
     function removeItem (key) {
@@ -3182,11 +3250,16 @@ angular.module('gifts', ['ngRoute'])
             return login_users ;
         }
         var get_login_userids = function () {
+            var pgm = 'UserService.get_login_userids: ' ;
             if (typeof users == 'undefined') return [] ;
-            var userids = []
+            var userids = [] ;
+            // console.log(pgm + 'users.length = ' + users.length) ;
             for (var i=0 ; i<users.length ; i++) {
+                // console.log(pgm + 'users[i] = ' + JSON.stringify(users[i])) ;
+                // console.log(pgm + 'users[' + i + '].friend = ' + users[i].friend) ;
                 if (users[i].friend == 1) userids.push(users[i].user_id) ;
             }
+            // console.log(pgm + 'userids.length = ' + userids.length) ;
             return userids ;
         }
         var get_users_currency = function  () {
@@ -3264,7 +3337,7 @@ angular.module('gifts', ['ngRoute'])
         //   6) friends of friends     - show few info + not clickable user div
         //   7) friends proposals      - not clickable user div
         //   8) others                 - not clickable user div
-        init_users([{
+        var test_users = [{
             user_id: 920,
             provider: 'facebook',
             user_name: 'Jan Roslind',
@@ -3272,7 +3345,7 @@ angular.module('gifts', ['ngRoute'])
             api_profile_picture_url: 'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=2e909c6d69752fac3c314e1975daf583&oe=5502EE27&__gda__=1426931048_182d748d6d46db7eb51077fc36365623',
             friend: 1, // me=logged in user
             currency: 'DKK'
-            },
+        },
             {
                 user_id: 791,
                 provider: 'linkedin',
@@ -3291,8 +3364,9 @@ angular.module('gifts', ['ngRoute'])
                 friend: 1, // me=logged in user
                 currency: 'DKK'
             }
-        ]);
-
+        ] ;
+        // load users from local storage or test users array
+        init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
         self.expires_at = {} ;
 
         // get encrypted oauth hash from local storage - returns null if errors
@@ -3389,17 +3463,23 @@ angular.module('gifts', ['ngRoute'])
             }
             // console.log(pgm + 'oauth_str = ' + oauth_str) ;
             var oauth = JSON.parse(oauth_str) ;
-            // send oauth hash to server
+            // send oauth hash (authorization for one or more login providers) to server
+            // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
             return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
-                    if (response.data.error) {
-                        console.log(pgm + 'post login error = ' + response.data.error) ;
-                        return $q.reject(response.data.error)
+                    if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
+                    if (response.data.users) {
+                        // fresh user info array was received from server
+                        console.log(pgm + 'login. users = ' + JSON.stringify(response.data.users)) ;
+                        // insert relevant user info info js array
+                        init_users(response.data.users) ;
+                        // save in local storage
+                        // todo: note that users array can by big and maybe have to be stripped for irrelevant users
+                        Gofreerev.setItem('users', JSON.stringify(response.data.users)) ;
                     }
-                    // insert relevant user info info js array
-                    console.log(pgm + 'login. users = ' + JSON.stringify(response.data.users)) ;
-                    init_users(response.data.users) ;
+                    // promise - continue with success or error?
+                    if (response.data.error || !response.data.users) return $q.reject(response.data.error) ;
                 },
                 function (error) {
                     console.log(pgm + 'post login error = ' + JSON.stringify(error)) ;
@@ -4366,6 +4446,7 @@ angular.module('gifts', ['ngRoute'])
                 return '' ;
             }
             var login_user_ids = userService.get_login_userids() ;
+            // console.log(pgm + 'login_user_ids = ' + login_user_ids) ;
             var other_user_ids ;
             if (gift.direction == 'giver') other_user_ids = $(login_user_ids).not(gift.giver_user_ids) ;
             else other_user_ids = $(login_user_ids).not(gift.receiver_user_ids) ;

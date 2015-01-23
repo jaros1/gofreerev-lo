@@ -2208,7 +2208,7 @@ var Gofreerev = (function() {
 
 
 
-    // local storage functions ==>
+    // local or session storage functions ==>
 
     // values in sessionStorage:
     // - data are discarded when user closes browser tab
@@ -2224,7 +2224,7 @@ var Gofreerev = (function() {
     // - rules (local_storage_rules) are derived from key name
     // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
 
-    var local_storage_rules = {
+    var storage_rules = {
         comment_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
         gift_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
         gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts
@@ -2237,6 +2237,52 @@ var Gofreerev = (function() {
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
         users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
     };
+
+    // first character in stored value is an encryption/compression flag:
+    var storage_flags = {
+        a: { compress: 0, encrypt: 0, sequence: 0}, // clear text - not compressed, not encrypted
+        b: { compress: 0, encrypt: 1,  sequence: 0}, // encrypted only - not compressed
+        c: { compress: 1, encrypt: 0, sequence: 0}, // LZString compression, not encrypted
+        d: { compress: 1, encrypt: 1,  sequence: 0}, // LZString compression, compress => encrypt
+        e: { compress: 1, encrypt: 1,  sequence: 1}, // LZString compression, encrypt => compress
+        f: { compress: 2, encrypt: 0, sequence: 0}, // LZMA level 1 compression, not encrypted
+        g: { compress: 2, encrypt: 1,  sequence: 0}, // LZMA level 1 compression, compress => encrypt
+        h: { compress: 2, encrypt: 1,  sequence: 1}, // LZMA level 1 compression, encrypt => compress
+        i: { compress: 3, encrypt: 0, sequence: 0}, // compression 3, not encrypted
+        j: { compress: 3, encrypt: 1,  sequence: 0}, // compression 3, compress => encrypt
+        k: { compress: 3, encrypt: 1,  sequence: 1}, // compression 3, encrypt => compress
+        l: { compress: 4, encrypt: 0, sequence: 0}, // compression 4, not encrypted
+        m: { compress: 4, encrypt: 1,  sequence: 0}, // compression 4, compress => encrypt
+        n: { compress: 4, encrypt: 1,  sequence: 1}  // compression 4, encrypt => compress
+    } ;
+    var storage_flag_index = {} ; // from binary index 0-19 to storage flag a-n
+
+    function storage_options_bin_key (storage_options) {
+        return 4*storage_options.compress + 2*storage_options.encrypt + storage_options.sequence ;
+    }
+    (function () {
+        var storage_flag ; // a-n
+        var index ; // 0-19
+        for (var storage_flag in storage_flags) {
+            if (storage_flags.hasOwnProperty(storage_flag)) {
+                index = storage_options_bin_key(storage_flags[storage_flag]) ;
+                storage_flag_index[index] = storage_flag ;
+            }
+        }
+    })();
+
+    // -   - (space) clear text - not encrypted - not compressed
+    // - x - symmetric encrypted only
+    // - a - compressed LZString + encrypted
+    // - A - encrypted + compressed LZString
+    // - b - compressed LZMA level 1 + encrypted (not implemented - has to run asynchronous)
+    // - B - encrypted + compressed LZMA level 1 (not implemented - has to run asynchronous)
+    // - etc - other compression algorithms
+    // in that way it is possible to enable/disable encrytion and compression for already stored data
+    // and it is possible to select best (minimum length) compression
+
+
+
 
     // todo: how to handle "no more space" in local storage?
     // 1) only keep newer gifts and relevant users in local storage
@@ -2272,7 +2318,7 @@ var Gofreerev = (function() {
     function get_local_storage_rule (key) {
         var pgm = 'Gofreerev.get_local_storage_rule: ' ;
         var key_options ;
-        if (local_storage_rules.hasOwnProperty(key)) key_options = local_storage_rules[key] ;
+        if (storage_rules.hasOwnProperty(key)) key_options = storage_rules[key] ;
         else {
             console.log(pgm + 'Warning. ' + key + ' was not found in local_storage_rules hash.') ;
             key_options = {session: false, userid: true, compress: false, encrypt: false} ;
@@ -2294,14 +2340,12 @@ var Gofreerev = (function() {
             key_options.encrypt = false ;
         }
         return key_options ;
-    }
+    } // get_local_storage_rule
 
     // get/set item
     function getItem (key) {
         var pgm = 'Gofreerev.getItem: ' ;
         var rule = get_local_storage_rule(key) ;
-        // sessionStorage or localStorage?
-        var storage = rule.session ? sessionStorage : localStorage ;
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid') ;
@@ -2313,12 +2357,31 @@ var Gofreerev = (function() {
             }
             key = userid + '_' + key ;
         }
-        // read value
-        var value = storage.getItem(key) ;
-        if ((typeof value == 'undefined') || (value == null)) return null ;
+        // read stored value
+        var value = rule.session ? sessionStorage.getItem(key) : localStorage.getItem(key) ;
+        if ((typeof value == 'undefined') || (value == null) || (value == '')) {
+            return null ;
+        }
+
+        // get storage flag - how was data stored - first character in value
+        var storage_flag = value.substr(0,1) ;
+        value = value.substr(1) ;
+        var storage_options = storage_flags[storage_flag] ;
+        if (!storage_options) {
+            console.log(pgm + 'Error. Invalid storage flag ' + storage_flag + ' was found for key ' + key) ;
+            return null ;
+        }
+
+        // decompress
+        if ((storage_options.compress > 0) && (storage_options.sequence == 1)) {
+            // reverse encrypt => compress sequence was used when saving this data. decompress before decrypt
+            // console.log(pgm + key + ' before decompress = ' + value) ;
+            value = decompress(value) ;
+        }
+
         // decrypt
-        if (rule.encrypt) {
-            console.log(pgm + key + ' before decrypt = ' + value) ;
+        if (storage_options.encrypt) {
+            // console.log(pgm + key + ' before decrypt = ' + value) ;
             var password = getItem('password') ;
             if ((typeof password == 'undefined') || (password == null) || (password == '')) {
                 console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
@@ -2326,21 +2389,22 @@ var Gofreerev = (function() {
             }
             value = decrypt(value, password);
         }
+
         // decompress
-        if (rule.compress) {
-            console.log(pgm + key + ' before decompress = ' + value) ;
+        if ((storage_options.compress > 0) && (storage_options.sequence == 0)) {
+            // normal compress => encrypt decompress was used when saving this data. decompress after decrypt
+            // console.log(pgm + key + ' before decompress = ' + value) ;
             value = decompress(value) ;
         }
+
         // ready
-        if (rule.encrypt || rule.compress) console.log(pgm + key + ' after decrypt and decompress = ' + value) ;
+        // if (storage_options.encrypt || storage_options.compress) console.log(pgm + key + ' after decrypt and decompress = ' + value) ;
         return value ;
     } // getItem
 
     function setItem (key, value) {
         var pgm = 'Gofreerev.setItem: ' ;
         var rule = get_local_storage_rule(key) ;
-        // sessionStorage or localStorage?
-        var storage = rule.session ? sessionStorage : localStorage ;
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid') ;
@@ -2348,23 +2412,56 @@ var Gofreerev = (function() {
             else userid = parseInt(userid) ;
             if (userid == 0) {
                 console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
-                return null ;
+                return ;
             }
             key = userid + '_' + key ;
         }
-        // compress?
-        if (rule.compress) value = compress(value) ;
-        // encrypt?
+        // check password
+        var password ;
         if (rule.encrypt) {
-            var password = getItem('password') ;
+            password = getItem('password') ;
             if ((typeof password == 'undefined') || (password == null) || (password == '')) {
                 console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
-                return null ;
+                return ;
             }
-            value = encrypt(value, password);
         }
+        var sequence ;
+        if (rule.compress && rule.encrypt) {
+            // compress and encrypt. find best sequence
+            // sequence 0 : normal sequence - compress before encrypt
+            // sequence 1 : reverse sequence - encrypt before compress
+            var value1 = encrypt(compress(value), password) ;
+            var value2 = compress(encrypt(value, password)) ;
+            if (value1.length <= value2.length) {
+                sequence = 0 ;
+                value = value1 ;
+            }
+            else {
+                sequence = 1 ;
+                value = value2 ;
+            }
+        }
+        else {
+            sequence = 0 ;
+            // compress?
+            if (rule.compress) value = compress(value) ;
+            // encrypt?
+            if (rule.encrypt) value = encrypt(value, password);
+        }
+        // set storage flag - how are data stored - first character in value
+        var storage_options = { compress: (rule.compress ? 1 : 0),
+                                encrypt: (rule.encrypt ? 1 : 0),
+                                sequence: sequence }
+        var bin_key = storage_options_bin_key(storage_options) ;
+        var storage_flag = storage_flag_index[bin_key] ;
+        if (!storage_flag) {
+            console.log(pgm + 'Error. key ' + key + ' was not saved. Could not found storage flag for storage options = ' + JSON.stringify(storage_options)) ;
+            return ;
+        }
+        value = storage_flag + value ;
         // save
-        storage.setItem(key, value) ;
+        if (rule.session) sessionStorage.setItem(key, value) ;
+        else localStorage.setItem(key, value) ;
     } // setItem
 
     function removeItem (key) {
@@ -2384,7 +2481,8 @@ var Gofreerev = (function() {
             key = userid + '_' + key ;
         }
         // remove
-        storage.removeItem(key) ;
+        if (rule.session) sessionStorage.removeItem(key) ;
+        else localStorage.removeItem(key) ;
     } // removeItem
 
     // client login (password from client-login-dialog-form)
@@ -3289,7 +3387,7 @@ angular.module('gifts', ['ngRoute'])
                 console.log(pgm + 'no oauth to send to server') ;
                 return $q.reject('') ; // empty promise error response
             }
-            console.log(pgm + 'oauth_str = ' + oauth_str) ;
+            // console.log(pgm + 'oauth_str = ' + oauth_str) ;
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash to server
             return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
@@ -3431,9 +3529,9 @@ angular.module('gifts', ['ngRoute'])
         }
         self.logout = function (provider) {
             if (!userService.is_logged_in_with_provider(provider)) return ;
-            console.log('AuthCtrl.logout: debug 2') ;
+            // console.log('AuthCtrl.logout: debug 2') ;
             userService.logout(provider) ;
-            console.log('AuthCtrl.logout: debug 3') ;
+            // console.log('AuthCtrl.logout: debug 3') ;
             $location.path('/auth/0') ;
             $location.replace() ;
         }

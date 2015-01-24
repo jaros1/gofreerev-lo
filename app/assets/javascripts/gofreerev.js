@@ -3239,8 +3239,34 @@ angular.module('gifts', ['ngRoute'])
                 var user_name_a = user.user_name.split(' ') ;
                 user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
             }
+            // if (user_id == 1016) console.log('UserService.get_user: user = ' + JSON.stringify(user)) ;
             return user ;
         }
+        var get_userid_friend_status = function (user_id) {
+            if (typeof users == 'undefined') return null ;
+            if (users == null) return null ;
+            if (users.length == 0) return null ;
+            if (typeof user_id == 'undefined') return null ;
+            if (user_id == null) return null ;
+            var user = get_user(user_id) ;
+            if (!user) return 9 ;
+            return user.friend ;
+        } // get_userid_friend_status
+        var get_userids_friend_status = function (user_ids) {
+            if (typeof users == 'undefined') return null ;
+            if (users == null) return null ;
+            if (users.length == 0) return null ;
+            if (typeof user_ids == 'undefined') return null ;
+            if (user_ids == null) return null ;
+            if (user_ids.length == 0) return null ;
+            var min_friend_status = 9, friend_status ;
+            for (var i=0 ; i<user_ids.length ; i++) {
+                friend_status = get_userid_friend_status(user_ids[i]) ;
+                // if (user_ids[i] == 1016) console.log('UserService.get_userids_friend_status: friend_status = ' + friend_status) ;
+                if (friend_status && (friend_status < min_friend_status)) min_friend_status = friend_status ;
+            }
+            return min_friend_status ;
+        } // get_userids_friend_status
         var get_login_users = function () {
             var login_users = [] ;
             if (typeof users == 'undefined') return ogin_users ;
@@ -3337,6 +3363,7 @@ angular.module('gifts', ['ngRoute'])
         //   6) friends of friends     - show few info + not clickable user div
         //   7) friends proposals      - not clickable user div
         //   8) others                 - not clickable user div
+        //   9) unknown user           - not clickable user div
         var test_users = [{
             user_id: 920,
             provider: 'facebook',
@@ -3497,6 +3524,8 @@ angular.module('gifts', ['ngRoute'])
             get_login_userids: get_login_userids,
             get_user: get_user,
             get_users_currency: get_users_currency,
+            get_userid_friend_status: get_userid_friend_status,
+            get_userids_friend_status: get_userids_friend_status,
             find_giver: find_giver,
             find_receiver: find_receiver,
             logout: logout,
@@ -3808,10 +3837,17 @@ angular.module('gifts', ['ngRoute'])
         // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
         self.gifts_filter = function (gift, index) {
             var show_gift = true ;
-            if (gift.deleted_at) show_gift = false ;
-            if (!gift.show) show_gift = false ;
-            if (gift.gift_id == 12) console.log('GiftsCtrl.gift_filter: gift id = ' + gift.gift_id + ', show gift = ' + show_gift) ;
-            return show_gift ;
+            if (gift.deleted_at) return false ;
+            if (!gift.show) return false ;
+            // if (gift.gift_id == 12) console.log('GiftsCtrl.gift_filter: gift id = ' + gift.gift_id + ', show gift = ' + show_gift) ;
+            // check friend status. giver or receiver must be login user or a friend of login user
+            var friend ;
+            friend = userService.get_userids_friend_status(gift.giver_user_ids) ;
+            // console.log('GiftsCtrl.gifts_filer: gift_id = ' + gift.gift_id + ', giver_user_ids = ' + JSON.stringify(gift.giver_user_ids) + ', receiver_user_ids = ' + JSON.stringify(gift.receiver_user_ids) + 'friend status = ' + friend) ;
+            if (friend && (friend <= 2)) return true ;
+            friend = userService.get_userids_friend_status(gift.receiver_user_ids) ;
+            if (friend && (friend <= 2)) return true ;
+            return false ;
         }
 
         self.no_gifts = function() {
@@ -4482,7 +4518,7 @@ angular.module('gifts', ['ngRoute'])
     .filter('formatNewProposalTitle', ['UserService', function (userService) {
         return function (gift) {
             var pgm = 'GiftsCtrl.formatNewProposalTitle: gift id = ' + gift.gift_id + '. ' ;
-            if (gift.gift_id == 12) console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
+            // if (gift.gift_id == 12) console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
             // see also GiftsCtrl.show_new_deal_checkbox
             if (gift.direction == 'both') {
                 // console.log(pgm + 'error. invalid direction') ;
@@ -4493,10 +4529,10 @@ angular.module('gifts', ['ngRoute'])
             var other_user_ids ;
             if (gift.direction == 'giver') other_user_ids = $(login_user_ids).not(gift.giver_user_ids) ;
             else other_user_ids = $(login_user_ids).not(gift.receiver_user_ids) ;
-            if (gift.gift_id == 12) {
-                console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) + ', other_user_ids = ' + JSON.stringify(other_user_ids)) ;
-                console.log(pgm + 'other_user_ids.length = ' + other_user_ids.length) ;
-            }
+            //if (gift.gift_id == 12) {
+            //    console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) + ', other_user_ids = ' + JSON.stringify(other_user_ids)) ;
+            //    console.log(pgm + 'other_user_ids.length = ' + other_user_ids.length) ;
+            //}
             if (other_user_ids.length == 0) {
                 // console.log(pgm + 'error. other_user_ids.length = 0') ;
                 return '' ;

@@ -3259,30 +3259,29 @@ angular.module('gifts', ['ngRoute'])
             // if (user_id == 1016) console.log('UserService.get_user: user = ' + JSON.stringify(user)) ;
             return user ;
         }
-        var get_userid_friend_status = function (user_id) {
-            if (typeof users == 'undefined') return null ;
-            if (users == null) return null ;
-            if (users.length == 0) return null ;
-            if (typeof user_id == 'undefined') return null ;
-            if (user_id == null) return null ;
-            var user = get_user(user_id) ;
-            if (!user) return 9 ;
-            return user.friend ;
-        } // get_userid_friend_status
-        var get_userids_friend_status = function (user_ids) {
+        var get_closest_user = function (user_ids) {
             if (typeof users == 'undefined') return null ;
             if (users == null) return null ;
             if (users.length == 0) return null ;
             if (typeof user_ids == 'undefined') return null ;
             if (user_ids == null) return null ;
             if (user_ids.length == 0) return null ;
-            var min_friend_status = 9, friend_status ;
+            var closest_user = null ;
+            var closest_user_friend_status = 9 ;
+            var user ;
             for (var i=0 ; i<user_ids.length ; i++) {
-                friend_status = get_userid_friend_status(user_ids[i]) ;
-                // if (user_ids[i] == 1016) console.log('UserService.get_userids_friend_status: friend_status = ' + friend_status) ;
-                if (friend_status && (friend_status < min_friend_status)) min_friend_status = friend_status ;
+                user = get_user(user_ids[i]) ;
+                if (user && (user.friend < closest_user_friend_status)) {
+                    closest_user = user ;
+                    closest_user_friend_status = user.friend ;
+                }
             }
-            return min_friend_status ;
+            return closest_user ;
+        } // get_closest_user
+        var get_userids_friend_status = function (user_ids) {
+            var user = get_closest_user(user_ids) ;
+            if (!user) return null ;
+            return user.friend ;
         } // get_userids_friend_status
         var get_login_users = function () {
             var login_users = [] ;
@@ -3517,7 +3516,6 @@ angular.module('gifts', ['ngRoute'])
             get_login_userids: get_login_userids,
             get_user: get_user,
             get_users_currency: get_users_currency,
-            get_userid_friend_status: get_userid_friend_status,
             get_userids_friend_status: get_userids_friend_status,
             find_giver: find_giver,
             find_receiver: find_receiver,
@@ -4486,9 +4484,16 @@ angular.module('gifts', ['ngRoute'])
     }])
     .filter('formatUserImgSrc', ['UserService', function (userService) {
         return function (user_ids) {
-            // format scr in user <div><img> tags in gifts/index page etc
+            // format scr in user <div><img> tags in gifts/index page etc (giver, receiver and user that has commented gifts)
+            if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return '/images/invisible-picture.gif' ;
             var user = userService.get_user(user_ids[0]);
-            if (!user) return ''; // error - user not found in users array
+            if (!user) {
+                // user(s) not found in users array
+                // could by a previous friend in a closed deal
+                // could be a comment from a previous friend
+                // could be a comment from a friend from a not logged in provider
+                return '/images/unknown-user.png';
+            }
             return user.api_profile_picture_url;
         }
         // end formatUserImgSrc filter

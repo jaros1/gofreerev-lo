@@ -2461,6 +2461,7 @@ var Gofreerev = (function() {
 
         // ready
         // if (storage_options.encrypt || storage_options.compress) console.log(pgm + key + ' after decrypt and decompress = ' + value) ;
+        // if (key.match(/oauth/)) console.log('getItem. key = ' + key + ', value = ' + value) ;
         return value ;
     } // getItem
 
@@ -2523,6 +2524,7 @@ var Gofreerev = (function() {
         }
         value = storage_flag + value ;
         // save
+        // if (key.match(/oauth/)) console.log('setItem. key = ' + key + ', value = ' + value) ;
         if (rule.session) sessionStorage.setItem(key, value) ;
         else localStorage.setItem(key, value) ;
         // optimize compression for saved value
@@ -3144,9 +3146,10 @@ angular.module('gifts', ['ngRoute'])
             // remove when all login functionality are moved to UserService and NavCtrl
             Gofreerev.set_fb_logged_in_account(fb_logged_in_account()) ;
         }
-        var replace_users = function (new_users) {
+        // update users array: replace: true: overwrite/replace old users, false: add/keep old users
+        var update_users = function (new_users, replace) {
             // users array returned from util.generic_post_login
-            var pgm = 'UserService.replace_users: ' ;
+            var pgm = 'UserService.update_users: ' ;
             console.log(pgm + 'new_users = ' + JSON.stringify(new_users)) ;
             var new_providers = [] ;
             for (var i=0 ; i<new_users.length ; i++) if (new_providers.indexOf(new_users[i].provider) == -1) new_providers.push(new_users[i].provider) ;
@@ -3174,15 +3177,17 @@ angular.module('gifts', ['ngRoute'])
                 }
 
             }
-            // delete old users
-            var new_users_index_by_user_id = {} ;
-            for (var i=0 ; i<new_users.length ; i++) new_users_index_by_user_id[new_users[i].user_id] = i ;
-            var old_user ;
-            for (i=users.length-1 ; i >= 0 ; i--) {
-                old_user = users[i] ;
-                if ((new_providers.indexOf(old_user.provider) != -1) && (!new_users_index_by_user_id[old_user.user_id])) {
-                    users.splice(i, 1);
-                    refresh_index = true ;
+            if (replace) {
+                // delete old users
+                var new_users_index_by_user_id = {} ;
+                for (var i=0 ; i<new_users.length ; i++) new_users_index_by_user_id[new_users[i].user_id] = i ;
+                var old_user ;
+                for (i=users.length-1 ; i >= 0 ; i--) {
+                    old_user = users[i] ;
+                    if ((new_providers.indexOf(old_user.provider) != -1) && (!new_users_index_by_user_id[old_user.user_id])) {
+                        users.splice(i, 1);
+                        refresh_index = true ;
+                    }
                 }
             }
             // refresh index
@@ -3190,7 +3195,7 @@ angular.module('gifts', ['ngRoute'])
                 users_index_by_user_id = {}
                 for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
             }
-        } // replace_users
+        } // update_users
         var is_logged_in = function () {
             if (typeof users == 'undefined') return false ;
             for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
@@ -3216,13 +3221,25 @@ angular.module('gifts', ['ngRoute'])
             // console.log('is_logged_in_with_device: user_id = ' + user_id) ;
             return (user_id > 0) ;
         }
+        // get encrypted oauth hash from local storage - returns null if errors
+        var get_oauth = function () {
+            var pgm = 'UserService.get_oauth: ' ;
+            // get old oauth
+            var oauth_str = Gofreerev.getItem('oauth') ;
+            var oauth ;
+            if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '')) oauth = {} ;
+            else oauth = JSON.parse(oauth_str) ;
+            // console.log('UserService.get_oauth: oauth = ' + JSON.stringify(oauth)) ;
+            return oauth ;
+        } // get_oauth
         var is_logged_in_with_provider = function (provider) {
             if (typeof provider == 'undefined') return is_logged_in_with_device() ;
             if (provider == null) return is_logged_in_with_device() ;
             if (provider == 'gofreerev') return is_logged_in_with_device() ;
-            if (typeof users == 'undefined') return false ;
-            for (var i=0 ; i< users.length ; i++ ) if ((users[i].provider == provider) && (users[i].friend == 1)) return true ;
-            return false ;
+            var oauth = get_oauth() ;
+            // console.log('UserService.is_logged_in_with_provider: oauth = ' + JSON.stringify(oauth)) ;
+            // console.log('UserService.is_logged_in_with_provider: provider = ' + provider) ;
+            return oauth.hasOwnProperty(provider) ;
         }
         var no_friends = function () {
             if (!is_logged_in()) return false ;
@@ -3396,36 +3413,12 @@ angular.module('gifts', ['ngRoute'])
         init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
         self.expires_at = {} ;
 
-        // get encrypted oauth hash from local storage - returns null if errors
-        var get_oauth = function () {
-            var pgm = 'UserService.get_oauth: ' ;
-            //// get client_userid and password for current local login
-            //var userid = client_userid() ;
-            //if (userid == 0) {
-            //    console.log(pgm + 'device userid was not found.') ;
-            //    return null ;
-            //}
-            //var password = client_password() ;
-            //if (password == '') {
-            //    console.log(pgm + 'device password was not found.') ;
-            //    return ;
-            //}
-            // get old oauth
-            var oauth_str = Gofreerev.getItem('oauth') ;
-            var oauth ;
-            if ((typeof oauth_json == 'undefined') || (oauth_json == null) || (oauth_json == '')) oauth = {} ;
-            else {
-                oauth = JSON.parse(oauth_str) ;
-            }
-            return oauth ;
-
-        } // get_oauth
         var save_oauth = function (oauth) {
             var pgm = 'UserService.save_oauth: ' ;
             // console.log(pgm + 'debug 1') ;
             // encrypt and save updated oauth
             var oauth_str = JSON.stringify(oauth) ;
-            // console.log(pgm + 'debug 2') ;
+            console.log(pgm + 'UserService.save:oauth: oauth = ' + oauth_str) ;
             Gofreerev.setItem('oauth', oauth_str) ;
             // console.log(pgm + 'debug 3') ;
         }
@@ -3530,7 +3523,7 @@ angular.module('gifts', ['ngRoute'])
             find_receiver: find_receiver,
             logout: logout,
             client_userid: client_userid,
-            replace_users: replace_users,
+            update_users: update_users,
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
             send_oauth: send_oauth
@@ -3695,7 +3688,7 @@ angular.module('gifts', ['ngRoute'])
                     if (new_users) {
                         // new user and friends info received from util.generic_post_login task
                         console.log('post login. new users = ' + new_users) ;
-                        userService.replace_users(new_users) ;
+                        userService.update_users(new_users, false) ; // replace=false - add new users
                     }
                     stop_do_tasks_spinner() ;
                     console.log(pgm + 'stop');
@@ -3723,6 +3716,7 @@ angular.module('gifts', ['ngRoute'])
                 self.providers.push(key) ;
             }
         }
+        console.log('AuthCtrl. providers = ' + JSON.stringify(self.providers)) ;
         self.is_gofreerev = function (provider) {
             return (provider.provider == 'gofreerev')
         };

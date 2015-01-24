@@ -3508,6 +3508,122 @@ angular.module('gifts', ['ngRoute'])
         }
         // end UserService
     }])
+    .factory('GiftService', ['$window', '$http', '$q', function($window, $http, $q) {
+        var self = this ;
+        console.log('GiftService loaded') ;
+
+        // test data - gifts
+        // todo 1: load gifts from local storage - maybe a service?
+        // todo 2: more than one api picture url if picture was uploaded to more than one login api
+        //         2a: rails server should not store gift texts and should not store relation between client gift and api pictures.
+        //             rails should upload picture and return api_gift_ids and api picture urls to client.
+        // todo 3: api_picture_url_on_error_at:
+        //       mark as false if picture was not found (img onload and img onerror)
+        //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
+        //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
+        // todo 4: change giver_user_ids and receiver_user_ids to arrays (support for multpile logins)
+        // todo 5: add version to gift_id. version=0 (seq from local storage), version=1 (seq from server), version>1 (gift_id resequenzed by server)
+
+        var gifts_test_data = [
+            {
+                gift_id: 1731,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
+                date: 1417624621, // '3. dec 2014',
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                // description: 'b',
+                // description: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
+                // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
+                like: true,
+                show: true,
+                new_comment: {comment: ""}
+            },
+            {
+                gift_id: 1730,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
+                date: 1417624391, // 3. dec 2014
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                description: 'b',
+                show: true,
+                comments: [],
+                new_comment: {comment: ""}
+            },
+            {
+                gift_id: 1729,
+                giver_user_ids: [],
+                receiver_user_ids: [998],
+                date: 1417624155, // 3. dec 2014
+                price: 0,
+                currency: 'DKK',
+                direction: 'receiver',
+                description: 'a',
+                show: true,
+                new_comment: {comment: ""}
+            },
+            {
+                gift_id: 1725,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
+                date: 1417253762, // 29. nov 2014
+                price: 0,
+                currency: 'DKK',
+                direction: 'giver',
+                // description: 'xxx',
+                description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
+                api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
+                api_picture_url_on_error_at: false, // see todo:
+                show: true,
+                new_comment: {comment: ""}
+            },
+            {
+                gift_id: 1710,
+                giver_user_ids: [920],
+                receiver_user_ids: [],
+                date: 1415975141, // 14. nov 2014
+                price: 0,
+                currency: 'SEK',
+                direction: 'giver',
+                description: 'Gofreerev share link',
+                open_graph_url: 'http://www.dr.dk/Nyheder/Kultur/Boeger/2014/11/09/151443.htm',
+                open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
+                open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
+                open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg',
+                show: true,
+                new_comment: {comment: ""}
+            }
+        ];
+        // add some comments to test data
+        for (var i=1 ; i<=20; i++) {
+            var temp_comment_id = Gofreerev.next_local_comment_id() ;
+            gifts_test_data[1].comments.push({commentid: temp_comment_id, user_ids: [920], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
+        }
+        // add a new deal proposal to test data
+        gifts_test_data[1].comments[19].user_ids = [791] ;
+        gifts_test_data[1].comments[19].new_deal = true ;
+
+        // insert gift test data or read gifts from local storage
+        // Gofreerev.removeItem('gifts') ;
+        if (!Gofreerev.getItem('gifts')) Gofreerev.setItem('gifts', JSON.stringify(gifts_test_data)) ;
+        var gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+        // self.gifts = gifts_test_data ;
+
+        var save_gifts = function() {
+            Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
+        }
+
+        return {
+            gifts: gifts,
+            save_gifts: save_gifts
+        };
+
+        // end GiftService
+    }])
     .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', function(textService, userService, $timeout, $http) {
         console.log('NavCtrl loaded') ;
         var self = this ;
@@ -3532,7 +3648,7 @@ angular.module('gifts', ['ngRoute'])
             else Gofreerev.add2log('stop_tasks_form_spinner: spinner was not found') ;
         } // stop_tasks_form_spinner
 
-        // post page task - execute some ajax tasks and get fresh json data from server
+        // post page task - execute some "post page" ajax tasks and get fresh json data from server (oauth and users)
         var do_tasks = function () {
             var pgm = 'NavCtrl.do_tasks: ' ;
             console.log(pgm + 'start');
@@ -3565,7 +3681,7 @@ angular.module('gifts', ['ngRoute'])
         $timeout(do_tasks, 1000);
         // end NavCtrl
     }])
-    .controller('AuthCtrl', ['TextService', 'UserService', '$window', '$location', function(textService, userService, $window, $location) {
+    .controller('AuthCtrl', ['TextService', 'UserService', 'GiftService', '$window', '$location', function(textService, userService, giftService, $window, $location) {
         console.log('AuthCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
@@ -3663,7 +3779,8 @@ angular.module('gifts', ['ngRoute'])
         }
         // end AuthCtrl
     }])
-    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', 'TextService', function ($location, $http, $document, $window, $sce, userService, textService) {
+    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', 'GiftService', 'TextService',
+                     function ($location, $http, $document, $window, $sce, userService, giftService, textService) {
         console.log('GiftsCtrl loaded') ;
         var self = this;
 
@@ -3686,106 +3803,15 @@ angular.module('gifts', ['ngRoute'])
             return userService.get_login_userids() ;
         }
 
-        // test data - gifts
-        // todo 1: load gifts from local storage - maybe a service?
-        // todo 2: more than one api picture url if picture was uploaded to more than one login api
-        //         2a: rails server should not store gift texts and should not store relation between client gift and api pictures.
-        //             rails should upload picture and return api_gift_ids and api picture urls to client.
-        // todo 3: api_picture_url_on_error_at:
-        //       mark as false if picture was not found (img onload and img onerror)
-        //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
-        //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
-        // todo 4: change giver_user_ids and receiver_user_ids to arrays (support for multpile logins)
-        // todo 5: add version to gift_id. version=0 (seq from local storage), version=1 (seq from server), version>1 (gift_id resequenzed by server)
-        self.gifts = [
-            {
-                gift_id: 1731,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1417624621, // '3. dec 2014',
-                price: 0,
-                currency: 'DKK',
-                direction: 'giver',
-                // description: 'b',
-                // description: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-                description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
-                // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
-                like: true,
-                show: true,
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1730,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1417624391, // 3. dec 2014
-                price: 0,
-                currency: 'DKK',
-                direction: 'giver',
-                description: 'b',
-                show: true,
-                comments: [],
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1729,
-                giver_user_ids: [],
-                receiver_user_ids: [998],
-                date: 1417624155, // 3. dec 2014
-                price: 0,
-                currency: 'DKK',
-                direction: 'receiver',
-                description: 'a',
-                show: true,
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1725,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1417253762, // 29. nov 2014
-                price: 0,
-                currency: 'DKK',
-                direction: 'giver',
-                // description: 'xxx',
-                description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
-                api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
-                api_picture_url_on_error_at: false, // see todo:
-                show: true,
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1710,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1415975141, // 14. nov 2014
-                price: 0,
-                currency: 'SEK',
-                direction: 'giver',
-                description: 'Gofreerev share link',
-                open_graph_url: 'http://www.dr.dk/Nyheder/Kultur/Boeger/2014/11/09/151443.htm',
-                open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
-                open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
-                open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg',
-                show: true,
-                new_comment: {comment: ""}
-            }
-        ]; // gifts
-
-        // add some comments
-        for (var i=1 ; i<=20; i++) {
-            var temp_comment_id = Gofreerev.next_local_comment_id() ;
-            self.gifts[1].comments.push({commentid: temp_comment_id, user_ids: [920], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
-        }
-        // todo: test - setup last comment as a new deal proposal
-        self.gifts[1].comments[19].user_ids = [791] ;
-        self.gifts[1].comments[19].new_deal = true ;
+        self.gifts = giftService.gifts ;
 
         // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
         self.gifts_filter = function (gift, index) {
-            if (gift.deleted_at) return false ;
-            if (!gift.show) return false ;
-            return true ;
+            var show_gift = true ;
+            if (gift.deleted_at) show_gift = false ;
+            if (!gift.show) show_gift = false ;
+            if (gift.gift_id == 12) console.log('GiftsCtrl.gift_filter: gift id = ' + gift.gift_id + ', show gift = ' + show_gift) ;
+            return show_gift ;
         }
 
         self.no_gifts = function() {
@@ -3942,16 +3968,20 @@ angular.module('gifts', ['ngRoute'])
 
         self.like_gift = function (gift) {
             gift.like = true ;
+            giftService.save_gifts() ;
         }
         self.unlike_gift = function (gift) {
             gift.like = false ;
+            giftService.save_gifts() ;
         }
 
         self.follow_gift = function (gift) {
             gift.follow = true ;
+            giftService.save_gifts() ;
         }
         self.unfollow_gift = function (gift) {
             gift.follow = false ;
+            giftService.save_gifts() ;
         }
 
         // delete gift. show delete link if login user(s) is giver or receiver of gift
@@ -3992,12 +4022,16 @@ angular.module('gifts', ['ngRoute'])
             // confirm dialog
             var confirm_key = "js.gifts.confirm_delete_gift_" + keyno ;
             var confirm_text = I18n.t(confirm_key, confirm_options) ;
-            if (confirm(confirm_text)) gift.deleted_at = (new Date).getTime() ;
+            if (!confirm(confirm_text)) return ;
+            gift.deleted_at = (new Date).getTime() ;
+            giftService.save_gifts() ;
         } // delete_gift
 
         self.hide_gift = function (gift) {
             var confirm_text = I18n.t("js.gifts.confirm_hide_gift") ;
-            if (confirm(confirm_text)) gift.show = false ;
+            if (!confirm(confirm_text)) return ;
+            gift.show = false ;
+            giftService.save_gifts() ;
         }
 
         self.show_older_comments = function (gift) {
@@ -4051,6 +4085,7 @@ angular.module('gifts', ['ngRoute'])
             if (confirm(self.texts.comments.confirm_delete_comment)) {
                 comment.deleted_at = unix_timestamp() ;
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
+                giftService.save_gifts() ;
             }
             // console.log(pgm + 'comment id = ' + comment.commentid + ', deleted_at = ' + comment.deleted_at) ;
         }
@@ -4066,7 +4101,9 @@ angular.module('gifts', ['ngRoute'])
         }
         self.cancel_new_deal = function (gift,comment) {
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
-            if (confirm(self.texts.comments.confirm_cancel_new_deal)) comment.new_deal = false ;
+            if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
+            comment.new_deal = false ;
+            giftService.save_gifts() ;
         }
 
         self.show_accept_new_deal_link = function (gift,comment) {
@@ -4097,6 +4134,7 @@ angular.module('gifts', ['ngRoute'])
             var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
             comment.accepted = true ;
             comment.updated_by = $(login_user_ids).filter(gift_user_ids) ;
+            giftService.save_gifts() ;
         }
 
         self.show_reject_new_deal_link = function (gift,comment) {
@@ -4108,6 +4146,7 @@ angular.module('gifts', ['ngRoute'])
             // from utilController.reject_new_deal
             comment.accepted = false ;
             comment.updated_by = userService.get_login_userids() ;
+            giftService.save_gifts() ;
         }
 
         self.show_new_deal_checkbox = function (gift) {
@@ -4258,6 +4297,8 @@ angular.module('gifts', ['ngRoute'])
             else gift.receiver_user_ids = userService.get_login_userids() ;
             self.gifts.unshift(gift) ;
             init_new_gift() ;
+            // update gifts in local storage - now with created gift in first row
+            giftService.save_gifts() ;
         }
 
         // new comment ng-submit
@@ -4281,6 +4322,7 @@ angular.module('gifts', ['ngRoute'])
                 old_no_rows = old_no_rows + 1 ;
                 gift.show_no_comments = old_no_rows ;
             }
+            giftService.save_gifts() ;
         } // create_new_comment
 
         // end GiftsCtrl
@@ -4440,9 +4482,10 @@ angular.module('gifts', ['ngRoute'])
     .filter('formatNewProposalTitle', ['UserService', function (userService) {
         return function (gift) {
             var pgm = 'GiftsCtrl.formatNewProposalTitle: gift id = ' + gift.gift_id + '. ' ;
+            if (gift.gift_id == 12) console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
             // see also GiftsCtrl.show_new_deal_checkbox
             if (gift.direction == 'both') {
-                console.log(pgm + 'error. invalid direction') ;
+                // console.log(pgm + 'error. invalid direction') ;
                 return '' ;
             }
             var login_user_ids = userService.get_login_userids() ;
@@ -4450,10 +4493,12 @@ angular.module('gifts', ['ngRoute'])
             var other_user_ids ;
             if (gift.direction == 'giver') other_user_ids = $(login_user_ids).not(gift.giver_user_ids) ;
             else other_user_ids = $(login_user_ids).not(gift.receiver_user_ids) ;
-            // console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) + ', other_user_ids = ' + JSON.stringify(other_user_ids)) ;
-            // console.log(pgm + 'other_user_ids.length = ' + other_user_ids.length) ;
+            if (gift.gift_id == 12) {
+                console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) + ', other_user_ids = ' + JSON.stringify(other_user_ids)) ;
+                console.log(pgm + 'other_user_ids.length = ' + other_user_ids.length) ;
+            }
             if (other_user_ids.length == 0) {
-                console.log(pgm + 'error. other_user_ids.length = 0') ;
+                // console.log(pgm + 'error. other_user_ids.length = 0') ;
                 return '' ;
             }
             var other_user_id = other_user_ids[0] ;

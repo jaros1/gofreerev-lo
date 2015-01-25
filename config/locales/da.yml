@@ -1296,6 +1296,7 @@ da:
         title_friend: "%{username}/%{apiname}. Saldo %{balance}."
         title_non_friend_click: "%{username}/%{apiname}. Klik her for at se brugeroplysninger."
         title_friend_click: "%{username}/%{apiname}. Saldo %{balance}. Klik her for at se brugeroplysninger."
+        title_unknown_user: "Ukendt bruger. Kan enten skyldes manglende log ind til et socialt netværk eller det kan være en bruger der tidligere har været del af dit udvidede netværk."
      auth: # main/auth page
         app_login_header: "%{appname} log ind:"
         app_login_title: "%{appname} log ind bruges til at beskytte data gemt i din browser. Kodeord og dine data gemmes krypteret i din browser. Vigtigt: Husk dit kodeord. Der er ingen hjælp ved glemt kodeord og indtastede data kan i større eller mindre omfang være tabt. Ved glemt kodeord kan \"Opret konto\" anvendes til at oprette en ny tom %{appname} konto. Vælg gerne et sikkert kodeord (10-50 tegn). Kodeordet beskytter bl.a. %{appname} autorisation til dine sociale netværk (vennelister) og kommunikationen med andre %{appname} brugere."

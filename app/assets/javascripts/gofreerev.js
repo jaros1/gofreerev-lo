@@ -3195,6 +3195,7 @@ angular.module('gifts', ['ngRoute'])
                 users_index_by_user_id = {}
                 for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
             }
+            Gofreerev.setItem('users', JSON.stringify(users)) ;
         } // update_users
         var is_logged_in = function () {
             if (typeof users == 'undefined') return false ;
@@ -3254,7 +3255,8 @@ angular.module('gifts', ['ngRoute'])
             var user = users[i] ;
             if (!user.short_user_name) {
                 var user_name_a = user.user_name.split(' ') ;
-                user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
+                if (user_name_a.length > 1) user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
+                else user.short_user_name = user.user_name ;
             }
             // if (user_id == 1016) console.log('UserService.get_user: user = ' + JSON.stringify(user)) ;
             return user ;
@@ -3459,7 +3461,8 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'debug 6') ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
         }
-        // after local login - send local oauth to server - server rechecks tokens and copy tokens to session
+        // after local login - send local oauth to server
+        // server checks tokens and inserts tokens into server session (encrypted in session table and secret in session cookie)
         var send_oauth = function () {
             var pgm = 'UserService.send_oauth: ' ;
             // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
@@ -3484,7 +3487,8 @@ angular.module('gifts', ['ngRoute'])
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash (authorization for one or more login providers) to server
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
-            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth})
+            var uid = Gofreerev.getItem('uid') ;
+            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth, uid: uid})
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
@@ -3505,6 +3509,13 @@ angular.module('gifts', ['ngRoute'])
                     return $q.reject(JSON.stringify(error)) ;
                 }) ;
 
+        };
+
+        var ping = function () {
+            var userid = client_userid() ;
+            if (userid == 0) return ; // not logged in
+            $http.get('/util/ping.json', {params: {client_userid: userid}})
+
         }
 
         return {
@@ -3516,6 +3527,7 @@ angular.module('gifts', ['ngRoute'])
             get_login_userids: get_login_userids,
             get_user: get_user,
             get_users_currency: get_users_currency,
+            get_closest_user: get_closest_user,
             get_userids_friend_status: get_userids_friend_status,
             find_giver: find_giver,
             find_receiver: find_receiver,
@@ -3524,7 +3536,8 @@ angular.module('gifts', ['ngRoute'])
             update_users: update_users,
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
-            send_oauth: send_oauth
+            send_oauth: send_oauth,
+            ping: ping
         }
         // end UserService
     }])
@@ -3649,6 +3662,9 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
+
+        // ping server once every minute to maintain a list of online users/devices
+        setInterval(function () { userService.ping(); }, 60000) ;
 
         var get_js_timezone = function () {
             return -(new Date().getTimezoneOffset()) / 60.0 ;
@@ -4143,16 +4159,13 @@ angular.module('gifts', ['ngRoute'])
             var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
             var user_ids = $(login_user_ids).filter(gift_user_ids) ;
             if (user_ids.length == 0) return false ;
-            // login user(s) is creator of gift.
-            // recheck friend relation with creator of new proposal (comment)
-            // friends relation can have changed - or maybe not logged in with the correct users to accept deal proposal
-            var user ;
-            for (i=0 ; i<user_ids.length ; i++) {
-                user = userService.get_user(user_ids[i]) ;
-                if (user && (user.friend <= 2)) return true ; // friends
-            }
-            // no longer friends
-            return false ;
+            // login user is creator of gift.
+            // check friend relation with creator of new proposal/comment
+            // friends relation can have changed - or maybe not logged in with provider or correct provider user
+            var user = userService.get_closest_user(comment.user_ids);
+            if (typeof user == 'undefined') return false ;
+            if (user == null) return false ;
+            return (user.friend <= 2) ;
         }
         self.accept_new_deal = function (gift,comment) {
             if (!self.show_accept_new_deal_link(gift,comment)) return false ; // accept link no longer active!
@@ -4463,9 +4476,15 @@ angular.module('gifts', ['ngRoute'])
             // format mouseover title in user <div><img> tags in gifts/index page etc
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             // console.log(pgm + 'typeof user_ids = ' + (typeof user_ids)) ;
-            if (typeof user_ids == 'undefined') return null ;
-            var user = userService.get_user(user_ids[0]);
-            if (!user) return; // error - user not found in users array
+            if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return null ;
+            var user = userService.get_closest_user(user_ids);
+            if (!user) {
+                // user(s) not found in users array
+                // could by a previous friend in a closed deal
+                // could be a comment from a previous friend
+                // could be a comment from a friend from a not logged in provider
+                return I18n.t('js.user_div.title_unknown_user', {appname: Gofreerev.rails['APP_NAME']});
+            }
             // translation keys js.user_div.title_friends_click etc
             var keys = {
                 1: 'friend_click',
@@ -4486,7 +4505,7 @@ angular.module('gifts', ['ngRoute'])
         return function (user_ids) {
             // format scr in user <div><img> tags in gifts/index page etc (giver, receiver and user that has commented gifts)
             if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return '/images/invisible-picture.gif' ;
-            var user = userService.get_user(user_ids[0]);
+            var user = userService.get_closest_user(user_ids);
             if (!user) {
                 // user(s) not found in users array
                 // could by a previous friend in a closed deal

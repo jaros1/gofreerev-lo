@@ -8,7 +8,10 @@ class UtilController < ApplicationController
                             :like_gift, :unlike_gift, :follow_gift, :unfollow_gift, :hide_gift, :delete_gift,
                             :cancel_new_deal, :reject_new_deal, :accept_new_deal,
                             :do_tasks, :share_gift, :open_graph,
-                            :logout, :login]
+                            :logout, :login, :ping]
+
+  skip_filter :fetch_users, :only => [:ping]
+  skip_filter :set_locale_from_params, :only => [:ping]
 
   # update new message count in menu line in page header
   # called from hidden new_messages_count_link link in page header once every 15, 60 or 300 seconds
@@ -2047,7 +2050,10 @@ class UtilController < ApplicationController
   public
   def login
     begin
-      # logger.secret2 "params = #{params}"
+      # remember unique device uid - used when sync. data between user devices
+      logger.debug2 "uid = #{params[:uid]}"
+      set_session_value :uid, params[:uid]
+
       oauth = params[:oauth]
       tokens = get_session_value(:tokens)
       expires_at = get_session_value(:expires_at)
@@ -2113,5 +2119,12 @@ class UtilController < ApplicationController
     end
   end # login
 
+  # client should ping server once every minute to get sessions.updated_at timestamp updated (online users)
+  def ping
+    find_or_create_session
+    @s.updated_at = Time.zone.now
+    save_session
+    format_response
+  end
 
 end # UtilController

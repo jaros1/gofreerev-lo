@@ -235,9 +235,30 @@ class Session < ActiveRecord::Base
     YAML::load encrypt_remove_pre_and_postfix(temp_extended_user_ids, 'user_ids', 10)
   end # user_ids_was
 
-  # 13) created_at
+  # 13) uid - String in model - encrypted text in db - used when sync info between user devices
+  def uid
+    return nil unless (extended_uid = read_attribute(:uid))
+    encrypt_remove_pre_and_postfix(extended_uid, 'uid', 11)
+  end # uid
+  def uid=(new_uid)
+    if new_uid
+      # logger.debug2  "new_uid = #{new_uid} (#{new_uid.class.name})"
+      check_type('uid', new_uid, 'String')
+      write_attribute :uid, encrypt_add_pre_and_postfix(new_uid, 'uid', 11)
+    else
+      write_attribute :uid, nil
+    end
+  end # uid=
+  alias_method :uid_before_type_cast, :uid
+  def uid_was
+    return uid unless uid_changed?
+    return nil unless (extended_uid = attribute_was(:uid))
+    encrypt_remove_pre_and_postfix(extended_uid, 'uid', 11)
+  end # uid_was
 
-  # 14) updated_at
+  # 14) created_at
+
+  # 15) updated_at
 
   # set secret from session cookie
   attr_accessor :secret
@@ -255,6 +276,7 @@ class Session < ActiveRecord::Base
       when :refresh_tokens then self.refresh_tokens = value
       when :state then self.state = value
       when :tokens then self.tokens = value
+      when :uid then self.uid = value
       when :user_ids then self.user_ids = value
       else raise "unknown key #{key}"
     end # case

@@ -1294,6 +1294,7 @@ en:
         title_friend: "%{username}/%{apiname}. Balance %{balance}." #
         title_non_friend_click: "%{username}/%{apiname}. Click here to see user info."
         title_friend_click: "%{username}/%{apiname}. Balance %{balance}. Click here to see user info."
+        title_unknown_user: "Unknown user. Can either be due to missing log in to a social network or it can be a user who previously was part of your extended network."
      auth: # main/auth page
         app_login_header: "%{appname} log in:"
         app_login_title: "%{appname} login is used to protect data stored in your browser. Password and your data is stored encrypted in your browser. Important: Remember your password. There is no help if you forget password and entered data can in more or less extent have been lost. \"Register\" can after forgotten password be used to create a new empty %{appname} account. Please choose a secure password (10-50 characters). The password  protects among other things %{appname} authorization to your social networks (friends lists) and communication with other %{appname} users."

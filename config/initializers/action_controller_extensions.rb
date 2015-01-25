@@ -45,6 +45,7 @@ module ActionControllerExtensions
   #   :state - random string :state in oauth API requests. set before calling API and check after returning from API
   #   :timezone - timezone from JS or oauth login
   #   :tokens - API access tokens
+  #   :uid - unique device id - one for each browser and client_userid
   #   :user_ids - user_id array for logged in users
 
   private

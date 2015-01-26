@@ -2119,11 +2119,16 @@ class UtilController < ApplicationController
     end
   end # login
 
-  # client should ping server once every minute to get sessions.updated_at timestamp updated (online users)
+  # client must ping server once every minute to get sessions.updated_at timestamp updated (online users)
+  # difference between old and new client timestamp should be 1 minute = 60000
+  # there are more than one client session with same client_userid / uid if difference between old and new timestamps is less that 60000
+  # ( app open in multiple tabs in browser with identical logins )
   def ping
-    find_or_create_session
-    @s.updated_at = Time.zone.now
+    @json[:old_client_timestamp] = old_timestamp  = get_session_value(:client_timestamp)
+    @s.client_timestamp = new_timestamp = params[:client_timestamp].to_s.to_i
     save_session
+    dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
+    logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
     format_response
   end
 

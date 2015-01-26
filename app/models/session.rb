@@ -1,8 +1,8 @@
 class Session < ActiveRecord::Base
 
   # create_table "sessions", force: true do |t|
-  #   t.string   "session_id",     limit: 32
-  #   t.integer  "client_userid",             default: 0
+  #   t.string   "session_id",       limit: 32
+  #   t.integer  "client_userid",               default: 0
   #   t.text     "created"
   #   t.text     "expires_at"
   #   t.text     "flash_id"
@@ -13,9 +13,15 @@ class Session < ActiveRecord::Base
   #   t.text     "state"
   #   t.text     "tokens"
   #   t.text     "user_ids"
+  #   t.text     "uid"
+  #   t.text     "client_timestamp"
   #   t.datetime "created_at"
   #   t.datetime "updated_at"
   # end
+
+  # only information in session cookie are userid, timezone and secret. Other session information is in sessions table
+  # each session is splitted in one section/row for each client_userid/client log in
+  # data in sessions table are encrypted (crypt_keeper) with ENCRYPT_KEYS array and secret from session cookie
 
   # timestamps are updated manual in ActionControllerExtensions
   self.record_timestamps = false
@@ -256,17 +262,39 @@ class Session < ActiveRecord::Base
     encrypt_remove_pre_and_postfix(extended_uid, 'uid', 11)
   end # uid_was
 
-  # 14) created_at
+  # 14) client_timestamp - JS unix timestamp with miliseconds - Fixnum/Bignum in model - encrypted text in db
+  def client_timestamp
+    return nil unless (temp_client_timestamp = read_attribute(:client_timestamp))
+    # logger.debug2  "temp_client_timestamp = #{temp_client_timestamp}"
+    encrypt_remove_pre_and_postfix(temp_client_timestamp, 'client_timestamp', 12).to_i
+  end # client_timestamp
+  def client_timestamp=(new_client_timestamp)
+    if new_client_timestamp
+      check_type('client_timestamp', new_client_timestamp, 'Bignum')
+      write_attribute :client_timestamp, encrypt_add_pre_and_postfix(new_client_timestamp.to_s, 'client_timestamp', 12)
+    else
+      write_attribute :client_timestamp, nil
+    end
+  end # client_timestamp=
+  alias_method :client_timestamp_before_type_cast, :client_timestamp
+  def client_timestamp_was
+    return client_timestamp unless client_timestamp_changed?
+    return nil unless (temp_client_timestamp = attribute_was(:client_timestamp))
+    encrypt_remove_pre_and_postfix(temp_client_timestamp, 'client_timestamp', 12).to_i
+  end # client_timestamp_was
 
-  # 15) updated_at
+  # 15) created_at
 
-  # set secret from session cookie
+  # 16) updated_at
+
+  # secret from session cookie. encrypt/decrypt data in sessions table with secret from cookie
   attr_accessor :secret
 
   public
   def set_column_value (key, value)
     key = key.to_sym
     case key
+      when :client_timestamp then self.client_timestamp = value
       when :created then self.created = value
       when :expires_at then self.expires_at = value
       when :flash_id then self.flash_id = value
@@ -281,7 +309,6 @@ class Session < ActiveRecord::Base
       else raise "unknown key #{key}"
     end # case
   end
-
 
   ##############
   # encryption #

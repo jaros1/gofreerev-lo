@@ -3137,6 +3137,27 @@ angular.module('gifts', ['ngRoute'])
         var users ;
         var users_index_by_user_id = {} ;
 
+        var provider_stat = function (users) {
+            if (typeof users == 'undefined') return '' ;
+            if (users == null) return '' ;
+            if (users.length == 0) return '' ;
+            var hash = {} ;
+            var i, user, provider ;
+            for (i=0 ; i<users.length ; i++) {
+                user = users[i] ;
+                provider = user.provider
+                if (!hash.hasOwnProperty(provider)) hash[provider] = { users: 0, friends: 0} ;
+                hash[provider].users += 1 ;
+                if (user.friend <= 2) hash[provider].friends += 1 ;
+            }
+            var stat = '' ;
+            for (provider in hash) {
+                if (stat != '') stat = stat += ', ' ;
+                stat += provider + ' ' + hash[provider].friends + ' (' + hash[provider].users + ')' ;
+            }
+            return stat ;
+        } // provider_stat
+
         var init_users = function (array) {
             users = array ;
             users_index_by_user_id = {}
@@ -3147,6 +3168,7 @@ angular.module('gifts', ['ngRoute'])
             Gofreerev.set_fb_logged_in_account(fb_logged_in_account()) ;
         }
         // update users array: replace: true: overwrite/replace old users, false: add/keep old users
+        // called from do_tasks after api and device login
         var update_users = function (new_users, replace) {
             // users array returned from util.generic_post_login
             var pgm = 'UserService.update_users: ' ;
@@ -3179,13 +3201,15 @@ angular.module('gifts', ['ngRoute'])
             }
             if (replace) {
                 // delete old users
+                var no_deleted = 0 ;
                 var new_users_index_by_user_id = {} ;
                 for (var i=0 ; i<new_users.length ; i++) new_users_index_by_user_id[new_users[i].user_id] = i ;
                 var old_user ;
                 for (i=users.length-1 ; i >= 0 ; i--) {
                     old_user = users[i] ;
-                    if ((new_providers.indexOf(old_user.provider) != -1) && (!new_users_index_by_user_id[old_user.user_id])) {
+                    if (!new_users_index_by_user_id.hasOwnProperty(old_user.user_id)) {
                         users.splice(i, 1);
+                        no_deleted += 1 ;
                         refresh_index = true ;
                     }
                 }
@@ -3197,6 +3221,7 @@ angular.module('gifts', ['ngRoute'])
             }
             Gofreerev.setItem('users', JSON.stringify(users)) ;
         } // update_users
+
         var is_logged_in = function () {
             if (typeof users == 'undefined') return false ;
             for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
@@ -3209,13 +3234,6 @@ angular.module('gifts', ['ngRoute'])
             if (userid == '') return 0 ;
             userid = parseInt(userid) ;
             return userid ;
-        }
-        var client_password = function () {
-            var password = Gofreerev.getItem('password') ;
-            if (typeof password == 'undefined') return '' ;
-            if (password == null) return '' ;
-            if (password == '') return '' ;
-            return password ;
         }
         var is_logged_in_with_device = function () {
             var user_id = client_userid() ;
@@ -3240,7 +3258,9 @@ angular.module('gifts', ['ngRoute'])
             var oauth = get_oauth() ;
             // console.log('UserService.is_logged_in_with_provider: oauth = ' + JSON.stringify(oauth)) ;
             // console.log('UserService.is_logged_in_with_provider: provider = ' + provider) ;
-            return oauth.hasOwnProperty(provider) ;
+            var is_logged_in = oauth.hasOwnProperty(provider) ;
+            // console.log('UserService.is_logged_in_with_provider: ' + provider + ' = ' + is_logged_in) ;
+            return is_logged_in ;
         }
         var no_friends = function () {
             if (!is_logged_in()) return false ;
@@ -3348,6 +3368,7 @@ angular.module('gifts', ['ngRoute'])
         // local log out (provider=null) or log in provider log out (provider facebook,  google+, linkedin etc)
         var logout = function (provider) {
             var pgm = 'UserService.logout: ' ;
+            console.log(pgm + 'provider = ' + provider) ;
             // console.log(pgm + 'debug 1') ;
             if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) {
                 // device log out = session log out - note that no local storage info are removed
@@ -3359,9 +3380,23 @@ angular.module('gifts', ['ngRoute'])
                 // log in provider log out
                 // remove users
                 // console.log(pgm + 'debug 3') ;
-                for (var i=users.length-1 ; i >= 0 ; i--) if (users[i].provider == provider) users.splice(i, 1);
-                users_index_by_user_id = {}
+                var old_length = users.length ;
+                var old_stat = provider_stat(users) ;
+                // console.log(pgm + 'removing ' + provider + ' users. old users.length = ' + users.length) ;
+                for (var i=users.length-1 ; i >= 0 ; i--) {
+                    if (users[i].provider == provider) {
+                        // console.log(pgm + 'remove user ' + users[i].user_name + ' + with index ' + i) ;
+                        users.splice(i, 1);
+                    }
+                }
+                users_index_by_user_id = {} ;
                 for (i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+                var new_length = users.length ;
+                var new_stat = provider_stat(users) ;
+                console.log(pgm + 'removed ' + (new_length-old_length) + ' ' + provider + ' users. new users.length = ' + new_length) ;
+                console.log(pgm + 'old stat: ' + old_stat) ;
+                console.log(pgm + 'new stat: ' + new_stat) ;
+                Gofreerev.setItem('users', JSON.stringify(users)) ;
                 // remove provider from local encrypted oauth hash
                 // console.log(pgm + 'debug 4') ;
                 remove_oauth(provider) ;
@@ -3452,7 +3487,9 @@ angular.module('gifts', ['ngRoute'])
             }
             // remove provider and save
             // console.log(pgm + 'debug 3') ;
+            console.log(pgm + 'before: hasOwnProperty[' + provider + '] = ' + oauth.hasOwnProperty(provider)) ;
             delete oauth[provider] ;
+            console.log(pgm + 'after : hasOwnProperty[' + provider + '] = ' + oauth.hasOwnProperty(provider)) ;
             // console.log(pgm + 'debug 4') ;
             save_oauth(oauth) ;
             // console.log(pgm + 'debug 5') ;
@@ -3511,11 +3548,41 @@ angular.module('gifts', ['ngRoute'])
 
         };
 
+        // ping server once every minute - server maintains a list of online users / devices
         var ping = function () {
+            var pgm = 'UserService.ping: ' ;
             var userid = client_userid() ;
             if (userid == 0) return ; // not logged in
-            $http.get('/util/ping.json', {params: {client_userid: userid}})
-
+            var new_client_timestamp = (new Date).getTime() ;
+            $http.get('/util/ping.json', {params: {client_userid: userid, client_timestamp: new_client_timestamp}}).then(
+                function (ok) {
+                    // check interval between client timestamp and previous client timestamp
+                    // interval should be 60000 = 60 seconds
+                    if (!ok.data.old_client_timestamp) return ; // first ping for new session
+                    var interval = new_client_timestamp - ok.data.old_client_timestamp ;
+                    console.log(pgm + 'ok. interval = ' + interval) ;
+                    if (interval > 59900) return ;
+                    // interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)
+                    console.log(pgm + 'interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)') ;
+                    // sync JS users array with any changes in local storage users string
+                    console.log(pgm + 'sync users. old users.length = ' + users.length) ;
+                    var old_length = users.length ;
+                    var old_stat = provider_stat(users) ;
+                    var new_users = JSON.parse(Gofreerev.getItem('users')) ;
+                    update_users(new_users, true) ;
+                    var new_length = users.length ;
+                    var new_stat = provider_stat(users) ;
+                    console.log(
+                        pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
+                        'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
+                        'there was ' + new_users.length + ' users in localstorage.') ;
+                    // "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
+                    console.log(pgm + 'old stat: ' + old_stat) ;
+                    console.log(pgm + 'new stat: ' + new_stat) ;
+                },
+                function (error) {
+                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
+                })
         }
 
         return {
@@ -3657,14 +3724,14 @@ angular.module('gifts', ['ngRoute'])
 
         // end GiftService
     }])
-    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', function(textService, userService, $timeout, $http) {
+    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', '$interval', function(textService, userService, $timeout, $http, $interval) {
         console.log('NavCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
 
         // ping server once every minute to maintain a list of online users/devices
-        setInterval(function () { userService.ping(); }, 60000) ;
+        $interval(function () { userService.ping(); }, 60000) ;
 
         var get_js_timezone = function () {
             return -(new Date().getTimezoneOffset()) / 60.0 ;
@@ -3761,10 +3828,12 @@ angular.module('gifts', ['ngRoute'])
             return !userService.is_logged_in_with_provider(provider)
         }
         self.logout = function (provider) {
-            if (!userService.is_logged_in_with_provider(provider)) return ;
-            // console.log('AuthCtrl.logout: debug 2') ;
+            var logged_in = userService.is_logged_in_with_provider(provider) ;
+            if (!logged_in) console.loog('AuthCtrl.logout. error. not logged in with ' + provider) ;
+            if (!logged_in) return ;
+            console.log('AuthCtrl.logout: debug 2') ;
             userService.logout(provider) ;
-            // console.log('AuthCtrl.logout: debug 3') ;
+            console.log('AuthCtrl.logout: debug 3') ;
             $location.path('/auth/0') ;
             $location.replace() ;
         }

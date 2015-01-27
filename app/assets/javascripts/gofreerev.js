@@ -3129,7 +3129,7 @@ angular.module('gifts', ['ngRoute'])
         }
         // end TextService
     }])
-    .factory('UserService', ['$window', '$http', '$q', function($window, $http, $q) {
+    .factory('UserService', ['$window', '$http', '$q', 'GiftService', function($window, $http, $q, giftService) {
         var self = this ;
         console.log('UserService loaded') ;
 
@@ -3172,10 +3172,10 @@ angular.module('gifts', ['ngRoute'])
         var update_users = function (new_users, replace) {
             // users array returned from util.generic_post_login
             var pgm = 'UserService.update_users: ' ;
-            console.log(pgm + 'new_users = ' + JSON.stringify(new_users)) ;
+            // console.log(pgm + 'new_users = ' + JSON.stringify(new_users)) ;
             var new_providers = [] ;
             for (var i=0 ; i<new_users.length ; i++) if (new_providers.indexOf(new_users[i].provider) == -1) new_providers.push(new_users[i].provider) ;
-            console.log(pgm + 'new providers = ' + JSON.stringify(new_providers)) ;
+            // console.log(pgm + 'new providers = ' + JSON.stringify(new_providers)) ;
             // update users array with minimal changes
             // insert or update
             var refresh_index = false ;
@@ -3548,6 +3548,26 @@ angular.module('gifts', ['ngRoute'])
 
         };
 
+        // less that 60 seconds between util/ping for client_userid
+        // there must be more than one browser tab open with identical client login
+        // sync changes in users array in local storage with js users array
+        var sync_users = function () {
+            var pgm = 'UserService.sync_users: ' ;
+            var old_length = users.length ;
+            var old_stat = provider_stat(users) ;
+            var new_users = JSON.parse(Gofreerev.getItem('users')) ;
+            update_users(new_users, true) ;
+            var new_length = users.length ;
+            var new_stat = provider_stat(users) ;
+            //console.log(
+            //    pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
+            //    'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
+            //    'there was ' + new_users.length + ' users in localstorage.') ;
+            //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
+            //console.log(pgm + 'old stat: ' + old_stat) ;
+            //console.log(pgm + 'new stat: ' + new_stat) ;
+        } // sync_users
+
         // ping server once every minute - server maintains a list of online users / devices
         var ping = function () {
             var pgm = 'UserService.ping: ' ;
@@ -3563,22 +3583,11 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'ok. interval = ' + interval) ;
                     if (interval > 59900) return ;
                     // interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)
-                    console.log(pgm + 'interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)') ;
+                    // console.log(pgm + 'interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)') ;
                     // sync JS users array with any changes in local storage users string
-                    console.log(pgm + 'sync users. old users.length = ' + users.length) ;
-                    var old_length = users.length ;
-                    var old_stat = provider_stat(users) ;
-                    var new_users = JSON.parse(Gofreerev.getItem('users')) ;
-                    update_users(new_users, true) ;
-                    var new_length = users.length ;
-                    var new_stat = provider_stat(users) ;
-                    console.log(
-                        pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
-                        'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
-                        'there was ' + new_users.length + ' users in localstorage.') ;
-                    // "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
-                    console.log(pgm + 'old stat: ' + old_stat) ;
-                    console.log(pgm + 'new stat: ' + new_stat) ;
+                    // console.log(pgm + 'sync users. old users.length = ' + users.length) ;
+                    sync_users() ;
+                    giftService.sync_gifts() ;
                 },
                 function (error) {
                     console.log(pgm + 'error = ' + JSON.stringify(error)) ;
@@ -3717,9 +3726,43 @@ angular.module('gifts', ['ngRoute'])
             Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
         }
 
+        // less that 60 seconds between util/ping for client_userid
+        // there must be more than one browser tab open with identical client login
+        // js array gifts can be out of sync
+        // sync changes in gifts array in local storage with js gifts array
+        var sync_gifts = function () {
+            var pgm = 'GiftService. sync_gift: ' ;
+            console.log(pgm + 'start') ;
+            var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+            var gifts_index = {} ;
+            var init_gifts_index = function () {
+                gifts_index = {} ;
+                for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gift_id] = j ;
+            }
+            init_gifts_index() ;
+            // insert new gift (keep sequence)
+            var gift_id ;
+            var insert_point = new_gifts.length ;
+            for (var i=new_gifts.length-1 ; i>=0 ; i--) {
+                gift_id = new_gifts[i].gift_id ;
+                if (gifts_index.hasOwnProperty(gift_id)) {
+                    // match between gift id in localStorage and gift in js array gifts. insert new gift before this gift
+                    insert_point = gifts_index[gift_id] ;
+                }
+                else {
+                    console.log(pgm + 'insert gift id ' + gift_id + ' from localStorage into js gifts array at index ' + insert_point) ;
+                    gifts.splice(insert_point, 0, new_gifts[i]);
+                    init_gifts_index() ;
+                }
+            }
+            // remove deleted gifts
+            // update gifts
+        }
+
         return {
             gifts: gifts,
-            save_gifts: save_gifts
+            save_gifts: save_gifts,
+            sync_gifts: sync_gifts
         };
 
         // end GiftService

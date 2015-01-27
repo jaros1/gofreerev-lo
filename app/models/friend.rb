@@ -402,7 +402,7 @@ class Friend < ActiveRecord::Base
         if hash.has_key?(:no_api_friends)
           # update no_api_friends
           if friend_user.no_api_friends != hash[:no_api_friends]
-            # logger.debug2  "fetch_user: update api profile url: old url = #{hash[:old_no_api_friends]}, new url = #{hash[:new_no_api_friends]}"
+            logger.debug2  "update no_api_friends: old = #{friend_user.no_api_friends}, new = #{hash[:no_api_friends]} (#{hash[:no_api_friends].class})"
             friend_user.no_api_friends = hash[:no_api_friends]
           end
         end

@@ -51,13 +51,13 @@ gem 'instagram' #, '0.10.0' # Instagram API calls  - https://github.com/Instagra
 # 6) linkedin
 # register : https://www.linkedin.com/secure/developer
 # reference: https://developer.linkedin.com/apis
-# todo. is using linkedin-0.4.4 - map error in 0.4.6 - https://github.com/hexgnu/linkedin/issues/216
+# old oauth setup:
+# gem 'omniauth-linkedin' # https://github.com/skorks/omniauth-linkedin
+# gem 'linkedin', '0.4.4', :path => 'vendor/gems/linkedin-0.4.4' # LinkedIn API calls - https://rubygems.org/gems/linkedin (*)
 # (*) minor change to authorize_from_request method. oauth_expires_in is saved in @auth_expires_in instance variable
-gem 'omniauth-linkedin' # https://github.com/skorks/omniauth-linkedin
-# gem 'linkedin', '0.4.4' # LinkedIn API calls - https://rubygems.org/gems/linkedin
-gem 'linkedin', '0.4.4', :path => 'vendor/gems/linkedin-0.4.4' # LinkedIn API calls - https://rubygems.org/gems/linkedin (*)
-# gem 'linkedin', '0.4.7' # still map error
-# gem 'linkedin', '1.0.0' # unsolved hashie dependency - foursquare2 (>= 0) depends on hashie (~> 1.0.0) - linkedin (= 1.0.0) depends on hashie (3.0.0)
+# new oauth2 setup
+gem 'omniauth-linkedin-oauth2' # https://github.com/decioferreira/omniauth-linkedin-oauth2
+gem 'linkedin-oauth2', github: 'acvwilson/linkedin-oauth2', require: 'linkedin' # https://github.com/acvwilson/linkedin-oauth2
 
 # 7) twitter
 # register : https://apps.twitter.com/

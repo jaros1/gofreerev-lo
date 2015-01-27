@@ -26,7 +26,7 @@ class RoleConstraint
       # todo: should use session helper methods from applicaiton controller (get_session_value)
       #       this will not work after splitting session storage in one section for each client_userid
       #       this will not work if :userids is moved to database session storage
-      user_ids = get_session_value(:user_ids) || []
+      user_ids = get_session_value(:user_ids, request) || []
       logger.warn2 "WARNING: using get_session_value method from ActionControllerExtensions in routes/RoleConstraint. Not tested. user_ids = #{user_ids}"
       if user_ids.length == 0
         users = []

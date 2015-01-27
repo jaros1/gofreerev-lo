@@ -2,7 +2,7 @@ module ActionControllerExtensions
 
   private
   def get_sessionid
-    request.session_options[:id]
+    (request || @inject_request).session_options[:id]
   end
   def get_client_userid
     session[:client_userid] || 0
@@ -49,7 +49,8 @@ module ActionControllerExtensions
   #   :user_ids - user_id array for logged in users
 
   private
-  def get_session_value (key)
+  def get_session_value (key, inject_request = nil)
+    @inject_request = inject_request if inject_request
     key = key.to_sym
     return session[key] if [:client_userid, :timezone].index(key)
     find_or_create_session()

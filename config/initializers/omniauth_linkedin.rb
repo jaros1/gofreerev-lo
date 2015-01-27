@@ -14,19 +14,19 @@ class OmniAuth::AuthHash
     language
   end # get_language_linkedin
   # return array with token AND secret for linkedin - token AND secret are required for linkedin gem
-  def get_token_linkedin
-    token = self[:credentials][:token] if self[:credentials]
-    secret = self[:credentials][:secret] if self[:credentials]
-    return nil unless token.to_s != "" and secret.to_s != ""
-    [ token, secret]
-  end # get_token_linkedin
-  def get_expires_at_linkedin
-    access_token = self.extra.access_token
-    params = access_token.instance_variable_get('@params')
-    oauth_expires_in = params[:oauth_expires_in] # seconds from now (string)
-    expires_at = oauth_expires_in.to_i.seconds.from_now.to_i # unix timestamp
-    expires_at
-  end
+  # def get_token_linkedin
+  #   token = self[:credentials][:token] if self[:credentials]
+  #   secret = self[:credentials][:secret] if self[:credentials]
+  #   return nil unless token.to_s != "" and secret.to_s != ""
+  #   [ token, secret]
+  # end # get_token_linkedin
+  # def get_expires_at_linkedin
+  #   access_token = self.extra.access_token
+  #   params = access_token.instance_variable_get('@params')
+  #   oauth_expires_in = params[:oauth_expires_in] # seconds from now (string)
+  #   expires_at = oauth_expires_in.to_i.seconds.from_now.to_i # unix timestamp
+  #   expires_at
+  # end
   def get_profile_url_linkedin
     profile_url = self[:info][:urls][:public_profile] if self[:info] and self[:info][:urls]
     profile_url.gsub!(/^http:/, 'https:') if profile_url # protect cookies

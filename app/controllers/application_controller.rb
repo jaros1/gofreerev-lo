@@ -1341,19 +1341,19 @@ class ApplicationController < ActionController::Base
     provider = 'linkedin'
     # create linkedin api client
     api_client = LinkedIn::Client.new API_ID[provider], API_SECRET[provider]
-    api_client.authorize_from_access token[0], token[1] # token and secret
+    api_client.authorize_from_access token
     # add helper methods to linkedin api client
 
-    api_client.define_singleton_method :authorize_from_request do |request_token, request_secret, verifier_or_pin|
-      request_token = ::OAuth::RequestToken.new(consumer, request_token, request_secret)
-      puts "request_token.methods (2) = #{request_token.methods.sort.join(', ')}"
-      puts "request_token.instance_values (2) = #{request_token.instance_values.sort.join(', ')}"
-      access_token  = request_token.get_access_token(:oauth_verifier => verifier_or_pin)
-      puts "access_token.methods (2) = #{access_token.methods.sort.join(', ')}"
-      puts "access_token.instance_values (2) = #{access_token.instance_values.sort.join(', ')}"
-      @auth_expires_in = access_token.instance_variable_get('@params')
-      @auth_token, @auth_secret = access_token.token, access_token.secret
-    end
+    # api_client.define_singleton_method :authorize_from_request do |request_token, request_secret, verifier_or_pin|
+    #   request_token = ::OAuth::RequestToken.new(consumer, request_token, request_secret)
+    #   puts "request_token.methods (2) = #{request_token.methods.sort.join(', ')}"
+    #   puts "request_token.instance_values (2) = #{request_token.instance_values.sort.join(', ')}"
+    #   access_token  = request_token.get_access_token(:oauth_verifier => verifier_or_pin)
+    #   puts "access_token.methods (2) = #{access_token.methods.sort.join(', ')}"
+    #   puts "access_token.instance_values (2) = #{access_token.instance_values.sort.join(', ')}"
+    #   @auth_expires_in = access_token.instance_variable_get('@params')
+    #   @auth_token, @auth_secret = access_token.token, access_token.secret
+    # end
 
     # add gofreerev_get_friends - used on post_login_<provider>
     api_client.define_singleton_method :gofreerev_get_friends do |logger|
@@ -1362,12 +1362,12 @@ class ApplicationController < ActionController::Base
       # fields = %w(id,first-name,last-name,public-profile-url,picture-url,num-connections)
       fields = %w(id first-name last-name public-profile-url picture-url num-connections)
       begin
-        friends = self.connections(:fields => fields).all
+        friends = self.connections(:fields => fields).data
       rescue LinkedIn::Errors::UnauthorizedError => e
         # user has removed app from app settings page https://www.linkedin.com/secure/settings?userAgree=&goback=.nas_*1_*1_*1
         raise AppNotAuthorized
       end
-      # logger.debug2 "friends = #{friends}"
+      logger.debug2 "friends = #{friends}"
       # copy array with linkedin connections into gofreerev friends_hash
       friends_hash = {}
       friends.each do |connection|
@@ -1379,7 +1379,7 @@ class ApplicationController < ActionController::Base
         friends_hash[friend_user_id] = {:name => friend_name,
                                         :api_profile_url => connection.public_profile_url,
                                         :api_profile_picture_url => connection.picture_url,
-                                        :no_api_friends => connection.num_connections}
+                                        :no_api_friends => connection.num_connections.to_i}
       end # connection loop
       # return friends has to post_login_<provider> - see also Friend.update_api_friends_from_hash
       [friends_hash, nil, nil]

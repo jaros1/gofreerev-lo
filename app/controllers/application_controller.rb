@@ -1344,17 +1344,6 @@ class ApplicationController < ActionController::Base
     api_client.authorize_from_access token
     # add helper methods to linkedin api client
 
-    # api_client.define_singleton_method :authorize_from_request do |request_token, request_secret, verifier_or_pin|
-    #   request_token = ::OAuth::RequestToken.new(consumer, request_token, request_secret)
-    #   puts "request_token.methods (2) = #{request_token.methods.sort.join(', ')}"
-    #   puts "request_token.instance_values (2) = #{request_token.instance_values.sort.join(', ')}"
-    #   access_token  = request_token.get_access_token(:oauth_verifier => verifier_or_pin)
-    #   puts "access_token.methods (2) = #{access_token.methods.sort.join(', ')}"
-    #   puts "access_token.instance_values (2) = #{access_token.instance_values.sort.join(', ')}"
-    #   @auth_expires_in = access_token.instance_variable_get('@params')
-    #   @auth_token, @auth_secret = access_token.token, access_token.secret
-    # end
-
     # add gofreerev_get_friends - used on post_login_<provider>
     api_client.define_singleton_method :gofreerev_get_friends do |logger|
       # get array with linkedin connections

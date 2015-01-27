@@ -3722,6 +3722,37 @@ angular.module('gifts', ['ngRoute'])
         var gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
         // self.gifts = gifts_test_data ;
 
+        var refresh_gift = function (gift) {
+            var pgm = 'GiftService.refresh_gift: ' ;
+            var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+            var new_gift ;
+            for (var i=0 ; (!new_gift && (i<new_gifts.length)) ; i++) {
+                if (gift.gift_id == new_gifts[i].gift_id) new_gift = new_gifts[i] ;
+            }
+            if (!new_gift) {
+                console.log(pgm + 'error. refresh failed. gift with gift id ' + gift.gift_id + ' was not found in localStorage') ;
+                return ;
+            }
+            if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
+            if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids ;
+            if (gift.date != new_gift.date) gift.date = new_gift.date ;
+            if (gift.price != new_gift.price) gift.price = new_gift.price ;
+            if (gift.currency != new_gift.currency) gift.currency = new_gift.currency ;
+            if (gift.direction != new_gift.direction) gift.direction = new_gift.direction ;
+            if (gift.description != new_gift.description) gift.description = new_gift.description ;
+            if (gift.open_graph_url != new_gift.open_graph_url) gift.open_graph_url = new_gift.open_graph_url ;
+            if (gift.open_graph_title != new_gift.open_graph_title) gift.open_graph_title = new_gift.open_graph_title ;
+            if (gift.open_graph_description != new_gift.open_graph_description) gift.open_graph_description = new_gift.open_graph_description ;
+            if (gift.open_graph_image != new_gift.open_graph_image) gift.open_graph_image = new_gift.open_graph_image ;
+            if (gift.like != new_gift.like) gift.like = new_gift.like ;
+            if (gift.follow != new_gift.follow) gift.follow = new_gift.follow ;
+            if (gift.show != new_gift.show) gift.show = new_gift.show ;
+            if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at ;
+            // todo: should merge comments and keep sequence - not overwrite arrays
+            if (gift.comments != new_gift.comments) gift.comments = new_gift.comments ;
+
+        } // refresh_gift
+
         // todo: save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
         //       calling function should refresh old gift from local storage before making change
         //       one or more (other) attributes can have been changed in an other browser tabs
@@ -3788,6 +3819,7 @@ angular.module('gifts', ['ngRoute'])
 
         return {
             gifts: gifts,
+            refresh_gift: refresh_gift,
             save_gifts: save_gifts,
             sync_gifts: sync_gifts
         };
@@ -4150,25 +4182,30 @@ angular.module('gifts', ['ngRoute'])
         }
 
         self.like_gift = function (gift) {
+            giftService.refresh_gift(gift);
             gift.like = true ;
             giftService.save_gifts() ;
         }
         self.unlike_gift = function (gift) {
+            giftService.refresh_gift(gift);
             gift.like = false ;
             giftService.save_gifts() ;
         }
 
         self.follow_gift = function (gift) {
+            giftService.refresh_gift(gift);
             gift.follow = true ;
             giftService.save_gifts() ;
         }
         self.unfollow_gift = function (gift) {
+            giftService.refresh_gift(gift);
             gift.follow = false ;
             giftService.save_gifts() ;
         }
 
         // delete gift. show delete link if login user(s) is giver or receiver of gift
         self.show_delete_gift = function (gift) {
+            if (!self.gifts_filter(gift, null)) return false ; // gift already removed from page
             var user = userService.find_giver(gift) ;
             if (user && (user.friend == 1)) return true ;
             user = userService.find_receiver(gift) ;
@@ -4177,6 +4214,8 @@ angular.module('gifts', ['ngRoute'])
         }
         self.delete_gift = function (gift) {
             var pgm = 'GiftsCtrl.delete_gft: ' ;
+            giftService.refresh_gift(gift);
+            if (!self.show_delete_gift(gift)) return ;
             var confirm_options = { price: gift.price, currency: gift.currency }
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
                 var giver = userService.find_giver(gift) ;
@@ -4211,6 +4250,8 @@ angular.module('gifts', ['ngRoute'])
         } // delete_gift
 
         self.hide_gift = function (gift) {
+            giftService.refresh_gift(gift);
+            if (!self.gifts_filter(gift, null)) return ; // already removed from page
             var confirm_text = I18n.t("js.gifts.confirm_hide_gift") ;
             if (!confirm(confirm_text)) return ;
             gift.show = false ;

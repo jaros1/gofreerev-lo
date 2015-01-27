@@ -3722,6 +3722,10 @@ angular.module('gifts', ['ngRoute'])
         var gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
         // self.gifts = gifts_test_data ;
 
+        // todo: save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
+        //       calling function should refresh old gift from local storage before making change
+        //       one or more (other) attributes can have been changed in an other browser tabs
+        //       one testcase could be like+follow. like in session 1 and follow in session 2. the result should be like+follow in both browser tabs.
         var save_gifts = function() {
             Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
         }
@@ -3740,7 +3744,7 @@ angular.module('gifts', ['ngRoute'])
                 for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gift_id] = j ;
             }
             init_gifts_index() ;
-            // insert new gift (keep sequence)
+            // insert and update gifts (keep sequence)
             var gift_id ;
             var insert_point = new_gifts.length ;
             for (var i=new_gifts.length-1 ; i>=0 ; i--) {
@@ -3748,6 +3752,24 @@ angular.module('gifts', ['ngRoute'])
                 if (gifts_index.hasOwnProperty(gift_id)) {
                     // match between gift id in localStorage and gift in js array gifts. insert new gift before this gift
                     insert_point = gifts_index[gift_id] ;
+                    // copy any changed values from new_gifts into gifts
+                    if (gifts[insert_point].giver_user_ids != new_gifts[i].giver_user_ids) gifts[insert_point].giver_user_ids = new_gifts[i].giver_user_ids ;
+                    if (gifts[insert_point].receiver_user_ids != new_gifts[i].receiver_user_ids) gifts[insert_point].receiver_user_ids = new_gifts[i].receiver_user_ids ;
+                    if (gifts[insert_point].date != new_gifts[i].date) gifts[insert_point].date = new_gifts[i].date ;
+                    if (gifts[insert_point].price != new_gifts[i].price) gifts[insert_point].price = new_gifts[i].price ;
+                    if (gifts[insert_point].currency != new_gifts[i].currency) gifts[insert_point].currency = new_gifts[i].currency ;
+                    if (gifts[insert_point].direction != new_gifts[i].direction) gifts[insert_point].direction = new_gifts[i].direction ;
+                    if (gifts[insert_point].description != new_gifts[i].description) gifts[insert_point].description = new_gifts[i].description ;
+                    if (gifts[insert_point].open_graph_url != new_gifts[i].open_graph_url) gifts[insert_point].open_graph_url = new_gifts[i].open_graph_url ;
+                    if (gifts[insert_point].open_graph_title != new_gifts[i].open_graph_title) gifts[insert_point].open_graph_title = new_gifts[i].open_graph_title ;
+                    if (gifts[insert_point].open_graph_description != new_gifts[i].open_graph_description) gifts[insert_point].open_graph_description = new_gifts[i].open_graph_description ;
+                    if (gifts[insert_point].open_graph_image != new_gifts[i].open_graph_image) gifts[insert_point].open_graph_image = new_gifts[i].open_graph_image ;
+                    if (gifts[insert_point].like != new_gifts[i].like) gifts[insert_point].like = new_gifts[i].like ;
+                    if (gifts[insert_point].follow != new_gifts[i].follow) gifts[insert_point].follow = new_gifts[i].follow ;
+                    if (gifts[insert_point].show != new_gifts[i].show) gifts[insert_point].show = new_gifts[i].show ;
+                    if (gifts[insert_point].deleted_at != new_gifts[i].deleted_at) gifts[insert_point].deleted_at = new_gifts[i].deleted_at ;
+                    // todo: should merge comments and keep sequence - not overwrite arrays
+                    if (gifts[insert_point].comments != new_gifts[i].comments) gifts[insert_point].comments = new_gifts[i].comments ;
                 }
                 else {
                     console.log(pgm + 'insert gift id ' + gift_id + ' from localStorage into js gifts array at index ' + insert_point) ;
@@ -3756,8 +3778,13 @@ angular.module('gifts', ['ngRoute'])
                 }
             }
             // remove deleted gifts
-            // update gifts
-        }
+            var new_gifts_index = {} ;
+            for (i=0 ; i<new_gifts.length ; i++) new_gifts_index[new_gifts[i].gift_id] = i ;
+            for (i=gifts.length-1 ; i>= 0 ; i--) {
+                gift_id = gifts[i].gift_id
+                if (!new_gifts_index.hasOwnProperty(gift_id)) gifts.splice(i, 1) ;
+            }
+        } // sync_gifts
 
         return {
             gifts: gifts,

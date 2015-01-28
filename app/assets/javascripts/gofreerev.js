@@ -3710,7 +3710,7 @@ angular.module('gifts', ['ngRoute'])
         // add some comments to test data
         for (var i=1 ; i<=20; i++) {
             var temp_comment_id = Gofreerev.next_local_comment_id() ;
-            gifts_test_data[1].comments.push({commentid: temp_comment_id, user_ids: [920], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
+            gifts_test_data[1].comments.push({comment_id: temp_comment_id, user_ids: [920], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
         }
         // add a new deal proposal to test data
         gifts_test_data[1].comments[19].user_ids = [791] ;
@@ -3722,9 +3722,19 @@ angular.module('gifts', ['ngRoute'])
         var gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
         // self.gifts = gifts_test_data ;
 
-        // todo: should merge old and new comments and keep sequence - must not overwrite comments array
+        var comments_debug_info = function (comments) {
+            var text = 'length = ' + comments.length ;
+            for (var i=0 ; i<comments.length ; i++) text += ', ' + comments[i].comment + ' (' + comments[i].comment_id + ')' ;
+            return text ;
+        } // comments_debug_info
+
+        // todo: ok always to add new comments to end of comments array?
         // refresh gift comments from localStorage before update (changed in an other browser tab)
         var refresh_comments = function (comments, new_comments) {
+            var pgm = 'GiftService.refresh_comments: ' ;
+            console.log(pgm + 'input: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
+            console.log(pgm + 'old comments: ' + comments_debug_info(comments)) ;
+            console.log(pgm + 'new comments: ' + comments_debug_info(new_comments)) ;
             // insert and update comments
             var comments_index ;
             var init_comments_index = function () {
@@ -3748,12 +3758,14 @@ angular.module('gifts', ['ngRoute'])
                     if (comments[comment_index].updated_by != new_comments[i].updated_by) comments[comment_index].updated_by = new_comments[i].updated_by ;
                 }
                 else {
-                    // insert comment. todo: ok always to add new comments to end of comments array?
+                    // insert comment.
+                    console.log(pgm + 'insert new comment ' + new_comments[i].comment) ;
                     comments.push(new_comments[i]) ;
                     init_comments_index() ;
                 }
             } // for i
-            // delete comments
+            // delete comments - todo: not implemented
+            console.log(pgm + 'output: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
         } // refresh_comments
 
         // refresh gift from localStorage before update (changed in an other browser tab)
@@ -3784,6 +3796,8 @@ angular.module('gifts', ['ngRoute'])
             if (gift.show != new_gift.show) gift.show = new_gift.show ;
             if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at ;
             // todo: should merge comments and keep sequence - not overwrite arrays
+            if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
+            if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [] ;
             if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments) ;
         } // refresh_gift
 
@@ -3815,7 +3829,15 @@ angular.module('gifts', ['ngRoute'])
         //       one or more (other) attributes can have been changed in an other browser tabs
         //       one testcase could be like+follow. like in session 1 and follow in session 2. the result should be like+follow in both browser tabs.
         var save_gifts = function() {
-            Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
+            // remove some session specifik attributes before save
+            var gifts_clone = JSON.parse(JSON.stringify(gifts)) ;
+            for (var i=0 ; i<gifts_clone.length ; i++) {
+                if (gifts_clone[i].hasOwnProperty('show_no_comments')) delete gifts_clone[i]['show_no_comments'] ;
+                if (gifts_clone[i].hasOwnProperty('new_comment')) delete gifts_clone[i]['new_comment'] ;
+                if (!gifts_clone[i].hasOwnProperty('comments')) gifts_clone[i].comments = [] ;
+            }
+            // save
+            Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
         }
 
         // less that 60 seconds between util/ping for client_userid
@@ -3838,6 +3860,7 @@ angular.module('gifts', ['ngRoute'])
             for (var i=new_gifts.length-1 ; i>=0 ; i--) {
                 gift_id = new_gifts[i].gift_id ;
                 if (gifts_index.hasOwnProperty(gift_id)) {
+                    // update gift
                     // match between gift id in localStorage and gift in js array gifts. insert new gift before this gift
                     insert_point = gifts_index[gift_id] ;
                     // copy any changed values from new_gifts into gifts
@@ -3856,10 +3879,15 @@ angular.module('gifts', ['ngRoute'])
                     if (gifts[insert_point].follow != new_gifts[i].follow) gifts[insert_point].follow = new_gifts[i].follow ;
                     if (gifts[insert_point].show != new_gifts[i].show) gifts[insert_point].show = new_gifts[i].show ;
                     if (gifts[insert_point].deleted_at != new_gifts[i].deleted_at) gifts[insert_point].deleted_at = new_gifts[i].deleted_at ;
+                    if (!gifts[insert_point].hasOwnProperty('comments')) gifts[insert_point].comments = [] ;
+                    if (!new_gifts[i].hasOwnProperty('comments')) new_gifts[i].comments = [] ;
                     if (gifts[insert_point].comments != new_gifts[i].comments) refresh_comments(gifts[insert_point].comments, new_gifts[i].comments) ;
                 }
                 else {
+                    // insert gift
                     console.log(pgm + 'insert gift id ' + gift_id + ' from localStorage into js gifts array at index ' + insert_point) ;
+                    if (new_gifts[i].hasOwnProperty('gift.show_no_comments')) delete new_gifts[i]['gift.show_no_comments'] ;
+                    new_gifts[i].new_comment = {comment: ""} ;
                     gifts.splice(insert_point, 0, new_gifts[i]);
                     init_gifts_index() ;
                 }
@@ -4098,7 +4126,7 @@ angular.module('gifts', ['ngRoute'])
             var show ;
             if (comment.deleted_at) show = false ;
             else show = true ;
-            // console.log(pgm + 'comment id = ' + comment.commentid + ', show = ' + show) ;
+            // console.log(pgm + 'comment id = ' + comment.comment_id + ', show = ' + show) ;
             return show ;
         }
 
@@ -4177,7 +4205,7 @@ angular.module('gifts', ['ngRoute'])
         self.show_full_comment_link = function (comment) {
             var pgm = 'commentsCtrl.show_full_comment_link: ' ;
             // find overflow div
-            var text_id = "comment-" + comment.commentid + "-overflow-text" ;
+            var text_id = "comment-" + comment.comment_id + "-overflow-text" ;
             return vertical_overflow(text_id) ;
         } // show_full_comment_link
 
@@ -4195,11 +4223,11 @@ angular.module('gifts', ['ngRoute'])
         } // show_full_gift_click
 
         // show full comment description. remove style maxHeight and overflow from div container
-        self.show_full_comment_click = function(commentid) {
+        self.show_full_comment_click = function(comment_id) {
             // show full text for div with overflow
             var pgm = 'commentsCtrl.show_full_comment_click: ' ;
             // find overflow div
-            var text_id = "comment-" + commentid + "-overflow-text" ;
+            var text_id = "comment-" + comment_id + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
             if (!text) return ; // error - div with comment link and description was not found
             // remove max height ( and hide show-more-text link)
@@ -4332,7 +4360,7 @@ angular.module('gifts', ['ngRoute'])
 
         self.show_delete_comment_link = function (gift, comment) {
             // from rails Comment.show_delete_comment_link?
-            var pgm = 'GiftsCtrl.show_delete_comment_link. gift id = ' + gift.gift_id + ', comment id = ' + comment.commentid + '. ';
+            var pgm = 'GiftsCtrl.show_delete_comment_link. gift id = ' + gift.gift_id + ', comment id = ' + comment.comment_id + '. ';
             if (comment.accepted) return false ; // delete accepted proposal is not allow - delete gift is allowed
             if (comment.deleted_at) return false ; // comment has already been marked as deleted
             // console.log(pgm) ;
@@ -4370,7 +4398,7 @@ angular.module('gifts', ['ngRoute'])
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
                 giftService.save_gifts() ;
             }
-            // console.log(pgm + 'comment id = ' + comment.commentid + ', deleted_at = ' + comment.deleted_at) ;
+            // console.log(pgm + 'comment id = ' + comment.comment_id + ', deleted_at = ' + comment.deleted_at) ;
         }
 
         self.show_cancel_new_deal_link = function (gift,comment) {
@@ -4591,10 +4619,13 @@ angular.module('gifts', ['ngRoute'])
         // new comment ng-submit
         self.create_new_comment = function (gift) {
             var pgm = 'GiftsCtrl.create_new_comment: ' ;
+            console.log(pgm + (gift.comments || []).length + ' comments before refresh') ;
+            giftService.refresh_gift(gift) ;
+            console.log(pgm + (gift.comments || []).length + ' comments after refresh') ;
             // $window.alert(pgm + 'gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
             var new_comment = {
-                commentid: Gofreerev.next_local_comment_id(),
+                comment_id: Gofreerev.next_local_comment_id(),
                 user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
                 created_at: unix_timestamp(),
@@ -4605,6 +4636,7 @@ angular.module('gifts', ['ngRoute'])
             gift.new_comment.new_deal = false ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;
+            console.log(pgm + (gift.comments || []).length + ' comments after refresh and new comment') ;
             if (gift.comments.length > old_no_rows) {
                 old_no_rows = old_no_rows + 1 ;
                 gift.show_no_comments = old_no_rows ;

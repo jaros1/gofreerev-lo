@@ -3722,6 +3722,41 @@ angular.module('gifts', ['ngRoute'])
         var gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
         // self.gifts = gifts_test_data ;
 
+        // todo: should merge old and new comments and keep sequence - must not overwrite comments array
+        // refresh gift comments from localStorage before update (changed in an other browser tab)
+        var refresh_comments = function (comments, new_comments) {
+            // insert and update comments
+            var comments_index ;
+            var init_comments_index = function () {
+                comments_index = {} ;
+                for (var j=0 ; j<comments.length ; j++) comments_index[comments[j].comment_id] = j ;
+            }
+            init_comments_index() ;
+            var comment_id, comment_index ;
+            for (var i=0 ; i<new_comments.length ; i++) {
+                comment_id = new_comments[i].comment_id ;
+                if (comments_index.hasOwnProperty(comment_id)) {
+                    // update comment
+                    comment_index = comments_index[comment_id] ;
+                    if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids ;
+                    if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price ;
+                    if (comments[comment_index].comment != new_comments[i].comment) comments[comment_index].comment = new_comments[i].comment ;
+                    if (comments[comment_index].created_at != new_comments[i].created_at) comments[comment_index].created_at = new_comments[i].created_at ;
+                    if (comments[comment_index].new_deal != new_comments[i].new_deal) comments[comment_index].new_deal = new_comments[i].new_deal ;
+                    if (comments[comment_index].deleted_at != new_comments[i].deleted_at) comments[comment_index].deleted_at = new_comments[i].deleted_at ;
+                    if (comments[comment_index].accepted != new_comments[i].accepted) comments[comment_index].accepted = new_comments[i].accepted ;
+                    if (comments[comment_index].updated_by != new_comments[i].updated_by) comments[comment_index].updated_by = new_comments[i].updated_by ;
+                }
+                else {
+                    // insert comment. todo: ok always to add new comments to end of comments array?
+                    comments.push(new_comments[i]) ;
+                    init_comments_index() ;
+                }
+            } // for i
+            // delete comments
+        } // refresh_comments
+
+        // refresh gift from localStorage before update (changed in an other browser tab)
         var refresh_gift = function (gift) {
             var pgm = 'GiftService.refresh_gift: ' ;
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
@@ -3749,9 +3784,31 @@ angular.module('gifts', ['ngRoute'])
             if (gift.show != new_gift.show) gift.show = new_gift.show ;
             if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at ;
             // todo: should merge comments and keep sequence - not overwrite arrays
-            if (gift.comments != new_gift.comments) gift.comments = new_gift.comments ;
-
+            if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments) ;
         } // refresh_gift
+
+        // fresh gift and comment before update (changed in an other browser tab)
+        var refresh_gift_and_comment = function (gift, comment) {
+            var comment_id = comment.comment_id ;
+            refresh_gift(gift) ;
+            var comments = gift.comments || [] ;
+            var index ;
+            for (var i=0 ; i<comments.length ; i++) if (comment_id == comments[i].comment_id) index = i ;
+            if (!index) {
+                // comment has been deleted - return empty comment {}
+                for (var key in comment) if (comment.hasOwnProperty(key)) delete comment[key] ;
+                return ;
+            }
+            // refresh comment
+            if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids ;
+            if (comment.price != comments[index].price) comment.price = comments[index].price ;
+            if (comment.comment != comments[index].comment) comment.comment = comments[index].comment ;
+            if (comment.created_at != comments[index].created_at) comment.created_at = comments[index].created_at ;
+            if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal ;
+            if (comment.deleted_at != comments[index].deleted_at) comment.deleted_at = comments[index].deleted_at ;
+            if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted ;
+            if (comment.updated_by != comments[index].updated_by) comment.updated_by = comments[index].updated_by ;
+        }
 
         // todo: save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
         //       calling function should refresh old gift from local storage before making change
@@ -3799,8 +3856,7 @@ angular.module('gifts', ['ngRoute'])
                     if (gifts[insert_point].follow != new_gifts[i].follow) gifts[insert_point].follow = new_gifts[i].follow ;
                     if (gifts[insert_point].show != new_gifts[i].show) gifts[insert_point].show = new_gifts[i].show ;
                     if (gifts[insert_point].deleted_at != new_gifts[i].deleted_at) gifts[insert_point].deleted_at = new_gifts[i].deleted_at ;
-                    // todo: should merge comments and keep sequence - not overwrite arrays
-                    if (gifts[insert_point].comments != new_gifts[i].comments) gifts[insert_point].comments = new_gifts[i].comments ;
+                    if (gifts[insert_point].comments != new_gifts[i].comments) refresh_comments(gifts[insert_point].comments, new_gifts[i].comments) ;
                 }
                 else {
                     console.log(pgm + 'insert gift id ' + gift_id + ' from localStorage into js gifts array at index ' + insert_point) ;
@@ -3820,6 +3876,7 @@ angular.module('gifts', ['ngRoute'])
         return {
             gifts: gifts,
             refresh_gift: refresh_gift,
+            refresh_gift_and_comment: refresh_gift_and_comment,
             save_gifts: save_gifts,
             sync_gifts: sync_gifts
         };
@@ -4305,6 +4362,8 @@ angular.module('gifts', ['ngRoute'])
 
         self.delete_comment = function (gift, comment) {
             var pgm = 'GiftsCtrl.delete_comment: ' ;
+            refresh_gift_and_comment(gift, comment) ;
+            if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_delete_comment_link(gift,comment)) return ; // delete link no longer active
             if (confirm(self.texts.comments.confirm_delete_comment)) {
                 comment.deleted_at = unix_timestamp() ;
@@ -4324,6 +4383,8 @@ angular.module('gifts', ['ngRoute'])
             return true ;
         }
         self.cancel_new_deal = function (gift,comment) {
+            refresh_gift_and_comment(gift, comment) ;
+            if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
             if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
             comment.new_deal = false ;
@@ -4348,6 +4409,8 @@ angular.module('gifts', ['ngRoute'])
             return (user.friend <= 2) ;
         }
         self.accept_new_deal = function (gift,comment) {
+            refresh_gift_and_comment(gift, comment) ;
+            if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_accept_new_deal_link(gift,comment)) return false ; // accept link no longer active!
             if (!confirm(self.texts.comments.confirm_accept_new_deal)) return ; // operation cancelled
             // from utilController.
@@ -4362,6 +4425,8 @@ angular.module('gifts', ['ngRoute'])
             return self.show_accept_new_deal_link(gift,comment) ;
         }
         self.reject_new_deal = function (gift,comment) {
+            refresh_gift_and_comment(gift, comment) ;
+            if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_reject_new_deal_link(gift,comment)) return false ; // reject link no longer active!
             if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
             // from utilController.reject_new_deal
@@ -4516,6 +4581,7 @@ angular.module('gifts', ['ngRoute'])
             };
             if (gift.direction == 'giver') gift.giver_user_ids = userService.get_login_userids() ;
             else gift.receiver_user_ids = userService.get_login_userids() ;
+            giftService.sync_gifts() ;
             self.gifts.unshift(gift) ;
             init_new_gift() ;
             // update gifts in local storage - now with created gift in first row

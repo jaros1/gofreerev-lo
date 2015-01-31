@@ -2054,13 +2054,13 @@ class UtilController < ApplicationController
       set_session_value :uid, params[:uid]
 
       # save new public keys - used in client to client communication
+      # private key is saved password encrypted in client localStorage and is only known by client
       p = Pubkey.find_by_uid(params[:uid])
       if !p
         logger.debug2 "uid = #{params[:uid]}, pubkey = #{params[:pubkey]}"
         p = Pubkey.new
         p.uid = params[:uid]
         p.pubkey = params[:pubkey]
-        p.last_ping_at = Time.zone.now
         p.save!
       end
 
@@ -2173,10 +2173,7 @@ class UtilController < ApplicationController
       ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
       ping.save!
     end
-    # Pubkey - one row for each uid (browser + client userid)
-    uid = get_session_value(:uid)
-    p = Pubkey.find_by_uid(uid)
-    p.update_attribute :last_ping_at, now if p
+    ping.uid = get_session_value(:uid) unless ping.uid # from login
 
     # debug info
     logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"

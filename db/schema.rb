@@ -196,9 +196,12 @@ ActiveRecord::Schema.define(version: 20150131114903) do
   create_table "pubkeys", force: true do |t|
     t.string   "uid"
     t.text     "pubkey"
+    t.datetime "last_ping_at"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
+
+  add_index "pubkeys", ["uid"], name: "index_pubkey_uid", unique: true, using: :btree
 
   create_table "sequences", force: true do |t|
     t.string   "name",       null: false

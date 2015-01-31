@@ -2060,6 +2060,7 @@ class UtilController < ApplicationController
         p = Pubkey.new
         p.uid = params[:uid]
         p.pubkey = params[:pubkey]
+        p.last_ping_at = Time.zone.now
         p.save!
       end
 
@@ -2159,6 +2160,7 @@ class UtilController < ApplicationController
     avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
 
     # keep track of pings. find/create ping. used when adjusting pings for individual sessions
+    # Ping - one row for each client browser tab windue
     Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
     sid = params[:sid]
     ping = Ping.find_by_session_id_and_client_userid_and_client_sid(get_sessionid, get_client_userid, sid)
@@ -2171,6 +2173,10 @@ class UtilController < ApplicationController
       ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
       ping.save!
     end
+    # Pubkey - one row for each uid (browser + client userid)
+    uid = get_session_value(:uid)
+    p = Pubkey.find_by_uid(uid)
+    p.update_attribute :last_ping_at, now if p
 
     # debug info
     logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"

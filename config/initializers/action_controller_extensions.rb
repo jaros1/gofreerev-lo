@@ -34,6 +34,7 @@ module ActionControllerExtensions
   # some session data are stored in different sections for each client_userid
   # some session data are stored encrypted in database (4kb limit for cookies)
   # keys:
+  #   :client_timestamp - js client unix timestamp - used by client to detect multiple sessions with identical uid/client_userid (sync users and gifts from localStorage)
   #   :client_userid - 0, 1, 2 etc. From client local storage login - sent to rails all client get/post requests
   #   :created - show cookie note in page header for new sessions - hidden after 30 seconds
   #   :expires_at - unix timestamps for API access tokens
@@ -65,9 +66,11 @@ module ActionControllerExtensions
   def set_session_value (key, value)
     key = key.to_sym
     if [:client_userid, :timezone].index(key)
+      # use session cookie storage (client_userid, timezone and secret)
       @s = nil if key == :client_userid and (session[key] || 0) != (value || 0) # client_userid has changed
       session[key] = value
     else
+      # use sessions table (encrypted with secret from session cookie and OS env keys)
       find_or_create_session()
       @s.set_column_value(key, value)
       save_session()

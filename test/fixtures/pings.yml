@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  session_id: MyString
+  client_userid: 1
+  client_sid: 1
+  last_ping_at: 2015-01-30 18:09:07
+  next_ping_at: 2015-01-30 18:09:07
+
+two:
+  session_id: MyString
+  client_userid: 1
+  client_sid: 1
+  last_ping_at: 2015-01-30 18:09:07
+  next_ping_at: 2015-01-30 18:09:07

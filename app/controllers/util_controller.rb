@@ -2124,12 +2124,83 @@ class UtilController < ApplicationController
   # there are more than one client session with same client_userid / uid if difference between old and new timestamps is less that 60000
   # ( app open in multiple tabs in browser with identical logins )
   def ping
+    now = Time.zone.now
+
+    # all client sessions should ping server once every "server ping interval" time cycle
+    # check server load average the last 5 minutes and increase/decrease server ping interval
+    s = Sequence.get_server_ping_interval
+    old_server_ping_interval = s.value
+    avg5 = IO.read('/proc/loadavg').split[1].to_f # load average the last 5 minutes
+    if s.updated_at < 30.seconds.ago(now) and (((avg5 < MAX_AVG_LOAD - 0.1) and (s.value >= 3000)) or (avg5 > MAX_AVG_LOAD + 0.1))
+      # only adjust server_ping_interval once every 30 seconds
+      if avg5 < MAX_AVG_LOAD
+        # low server load average - decrease interval between pings
+        s.value = s.value - 1000
+        s.save!
+      else
+        # height server load average - increase interval between pings
+        s.value = s.value + 1000
+        s.save!
+      end
+    end
+    new_server_ping_interval = s.value
+    max_server_ping_interval = [old_server_ping_interval, new_server_ping_interval].max + 2000 ;
+
+    # find number of active sessions in pings table
+    no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_interval/1000).seconds.ago(now)).count
+    no_active_sessions = 1 if no_active_sessions == 0
+    avg_ping_interval = new_server_ping_interval.to_f / 1000 / no_active_sessions
+
+    # keep track of pings. find/create ping. used when adjusting pings for individual sessions
+    Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
+    sid = params[:sid]
+    ping = Ping.find_by_session_id_and_client_userid_and_client_sid(get_sessionid, get_client_userid, sid)
+    if !ping
+      ping = Ping.new
+      ping.session_id = get_sessionid
+      ping.client_userid = get_client_userid
+      ping.client_sid = sid
+      ping.next_ping_at = now
+      ping.last_ping_at = (old_server_ping_interval/1000).seconds.ago(now)
+      ping.save!
+    end
+
+    # debug info
+    logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
+    logger.debug2 "old server ping interval = #{old_server_ping_interval}, new server ping interval = #{new_server_ping_interval}"
+    logger.debug2 "no_active_sessions = #{no_active_sessions}, avg_ping_interval = #{avg_ping_interval}"
+
+    # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
+    # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
+    # see angularJS UserService.ping function (sync_users and sync_gifts)
     @json[:old_client_timestamp] = old_timestamp  = get_session_value(:client_timestamp)
-    @s.client_timestamp = new_timestamp = params[:client_timestamp].to_s.to_i
-    save_session
+    new_timestamp = params[:client_timestamp].to_s.to_i
+    set_session_value(:client_timestamp, new_timestamp)
     dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
     logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
+
+    # adjust next ping for this session (median of previous and next ping from other sessions)
+    previous_ping = Ping.where('id <> ? and last_ping_at < ?', ping.id, now).order('last_ping_at desc').first
+    previous_ping_interval = now - previous_ping.last_ping_at if previous_ping
+    previous_ping_interval = avg_ping_interval unless previous_ping_interval and previous_ping_interval <= 2 * avg_ping_interval
+    # find next ping by other sessions - interval to next ping be should close to avg_ping_interval
+    next_ping = Ping.where('id <> ? and next_ping_at > ?', ping.id, now).order('next_ping_at').first
+    next_ping_interval = next_ping ? next_ping.next_ping_at - now : avg_ping_interval # seconds
+    # calc adjustment for this ping. Should be in midle between previous ping and next ping
+    avg_ping_interval2 = (previous_ping_interval + next_ping_interval) / 2 # seconds
+    adjust_this_ping = -previous_ping_interval + avg_ping_interval2 # seconds
+    # next ping
+    @json[:interval] = new_server_ping_interval + (adjust_this_ping*1000).round # milliseconds
+
+    # save ping timestamps. Used in next ping interval calculation
+    ping.last_ping_at = now
+    ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
+    ping.save!
+
+    logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
+
+    # return interval and old_client_timestamp
     format_response
-  end
+  end # ping
 
 end # UtilController

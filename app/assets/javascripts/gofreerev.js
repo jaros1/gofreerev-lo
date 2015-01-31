@@ -2233,6 +2233,7 @@ var Gofreerev = (function() {
         oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
         pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
+        sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
         uid: {session: false, userid: true, compress: false, encrypt: false}, // unique device+user id
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
         users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
@@ -2574,6 +2575,7 @@ var Gofreerev = (function() {
                 // save login
                 setItem('userid', userid) ;
                 setItem('password', password) ;
+                if (!getItem('sid')) setItem('sid', '' + new Date().getTime()) ;
                 // add new local storages keys to old accounts
                 if (!getItem('gift_id')) setItem('gift_id', 0) ;
                 return userid ;
@@ -2586,13 +2588,14 @@ var Gofreerev = (function() {
             // save login
             setItem('userid', userid) ;
             setItem('password', password) ;
+            if (!getItem('sid')) setItem('sid', '' + new Date().getTime()) ;
             // setup new account
             uid = '' + new Date().getTime() + (Math.random() + 1).toString(10).substring(2,10) ; // unique device id
             // hash password
             passwords_a.push(password_sha256) ;
             passwords_s = JSON.stringify(passwords_a) ;
             // generate key pair for user to user encryption
-            crypt = new JSEncrypt({default_key_size: 1024});
+            crypt = new JSEncrypt({default_key_size: 2048});
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();
@@ -3129,12 +3132,12 @@ angular.module('gifts', ['ngRoute'])
         }
         // end TextService
     }])
-    .factory('UserService', ['$window', '$http', '$q', 'GiftService', function($window, $http, $q, giftService) {
+    .factory('UserService', ['$window', '$http', '$q', '$timeout', 'GiftService', function($window, $http, $q, $timeout, giftService) {
         var self = this ;
         console.log('UserService loaded') ;
 
         // users - read from local storage - used in angularJS filter functions
-        var users ;
+        var users = [] ;
         var users_index_by_user_id = {} ;
 
         var provider_stat = function (users) {
@@ -3306,11 +3309,20 @@ angular.module('gifts', ['ngRoute'])
             return user.friend ;
         } // get_userids_friend_status
         var get_login_users = function () {
+            var pgm = 'UserService. get_login_users: ' ;
             var login_users = [] ;
-            if (typeof users == 'undefined') return ogin_users ;
+            if (typeof users == 'undefined') return login_users ;
             for (var i=0 ; i<users.length ; i++) {
                 if (users[i].friend == 1) login_users.push(users[i]) ;
             }
+            // debug info
+            //var text = 'length = ' + login_users.length ;
+            //var user ;
+            //for (var i=0 ; i<login_users.length ; i++) {
+            //    user = login_users[i] ;
+            //    text += ', ' + user.user_name + ' (' + user.user_id + ')' ;
+            //}
+            //console.log(pgm + text) ;
             return login_users ;
         }
         var get_login_userids = function () {
@@ -3446,7 +3458,9 @@ angular.module('gifts', ['ngRoute'])
             }
         ] ;
         // load users from local storage or test users array
-        init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
+        // init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
+        if (Gofreerev.getItem('users')) init_users(JSON.parse(Gofreerev.getItem('users'))) ;
+        else Gofreerev.setItem('users', JSON.stringify([])) ;
         self.expires_at = {} ;
 
         var save_oauth = function (oauth) {
@@ -3569,20 +3583,32 @@ angular.module('gifts', ['ngRoute'])
         } // sync_users
 
         // ping server once every minute - server maintains a list of online users / devices
-        var ping = function () {
+        var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
+        var ping = function (old_ping_interval) {
             var pgm = 'UserService.ping: ' ;
             var userid = client_userid() ;
-            if (userid == 0) return ; // not logged in
+            if (userid == 0) {
+                // not logged in - wait
+                $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                return ;
+            }
+            var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
-            $http.get('/util/ping.json', {params: {client_userid: userid, client_timestamp: new_client_timestamp}}).then(
+            $http.get('/util/ping.json', {params: {client_userid: userid, sid: sid, client_timestamp: new_client_timestamp}}).then(
                 function (ok) {
+                    // schedule next ping. todo: now a rails constant. change to a calculation based on server load later
+                    console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
+                    console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
+                    if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
+                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
+                    console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
                     if (!ok.data.old_client_timestamp) return ; // first ping for new session
                     var interval = new_client_timestamp - ok.data.old_client_timestamp ;
                     console.log(pgm + 'ok. interval = ' + interval) ;
-                    if (interval > 59900) return ;
-                    // interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)
+                    if (interval > old_ping_interval - 100) return ;
+                    // interval less that <old_ping_interval> seconds. refresh JS arrays from local storage (oauth, users & gifts)
                     // console.log(pgm + 'interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)') ;
                     // sync JS users array with any changes in local storage users string
                     // console.log(pgm + 'sync users. old users.length = ' + users.length) ;
@@ -3590,6 +3616,9 @@ angular.module('gifts', ['ngRoute'])
                     giftService.sync_gifts() ;
                 },
                 function (error) {
+                    // schedule next ping
+                    console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval) ;
+                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
                     console.log(pgm + 'error = ' + JSON.stringify(error)) ;
                 })
         }
@@ -3620,6 +3649,8 @@ angular.module('gifts', ['ngRoute'])
     .factory('GiftService', ['$window', '$http', '$q', function($window, $http, $q) {
         var self = this ;
         console.log('GiftService loaded') ;
+
+        var gifts = [] ;
 
         // test data - gifts
         // todo 1: load gifts from local storage - maybe a service?
@@ -3718,8 +3749,9 @@ angular.module('gifts', ['ngRoute'])
 
         // insert gift test data or read gifts from local storage
         // Gofreerev.removeItem('gifts') ;
-        if (!Gofreerev.getItem('gifts')) Gofreerev.setItem('gifts', JSON.stringify(gifts_test_data)) ;
-        var gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+        // if (!Gofreerev.getItem('gifts')) Gofreerev.setItem('gifts', JSON.stringify(gifts_test_data)) ;
+        if (Gofreerev.getItem('gifts')) gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+        else Gofreerev.setItem('gifts', JSON.stringify([])) ;
         // self.gifts = gifts_test_data ;
 
         var comments_debug_info = function (comments) {
@@ -3732,9 +3764,9 @@ angular.module('gifts', ['ngRoute'])
         // refresh gift comments from localStorage before update (changed in an other browser tab)
         var refresh_comments = function (comments, new_comments) {
             var pgm = 'GiftService.refresh_comments: ' ;
-            console.log(pgm + 'input: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
-            console.log(pgm + 'old comments: ' + comments_debug_info(comments)) ;
-            console.log(pgm + 'new comments: ' + comments_debug_info(new_comments)) ;
+            // console.log(pgm + 'input: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
+            // console.log(pgm + 'old comments: ' + comments_debug_info(comments)) ;
+            // console.log(pgm + 'new comments: ' + comments_debug_info(new_comments)) ;
             // insert and update comments
             var comments_index ;
             var init_comments_index = function () {
@@ -3759,13 +3791,13 @@ angular.module('gifts', ['ngRoute'])
                 }
                 else {
                     // insert comment.
-                    console.log(pgm + 'insert new comment ' + new_comments[i].comment) ;
+                    // console.log(pgm + 'insert new comment ' + new_comments[i].comment) ;
                     comments.push(new_comments[i]) ;
                     init_comments_index() ;
                 }
             } // for i
             // delete comments - todo: not implemented
-            console.log(pgm + 'output: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
+            // console.log(pgm + 'output: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
         } // refresh_comments
 
         // refresh gift from localStorage before update (changed in an other browser tab)
@@ -3911,14 +3943,17 @@ angular.module('gifts', ['ngRoute'])
 
         // end GiftService
     }])
-    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', '$interval', function(textService, userService, $timeout, $http, $interval) {
+    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', function(textService, userService, $timeout, $http) {
         console.log('NavCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
 
-        // ping server once every minute to maintain a list of online users/devices
-        $interval(function () { userService.ping(); }, 60000) ;
+        // ping server once PING_INTERVAL miliseconds to maintain a list of online users/devices
+        // todo: now a rails constant. change to a calculation based on server load later
+        var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
+        console.log('NavCtrl.start ping process. ping_interval = ' + ping_interval) ;
+        $timeout(function () { userService.ping(ping_interval); }, ping_interval) ;
 
         var get_js_timezone = function () {
             return -(new Date().getTimezoneOffset()) / 60.0 ;
@@ -4619,9 +4654,9 @@ angular.module('gifts', ['ngRoute'])
         // new comment ng-submit
         self.create_new_comment = function (gift) {
             var pgm = 'GiftsCtrl.create_new_comment: ' ;
-            console.log(pgm + (gift.comments || []).length + ' comments before refresh') ;
+            // console.log(pgm + (gift.comments || []).length + ' comments before refresh') ;
             giftService.refresh_gift(gift) ;
-            console.log(pgm + (gift.comments || []).length + ' comments after refresh') ;
+            // console.log(pgm + (gift.comments || []).length + ' comments after refresh') ;
             // $window.alert(pgm + 'gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
             var new_comment = {
@@ -4636,7 +4671,7 @@ angular.module('gifts', ['ngRoute'])
             gift.new_comment.new_deal = false ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;
-            console.log(pgm + (gift.comments || []).length + ' comments after refresh and new comment') ;
+            // console.log(pgm + (gift.comments || []).length + ' comments after refresh and new comment') ;
             if (gift.comments.length > old_no_rows) {
                 old_no_rows = old_no_rows + 1 ;
                 gift.show_no_comments = old_no_rows ;

@@ -67,5 +67,25 @@ class Sequence < ActiveRecord::Base
     s.save!
   end # self.set_last_exchange_rate_date
 
+  # get/set interval between client pings (util/ping)
+  # managed from util/ping
+  # increase ping interval if load average > MAX_AVG_LOAD
+  # decrease ping interval if load average < MAX_AVG_LOAD
+  def self.get_server_ping_interval
+    name = 'server_ping_interval'
+    s = Sequence.find_by_name(name)
+    if !s
+      s = Sequence.new
+      s.name = name
+      s.value = PING_INTERVAL
+      s.save!
+    end
+    s
+  end
+  def self.set_ping_interval (interval)
+    s = Sequence.get_server_ping_interval
+    s.value = interval
+    s.save!
+  end
 
 end

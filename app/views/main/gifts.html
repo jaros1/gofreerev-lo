@@ -238,7 +238,7 @@
                     </div>
                 </td>
             </tr>
-            <tr ng-repeat="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments))">
+            <tr ng-repeat="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)) track by comment.comment_id">
                 <td colspan="2">
 
                     <div style="text-align: right;">

@@ -79,3 +79,12 @@ FIND_FRIENDS_DEV_USERIDS = ENV["#{ENV_PREFIX}en_userids".upcase].to_s.split(' ')
 # true: use embed.ly API. false: find opengraph gem
 EMBEDLY_KEY = ENV["#{ENV_PREFIX}EMBEDLY_KEY"]
 EMBEDLY = (EMBEDLY_KEY.to_s != '')
+
+# interval between client pings. start with 60 seconds between client pings
+PING_INTERVAL = 60000
+# http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
+# server load average - number of cores - minus a constant 0.4
+# increase ping interval if load average > MAX_AVG_LOAD
+# decrease ping interval if load average < MAX_AVG_LOAD
+# see util/ping
+MAX_AVG_LOAD = `nproc`.to_i - 0.4 # 0.6, 1.6, 2.6, 3.6 etc

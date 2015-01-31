@@ -3539,7 +3539,8 @@ angular.module('gifts', ['ngRoute'])
             // send oauth hash (authorization for one or more login providers) to server
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
             var uid = Gofreerev.getItem('uid') ;
-            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth, uid: uid})
+            var pubkey = Gofreerev.getItem('pubkey')
+            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth, uid: uid, pubkey: pubkey})
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;

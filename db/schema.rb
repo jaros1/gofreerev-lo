@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150131062717) do
+ActiveRecord::Schema.define(version: 20150131114903) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -192,6 +192,13 @@ ActiveRecord::Schema.define(version: 20150131062717) do
   end
 
   add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree
+
+  create_table "pubkeys", force: true do |t|
+    t.string   "uid"
+    t.text     "pubkey"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "sequences", force: true do |t|
     t.string   "name",       null: false

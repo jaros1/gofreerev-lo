@@ -1968,7 +1968,7 @@ class UtilController < ApplicationController
 
   # wrapper for User.find_friends_batch
   # run as a batch task without login user array.
-  # rror message if not relevant for current login user(s)
+  # error message is not relevant for current login user(s)
   # write any error messages from User.find_friends_batch to log
   private
   def find_friends_batch
@@ -2051,8 +2051,17 @@ class UtilController < ApplicationController
   def login
     begin
       # remember unique device uid - used when sync. data between user devices
-      logger.debug2 "uid = #{params[:uid]}"
       set_session_value :uid, params[:uid]
+
+      # save new public keys - used in client to client communication
+      p = Pubkey.find_by_uid(params[:uid])
+      if !p
+        logger.debug2 "uid = #{params[:uid]}, pubkey = #{params[:pubkey]}"
+        p = Pubkey.new
+        p.uid = params[:uid]
+        p.pubkey = params[:pubkey]
+        p.save!
+      end
 
       oauth = params[:oauth]
       tokens = get_session_value(:tokens)
@@ -2119,37 +2128,35 @@ class UtilController < ApplicationController
     end
   end # login
 
-  # client must ping server once every minute to get sessions.updated_at timestamp updated (online users)
-  # difference between old and new client timestamp should be 1 minute = 60000
-  # there are more than one client session with same client_userid / uid if difference between old and new timestamps is less that 60000
-  # ( app open in multiple tabs in browser with identical logins )
+  # client must ping server once every server ping cycle
+  # total server ping interval cycle is adjusted to load average for the last 5 minutes (3.6 for a 4 core cpu / 0.6 for a 1 core cpu)
+  # client pings are distributed equally over each server ping cycle with mini adjustments
   def ping
     now = Time.zone.now
 
-    # all client sessions should ping server once every "server ping interval" time cycle
-    # check server load average the last 5 minutes and increase/decrease server ping interval
-    s = Sequence.get_server_ping_interval
-    old_server_ping_interval = s.value
+    # all client sessions should ping server once every server ping cycle
+    # check server load average the last 5 minutes and increase/decrease server ping cycle
+    s = Sequence.get_server_ping_cycle
+    old_server_ping_cycle = s.value
     avg5 = IO.read('/proc/loadavg').split[1].to_f # load average the last 5 minutes
     if s.updated_at < 30.seconds.ago(now) and (((avg5 < MAX_AVG_LOAD - 0.1) and (s.value >= 3000)) or (avg5 > MAX_AVG_LOAD + 0.1))
       # only adjust server_ping_interval once every 30 seconds
       if avg5 < MAX_AVG_LOAD
         # low server load average - decrease interval between pings
         s.value = s.value - 1000
-        s.save!
       else
         # height server load average - increase interval between pings
         s.value = s.value + 1000
-        s.save!
       end
+      s.save!
     end
-    new_server_ping_interval = s.value
-    max_server_ping_interval = [old_server_ping_interval, new_server_ping_interval].max + 2000 ;
+    new_server_ping_cycle = s.value
 
     # find number of active sessions in pings table
-    no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_interval/1000).seconds.ago(now)).count
+    max_server_ping_cycle = [old_server_ping_cycle, new_server_ping_cycle].max + 2000 ;
+    no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_cycle/1000).seconds.ago(now)).count
     no_active_sessions = 1 if no_active_sessions == 0
-    avg_ping_interval = new_server_ping_interval.to_f / 1000 / no_active_sessions
+    avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
 
     # keep track of pings. find/create ping. used when adjusting pings for individual sessions
     Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
@@ -2161,13 +2168,13 @@ class UtilController < ApplicationController
       ping.client_userid = get_client_userid
       ping.client_sid = sid
       ping.next_ping_at = now
-      ping.last_ping_at = (old_server_ping_interval/1000).seconds.ago(now)
+      ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
       ping.save!
     end
 
     # debug info
     logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
-    logger.debug2 "old server ping interval = #{old_server_ping_interval}, new server ping interval = #{new_server_ping_interval}"
+    logger.debug2 "old server ping interval = #{old_server_ping_cycle}, new server ping interval = #{new_server_ping_cycle}"
     logger.debug2 "no_active_sessions = #{no_active_sessions}, avg_ping_interval = #{avg_ping_interval}"
 
     # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
@@ -2190,7 +2197,7 @@ class UtilController < ApplicationController
     avg_ping_interval2 = (previous_ping_interval + next_ping_interval) / 2 # seconds
     adjust_this_ping = -previous_ping_interval + avg_ping_interval2 # seconds
     # next ping
-    @json[:interval] = new_server_ping_interval + (adjust_this_ping*1000).round # milliseconds
+    @json[:interval] = new_server_ping_cycle + (adjust_this_ping*1000).round # milliseconds
 
     # save ping timestamps. Used in next ping interval calculation
     ping.last_ping_at = now

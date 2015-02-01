@@ -14,7 +14,6 @@
     <%= link_to_gift_like_unlike(gift) %>
     - <%= link_to_gift_follow_unfollow(gift) %>
     <% if gift.show_delete_gift_link?(@users) -%>
-        - <%= lov_to_share_gift(gift) %>
         - <%= link_to_delete_gift(gift) %>
     <% else -%>
         - <%= link_to_gift_hide(gift) %>

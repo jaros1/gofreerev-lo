@@ -192,7 +192,7 @@
                         <tr ng-show="ctrl.show_open_graph_image(gift)">
                             <td>
                                 <a href="{{gift.open_graph_url}}" target="_blank">
-                                    <img id="gift-{{gift.gift_id}}-image" ng-src="{{gift.open_graph_image}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+                                    <img ng-src="{{gift.open_graph_image}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
                                 </a>
                             </td>
                         </tr>

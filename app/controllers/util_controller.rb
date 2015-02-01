@@ -7,7 +7,7 @@ class UtilController < ApplicationController
                 :except => [:new_messages_count,
                             :like_gift, :unlike_gift, :follow_gift, :unfollow_gift, :hide_gift, :delete_gift,
                             :cancel_new_deal, :reject_new_deal, :accept_new_deal,
-                            :do_tasks, :share_gift, :open_graph,
+                            :do_tasks, :open_graph,
                             :logout, :login, :ping]
 
   skip_filter :fetch_users, :only => [:ping]
@@ -1870,100 +1870,6 @@ class UtilController < ApplicationController
       raise
     end
   end # check_expired_tokens
-
-
-  # return share post link - only allowed for giver or receiver
-  # return error message or redirect to share link page in a new tab
-  public
-  def share_gift
-    table = "tasks_errors" # ajax error table in page header
-    begin
-      # set id for ajax error table
-      gift_id = params[:gift_id]
-      return format_response_key('.no_gift_id', :table => table) if gift_id.to_s == ''
-      return format_response_key('.invalid_gift_id', :table => table) unless gift_id.to_s =~ /^[1-9]\d*$/
-      table = "gift-#{gift_id}-links-errors" # ajax error table under gifts links
-      # share gift is only allowed for giver/receiver. Login is required.
-      return format_response_key('.not_logged_in', :table => table) unless logged_in?
-      # check share provider (share providers are not the same as login providers (omniauth))
-      provider = params["provider"]
-      return format_response_key('.no_provider', :table => table) if provider.to_s == ''
-      return format_response_key('.unknown_provider', :table => table) unless valid_share_provider?(provider)
-      g = Gift.find_by_id(gift_id)
-      return format_response_key('.unknown_gift_id', :table => table) unless g
-      ags = g.api_gifts.find_all { |ag| !ag.deleted_at and (login_user_ids.index(ag.user_id_giver) or login_user_ids.index(ag.user_id_receiver)) }
-      return format_response_key('.not_allowed', :table => table) if ags.size == 0
-      ag = ags.first if ags.size == 1
-      ag = ags.find { |ag2| ag2.provider == provider } unless ag
-      if !ag
-        # choice api gift provider for share gift link
-        # sort:
-        # 1) use api post with pictures before api post without pictures
-        # 2) use api post with deep link before api post without deep link
-        # 3) random
-        ags = ags.sort_by { |ag| [ (ag.picture == 'Y' ? 1 : 2), (ag.deep_link ? 1 : 2), rand] }
-        ag = ags.first
-      end
-      sleep(3)
-      ag.init_deep_link unless ag.deep_link
-      ag.provider = provider # share gift provider
-      # find set max length for text/description in share gift link. -1: no text, 0: no limit
-      # case
-      #   when provider == 'twitter'
-      #     # normal limit is 140 characters. But only 83 characters are allowed in twitter share link description
-      #     max_lng = API_POST_MAX_TEXT_LENGTHS[provider] - 57
-      #   when %w(google_oauth2 linkedin).index(provider)
-      #     # no text in share gift link
-      #     max_lng = -1
-      #   when (API_POST_MAX_TEXT_LENGTHS.has_key?(provider) and [NilClass, Fixnum].index(API_POST_MAX_TEXT_LENGTHS[provider].class))
-      #     # facebook, pinterest, vkontakte
-      #     max_lng = API_POST_MAX_TEXT_LENGTHS[provider]
-      #   else
-      #     # google+, linkedin: no text
-      #     nil
-      # end # case
-      # extra params. used for provider specific params in share gift link
-      extra = case provider
-                  when 'facebook'
-                    API_ID[:facebook]
-                 when 'twitter'
-                    # normal limit is 140 characters. But only 83 characters are allowed in twitter share link description
-                    # use server side text truncation (preserve tags in text)
-                    tweet = "#{g.human_value(:direction)}#{g.description}"
-                    # sanitize JS string - do not use ' - do not use line breaks
-                    # todo: refactor to a string method?
-                    linebreak = " "
-                    tweet = tweet.gsub("'", '"')
-                    tweet = tweet.gsub(/\r\n/, linebreak)
-                    tweet = tweet.gsub(/\n/, linebreak)
-                    tweet = tweet.gsub(/\r/, linebreak)
-                    tweet, truncated = Gift.truncate_twitter_text tweet, max_lng
-                    max_lng = -1 # no client side text lookup
-                    tweet
-                  else
-                    ''
-              end
-      # call JS method share_gift(provider, gift_id, link, max_lng, extra)
-      @api_gift = ag
-      @extra = extra
-      logger.debug2 "provider = #{@api_gift.provider}"
-      logger.debug2 "gift_id  = #{@api_gift.gift.id}"
-      logger.debug2 "link     = #{@api_gift.deep_link}"
-      logger.debug2 "extra    = '#{@extra}'"
-      # share_gift: gift_id  = 342
-      # share_gift: link     = https://dev2.gofreerev.com/en/gifts/v5pudlxfcswd1jkmtksthvodpvwn8i
-      # share_gift: max_lng  = 47950
-      # share_gift: extra    = '193177257554775'
-
-      # ok - redirect to share link page in new tab
-      format_response
-
-    rescue => e
-      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
-      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
-      format_response_key '.exception', :error => e.message, :table => table
-    end
-  end # share_gift
 
 
   # wrapper for User.find_friends_batch

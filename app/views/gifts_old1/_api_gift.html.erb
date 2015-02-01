@@ -52,7 +52,7 @@
           <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
               <tr>
                 <td>
-                    <%= image_tag api_gift.api_picture_url, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
+                    <%= image_tag api_gift.api_picture_url, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id} %>
                 </td>
               </tr>
           <% end -%>
@@ -61,7 +61,7 @@
               <tr>
                 <td>
                   <a href="<%= gift.open_graph_url %>" target="_blank">
-                    <%= image_tag gift.open_graph_image, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id}, :id => "gift-#{gift.id}-image" %>
+                    <%= image_tag gift.open_graph_image, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id} %>
                   </a>
                 </td>
               </tr>

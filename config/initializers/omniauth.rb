@@ -231,78 +231,6 @@ API_GIFT_PICTURE_STORE = {:fallback => nil,
                           :twitter => :api,
                           :vkontakte => :api}.with_indifferent_access
 
-# N) technical max text lengths when posting on API walls.
-# Use nil for readonly API's (foursquare, google and instagram)
-# Use nil if max text length is unknown
-# Use an hash if more than one text field is available when posting on API wall
-# see also Open Graph lengths for title and description
-# open graph will in many cases have smaller lengths for title and description
-# it is up to each api_client.gofreerev_post_on_wall instance method how to use max text lengths
-# see ApiGift.get_wall_post_text_fields for details about text format- and splitting text when posting on api walls
-API_POST_MAX_TEXT_LENGTHS = {:appnet => 256,
-                             :facebook => 47950, # guess after some tests - not 100% stable
-                             :flickr => {:title => 255, :description => nil, :tags => nil},
-                             :foursquare => nil, # post allowed, but users do not have a wall like the other api's
-                             :google_oauth2 => nil, # google+ is a readonly API
-                             :instagram => nil, # instagram is a readonly API
-                             :linkedin => {:title => 200, :description => 256, :comment => 700}, # see API_OG_* hashes
-                             :pinterest => 500,
-                             :reddit => 300,
-                             :twitter => 140, # 24 chars used for deep link - 23 chars used for picture attachment
-                             :vkontakte => 255}.with_indifferent_access
-
-# initialize SHARE_GIFT_MAX_TEXT_LENGTHS from API_POST_MAX_TEXT_LENGTHS
-# used in util_controller.share_gift and JS method get_share_gift_link for text truncation in share gift links
-share_gift_max_text_lengths = {}.with_indifferent_access
-API_POST_MAX_TEXT_LENGTHS.keys.each do |provider|
-  max_lng = nil
-  case
-    when provider == 'twitter'
-      # normal limit is 140 characters, but some characters are subtracted for deep link
-      if FORCE_SSL
-        # public web server - twitter will shorten link
-        max_lng = API_POST_MAX_TEXT_LENGTHS[provider] - 24
-      else
-        # private web server - twitter will include link in tweet as text
-        deep_link_size = (SITE_URL + 'en/gifts/').size + 30
-        max_lng = API_POST_MAX_TEXT_LENGTHS[provider] - 1 - deep_link_size
-      end
-    when %w(google_oauth2 linkedin).index(provider)
-      # no text in share gift link
-      max_lng = -1
-    when (API_POST_MAX_TEXT_LENGTHS.has_key?(provider) and [NilClass, Fixnum].index(API_POST_MAX_TEXT_LENGTHS[provider].class))
-      # facebook, pinterest, vkontakte
-      max_lng = API_POST_MAX_TEXT_LENGTHS[provider]
-    else
-      # google+, linkedin: no text
-      nil
-  end # case
-  max_lng = 0 unless max_lng # no (known) max text length limit
-  share_gift_max_text_lengths[provider] = max_lng
-end
-SHARE_GIFT_MAX_TEXT_LENGTHS = share_gift_max_text_lengths
-
-
-# O) text to picture options - PhantomJS (http://phantomjs.org/) is required for this - use empty hash {} to disable.
-# note that PhantomJs required relative much memory and time to run and should maybe not run on a small computer
-# used for post without pictures (flickr) or twitter where allowed tweet length is very small
-# text to image convert is done in 3:4 format (w:800, h:1066, portrait format). Ok for short and long texts.
-# values:
-# - nil: disabled / not allowed. use this option if phantomJS is not installed and for readonly API's
-# - integer: use if description.length > integer
-#   -   0: always, for example flickr and vkontakte
-#   - 116: use text to picture if direction + description > 116 characters (twitter).
-#   other options: append, right, left - merge image and text - has been deselected.
-#   would require local picture store for original pictures before merge operation
-API_TEXT_TO_PICTURE = {:facebook => nil,
-                       :flickr => 0,
-                       :foursquare => nil,
-                       :google_oauth2 => nil,
-                       :instagram => nil,
-                       :linkedin => nil,
-                       :twitter => 116, # 24 characters reserved for deep link - max text length with image is 93
-                       :vkontakte => 0}.with_indifferent_access
-
 # open graph values (http://ogp.me/) recommended max length for meta-tags used in deep links
 # it is up to each api_client.gofreerev_post_on_wall instance method how to use max text and open graph lengths
 # default values: 70 characters for title and 200 characters for description
@@ -363,10 +291,6 @@ compare_keys 'API_ID', 'API_APP_SETTING_URL'
 compare_keys 'API_ID', 'API_DOWNCASE_NAME'
 compare_keys 'API_ID', 'API_CAMELIZE_NAME'
 compare_keys 'API_ID', 'API_GIFT_PICTURE_STORE', 1
-compare_keys 'API_ID', 'API_POST_MAX_TEXT_LENGTHS', 1
-compare_keys 'API_ID', 'SHARE_GIFT_MAX_TEXT_LENGTHS', 1
-compare_keys 'API_POST_MAX_TEXT_LENGTHS', 'SHARE_GIFT_MAX_TEXT_LENGTHS'
-compare_keys 'API_ID', 'API_TEXT_TO_PICTURE'
 compare_keys 'API_ID', 'API_OG_TITLE_SIZE'
 compare_keys 'API_ID', 'API_OG_DESC_SIZE'
 compare_keys 'API_ID', 'API_OG_DEF_IMAGE', 1

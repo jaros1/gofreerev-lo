@@ -37,7 +37,6 @@ GofreerevFb::Application.routes.draw do
   post 'util/do_tasks'
   delete 'auth/destroy'
   post 'util/share_accounts'
-  post 'util/share_gift'
   post 'util/open_graph'
   post 'util/upload'
   post 'util/logout'

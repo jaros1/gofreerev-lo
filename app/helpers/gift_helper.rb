@@ -38,15 +38,6 @@ module GiftHelper
             :method => :post
   end
 
-  # todo: not relevant in gofreerev-lo version. gifts only in clients local storage
-  def lov_to_share_gift (gift)
-    # link_to t('.share_gift'), '#', :onclick => 'alert("not implemented")'
-    name = "share_gift_#{gift.id}"
-    share_lov_text = t 'gifts.api_gift.share_lov_text'
-    options = [[share_lov_text, '']] + SHARE_GIFT_API_NAME.to_a.collect { |a| a.reverse }.sort_by { |a| a[0] }
-    select_tag name, options_for_select(options), :onchange => 'Gofreerev.get_share_gift_link(this)', :id => name
-  end # link_to_share_gift
-
 
   # it could be nice with a popup dialog box with three choices. a) hide and keep balance, b) destroy and update balance, c) cancel
   # but no build in JS function for this

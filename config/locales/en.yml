@@ -306,7 +306,6 @@ en:
         unfollow_gift: "Don't follow" # todo: angularJS - moved to js.gifts.unfollow_gift
         hide_gift: "Hide post" # todo: angularJS - moved to js.gifts.hide_gift
         confirm_hide_gift: "Hide post?" # todo: angularJS - moved to js.gifts.confirm_hide_gift
-        share_gift: "Share post"
         delete_gift: "Delete post" # todo: angularJS - moved to js.gifts.delete_gift
         confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # todo: angularJS - moved to js.index.confirm_delete_gift_1
         confirm_delete_gift_2: "Delete post?" # todo: angularJS - moved to js.gifts.confirm_delete_gift_2
@@ -435,7 +434,6 @@ en:
         comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
         http_invalid_last_row_id: "System error. last_row_id must be blank in first http request. last_row_id = \"%{last_row_id}\"."
         ajax_invalid_last_row_id: "System error. Invalid or empty last_row_id in ajax request. last_row_id = \"%{last_row_id}\"."
-        share_gift_error: "Could not share post on your %{apiname} wall. %{error}"
      table_header_row:
         giver_column_heading_html: "From:" # todo: angularJS - moving to js.gifts_header.*
         receiver_column_heading_html: "To:" # todo: angularJS - moving to js.gifts_header.*
@@ -1099,15 +1097,6 @@ en:
         no_expires_at: "System error. Cannot change \"Share accounts?\" choice. Expire timestamp for access token was not found."
         reconnect_required: "Sorry. Share dynamic friend lists and single sign-on choice is currently available for flickr. New log in is required. Log out and log back in flickr and then select again \"Share accounts?\""
         exception: "System error. Could not change Share accounts? choice. %{error}. More information in server log."
-     share_gift:
-        no_gift_id: "System error. No gift id. in share gift request."
-        invalid_gift_id: "System error. Invalid gift id. in share gift request."
-        unknown_gift_id: "Cannot share gift. Unknown gift id. Please refresh page."
-        not_logged_in: "Cannot share gift. You are not logged in. Please refresh page."
-        no_provider: "System error. No share link provider in share gift request."
-        unknown_provider: "System error. Unknown share link provider."
-        not_allowed: "Sorry. You are not allowed to share this gift. Please refresh page."
-        exception: "System error. Could not share gift. %{error}. More information in server log."
      find_friends_batch:
         not_dev_user: "Cannot send friends suggestion to %{user} in development environment. Please check environment variable ENV['GOFREEREV_LO_DEV_EN_USERIDS'])"
         fb_error: "Cannot send friends suggestions to facebook. %{type} %{message}"
@@ -1193,32 +1182,6 @@ en:
         invalid_password_1: "Encryption error. Create new account failed. prvkey_aes != prvkey_aes2."
         invalid_password_2: "Encryption error. Create new account failed. prvkey != prvkey2."
         js_error: "Cannot log in. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
-     share_gift:
-        invalid_id: "System error. Cannot share gift. Invalid id for LOV."
-        missing_translation: "System error. Cannot share gift. Link definition was not found for %{provider}."
-        js_error: "Javascript error for share gift link. %{error} (%{location},%{debug})."
-        ajax_error: "Cannot share gift on %{provider}. \"%{error}\". More information in server log."
-        # href_urls used for all languages
-        href_appnet: "https://account.app.net/intent/post/?url=%{link}&text=%{text}"
-        href_arto: "http://www.arto.com/section/linkshare/default.aspx?lu=%{link}&ln=%{text}"
-        href_blogger: "https://www.blogger.com/blog_this.pyra?u=%{link}&n=%{text}" # google
-        href_buffer: "https://bufferapp.com/add?text=%{text}&url=%{link}"
-        href_delicious: "https://delicious.com/save?v=5&noui&jump=close&url=%{link}&title=%{text}"
-        href_digg: "https://digg.com/submit?url=%{link}&title=%{text}"
-        href_facebook: "https://www.facebook.com/dialog/share?app_id=%{app_id}&display=popup&href=%{link}&redirect_uri=%{redirect_uri}"
-        href_google_oauth2: "https://plus.google.com/share?url=%{link}"
-        href_kaboodle: "http://www.kaboodle.com/za/selectpage?p_pop=true&pa=url&u=%{link}"
-        href_linkedin: "https://www.linkedin.com/shareArticle?url=%{link}"
-        href_livejournal: "https://www.livejournal.com/update.bml?subject=%{text}&event=%{link}"
-        href_myspace: "https://myspace.com/post?u=%{link}&t=%{text}"
-        href_odnoklassniki: "http://www.odnoklassniki.ru/?st.cmd=addShare&st.s=1&st._surl=%{link}"
-        href_pinterest: "https://pinterest.com/pin/create/bookmarklet/?url=%{link}&media=%{image}&description=%{text}"
-        href_reddit: "https://reddit.com/submit?url=%{link}&title=%{text}"
-        href_sonico: "https://www.sonico.com/share.php?url=%{link}/&title=%{text}"
-        href_stumbleupon: "https://www.stumbleupon.com/submit?url=%{link}&title=%{text}"
-        href_tumblr: "https://www.tumblr.com/share/link?url=%{link}&name=%{text}&description=%{text}" # todo: split text in name and description
-        href_twitter: "https://twitter.com/share?url=%{link}&text=%{text}"
-        href_vkontakte: "https://vkontakte.ru/share.php?url=%{link}"
      open_graph:
         ajax_error: "Cannot check url. %{error}. More information in server log."
      new_gift: # main/gifts page - from gifts.index.* - for angularJS

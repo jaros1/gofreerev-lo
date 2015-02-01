@@ -308,7 +308,6 @@ da:
         unfollow_gift: "Følg ikke længere" # todo: angularJS - moved to js.gifts.unfollow_gift
         hide_gift: "Skjul opslag" # todo: angularJS - moved to js.gifts.hide_gift
         confirm_hide_gift: "Skjul opslag?" # todo: angularJS - moved to js.gifts.confirm_hide_gift
-        share_gift: "Del opslag"
         delete_gift: "Slet opslag" # todo: angularJS - moved to js.gifts.delete_gift
         confirm_delete_gift_1: "Slet opslag? Bemærk at %{user_name} og din saldo vil blive ændret med %{price} %{currency}, hvis dette opslag slettes" # todo: angularJS - moved to js.index.confirm_delete_gift_1
         confirm_delete_gift_2: "Slet opslag?" # todo: angularJS - moved to js.gifts.confirm_delete_gift_2
@@ -437,7 +436,6 @@ da:
         comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
         http_invalid_last_row_id: "Systemfejl. last_row_id skal være tom ved første http kald. last_row_id = %{last_row_id}."
         ajax_invalid_last_row_id: "Systemfejl. Ugyldigt eller blank last_row_id i ajax kald. last_row_id = %{last_row_id}."
-        share_gift_error: "Kunne ikke dele opslag din %{apiname} væg. %{error}"
      table_header_row:
         giver_column_heading_html: "Fra:" # todo: angularJS - moving to js.gifts_header.*
         receiver_column_heading_html: "Til:" # todo: angularJS - moving to js.gifts_header.*
@@ -1103,15 +1101,6 @@ da:
         no_expires_at: "Systemfejl. Kan ikke ændre \"Saml konti?\" valg. Tidsstempel for udløb af adgangsbillet blev ikke fundet for %{apiname}."
         reconnect_required: "Beklager. Del dynamiske vennelister og fælles login valg er pt. ikke mulige for %{apinames}. Nyt log ind er påkrævet. Log ud og Log ind igen for %{apinames} og vælg dernæst igen \"Saml konti?\"."
         exception: "Systemfejl. Kunne ikke ændre \"Saml konti?\" valg. %{error}. Mere information i server log."
-     share_gift:
-        no_gift_id: "Systemfejl. Ugyldigt kald. Opslag id mangler."
-        invalid_gift_id: "Systemfejl. Ugyldigt kald. Opslag id er ugyldig."
-        unknown_gift_id: "Kan ikke dele opslag. Ukendt eller slettet opslag. Opdater venligst siden."
-        not_logged_in: "Kan ikke dele opslag. Du er ikke logget ind. Opdater venligst siden."
-        no_provider: "Systemfejl. Ugyldigt kald. Navn på \"del link\" udbyder mangler"
-        unknown_provider: "Systemfejl. Ugyldigt kald. Ukendt \"del link\" udbyder."
-        not_allowed: "Du har desværre ikke adgang til at dele dette opslag. Opdater venligst siden."
-        exception: "Systemfejl. Kan ikke dele opslag. %{error}. Mere information i server log."
      find_friends_batch:
         not_dev_user: "Kan ikke sende venneforslag til %{user} i udviklingsmiljøet. Tjek venligst environment variable ENV['GOFREEREV_LO_DEV_EN_USERIDS'])"
         fb_error: "Kan ikke sende venneforslag til facebook. %{type} %{message}"
@@ -1197,30 +1186,6 @@ da:
         invalid_password_1: "Krypteringsfejl. Oprettelse af konto fejlede. prvkey_aes != prvkey_aes2."
         invalid_password_2: "Krypteringsfejl. Oprettelse af konto fejlede. prvkey != prvkey2."
         js_error: "Kan ikke logge ind. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
-     share_gift:
-        invalid_id: "Systemfejl. Kan ikke dele opslag. Ugyldig id for LOV."
-        missing_translation: "Systemfejl. Kan ikke dele opslag. Link definition mangler for %{provider}."
-        js_error: "Kan ikke dele opslag. Javascript fejl. %{error} (%{location},%{debug})."
-        ajax_error: "Kan ikke dele opslag på %{provider}. \"%{error}\". Mere information i server log."
-        # href_* keys. See /config/locales/en.yml
-        href_appnet:
-        href_arto:
-        href_blogger:
-        href_buffer:
-        href_delicious:
-        href_digg:
-        href_facebook:
-        href_google_oauth2:
-        href_linkedin:
-        href_myspace:
-        href_odnoklassniki:
-        href_pinterest:
-        href_reddit:
-        href_sonico:
-        href_stumbleupon:
-        href_tumblr:
-        href_twitter:
-        href_vkontakte:
      open_graph:
         ajax_error: "Kan ikke tjekke link. %{error}. Mere information i server log."
      new_gift: # main/gifts page - from gifts.index - for AngularJS

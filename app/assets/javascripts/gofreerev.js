@@ -3782,6 +3782,9 @@ angular.module('gifts', ['ngRoute'])
         else Gofreerev.setItem('gifts', JSON.stringify([])) ;
         // self.gifts = gifts_test_data ;
 
+        // add missing gid (unique gift id)
+        for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) gifts[i].gid = Gofreerev.get_new_uid() ;
+
         var comments_debug_info = function (comments) {
             var text = 'length = ' + comments.length ;
             for (var i=0 ; i<comments.length ; i++) text += ', ' + comments[i].comment + ' (' + comments[i].comment_id + ')' ;
@@ -4655,6 +4658,7 @@ angular.module('gifts', ['ngRoute'])
         // new_gift ng-submit
         self.create_new_gift = function () {
             var gift = {
+                gid: Gofreerev.get_new_uid(),
                 gift_id: Gofreerev.next_local_gift_id(),
                 giver_user_ids: [],
                 receiver_user_ids: [],

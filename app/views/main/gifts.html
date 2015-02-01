@@ -156,7 +156,7 @@
             <tr><td colspan="4"><hr/></td></tr>
             </tbody>
 
-            <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter track by gift.gift_id">
+            <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter track by gift.gid">
             <tr style="vertical-align: top" id="gift-{{gift.gift_id}}-header" >
                 <td>
                     <img ng-src="{{gift.giver_user_ids | formatUserImgSrc}}" ng-show='gift.giver_user_ids' class="small_pro_pic" title="{{gift.giver_user_ids | formatUserImgTitle}}" ng-click="ctrl.user_div_on_click(gift.giver_user_ids)"/>

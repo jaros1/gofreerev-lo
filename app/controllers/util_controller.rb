@@ -2051,15 +2051,15 @@ class UtilController < ApplicationController
   def login
     begin
       # remember unique device uid - used when sync. data between user devices
-      set_session_value :uid, params[:uid]
+      set_session_value :did, params[:did]
 
       # save new public keys - used in client to client communication
       # private key is saved password encrypted in client localStorage and is only known by client
-      p = Pubkey.find_by_uid(params[:uid])
+      p = Pubkey.find_by_did(params[:did])
       if !p
-        logger.debug2 "uid = #{params[:uid]}, pubkey = #{params[:pubkey]}"
+        logger.debug2 "did = #{params[:did]}, pubkey = #{params[:pubkey]}"
         p = Pubkey.new
-        p.uid = params[:uid]
+        p.did = params[:did]
         p.pubkey = params[:pubkey]
         p.save!
       end
@@ -2119,6 +2119,11 @@ class UtilController < ApplicationController
             :currency => user.currency }
         end
       end # each provider
+
+      # todo: remove oauth authorization (tokens, expires_at and refresh_tokens) from sessions table
+      # should only be used to download friend lists from apis
+      # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
+
       # format json response. oauth is irrelevant in this context
       @json.delete :oauth
       format_response
@@ -2173,7 +2178,7 @@ class UtilController < ApplicationController
       ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
       ping.save!
     end
-    ping.uid = get_session_value(:uid) unless ping.uid # from login
+    ping.did = get_session_value(:did) unless ping.did # from login - online devices
 
     # debug info
     logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"

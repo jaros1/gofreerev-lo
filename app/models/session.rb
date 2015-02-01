@@ -241,26 +241,26 @@ class Session < ActiveRecord::Base
     YAML::load encrypt_remove_pre_and_postfix(temp_extended_user_ids, 'user_ids', 10)
   end # user_ids_was
 
-  # 13) uid - String in model - encrypted text in db - used when sync info between user devices
-  def uid
-    return nil unless (extended_uid = read_attribute(:uid))
-    encrypt_remove_pre_and_postfix(extended_uid, 'uid', 11)
-  end # uid
-  def uid=(new_uid)
-    if new_uid
-      # logger.debug2  "new_uid = #{new_uid} (#{new_uid.class.name})"
-      check_type('uid', new_uid, 'String')
-      write_attribute :uid, encrypt_add_pre_and_postfix(new_uid, 'uid', 11)
+  # 13) did - unique device id - String in model - encrypted text in db - used when sync info between user devices
+  def did
+    return nil unless (extended_did = read_attribute(:did))
+    encrypt_remove_pre_and_postfix(extended_did, 'did', 11)
+  end # did
+  def did=(new_did)
+    if new_did
+      # logger.debug2  "new_did = #{new_did} (#{new_did.class.name})"
+      check_type('did', new_did, 'String')
+      write_attribute :did, encrypt_add_pre_and_postfix(new_did, 'did', 11)
     else
-      write_attribute :uid, nil
+      write_attribute :did, nil
     end
-  end # uid=
-  alias_method :uid_before_type_cast, :uid
-  def uid_was
-    return uid unless uid_changed?
-    return nil unless (extended_uid = attribute_was(:uid))
-    encrypt_remove_pre_and_postfix(extended_uid, 'uid', 11)
-  end # uid_was
+  end # did=
+  alias_method :did_before_type_cast, :did
+  def did_was
+    return did unless did_changed?
+    return nil unless (extended_did = attribute_was(:did))
+    encrypt_remove_pre_and_postfix(extended_did, 'did', 11)
+  end # did_was
 
   # 14) client_timestamp - JS unix timestamp with miliseconds - Fixnum/Bignum in model - encrypted text in db
   def client_timestamp
@@ -296,6 +296,7 @@ class Session < ActiveRecord::Base
     case key
       when :client_timestamp then self.client_timestamp = value
       when :created then self.created = value
+      when :did then self.did = value
       when :expires_at then self.expires_at = value
       when :flash_id then self.flash_id = value
       when :language then self.language = value
@@ -304,7 +305,6 @@ class Session < ActiveRecord::Base
       when :refresh_tokens then self.refresh_tokens = value
       when :state then self.state = value
       when :tokens then self.tokens = value
-      when :uid then self.uid = value
       when :user_ids then self.user_ids = value
       else raise "unknown key #{key}"
     end # case

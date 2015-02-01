@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150131150201) do
+ActiveRecord::Schema.define(version: 20150201092827) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -189,7 +189,7 @@ ActiveRecord::Schema.define(version: 20150131150201) do
     t.string   "client_sid",    limit: 15
     t.datetime "last_ping_at"
     t.datetime "next_ping_at"
-    t.string   "uid"
+    t.string   "did"
   end
 
   add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree
@@ -198,10 +198,10 @@ ActiveRecord::Schema.define(version: 20150131150201) do
     t.text     "pubkey"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "uid"
+    t.string   "did"
   end
 
-  add_index "pubkeys", ["uid"], name: "index_pubkey_uid", unique: true, using: :btree
+  add_index "pubkeys", ["did"], name: "index_pubkey_did", unique: true, using: :btree
 
   create_table "sequences", force: true do |t|
     t.string   "name",       null: false
@@ -227,7 +227,7 @@ ActiveRecord::Schema.define(version: 20150131150201) do
     t.text     "user_ids"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.text     "uid"
+    t.text     "did"
     t.text     "client_timestamp"
   end
 

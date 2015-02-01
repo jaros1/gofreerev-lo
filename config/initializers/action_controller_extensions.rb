@@ -37,6 +37,7 @@ module ActionControllerExtensions
   #   :client_timestamp - js client unix timestamp - used by client to detect multiple sessions with identical uid/client_userid (sync users and gifts from localStorage)
   #   :client_userid - 0, 1, 2 etc. From client local storage login - sent to rails all client get/post requests
   #   :created - show cookie note in page header for new sessions - hidden after 30 seconds
+  #   :did - unique device id - one for each browser and client_userid
   #   :expires_at - unix timestamps for API access tokens
   #   :flash_id - id to current flash message
   #   :language - en, da etc
@@ -46,7 +47,6 @@ module ActionControllerExtensions
   #   :state - random string :state in oauth API requests. set before calling API and check after returning from API
   #   :timezone - timezone from JS or oauth login
   #   :tokens - API access tokens
-  #   :uid - unique device id - one for each browser and client_userid
   #   :user_ids - user_id array for logged in users
 
   private

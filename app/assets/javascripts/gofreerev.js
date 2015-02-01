@@ -2226,6 +2226,7 @@ var Gofreerev = (function() {
 
     var storage_rules = {
         comment_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
+        did: {session: false, userid: true, compress: false, encrypt: false}, // new unique device id
         gift_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
         gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
@@ -2234,7 +2235,6 @@ var Gofreerev = (function() {
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
         pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
         sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
-        uid: {session: false, userid: true, compress: false, encrypt: false}, // unique device+user id
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
         users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
     };
@@ -2408,6 +2408,7 @@ var Gofreerev = (function() {
     // get/set item
     function getItem (key) {
         var pgm = 'Gofreerev.getItem: ' ;
+        var rename_uid = (key == 'did') ; // possible rename uid to did (unique device id)
         var rule = get_local_storage_rule(key) ;
         // userid prefix?
         if (rule.userid) {
@@ -2423,7 +2424,18 @@ var Gofreerev = (function() {
         // read stored value
         var value = rule.session ? sessionStorage.getItem(key) : localStorage.getItem(key) ;
         if ((typeof value == 'undefined') || (value == null) || (value == '')) {
-            return null ;
+            if (rename_uid) {
+                // <userid>_did was not found - check if <userid>_uid exists
+                var key2 = userid + '_uid' ;
+                value = localStorage.getItem(key2) ;
+                if ((typeof value == 'undefined') || (value == null) || (value == '')) return null ;
+                else {
+                    // rename uid to did and continue
+                    localStorage.removeItem(key2) ;
+                    localStorage.setItem(key, value) ;
+                }
+            }
+            else return null ; // key not found
         }
 
         // get storage flag - how was data stored - first character in value
@@ -2468,7 +2480,8 @@ var Gofreerev = (function() {
 
     function setItem (key, value) {
         var pgm = 'Gofreerev.setItem: ' ;
-        var save_value = value ;
+        var rename_uid = (key == 'did') ; // possible rename uid to did (unique device id)
+        var save_value = value ; // for optional lzma_compress0
         var rule = get_local_storage_rule(key) ;
         // userid prefix?
         if (rule.userid) {
@@ -2524,6 +2537,11 @@ var Gofreerev = (function() {
             return ;
         }
         value = storage_flag + value ;
+        // check for uid => did rename
+        if (rename_uid) {
+            var key2 = userid + '_uid' ;
+            if (localStorage.getItem(key2)) localStorage.removeItem(key2) ;
+        }
         // save
         // if (key.match(/oauth/)) console.log('setItem. key = ' + key + ', value = ' + value) ;
         if (rule.session) sessionStorage.setItem(key, value) ;
@@ -2556,12 +2574,20 @@ var Gofreerev = (function() {
         else localStorage.removeItem(key) ;
     } // removeItem
 
+    // generate "unique" id - 20 character decimal string - unix timestamp with milliseconds and random decimals
+    // this id should very likely be unique within a network of friends (no guarantees)
+    // used for did (unique device id), sid (unique session id), gid (unique gift id) and cid (unique comment id)
+    function get_new_uid () {
+        var id = new Date().getTime() + (Math.random() + 1).toString(10).substring(2,9) ;
+        return id ;
+    } // get_new_uid
+
     // client login (password from client-login-dialog-form)
     // 0 = invalid password, > 0 : userid
     // use create_new_account = true to force create a new user account
     // support for more than one user account
     function client_login (password, create_new_account) {
-        var password_sha256, passwords_s, passwords_a, i, userid, uid, crypt, pubkey, prvkey, prvkey_aes, giftid_key ;
+        var password_sha256, passwords_s, passwords_a, i, userid, did, crypt, pubkey, prvkey, prvkey_aes, giftid_key ;
         password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
         // passwords: array with hashed passwords. size = number of accounts
         passwords_s = getItem('passwords') ;
@@ -2588,9 +2614,9 @@ var Gofreerev = (function() {
             // save login
             setItem('userid', userid) ;
             setItem('password', password) ;
-            if (!getItem('sid')) setItem('sid', '' + new Date().getTime()) ;
+            if (!getItem('sid')) setItem(Gofreerev.get_new_uid()) ;
             // setup new account
-            uid = '' + new Date().getTime() + (Math.random() + 1).toString(10).substring(2,10) ; // unique device id
+            did = Gofreerev.get_new_uid() ; // unique device id
             // hash password
             passwords_a.push(password_sha256) ;
             passwords_s = JSON.stringify(passwords_a) ;
@@ -2618,7 +2644,7 @@ var Gofreerev = (function() {
             }
             // save user
             setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
-            setItem('uid', uid) ; // unique device id
+            setItem('did', did) ; // unique device id
             setItem('pubkey', pubkey) ; // public key
             setItem('gift_id', '0') ; // gift_id sequence
             setItem('comment_id', '0') ; // gift_id sequence
@@ -2968,6 +2994,7 @@ var Gofreerev = (function() {
         removeItem: removeItem,
         // angular helpers
         set_fb_logged_in_account: set_fb_logged_in_account,
+        get_new_uid: get_new_uid,
         next_local_gift_id: next_local_gift_id,
         next_local_comment_id: next_local_comment_id,
         client_login: client_login,
@@ -3538,9 +3565,9 @@ angular.module('gifts', ['ngRoute'])
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash (authorization for one or more login providers) to server
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
-            var uid = Gofreerev.getItem('uid') ;
+            var did = Gofreerev.getItem('did') ;
             var pubkey = Gofreerev.getItem('pubkey')
-            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth, uid: uid, pubkey: pubkey})
+            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth, did: did, pubkey: pubkey})
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;

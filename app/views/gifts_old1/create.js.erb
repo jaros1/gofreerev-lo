@@ -1,8 +1,0 @@
-<% logger.debug2  "@errors.size = #{@errors.size}"
-   logger.debug2 " @api_gifts.size = #{@api_gifts.size}"
-   raise "empty response from gifts/create" if @errors.size == 0 and @api_gifts.size == 0
--%>
-<% if @api_gifts.size > 0 -%>
-document.getElementById('new_messages_buffer_div').innerHTML = '<%= j render("create") %>';
-insert_update_gifts(200) ; <%# move new gift from buffer to gifts table -%>
-<% end -%>

@@ -64,7 +64,7 @@ GofreerevFb::Application.routes.draw do
   # Example resource route (maps HTTP verbs to controller actions automatically):
   # todo: remove gifts_old1 and comments_old1
   scope "(:locale)" do
-    resources :main, :gifts, :users, :inbox, :comments, :facebook, :gifts_old1, :comments_old1
+    resources :main, :gifts, :users, :inbox, :comments, :facebook
   end
 
   # Example resource route with options:

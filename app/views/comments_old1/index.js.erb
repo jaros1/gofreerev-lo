@@ -1,5 +1,0 @@
-<%# post processing in gofreerev.js / post_ajax_add_older_comments_handler - move older comments up before first comment %>
-<% if @api_comments -%>
-$('#gifts').append('<%= j render("api_comments3", :api_comments3 => @api_comments, :gift => @gift, :api_gift => @api_gift) %>');
-post_ajax_add_older_comments(<%= @gift.id %>, <%= @first_comment_id %>);
-<% end -%>

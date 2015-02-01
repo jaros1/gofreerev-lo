@@ -186,7 +186,7 @@
                         </tr>
                         <tr ng-show="ctrl.show_api_picture_url(gift)">
                             <td>
-                                <img id="gift-{{gift.gift_id}}" ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
+                                <img ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
                             </td>
                         </tr>
                         <tr ng-show="ctrl.show_open_graph_image(gift)">

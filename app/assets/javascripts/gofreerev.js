@@ -967,119 +967,6 @@ var Gofreerev = (function() {
         return result;
     }
 
-    /*
-     // enable ajax submit for new gifts in gifts/index page
-     $(document).ready(function () {
-     var new_gift = document.getElementById('new_gift');
-     if (!new_gift) return; // not gifts/index page
-     // client side only fields - not sent to server
-     var disable_enable_ids = ["gift_description", "gift_price", "gift_open_graph_url1", "gift_open_graph_url2"] ;
-     // bind 'myForm' and provide a simple callback function. http://malsup.com/jquery/form/#options-object
-     $('#new_gift').ajaxForm({
-     type: "POST",
-     dataType: 'script',
-     beforeSerialize: function($form, options) {
-     add2log('#new_gift.beforeSubmit');
-     // get next client side post id.
-
-     // disable submit buttons while submitting new gift to server
-     var submit_buttons = document.getElementsByName('commit_gift') ;
-     for (var i=0 ; i< submit_buttons.length ; i++) submit_buttons[i].disabled = true ;
-     // only send direction and image to server
-     var element ;
-     for (var i=0 ; i< disable_enable_ids.length ; i++) {
-     element = document.getElementById(disable_enable_ids[i]) ;
-     if (element) element.disabled = true ;
-     }
-     },
-     beforeSubmit: function (formData, jqForm, options) {
-     add2log('#new_gift.beforeSubmit');
-     // only send gift meta-information to server. disable all fields except: todo
-     //var gift_description = document.getElementById('gift_description') ;
-     //if (gift_description) gift_description.disabled = true ;
-     },
-     success: function (responseText, statusText, xhr, $form) {
-     var debug ;
-     try{
-     debug = 1 ;
-     document.getElementById('progressbar-div').style.display = 'none';
-     debug = 2 ;
-     var gift_price = document.getElementById('gift_price');
-     debug = 3 ;
-     if (gift_price) gift_price.value = '';
-     debug = 4 ;
-     var gift_description = document.getElementById('gift_description');
-     debug = 5 ;
-     if (gift_description) {
-     gift_description.value = '';
-     autoresize_text_field(gift_description) ;
-     }
-     debug = 6 ;
-     var gift_file = document.getElementById('gift_file');
-     debug = 7 ;
-     if (gift_file) gift_file.value = '';
-     debug = 8 ;
-     var disp_gift_file = document.getElementById('disp_gift_file');
-     debug = 9 ;
-     if (disp_gift_file) disp_gift_file.value = '';
-     // clear open graph url and remove preview for open graph url
-     debug = 9.1 ;
-     var gift_open_graph_url = document.getElementById('gift_open_graph_url1') ;
-     if (gift_open_graph_url) gift_open_graph_url.value = '' ;
-     debug = 9.2 ;
-     var gift_open_graph_url = document.getElementById('gift_open_graph_url2') ;
-     if (gift_open_graph_url) gift_open_graph_url.value = '' ;
-     debug = 9.3 ;
-     var gift_preview = document.getElementById('gift_preview') ;
-     if (gift_preview) {
-     debug = 9.4 ;
-     while (gift_preview.firstChild) {
-     gift_preview.removeChild(gift_preview.firstChild);
-     }
-     }
-     // first gift for a new gofreerev user - show gifts table - hide no api gift found message
-     debug = 10 ;
-     var gifts = document.getElementById('gifts');
-     debug = 11 ;
-     if (gifts) gifts.style.display = 'inline';
-     debug = 12 ;
-     var no_gifts_div = document.getElementById('no-gifts-div');
-     debug = 13 ;
-     if (no_gifts_div) no_gifts_div.style.display = 'none';
-     // IE8 debug - JS code from create.js.erb is not executed
-     debug = 14 ;
-     var new_messages_buffer_div = document.getElementById('new_messages_buffer_div') ;
-     debug = 15 ;
-     add2log('new_messages_buffer_div = ' + new_messages_buffer_div.innerHTML) ;
-     }
-     catch (err) {
-     var msg = '#new_gift.success failed with JS error: ' + err + ', debug = ' + debug ;
-     add2log(msg);
-     add_to_tasks_errors(I18n.t('js.new_gift.js_error', {error: err, location: 9, debug: debug})) ;
-     return;
-     }
-     }, // success
-     error: function (jqxhr, textStatus, errorThrown) {
-     if (leaving_page) return ;
-     document.getElementById('progressbar-div').style.display = 'none';
-     var err = add2log_ajax_error('new_gift.ajax.error: ', jqxhr, textStatus, errorThrown) ;
-     add_to_tasks_errors(I18n.t('js.new_gift.ajax_error', {error: err, location: 8, debug: 0})) ;
-     },
-     complete: function() {
-     // add2log('#new_gift.complete');
-     var submit_buttons = document.getElementsByName('commit_gift') ;
-     // add2log('submit_buttons.length = ' + submit_buttons.length) ;
-     for (var i=0 ; i< submit_buttons.length ; i++) submit_buttons[i].disabled = false ;
-     // enable gift fields
-     var element ;
-     for (var i=0 ; i< disable_enable_ids.length ; i++) {
-     element = document.getElementById(disable_enable_ids[i]) ;
-     if (element) element.disabled = false ;
-     }
-     }
-     });
-     });
-     */
 
     // abort rails remote submit - ajax is handled by angularJS
     $(document).ready(function() {
@@ -1125,80 +1012,6 @@ var Gofreerev = (function() {
     }
 
 
-    // post ajax processing after inserting older comments for a gift.
-    // called from comments/index.js.erb
-    // new comment lines are surrounded by "gift-<giftid>-older-comments-block-start-<commentid>" and "gift-<giftid>-older-comments-block-end-<commentid>".
-    // move lines up before "show-older-comments" link and delete link
-    function post_ajax_add_older_comments(giftid, commentid) {
-        var pgm = 'post_ajax_add_older_comments: ' ;
-        var table_id = 'gift-' + giftid + '-links-errors' ;
-        var msg ;
-        // try catch block to avoid "parse error" ajax message
-        try {
-            // var id = '#gift-' + giftid + '-new-comment-form' ;
-            // add2log(pgm + 'giftid = ' + giftid + ', commentid = ' + commentid) ;
-            var link_id = 'gift-' + giftid + '-show-older-comments-link-' + commentid;
-            // find tr for old link, first added row and last added row
-            var first_row_id = "gift-" + giftid + "-older-comments-block-start-" + commentid;
-            var last_row_id = "gift-" + giftid + "-older-comments-block-end-" + commentid;
-            // find link
-            var link = document.getElementById(link_id);
-            if (!link) {
-                msg = 'System error: link ' + link_id + ' was not found' ;
-                add2log(pgm + msg) ;
-                add_to_tasks_errors3(table_id, msg);
-                return;
-            }
-            // find tr for link
-            var link_tr = link;
-            while (link_tr.tagName != 'TR') link_tr = link_tr.parentNode;
-            // find first and last added table row
-            var first_row = document.getElementById(first_row_id);
-            if (!first_row) {
-                msg = 'System error: link ' + first_row_id + ' was not found' ;
-                add2log(pgm + msg) ;
-                add_to_tasks_errors3(table_id, msg);
-                return;
-            }
-            var last_row = document.getElementById(last_row_id);
-            if (!last_row) {
-                msg = 'System error: link ' + last_row_id + ' was not found' ;
-                add2log(pgm + msg) ;
-                add_to_tasks_errors3(table_id, msg);
-                return;
-            }
-            // copy table rows to JS array
-            var trs = [];
-            var tr = first_row.nextElementSibling;
-            while (tr.id != last_row_id) {
-                if (tr.tagName == 'TR') trs.push(tr);
-                tr = tr.nextElementSibling;
-            } // while
-            // delete table rows from html table
-            tr = first_row;
-            var next_tr = tr.nextElementSibling;
-            do {
-                tr.parentNode.removeChild(tr);
-                tr = next_tr;
-                next_tr = tr.nextElementSibling;
-            } while (tr.id != last_row_id) ;
-            // insert table rows before old show-older-comments link
-
-            var tbody = link_tr.parentNode;
-            while (trs.length > 0) {
-                tr = trs.shift();
-                tbody.insertBefore(tr, link_tr);
-            }
-            // delete link  (and this event handler)
-            link_tr.parentNode.removeChild(link_tr);
-        }
-        catch (err) {
-            var msg = pgm + 'failed with JS error: ' + err;
-            add2log(msg);
-            add_to_tasks_errors(msg);
-            return;
-        }
-    } // add_post_ajax_new_comment_handler
 
     // show/hide price and currency in new comment table call
     function check_uncheck_new_deal_checkbox(checkbox, giftid)
@@ -1538,7 +1351,7 @@ var Gofreerev = (function() {
         var table = document.getElementById(table_id);
         if (!table) {
             // create missing table
-            if (!create_gift_links_errors_table(table_id) && !create_new_com_errors_table(table_id) && !create_com_link_errors_table(table_id)) {
+            if (!create_new_com_errors_table(table_id) && !create_com_link_errors_table(table_id)) {
                 // write to error table in page header
                 add_to_tasks_errors(msg + ' (inject not implemented for error message with id ' + table_id + ').');
                 return;
@@ -1548,131 +1361,6 @@ var Gofreerev = (function() {
         // add to error table inside page
         add_to_tasks_errors2(table_id, msg);
     } // add_to_tasks_errors3
-
-
-    // create missing gift-<giftid>-links-errors table if possible
-    // is created under current gift link row in gifts table
-    function create_gift_links_errors_table (table_id) {
-        var re1 = new RegExp('^gift-[0-9]+-links-errors$') ;
-        if (!table_id.match(re1)) return false ; // not a gift link error
-        giftid = table_id.split('-')[1] ;
-        add2log('giftid = ' + giftid) ;
-        ref_id = 'gift-' + giftid + '-links' ;
-        add2log('ref_id = ' + ref_id) ;
-        ref = document.getElementById(ref_id) ;
-        if (!ref) {
-            add2log(ref_id + ' was not found. ') ;
-            return false ;
-        }
-        // add2log(ref_id + ' blev fundet') ;
-        ref = ref.nextSibling ;
-        if (!ref) {
-            add2log('row after ' + ref_id + ' was not found. ') ;
-            return false ;
-        }
-        add2log('create new tr') ;
-        new_tr = document.createElement('tr') ;
-        new_tr.id = table_id + '-tr' ;
-        add2log('insert new td')
-        for (j=0 ; j <= 2 ; j++) {
-            new_td = new_tr.insertCell(j) ;
-            new_td.innerHTML = '' ;
-        }
-        add2log('initialize tr[2]')
-        new_td.innerHTML = '<table><tbody id="' + table_id + '" class="ajax_errors"></tbody></table>' ;
-        new_td.setAttribute("colspan",2);
-        add2log('insertBefore') ;
-        ref.parentNode.insertBefore(new_tr, ref) ;
-        // ok - new gift link error table has been created
-        add2log('ok. ' + table_id + ' has been created') ;
-        return true ;
-    } // create_gift_links_errors_table
-
-    // error callback for gift actions (like, unlike, follow, unfollow, delete, hide, show older comments - write to debug log + page header
-    $(document).ready(function() {
-        var id = ".gift-action-link" ;
-        $(id).unbind("click") ;
-        $(id).bind("click", function(xhr, settings){
-            // clear any old ajax error messages if any
-            // clear within page ajax error messages if any
-            var pgm = id + '.click: ' ;
-            add2log(pgm + 'start') ;
-            try {
-                // add2log(pgm + 'xhr = ' + xhr + ', settings = ' + settings) ;
-                var url = xhr.target ;
-                add2log(pgm + 'url = ' + url) ;
-                // url = http://localhost/da/util/delete_gift?gift_id=914
-                // url = http://localhost/da/comments?first_comment_id=376&gift_id=914
-                var url_a = ('' + url + '').split('=') ;
-                // add2log(pgm + 'url_a.length = ' + url_a.length) ;
-                var giftid = url_a[url_a.length-1] ;
-                // add2log(pgm + 'giftid = ' + giftid) ;
-                var table_id = 'gift-' + giftid + '-links-errors' ;
-                var table = document.getElementById(table_id) ;
-                if (table) clear_ajax_errors(table_id) ;
-                // else add2log(pgm + table_id + ' was not found.') ;
-                // else add2log(pgm + table_id + ' was not found.') ;
-                // clear page header error messages if any
-                clear_flash_and_ajax_errors() ;
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors(I18n.t('js.gift_actions.click_js_error', {error: err, location: 11, debug: 0})) ;
-            }
-        }) // click
-        $(id).unbind("ajax:error") ;
-        $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
-            var pgm = id + '.ajax.error: ' ;
-            var debug = 0 ;
-            var url ;
-            add2log(pgm + 'start') ;
-            try {
-                if (leaving_page) return ;
-                var err = add2log_ajax_error(pgm,jqxhr,textStatus,errorThrown) ;
-                var error = errorThrown + '. check server log for more information.' ;
-                // inject gift action ajax error into page if possible. Otherwise use tasks_errors table in page header
-                url = '' + jqxhr.target + '' ;
-                add2log(pgm + 'url = ' + url) ;
-                // http://localhost/da/util/like_gift?gift_id=1478
-                // http://localhost/da/util/unlike_gift?gift_id=1478
-                // http://localhost/da/util/follow_gift?gift_id=1478
-                // http://localhost/da/util/unfollow_gift?gift_id=1478
-                // http://localhost/da/util/delete_gift?gift_id=1478
-                // http://localhost/da/util/hide_gift?gift_id=1419
-                // http://localhost/da/comments?first_comment_id=1029&gift_id=1478
-                // find gift_id last in url
-                debug = 1 ;
-                var url_a = url.split('=') ;
-                // add2log(pgm + 'url_a.length = ' + url_a.length) ;
-                var giftid = url_a[url_a.length-1] ;
-                var url_b = url.split('?')[0] ;
-                var url_c = url_b.split('/') ;
-                var action = url_c[url_c.length-1] ;
-                add2log(pgm + 'url = ' + url + ', giftid = ' + giftid + ', action = ' + action) ;
-                debug = 2 ;
-                var valid_actions = ["like_gift", "unlike_gift", "follow_gift", "unfollow_gift", "delete_gift", "hide_gift", "comments"] ;
-                var key ;
-                if (valid_actions.indexOf(action) == -1) key = 'js.gift_actions.ajax_error' ;
-                else key = 'js.gift_actions.' + action + '_ajax_error' ;
-                var table_id = 'gift-' + giftid + '-links-errors' ;
-                var table = document.getElementById(table_id) ;
-                debug = 3 ;
-                if (!table && !create_gift_links_errors_table(table_id)) {
-                    // inject ajax error message in page header
-                    add_to_tasks_errors(I18n.t(key, {error: err, url: url, giftid: giftid})) ;
-                }
-                else {
-                    // inject ajax error message in gift link error table in within page
-                    add_to_tasks_errors2(table_id, I18n.t(key, {error: err, url: url, giftid: giftid})) ;
-                }
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors(I18n.t('js.gift_actions.js_error', {error: err, location: 10, debug: debug})) ;
-                return;
-            }
-        }) // ajax:error
-    })
 
     function create_new_com_errors_table(table_id) {
         // table_id = gift-890-comment-new-errors
@@ -4143,6 +3831,7 @@ angular.module('gifts', ['ngRoute'])
             giftService.refresh_gift(gift);
             if (!self.show_delete_gift(gift)) return ;
             var confirm_options = { price: gift.price, currency: gift.currency }
+            // todo: show/insert error messages under gifts link in main/gifts page? like old insert_gift_links_errors_table JS method
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
                 var giver = userService.find_giver(gift) ;
                 if (!giver) {

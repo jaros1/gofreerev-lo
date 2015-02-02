@@ -9,10 +9,6 @@
   <div id="new_messages_count_div"><%= @new_messages_count %></div>
   <div id="new_comments_div"></div>
 </div>
-<%= link_to "new_messages_count",
-            '/util/new_messages_count?request_fullpath=' + CGI::escape(@request_fullpath) + '&newest_gift_id=0&newest_status_update_at=0',
-            :remote => true, :data => { :type => :script }, :format => :js,
-            :id => "new_messages_count_link", :style => "display: none" %>
 
 <div style="width: 100%">
   <%= @page_header = true ; @size = 'small' ; render '/shared/user_div', :user_div => user %>

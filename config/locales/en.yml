@@ -1066,14 +1066,6 @@ en:
         price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
         comment_comment_required_text: "Comment is required"
         comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
-     new_messages_count:
-        link_not_found: "Cannot check for new messages. Link with new_messages_count_link was not found in web page." # js.new_messages_count.link_not_found
-        ajax_error: "Error when checking for new messages. %{error}. More information in server log."
-        js_error: "Javascript error when checking for new messages. %{error} (%{location},%{debug})."
-     insert_new_comments:
-        js_error: "Javascript error when inserting new comments. %{error} (%{location},%{debug})."
-     insert_update_gifts:
-        js_error: "Javascript error when inserting new posts. %{error} (%{location},%{debug})."
      missing_api_picture_urls:
         ajax_error: "Error when checking moved or deleted images. %{error}. More information in server log."
      new_gift:

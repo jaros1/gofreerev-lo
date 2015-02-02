@@ -351,48 +351,10 @@ class ApplicationController < ActionController::Base
   # check get-more-rows ajax request for errors before fetching users or gifts
   # called in start of gifts/index, users/index and users/show and before calling get_next_set_of_rows
   # last_low_id must be correct - max one get-more-rows ajax request every GET_MORE_ROWS_INTERVAL seconds
+  # todo: remove
   private
   def get_next_set_of_rows_error?(last_row_id)
-    if !get_last_row_id()
-      logger.error2 "get_next_set_of_rows: session[:last_row_id] was not found"
-      add_error_key 'shared.show_more_rows.last_row_id_missing', :table => 'show-more-rows-errors'
-      return true
-    end
-    if !get_last_row_at()
-      logger.error2 "get_next_set_of_rows: session[:last_row_at] was not found"
-      add_error_key 'shared.show_more_rows.last_row_at_missing', :table => 'show-more-rows-errors'
-      return true
-    end
-    # max one get-more-rows request once every GET_MORE_ROWS_INTERVAL seconds
-    new_last_row_at = Time.new.seconds_since_midnight
-    dif = new_last_row_at - get_last_row_at()
-    dif += 1.day if dif < 0
-    if last_row_id != get_last_row_id()
-      # wrong last_row_id received in get-more-rows ajax request. Must be an error a javascript/ajax error
-      logger.warn2  "problem with get-more-rows ajax request. expected #{get_last_row_id()}. found #{last_row_id}."
-      add_error_key 'shared.show_more_rows.last_row_id_invalid', :expected => get_last_row_id(), :found => last_row_id, :table => 'show-more-rows-errors'
-      # return dummy row with correct last_row_id to client x
-      return true
-    elsif dif < GET_MORE_ROWS_INTERVAL - 0.1
-      # client must only send get-more-rows once every GET_MORE_ROWS_INTERVAL seconds.
-      # Must be an javascript/ajax error. See gofreerev.js show_more_rows_scroll
-      # best if client waits between requests - server should not spend time sleeping
-      wait = GET_MORE_ROWS_INTERVAL-dif
-      logger.warn2 "last_row_at = #{get_last_row_at()}, now = #{new_last_row_at}, dif = #{dif}"
-      msg = "Max one get-more-rows ajax request every #{GET_MORE_ROWS_INTERVAL} seconds. " +
-          "Time.new = #{Time.new}. Wait for #{wait} seconds"
-      logger.warn2  msg
-      if debug_ajax?
-        logger.warn2  msg
-        logger.warn2  msg
-      end
-      sleep(wait)
-      add_error_key 'shared.show_more_rows.invalid_interval', :interval => GET_MORE_ROWS_INTERVAL, :sleep => wait, :table => 'show-more-rows-errors'
-      return false
-    else
-      # normal ajax response with next set of gifts or users
-      return false
-    end
+    return false
   end # get_next_set_of_rows_error?
 
   # used in ajax expanding pages (gifts/index, users/index and users/show pages)
@@ -423,11 +385,6 @@ class ApplicationController < ActionController::Base
     logger.debug2  "returning next #{rows.size} of #{total_no_rows} rows . last_row_id = #{last_row_id}"
     # keep last_row_id and timestamp - checked in get_next_set_of_rows_error? before calling this method
     set_last_row_id(last_row_id) # control - is checked in next ajax request
-    if ajax_request
-      set_last_row_at(@request_start_time)
-    else
-      set_last_row_at(@request_start_time-GET_MORE_ROWS_INTERVAL)
-    end
     logger.debug2  "last_row_id (output) = #{last_row_id}"
     [ rows, last_row_id]
   end # get_next_set_of_rows
@@ -1010,31 +967,6 @@ class ApplicationController < ActionController::Base
     s = Session.find_by_session_id(get_sessionid)
     return nil unless s
     s.last_row_id
-  end
-
-  # get/set last_row_at 
-  # has been moved from cookie session store to sessions table
-  # ( problem with concurrent ajax requests and session store update )
-  private
-  def set_last_row_at (last_row_at)
-    logger.debug "last_row_at = #{last_row_at}"
-    session.delete(:last_row_at) if session.has_key?(:last_row_at)
-    s = Session.find_by_session_id(get_sessionid)
-    if !s
-      s = Session.new
-      s.session_id = get_sessionid
-    end
-    s.last_row_at = last_row_at
-    s.save!
-    logger.debug2 "last_row_at = #{last_row_at}, Time.new.seconds_since_midnight = #{Time.new.seconds_since_midnight}, session_id = #{get_sessionid}"
-    last_row_at
-  end
-  def get_last_row_at
-    set_last_row_at(get_session_value(:last_row_at)) if get_session_value(:last_row_at).to_s != ''
-    s = Session.find_by_session_id(get_sessionid)
-    last_row_at = s.last_row_at if s
-    logger.debug2 "last_row_at = #{last_row_at}, Time.new.seconds_since_midnight = #{Time.new.seconds_since_midnight}, session_id = #{get_sessionid}"
-    last_row_at
   end
 
   # used in gifts/index

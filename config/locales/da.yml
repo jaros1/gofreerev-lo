@@ -1070,14 +1070,6 @@ da:
         price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
         comment_comment_required_text: "Kommentar felt skal udfyldes"
         comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
-     new_messages_count:
-        link_not_found: "Kan ikke tjekke for nye beskeder. Link med id new_messages_count_link mangler i html siden."
-        ajax_error: "Fejl ved tjek for nye beskeder. %{error}. Mere information i server log."
-        js_error: "Javascript fejl ved tjek for nye beskeder. %{error} (%{location},%{debug})."
-     insert_new_comments:
-        js_error: "Javascript fejl ved indsættelse af nye kommentarer. %{error} (%{location},%{debug})."
-     insert_update_gifts:
-        js_error: "Javascript fejl ved indsættelse af nye opslag. %{error} (%{location},%{debug})."
      missing_api_picture_urls:
         ajax_error: "Fejl ved tjek af flyttede eller slettede billeder. %{error}. Mere information i server log."
      new_gift:

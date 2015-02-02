@@ -116,30 +116,9 @@
         <%= render :partial => 'user', :locals => {:user => user} %>
     <% end -%>
     </tbody>
-    <tfoot>
-    <tr id="show-more-rows-spinner">
-      <td colspan="4">
-        <img src="/images/ajax-loading-64.gif"/>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <table>
-          <tbody id='show-more-rows-errors' class="ajax_errors">
-          </tbody>
-        </table>
-      </td>
-    </tr>
-    </tfoot>
   </table>
 </div>
 
 <br/>
-<%# add remote link to get more rows and call javascript to setup end of page event and post ajax handling of the new rows. set DEBUG_AJAX to true in initializers/constraints.rb to get more ajax debug information -%>
-<%= link_to "show-more-rows",
-            users_path(@page_values.merge(:last_row_id => @last_row_id)),
-            :remote => true, :data => { :type => :script }, :format => :js,
-            :id => "show-more-rows-link", :style => "display: none" %>
-<%= render :partial => 'shared/show_more_rows', :locals => {:show_more_rows => 'users'} %>
 
 <hr>

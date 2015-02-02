@@ -49,11 +49,6 @@ CURRENCY_LOV_LENGTH = 20 # truncate currency lov after 20 characters
 
 DEBUG_AJAX = true # default false - set to true to get more ajax debug information - JS alerts, extra log messages etc
 
-# max one show-more-rows ajax request every 3 seconds.
-# See shared/show_more_rows and get_next_set_of_rows_error? and get_next_set_of_rows methods in application controller
-# todo: minor problem with sync. of 3 seconds delay in JS and rails.
-GET_MORE_ROWS_INTERVAL = 3.0
-
 # show cookie note in top of page (EU cookie law / Directive on Privacy and Electronic Communications)
 # keep time and/or text small - cookie note is intruding and irritating - nil to disable/hide cookie note
 # texts are set in locale keys application.layouts.cookie_note_*

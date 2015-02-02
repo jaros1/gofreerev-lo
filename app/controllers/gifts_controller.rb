@@ -273,13 +273,13 @@ class GiftsController < ApplicationController
     limit = last_row_id ? 10 : 1
     @api_gifts, @last_row_id = User.api_gifts(@users, :last_status_update_at => last_row_id, :limit => limit)
 
-    set_last_row_id(@last_row_id) # control - is checked in next ajax request
-    if last_row_id
-      set_last_row_at(@request_start_time)
-    else
-      # first http request at startup - ajax request for the next 10 rows in a split second
-      set_last_row_at(@request_start_time-GET_MORE_ROWS_INTERVAL)
-    end
+    # set_last_row_id(@last_row_id) # control - is checked in next ajax request
+    # if last_row_id
+    #   set_last_row_at(@request_start_time)
+    # else
+    #   # first http request at startup - ajax request for the next 10 rows in a split second
+    #   set_last_row_at(@request_start_time-GET_MORE_ROWS_INTERVAL)
+    # end
 
     # use this gifts select for ajax debug - returns all gifts
     # gifts = Gift.where('user_id_giver is not null or user_id_receiver is not null').order('id desc') # uncomment to test ajax

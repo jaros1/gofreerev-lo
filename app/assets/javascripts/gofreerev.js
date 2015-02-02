@@ -1,7 +1,6 @@
 // some global JS variables - see app layout and shared/show_more_rows partial
 // var debug_ajax, show_more_rows_table ;
 
-
 // fix missing Array.indexOf in IE8
 // http://stackoverflow.com/questions/3629183/why-doesnt-indexof-work-on-an-array-ie8
 if (!Array.prototype.indexOf)
@@ -26,7 +25,6 @@ if (!Array.prototype.indexOf)
         return -1;
     };
 }
-
 
 // Gofreerev closure start
 var Gofreerev = (function() {

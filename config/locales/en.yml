@@ -361,7 +361,6 @@ en:
         unfollow_gift: "Don't follow"
         hide_gift: "Hide post"
         confirm_hide_gift: "Hide post?"
-        share_gift: "Share post"
         delete_gift: "Delete post"
         confirm_delete_gift_1: "Delete post? Note that %{user_name} and your balance will change with %{price} %{currency} if this post is deleted" # currency, price and user_name. user_name is short user name for other user in closed deal
         confirm_delete_gift_2: "Delete post?"
@@ -521,7 +520,6 @@ en:
         comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
         http_invalid_last_row_id: "System error. last_row_id must be blank in first http request. last_row_id = \"%{last_row_id}\"."
         ajax_invalid_last_row_id: "System error. Invalid or empty last_row_id in ajax request. last_row_id = \"%{last_row_id}\"."
-        share_gift_error: "Could not share post on your %{apiname} wall. %{error}"
      table_header_row:
         giver_column_heading_html: "From:"
         receiver_column_heading_html: "To:"

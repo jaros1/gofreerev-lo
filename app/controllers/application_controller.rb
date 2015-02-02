@@ -412,13 +412,6 @@ class ApplicationController < ActionController::Base
   end
   helper_method 'valid_omniauth_provider?'
 
-  # that is social networks with a share link functionality
-  private
-  def valid_share_provider?(provider)
-    SHARE_GIFT_API_NAME.has_key?(provider)
-  end
-  helper_method 'valid_share_provider?'
-
   # provider name used in text (error messages, mouse over titles etc) - normal lowercase
   private
   def provider_downcase (provider)

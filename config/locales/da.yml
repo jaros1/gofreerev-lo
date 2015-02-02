@@ -363,7 +363,6 @@ da:
         unfollow_gift: "Følg ikke længere"
         hide_gift: "Skjul opslag"
         confirm_hide_gift: "Skjul opslag?"
-        share_gift: "Del opslag"
         delete_gift: "Slet opslag"
         confirm_delete_gift_1: "Slet opslag? Bemærk at %{user_name} og din saldo vil blive ændret med %{price} %{currency}, hvis dette opslag slettes" # currency, price and user_name. user_name is short user name for other user in closed deal
         confirm_delete_gift_2: "Slet opslag?"
@@ -523,7 +522,6 @@ da:
         comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
         http_invalid_last_row_id: "Systemfejl. last_row_id skal være tom ved første http kald. last_row_id = %{last_row_id}."
         ajax_invalid_last_row_id: "Systemfejl. Ugyldigt eller blank last_row_id i ajax kald. last_row_id = %{last_row_id}."
-        share_gift_error: "Kunne ikke dele opslag din %{apiname} væg. %{error}"
      table_header_row:
         giver_column_heading_html: "Fra:"
         receiver_column_heading_html: "Til:"

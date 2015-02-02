@@ -185,34 +185,6 @@ API_CAMELIZE_NAME = {:facebook => 'Facebook',
                      :twitter => 'Twitter',
                      :vkontakte => 'VKontakte'}.with_indifferent_access
 
-# List of social networking with share link functionality. Not identical with omniauth providers, but hash is defined
-# there are some overlap between providers with omniauth and providers with share link functionality
-# share gift links are inserted under js.share_gift.* in /config/locales files
-# comment/uncomment to add/remove API from share gift LOV
-# list of web sites with share link functionality:
-# - http://en.wikipedia.org/wiki/List_of_social_bookmarking_websites
-# - http://sharethis.com/publishers/services-directory#sthash.GggjPVYk.dpbs
-SHARE_GIFT_API_NAME = {:appnet => 'App.net',
-                       :arto => 'Arto',
-                       :blogger => 'Blogger',
-                       :buffer => 'Buffer',
-                       :delicious => 'Delicious',
-                       :digg => 'Digg',
-                       :facebook => API_CAMELIZE_NAME[:facebook],
-                       :google_oauth2 => API_CAMELIZE_NAME[:google_oauth2],
-                       # :kaboodle => 'Kaboodle', # not tested
-                       :linkedin => API_CAMELIZE_NAME[:linkedin],
-                       # :livejournal => 'LiveJournal', # not tested
-                       :myspace => 'MySpace',
-                       :odnoklassniki => 'ok.ru',
-                       :pinterest => 'Pinterest',
-                       :reddit => 'Reddit',
-                       :sonico => 'Sonico',
-                       :stumbleupon => 'Stumble',
-                       :tumblr => 'Tumblr',
-                       :twitter => API_CAMELIZE_NAME[:twitter],
-                       :vkontakte => 'VK'}.with_indifferent_access
-
 # L) API profile pictures: :api or :local. Default is :api <=> Profile pictures are not downloaded from provider
 API_PROFILE_PICTURE_STORE = {}.with_indifferent_access
 

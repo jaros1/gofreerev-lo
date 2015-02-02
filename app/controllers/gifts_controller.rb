@@ -3,7 +3,6 @@ class GiftsController < ApplicationController
 
   before_filter :clear_state_cookie_store, :if => lambda {|c| !xhr?}
   before_filter :login_required, :except => [:create, :index, :show]
-  before_filter :check_share_gift_error, :only => [:index, :show]
 
   def new
   end
@@ -437,25 +436,5 @@ class GiftsController < ApplicationController
       format.js {}
     end
   end # show
-
-  # check for any share gift error message from API
-  # normally share gift is done in a new tab (target=_blank) that is closed after share dialog is completed
-  # exceptions:
-  # - facebook does not close windows after share dialog
-  private
-  def check_share_gift_error
-    # check for any share gift error message (facebook)
-    if !xhr? and params[:share_gift].to_s != ''
-      # todo: 1) redirect back to current page (index or show) to strip error_code and error_message from url?
-      case params[:share_gift]
-        when 'facebook'
-          if params[:error_message].to_s != ''
-            add_error_key 'gifts.index.share_gift_error', :apiname => provider_downcase('facebook'), :error => params[:error_message]
-          end
-        else
-          logger.warn "Unexpected share gift signatur: params = #{params}"
-      end # case
-    end # if
-  end # check_share_gift_error
 
 end # GiftsController

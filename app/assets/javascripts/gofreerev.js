@@ -193,179 +193,6 @@ var Gofreerev = (function() {
         leaving_page = true;
     } // window.onbeforeunload
 
-    // prevent double comment submit
-    function comment_submit_disable (giftid) {
-        add2log('comment_submit_disable: disabling submit for gift id. ' + giftid) ;
-        var submit_id, submit ;
-        for (var i=1 ; i<= 2 ; i++) {
-            submit_id = "gift-" + giftid + "-comment-new-submit-" + i ;
-            submit = document.getElementById(submit_id) ;
-            if (submit) submit.disabled = true ;
-        }
-    } // comment_submit_disable
-    function is_comment_submit_disabled (giftid) {
-        add2log('is_comment_submit_disabled: checking if submit is disabled') ;
-        var submit_id, submit ;
-        for (var i=1 ; i<= 2 ; i++) {
-            submit_id = "gift-" + giftid + "-comment-new-submit-" + i ;
-            submit = document.getElementById(submit_id) ;
-            if (submit && submit.disabled) return true ;
-        }
-        return false ;
-    } // is_comment_submit_disabled
-    function comment_submit_enable (giftid) {
-        add2log('comment_submit_enable: enabling submit for gift id. ' + giftid) ;
-        var submit_id, submit ;
-        for (var i=1 ; i<= 2 ; i++) {
-            submit_id = "gift-" + giftid + "-comment-new-submit-" + i ;
-            submit = document.getElementById(submit_id) ;
-            if (submit) submit.disabled = false ;
-        }
-    } // comment_submit_enable
-
-    // Client side validations
-    // https://github.com/bcardarella/client_side_validations gem was not ready for rails 4 when this app was developed
-    function csv_is_field_empty (id)
-    {
-        var value = document.getElementById(id).value ;
-        if (!value) return true ;
-        if ($.trim(value) == '') return true ;
-        return false ;
-    } // csv_is_field_empty
-
-    // Check price - allow decimal comma/point, max 2 decimals. Thousands separators not allowed
-    // used for price in gift and comment
-    // should be identical to ruby function invalid_price? in application controller
-    function csv_is_price_invalid (id)
-    {
-        var pgm = 'csv_is_price_invalid: ' ;
-        if (csv_is_field_empty(id)) return false ; // empty field - ok
-        var price = document.getElementById(id).value ;
-        // add2log(pgm + 'id = ' + id + ', price = ' + price) ;
-        price = $.trim(price);
-        var r = /^[0-9]*((\.|,)[0-9]{0,2})?$/ ;
-        // add2log('price = ' + price + ', r = ' + r + ', r.test(price) = ' + r.test(price)) ;
-        if (!r.test(price) || (price == '.') || (price == ',')) return true ;
-        return false ;
-    } // csv_is_price_invalid
-
-    // Client side validation for new gift + "submit" data for processing if data is ok
-    // note that form data is preprocessed by javascript and ajax. Not with a html post.
-    function csv_gift() {
-        // ie fix. check if submit bottom has been disabled
-        var submit_buttons = document.getElementsByName('commit_gift') ;
-        add2log('submit_buttons.length = ' + submit_buttons.length) ;
-        for (var i=0 ; i< submit_buttons.length ; i++) {
-            add2log('csv_gift: submit_buttons[' + i + '].disabled = ' + submit_buttons[i].disabled) ;
-            if (submit_buttons[i].disabled) {
-                // ie8 fix - submit new gift must be in progress - ignore
-                add2log('csv_gift: ie8 fix - submit new gift must be in progress - ignore click') ;
-                return ;
-            }
-        }
-
-        // check required description
-        if (csv_is_field_empty('gift_description')) {
-            alert(I18n.t('js.gifts.description_required_text'));
-            return ;
-        }
-        // check optional price. Allow decimal comma/point, max 2 decimals. Thousands separators not allowed
-        if (csv_is_price_invalid('gift_price')) {
-            alert(I18n.t('js.gifts.price_invalid_text'));
-            return ;
-        }
-        // gift is ok.
-
-        // prevent double "submit"
-        var submit_buttons = document.getElementsByName('commit_gift') ;
-        for (var i=0 ; i< submit_buttons.length ; i++) submit_buttons[i].disabled = true ;
-
-        // new gift data are ready for processing
-
-        // clear any old (error) messages in page header
-        clear_flash_and_ajax_errors() ;
-
-        // disable client only fields before submit - send direction and image to server
-        //var disable_enable_ids = ["gift_description", "gift_price", "gift_open_graph_url1", "gift_open_graph_url2"];
-        //var element;
-        //for (var i = 0; i < disable_enable_ids.length; i++) {
-        //    element = document.getElementById(disable_enable_ids[i]);
-        //    if (element) element.disabled = true;
-        //}
-
-        // check for image fil.
-        // no image   - datatype = js   - use normal rails JS remote submit
-        // image file - datatype = json - ignore rails JS remote submit and se json post from File Upload plugin
-        var gift_datatype = document.getElementById('gift_datatype') ;
-        var gift_file_button = document.getElementById('gift_file_button') ;
-        if (gift_file_button) {
-            // File Upload plugin (https://blueimp.github.io/jQuery-File-Upload/)
-            // ignore rails js post and use json post from File Upload plugin
-            gift_datatype.value = 'json' ;
-            // todo: check safari 5 workaround. See show_more_rows
-            gift_file_button.click() ;
-            return ;
-        }
-        else gift_datatype.value = 'js' ; // normal rails js post
-
-        // progressbar removed. pictures are uploaded asyn and device maybe temporary offline
-
-        //if (!Modernizr.meter) return ; // process bar not supported
-        //var progressbar_div = document.getElementById('progressbar-div');
-        //if (!progressbar_div) return ; // no progressbar found in page
-        //
-        //progressbar_div.style.display = 'block';
-        //// start upload process bar
-        //// http://www.hongkiat.com/blog/html5-progress-bar/
-        //var progressbar = $('#progressbar'),
-        //    max = progressbar.attr('max'),
-        //    time = (1000 / max) * 5,
-        //    value = 0;
-        //
-        //var loading = function () {
-        //    value += 3;
-        //    addValue = progressbar.val(value);
-        //
-        //    $('.progress-value').html(value + '%');
-        //
-        //    if (value >= max) {
-        //        clearInterval(animate);
-        //        progressbar_div.style.display = 'none';
-        //    }
-        //};
-        //
-        //var animate = setInterval(function () {
-        //    loading();
-        //}, time);
-
-    } // csv_gift
-
-    // Client side validation for new comment
-    function csv_comment(giftid)
-    {
-        // ie fix. check if submit bottom has been disabled
-        if (is_comment_submit_disabled(giftid)) return false ;
-        // check required comment
-        if (csv_is_field_empty("gift-" + giftid + "-comment-new-textarea")) {
-            alert(I18n.t('js.gifts.comment_comment_required_text'));
-            return false;
-        }
-        // check optional price. Allow decimal comma/point, max 2 decimals. Thousands separators not allowed
-        if (csv_is_price_invalid('gift-' + giftid + '-comment-new-price')) {
-            alert(I18n.t('js.gifts.comment_price_invalid_text'));
-            return false;
-        }
-        // comment is ok - add post ajax handler and submit
-        var table_id = 'gift-' + giftid + '-comment-new-errors' ;
-        var table = document.getElementById(table_id) ;
-        if (table) clear_ajax_errors(table_id) ;
-        clear_flash_and_ajax_errors() ;
-        post_ajax_add_new_comment_handler(giftid) ;
-        // comment_submit_disable(giftid);
-        return true ;
-    } // csv_comment
-
-
 
     // check for new messages once every 15, 60 or 300 seconds
     // once every 15 seconds for active users - once every 5 minutes for inactive users
@@ -470,18 +297,6 @@ var Gofreerev = (function() {
                 add_to_tasks_errors(I18n.t('js.new_messages_count.js_error', {error: err, location: 4, debug: 2})) ;
                 return ;
             }
-            try { insert_new_comments() }
-            catch (err) {
-                add2log(pgm + 'insert_new_comments failed: ' + err) ;
-                add_to_tasks_errors(I18n.t('js.new_messages_count.js_error', {error: err, location: 4, debug: 3})) ;
-                return ;
-            }
-            try { insert_update_gifts() }
-            catch (err) {
-                add2log(pgm + 'insert_update_gifts failed: ' + err) ;
-                add_to_tasks_errors(I18n.t('js.new_messages_count.js_error', {error: err, location: 4, debug: 4})) ;
-                return ;
-            }
             try { show_more_rows_scroll() }
             catch (err) {
                 add2log(pgm + 'show_more_rows_scroll failed: ' + err) ;
@@ -539,343 +354,6 @@ var Gofreerev = (function() {
             var new_title = '(' + no_new_messages + ') Gofreerev';
         document.title = new_title;
     } // update_title
-
-    function insert_new_comments() {
-        var pgm = 'insert_new_comments: ' ;
-        var debug = 0 ;
-        try {
-            var new_comments_tbody, new_comments_trs, new_comment_tr, new_comment_id, new_comment_id_split, new_comment_gift_id, new_comment_comment_id;
-            var old_comments_tbody_id, old_comments1_tbody, old_comments1_trs, old_comments1_tr, old_comments1_tr_id;
-            var i, j, old_comments2_trs, old_comments2_tr, re1, re2, old_length, old_comments2_length, old_comments2_tr_id;
-            var old_comments2_comment_id, inserted, old_comments2_tr_id_split, new_comments_length;
-            var summary ; // for debug info.
-            var gifts, old_comments2_add_new_comment_tr ;
-            add2log(pgm + 'start') ;
-            debug = 10 ;
-            gifts = document.getElementById("gifts") ;
-            if (!gifts) {
-                // no gifts table - not gifts/index page
-                add2log(pgm + 'no gifts table - not gifts/index page') ;
-                return ;
-            }
-            new_comments_tbody = document.getElementById("new_comments_tbody");
-            if (!new_comments_tbody) {
-                // add2log(pgm + 'new_comments_tbody was not found');
-                // ok - no new comments in new_messages_count response
-                return; // ignore error silently
-            }
-            new_comments_trs = new_comments_tbody.rows;
-            new_comments_length = new_comments_trs.length ;
-            if (new_comments_length == 0) {
-                // no new comments
-                add2log(pgm + 'no new comments') ;
-                return;
-            }
-            // old_comments1_tbody = old_comments1_trs[0].parentNode ;
-            old_comments1_tbody = document.getElementById("gifts_tbody");
-            if (!old_comments1_tbody) {
-                // missing tbody or tbody without correct id gifts_tbody
-                add2log(pgm + 'gifts_tbody was not foound') ;
-                return
-            }
-            // find old gift rows (gift header, gift links, comments, gift footers)
-            old_comments1_trs = old_comments1_tbody.rows ;
-            if (old_comments1_trs.length == 0) {
-                // no old gifts
-                add2log(pgm + 'no old gifts') ;
-                return
-            }
-
-            // insert new comments in gifts/index page. Loop for each new comment.
-            summary = 'Summary. ' +  new_comments_length + ' messages received' ;
-            re1 = new RegExp("^gift-[0-9]+-comment-[0-9]+$") ;
-            debug = 20 ;
-            for (i=new_comments_length-1; i >= 0 ; i--) {
-                // find gift id and comment id. id format format: gift-218-comment-174
-                debug = 30 ;
-                new_comment_tr = new_comments_trs[i];
-                new_comment_id = new_comment_tr.id;
-                if (!new_comment_id || !new_comment_id.match(re1)) {
-                    add2log(pgm + 'invalid id format ' + new_comment_id) ;
-                    continue ;
-                }
-                new_comment_id_split = new_comment_id.split("-");
-                new_comment_gift_id = new_comment_id_split[1];
-                new_comment_comment_id = parseInt(new_comment_id_split[3]);
-                summary = summary + '. ' + i + ', id = ' + new_comment_id ;
-                summary = summary + '. ' + i + ', split[3] = ' + new_comment_id_split[3] ;
-                add2log(pgm + 'i = ' + i + ', gift id = ' + new_comment_gift_id + ', comment id = ' + new_comment_comment_id);
-                debug = 40 ;
-                // find any old comments with format gift-218-comment-174
-                re2 = new RegExp("^gift-" + new_comment_gift_id + "-comment-[0-9]+$") ;
-                old_comments2_trs = [];
-                old_comments2_add_new_comment_tr = null ;
-                old_length = old_comments1_trs.length;
-                for (j = 0; j < old_length; j++) {
-                    old_comments1_tr = old_comments1_trs[j];
-                    old_comments1_tr_id = old_comments1_tr.id;
-                    if (old_comments1_tr_id.match(re2)) old_comments2_trs.push(old_comments1_tr);
-                    if (old_comments1_tr_id == "gift-" + new_comment_gift_id + "-comment-new") {
-                        // add2log(pgm + 'Found gift-1625-comment-new') ;  // issue 149 debug
-                        old_comments2_add_new_comment_tr = old_comments1_tr ;
-                    }
-                } // end old comments loop
-                debug = 50 ;
-                if (!old_comments2_add_new_comment_tr) {
-                    // gift was not found - that is ok
-                    add2log(pgm + 'Gift ' + new_comment_gift_id + ' was not found') ;
-                    continue ;
-                }
-                debug = 51 ;
-                old_comments2_length = old_comments2_trs.length;
-                debug = 52 ;
-                // add2log(pgm + 'old length = ' + old_length + ', new length = ' + new_length);
-                if (old_comments2_length == 0) {
-                    // insert first comment for gift before add new comment row
-                    add2log(pgm + 'insert first comment for gift before add new comment row') ;
-                    debug = 53 ;
-                    new_comments_tbody.removeChild(new_comment_tr) ;
-                    // todo: opera 12 error ==>
-                    //   Javascript fejl ved indsættelse af nye kommentarer.
-                    //   NotFoundError: Failed to execute 'insertBefore' on 'Node':
-                    //   The node before which the new node is to be inserted is not a child of this node. (5,54).
-                    debug = 54 ;
-                    add2log(pgm + 'old_comments1_tbody = ' + old_comments1_tbody) ;
-                    debug = 55 ;
-                    add2log(pgm + 'new_comment_tr = ' + new_comment_tr) ;
-                    debug = 56 ;
-                    add2log(pgm + 'old_comments2_add_new_comment_tr = ' + old_comments2_add_new_comment_tr) ;
-                    debug = 57 ;
-                    // Firefox 30.0 error when ajax insert first comment for a gift
-                    // insert_new_comments: old_comments1_tbody              = [object HTMLTableSectionElement]
-                    // insert_new_comments: new_comment_tr                   = [object HTMLTableRowElement]
-                    // insert_new_comments: old_comments2_add_new_comment_tr = [object HTMLTableRowElement]
-                    // insert_new_comments: failed with JS error [Exception... "Node was not found" code: "8" nsresult: "0x80530008 (NotFoundError)" location: ""], debug = 57
-                    // #new_messages_count_link::ajax:success: insert_new_comments failed: [Exception... "Node was not found" code: "8" nsresult: "0x80530008 (NotFoundError)" location: ""]
-                    // Javascript error when inserting new comments. [Exception... "Node was not found" code: "8" nsresult: "0x80530008 (NotFoundError)" location: ""] (5,57).
-                    old_comments1_tbody.insertBefore(new_comment_tr, old_comments2_add_new_comment_tr);
-                    // todo: opera 12 error <==
-                    debug = 58 ;
-                    ajax_flash(new_comment_tr.id) ;
-                    debug = 59 ;
-                    add2log(pgm + 'First comment ' + new_comment_comment_id + ' for gift ' + new_comment_gift_id);
-                    continue;
-                }
-                debug = 60 ;
-                // insert new comment in old comment table (sorted by ascending comment id)
-                inserted = false;
-                for (j = old_comments2_length-1; ((!inserted) && (j >= 0)); j--) {
-                    // find comment id for current row
-                    debug = 70 ;
-                    old_comments2_tr = old_comments2_trs[j];
-                    old_comments2_tr_id = old_comments2_tr.id;
-                    old_comments2_tr_id_split = old_comments2_tr_id.split('-') ;
-                    old_comments2_comment_id = parseInt(old_comments2_tr_id_split[3]);
-                    add2log('j = ' + j + ', new comment id = ' + new_comment_comment_id + ', old comment id = ' + old_comments2_comment_id);
-                    debug = 80 ;
-                    if (parseInt(new_comment_comment_id) > parseInt(old_comments2_comment_id)) {
-                        // insert after current row
-                        new_comments_tbody.removeChild(new_comment_tr) ;
-                        old_comments2_tr.parentNode.insertBefore(new_comment_tr, old_comments2_tr.nextSibling);
-                        ajax_flash(new_comment_tr.id) ;
-                        inserted = true ;
-                        summary = summary + '. ' + i + ': comment ' + new_comment_comment_id + ' inserted (b) for gift id ' + new_comment_gift_id  ;
-                        continue;
-                    }
-                    debug = 90 ;
-                    if (new_comment_comment_id == old_comments2_comment_id) {
-                        // new comment already in old comments table
-                        // replace old comment with new comment
-                        // add2log('comment ' + new_comment_comment_id + ' is already in page');
-                        old_comments2_tr.id = "" ;
-                        new_comments_tbody.removeChild(new_comment_tr) ;
-                        old_comments2_tr.parentNode.insertBefore(new_comment_tr, old_comments2_tr.nextSibling);
-                        ajax_flash(new_comment_tr.id) ;
-                        old_comments2_tr.parentNode.removeChild(old_comments2_tr) ;
-                        inserted = true;
-                        summary = summary + '. ' + i + ': comment ' + new_comment_comment_id + ' inserted (c) for gift id ' + new_comment_gift_id  ;
-                        continue;
-                    }
-                    // insert before current row - continue loop
-                } // end old comments loop
-                debug = 100 ;
-                if (!inserted) {
-                    // insert before first old comment
-                    // add2log('insert new comment ' + new_comment_id + ' first in old comments table');
-                    old_comments2_tr = old_comments2_trs[0];
-                    add2log('old_comments2_tr = ' + old_comments2_tr) ;
-                    new_comments_tbody.removeChild(new_comment_tr) ;
-                    old_comments2_tr.parentNode.insertBefore(new_comment_tr, old_comments2_tr);
-                    ajax_flash(new_comment_tr.id) ;
-                    summary = summary + '. ' + i + ': comment ' + new_comment_comment_id + ' inserted (d) for gift id ' + new_comment_gift_id  ;
-                } // if
-            } // end new comments loop
-            add2log(summary) ;
-            // unbind and bind ajax for comment action links
-            setup_comment_action_link_ajax() ;
-        }
-        catch (err) {
-            add2log(pgm + 'failed with JS error ' + err + ', debug = ' + debug);
-            add_to_tasks_errors(I18n.t('js.insert_new_comments.js_error', {error: err, location: 5, debug: debug})) ;
-            throw err;
-        }
-    } // insert_new_comments
-
-    // tasks_sleep: missing: no tasks - number: sleep (milliseconds) before executing tasks - for example post status on api walls
-    function insert_update_gifts (tasks_sleep)
-    {
-        var pgm = 'insert_update_gifts: ' ;
-        var debug ;
-        try {
-            debug = 10 ;
-            add2log(pgm + 'start') ;
-            // process ajax response received from new_messages_count ajax request
-            // response has been inserted in new_messages_buffer_div in page header
-            // also used after util/accept_new_deal to ajax replace gift
-
-            // check/update newest_gift_id (id for latest created gift)
-            debug = 20 ;
-            var new_newest_gift_id = document.getElementById("new-newest-gift-id") ; // from new_messages_buffer_div
-            if (!new_newest_gift_id) {
-                // ok - not gifts/index page or no new/updated/deleted gifts
-                add2log(pgm + 'new-newest-gift-id was not found') ;
-                return ;
-            }
-            if  (new_newest_gift_id.value != "") {
-                // util/new_message_count returned new newest giftid
-                var newest_gift_id = document.getElementById("newest-gift-id") ;
-                if (!newest_gift_id) {
-                    // error - hidden field was not found i gifts/index page - ignore error silently
-                    add2log(pgm + 'newest-gift-id as not found') ;
-                    return
-                }
-                newest_gift_id.value = new_newest_gift_id.value ;
-            }
-
-            // check/update newest_status_update_at (stamp for latest updated or deleted gift )
-            debug = 30 ;
-            var new_newest_status_update_at = document.getElementById("new-newest-status-update-at") ; // from new_messages_buffer_div
-            if (!new_newest_status_update_at) {
-                // ok - not gifts/index page or no new/updated/deleted gifts
-                add2log(pgm + 'new-newest-status-update-at was not found') ;
-                return ;
-            }
-            if  (new_newest_status_update_at.value != "") {
-                // util/new_message_count returned new newest status_update_at
-                var newest_status_update_at = document.getElementById("newest-status-update-at") ;
-                if (!newest_status_update_at) {
-                    // error - hidden field was not found i gifts/index page - ignore error silently
-                    add2log(pgm + 'newest-status-update-at was not found') ;
-                    return
-                }
-                newest_status_update_at.value = new_newest_status_update_at.value ;
-            }
-
-            // check if new_messages_count response has a table with new gifts (new_messages_buffer_div in page header)
-            debug = 40 ;
-            var new_gifts_tbody = document.getElementById("new_gifts_tbody") ;
-            if (!new_gifts_tbody) {
-                // ok - not gifts/index page or no new gifts to error tbody with new gifts was not found
-                add2log(pgm + 'new_gifts_tbody was not found') ;
-                return ;
-            }
-            // find gift ids received in new_gifts_tbody table. Any existing old rows with these gift ids must be removed before inserting new rows
-            var new_gifts_trs = new_gifts_tbody.rows ;
-            var new_gifts_tr ;
-            var new_gifts_id ;
-            var new_gifts_gift_id ;
-            var new_gifts_ids = [] ;
-            var re = new RegExp('^gift-[0-9]+-') ;
-            debug = 50 ;
-            for (var i=0 ; i<new_gifts_trs.length ; i++) {
-                debug = 51 ;
-                new_gifts_id = new_gifts_trs[i].id ;
-                debug = 52 ;
-                if (new_gifts_id && new_gifts_id.match(re)) {
-                    debug = 53 ;
-                    new_gifts_gift_id = new_gifts_id.split('-')[1] ;
-                    debug = 54 ;
-                    if (new_gifts_ids.indexOf(new_gifts_gift_id) == -1) {
-                        debug = 55 ;
-                        new_gifts_ids.push(new_gifts_gift_id) ;
-                    }
-                } // if
-            } // for
-            // alert('new_gifts_trs.length = ' + new_gifts_trs.length + ', new_gifts_ids = ' + new_gifts_ids.join(',')) ;
-            // old page: find first gift row in gifts table. id format gift-220-header.
-            // new gifts from ajax response are to be inserted before this row
-            debug = 60 ;
-            var old_gifts_table = document.getElementById("gifts_tbody") ;
-            if (!old_gifts_table) {
-                add2log(pgm + 'gifts_tbody was not found') ;
-                return ;
-            } // not gifts/index or gifts/show pages - ok
-            var old_gifts_trs = old_gifts_table.rows ;
-            var old_gifts_tr ;
-            var old_gifts_id ;
-            var old_gifts_gift_id ;
-            debug = 70 ;
-            if (new_gifts_ids.length > 0) {
-                // remove any old gift rows found in new_gifts_ids array
-                // will be replaced by new gift rows from new_messages_buffer_div
-                for (i=old_gifts_trs.length-1 ; i>= 0 ; i--) {
-                    old_gifts_tr = old_gifts_trs[i] ;
-                    old_gifts_id = old_gifts_tr.id ;
-                    if (old_gifts_id && old_gifts_id.match(re)) {
-                        old_gifts_gift_id = old_gifts_id.split('-')[1] ;
-                        if (new_gifts_ids.indexOf(old_gifts_gift_id) != -1) {
-                            // remove old row with gift id. old_gifts_gift_id from gifts table
-                            old_gifts_tr.parentNode.removeChild(old_gifts_tr) ;
-                        } // if
-                    } // if
-                } // for
-            } // if
-            debug = 80 ;
-            add2log(pgm + old_gifts_trs.length + ' gifts lines in old page') ;
-            var old_gifts_index = -1 ;
-            for (var i=0 ; ((old_gifts_index == -1) && (i<old_gifts_trs.length)) ; i++) {
-                if (old_gifts_trs[i].id.match(re)) old_gifts_index = i ;
-            } // for
-            // add2log(pgm + 'old_gifts_index = ' + old_gifts_index) ;
-            // check for first row to be inserted in gifts table - for example for a new gofreerev user
-            debug = 90 ;
-            if ((old_gifts_index == -1) && (old_gifts_trs.length >= 1) && (old_gifts_trs.length <= 2)) old_gifts_index = old_gifts_trs.length-1 ;
-            // add2log(pgm + 'old_gifts_index = ' + old_gifts_index) ;
-            if (old_gifts_index == -1) {
-                // error - id with format gift-<999>-1 was not found - ignore error silently
-                add2log(pgm + 'error - id with format gift-<999>- was not found') ;
-                return ;
-            }
-            var first_old_gift_tr = old_gifts_trs[old_gifts_index] ;
-            var old_gifts_tbody = first_old_gift_tr.parentNode ;
-            // new gifts from ajax response are to be inserted before first_old_gift_tr
-            debug = 100 ;
-            for (i=new_gifts_trs.length-1 ; i>= 0 ; i--) {
-                new_gifts_tr = new_gifts_trs[i] ;
-                if (new_gifts_tr.id.match(re)) {
-                    // insert before "first_old_gift_tr" and move "first_old_gift_tr" to new inserted row
-                    new_gifts_tr.parentNode.removeChild(new_gifts_tr) ;
-                    old_gifts_tbody.insertBefore(new_gifts_tr, first_old_gift_tr) ;
-                    first_old_gift_tr = new_gifts_tr ;
-                    ajax_flash(first_old_gift_tr.id) ;
-                } // if
-            } // for
-            // that's it
-
-            debug = 110 ;
-            add2log(pgm + 'ajax_tasks_sleep = ' + tasks_sleep) ;
-            if (!tasks_sleep) return ;
-            // execute some more tasks - for example post status on api wall(s)
-            debug = 120 ;
-            // todo: angularJS tasks_form dropped. util/do_tasks is now called from angularJS NavCtrl
-            // trigger_do_tasks(tasks_sleep);
-        }
-        catch (err) {
-            add2log(pgm + 'failed with JS exception ' + err + ', debug = ' + debug) ;
-            add_to_tasks_errors(I18n.t('js.insert_update_gifts.js_error', {error: err, location: 6, debug: debug})) ;
-            // throw err ;
-        }
-    } //  insert_update_gifts
 
     // catch load errors  for api pictures. Gift could have been deleted. url could have been changed
     // gift ids with invalid picture urls are collected in a global javascript array and submitted to server in 2 seconds
@@ -1010,27 +488,6 @@ var Gofreerev = (function() {
         text.select();
         resize();
     }
-
-
-
-    // show/hide price and currency in new comment table call
-    function check_uncheck_new_deal_checkbox(checkbox, giftid)
-    {
-        var tr = document.getElementById("gift-" + giftid + "-comment-new-price-tr") ;
-        var new_deal_yn = document.getElementById("gift-" + giftid + "-comment-new-deal-yn") ;
-        var price = document.getElementById("gift-" + giftid + "-comment-new-price") ;
-        if (checkbox.checked) {
-            tr.style.display='block' ;
-            new_deal_yn.value = 'Y' ;
-        }
-        else {
-            tr.style.display = 'none' ;
-            new_deal_yn.value = '' ;
-            price.value = '' ;
-        }
-        // alert(checkbox);
-    } // check_uncheck_new_deal_checkbox
-
 
 
     // http://stackoverflow.com/questions/10944396/how-to-calculate-ms-since-midnight-in-javascript
@@ -1351,7 +808,7 @@ var Gofreerev = (function() {
         var table = document.getElementById(table_id);
         if (!table) {
             // create missing table
-            if (!create_new_com_errors_table(table_id) && !create_com_link_errors_table(table_id)) {
+            if (!create_com_link_errors_table(table_id)) {
                 // write to error table in page header
                 add_to_tasks_errors(msg + ' (inject not implemented for error message with id ' + table_id + ').');
                 return;
@@ -1361,208 +818,6 @@ var Gofreerev = (function() {
         // add to error table inside page
         add_to_tasks_errors2(table_id, msg);
     } // add_to_tasks_errors3
-
-    function create_new_com_errors_table(table_id) {
-        // table_id = gift-890-comment-new-errors
-        var pgm = 'create_new_com_errors_table: ' ;
-        var re1 = new RegExp('^gift-[0-9]+-comment-new-errors$') ;
-        if (!table_id.match(re1)) return false ; // not a new comment error
-        giftid = table_id.split('-')[1] ;
-        add2log(pgm + 'giftid = ' + giftid) ;
-        ref_id = 'gift-' + giftid + '-comment-new-price-tr' ;
-        add2log(pgm + 'ref_id = ' + ref_id) ;
-        ref = document.getElementById(ref_id) ;
-        if (!ref) {
-            add2log(pgm + ref_id + ' was not found. ') ;
-            return false ;
-        }
-        // find table with gift-<giftid>-comment-new-price-tr row
-        var tbody = ref.parentNode ;
-        var rows = tbody.rows ;
-        add2log(pgm + rows.length + ' rows in table') ;
-        if (rows.length != 3) {
-            add2log(pgm + 'Expected 3 rows in table with ' + ref_id + '. Found ' + rows.length + ' rows.') ;
-            return false ;
-        }
-        // add new table row with table for ajax error messages
-        var row = tbody.insertRow(rows.length) ;
-        var cell = row.insertCell(0) ;
-        cell.setAttribute("colspan",2);
-        cell.innerHTML = '<table><tbody id="' + table_id + '" class="ajax_errors"></tbody></table>' ;
-        add2log(pgm + table_id + ' has been created') ;
-        return true ;
-    } // create_new_com_errors_table
-
-    // post ajax processing after adding a comment.
-    // comments/create.js.rb inserts new comment as last row i gifts table body
-    // move new comment from last row to row before new comment row
-    // clear comment text area and reset frequency for new message check
-    function post_ajax_add_new_comment_handler(giftid) {
-        var id = '#gift-' + giftid + '-new-comment-form';
-        // var gifts2 = document.getElementById('gifts') ;
-        // add2log(id + '. old gifts.rows = ' + gifts2.rows.length) ;
-        $(id).unbind("ajax:send");
-        $(id).bind("ajax:send", function() {
-            var pgm = id + '.ajax.send: ' ;
-            add2log(pgm + 'start. giftid = ' + giftid) ;
-            comment_submit_disable(giftid) ;
-        }); // complete
-        $(id).unbind("ajax:success");
-        $(id).bind("ajax:success", function (evt, data, status, xhr) {
-            var pgm = id + '.ajax.success: ' ;
-            var debug = 0 ;
-            try {
-                // dump xhr
-                // for (var key in xhr) add2log(id + '. ajax.success. xhr[' + key + '] = ' + xhr[key]) ;
-                // fix for ie8/ie9 error. ajax response from comment/create was not executed
-                // content type in comment/create response is now text/plain
-                var checkbox, gifts, trs, re, i, new_comment_tr, id2, add_new_comment_tr, tbody;
-                // reset new comment row
-                var tempScrollTop = $(window).scrollTop();
-                add2log(pgm + 'scrollTop = ' + tempScrollTop) ;
-                // $(window).scrollTop(tempScrollTop);
-                debug = 1 ;
-                document.getElementById('gift-' + giftid + '-comment-new-price').value = '';
-                debug = 2 ;
-                var textarea_id = 'gift-' + giftid + '-comment-new-textarea' ;
-                var textarea = document.getElementById(textarea_id) ;
-                debug = 3 ;
-                var textarea_old_height = textarea.offsetHeight ;
-                add2log(pgm + 'textarea old height (1) = ' + textarea_old_height) ;
-                if (textarea_old_height > 150) textarea_old_height = 150 ;
-                debug = 4 ;
-                add2log(pgm + 'textarea old height (2) = ' + textarea_old_height) ;
-                var textarea_old_offset = $('#' + textarea_id).offset().top ;
-                add2log(pgm + 'textarea old offset = ' + textarea_old_offset) ;
-                debug = 5 ;
-                textarea.value = '';
-                debug = 6 ;
-                autoresize_text_field(textarea) ;
-                var textarea_new_height = textarea.offsetHeight ;
-                add2log(pgm + 'textarea new height = ' + textarea_new_height) ;
-                debug = 7 ;
-                document.getElementById('gift-' + giftid + '-comment-new-price-tr').style.display = 'none';
-                debug = 8 ;
-                checkbox = document.getElementById('gift-' + giftid + '-new-deal-check-box');
-                if (checkbox) checkbox.checked = false;
-                // find new comment table row last in gifts table
-                gifts = document.getElementById("gifts_tbody");
-                debug = 9 ;
-                trs = gifts.rows;
-                // add2log(id + '. ajax.success: new gifts.rows = ' + trs.length) ;
-                re = new RegExp("^gift-" + giftid + "-comment-[0-9]+$");
-                i = trs.length - 1;
-                debug = 10 ;
-                for (i = trs.length - 1; ((i >= 0) && !new_comment_tr); i--) {
-                    id2 = trs[i].id;
-                    if (id2 && id2.match(re)) new_comment_tr = trs[i];
-                } // for
-                debug = 11 ;
-                if (!new_comment_tr) {
-                    add2log(pgm + "new comment row with format " + re + " was not found. There could be more information in server log.");
-                    return;
-                }
-                add_new_comment_tr = document.getElementById("gift-" + giftid + "-comment-new");
-                if (!add_new_comment_tr) {
-                    add2log(pgm + "gift-" + giftid + "-comment-new was not found");
-                    return;
-                }
-                // move new table row up before add new comment table row
-                debug = 12 ;
-                new_comment_tr.parentNode.removeChild(new_comment_tr);
-                // IE8 fix. removeChild + insertBefore did not work in IE8 - todo: recheck this IE8 fix
-                var no_gifts = document.getElementById('gifts').rows.length ;
-                add_new_comment_tr.parentNode.insertBefore(new_comment_tr, add_new_comment_tr); // error: Node was not found
-                // move ok
-                debug = 13 ;
-                last_user_ajax_comment_at = new Date();
-                restart_check_new_messages();
-                debug = 14 ;
-                // check overflow for new comment - display show-more-text link for comment with long text
-                debug = 15 ;
-                // restore scroll - not working 100% correct - problems with big comments
-                var textarea_new_offset = $('#' + textarea_id).offset().top ;
-                add2log(pgm + 'textarea new offset = ' + textarea_new_offset) ;
-                tempScrollTop = tempScrollTop - textarea_old_offset + textarea_new_offset ; //  - textarea_old_height + textarea_new_height ;
-                tempScrollTop = tempScrollTop + textarea_old_height - textarea_old_height ;
-                if (tempScrollTop < 0) tempScrollTop = 0 ;
-                $(window).scrollTop(tempScrollTop);
-                // unbind and bind ajax for comment action links
-                debug = 16 ;
-                setup_comment_action_link_ajax() ;
-            }
-            catch (err) {
-                var msg = pgm + 'failed with JS error: ' + err;
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors(I18n.t('js.new_comment.js_error', {error: err, location: 12, debug: debug}));
-                return;
-            }
-
-        }); // ajax:success
-        $(id).unbind("ajax:error");
-        $(id).bind("ajax:error", function(jqxhr, textStatus, errorThrown){
-            var pgm = id + '.ajax.error: ' ;
-            try {
-                if (leaving_page) return ;
-                var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
-                var table_id = 'gift-' + giftid + '-comment-new-errors' ;
-                var table = document.getElementById(table_id) ;
-                if (!table && !create_new_com_errors_table(table_id)) {
-                    // inject ajax error message in page header
-                    add_to_tasks_errors(I18n.t('js.new_comment.ajax_error', {error: err, location: 13, debug: 1})) ;
-                }
-                else {
-                    // inject ajax error message in new comment error table in page
-                    add_to_tasks_errors2(table_id, I18n.t('js.new_comment.ajax_error', {error: err, location: 13, debug: 2})) ;
-                }
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors(I18n.t('js.new_comment.ajax_error2', {error: err, location: 13, debug: 3})) ;
-            }
-        }); // ajax:error
-
-        $(id).unbind("ajax:complete");
-        $(id).bind("ajax:complete", function() {
-            var pgm = id + '.ajax.complete: ' ;
-            add2log(pgm + 'start. giftid = ' + giftid) ;
-            comment_submit_enable(giftid) ;
-        }); // complete
-
-    } // post_ajax_add_new_comment_handler
-
-    function create_com_link_errors_table(table_id) {
-        // table_id = gift-891-comment-729-errors
-        var pgm = 'create_new_com_errors_table: ';
-        var re1 = new RegExp('^gift-[0-9]+-comment-[0-9]+-errors$');
-        if (!table_id.match(re1)) return false; // not a new comment error
-        giftid = table_id.split('-')[1];
-        commentid = table_id.split('-')[3];
-        add2log(pgm + 'gift id ' + giftid + ', comment id ' + commentid);
-        // find row with comment
-        var ref_id = 'gift-' + giftid + '-comment-' + commentid;
-        var ref = document.getElementById(ref_id);
-        if (!ref) {
-            add2log(pgm + 'Could not find comment row with id ' + ref_id);
-            return false;
-        }
-        var tbody = ref.parentNode;
-        add2log(pgm + 'tbody = ' + tbody);
-        ref = ref.nextSibling;
-        if (!ref) {
-            add2log(pgm + 'Could not find row after comment row with id ' + ref_id);
-            return false;
-        }
-        // create new row with error table
-        var row = document.createElement('tr');
-        var cell = row.insertCell(0);
-        cell.setAttribute("colspan", 4);
-        cell.innerHTML = '<table><tbody id="' + table_id + '" class="ajax_errors"></tbody></table>';
-        // insert new row
-        tbody.insertBefore(row, ref);
-        // new error table created
-        return true;
-    } // create_com_link_errors_table
 
     // translate comment action url (...) to name for related table for ajax error messages
     function comment_action_url_table_id (url) {
@@ -2448,9 +1703,6 @@ var Gofreerev = (function() {
         setup_ajax_expanding_page: setup_ajax_expanding_page,
         set_missing_api_picture_urls: set_missing_api_picture_urls,
         report_missing_api_picture_urls: report_missing_api_picture_urls,
-        // client side validations
-        csv_gift: csv_gift,
-        csv_comment: csv_comment,
         // local storage helpers
         getItem: getItem,
         setItem: setItem,
@@ -2479,6 +1731,8 @@ angular.module('gifts', ['ngRoute'])
             else if (userid == '') return '0' ;
             else return ('' + parseInt(userid)) ;
         };
+        // todo: add route to show gift - as gifts page with one gift and without create new gift
+        // todo: is there any reason for :userid in angularJS - will not be 100% correct if link to a gift is shared with an other gofreerev-lo user
         $routeProvider.when('/gifts/:userid?', {
             templateUrl: 'main/gifts',
             controller: 'GiftsCtrl as ctrl',
@@ -3601,12 +2855,13 @@ angular.module('gifts', ['ngRoute'])
         }
         // end AuthCtrl
     }])
-    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', 'UserService', 'GiftService', 'TextService',
-                     function ($location, $http, $document, $window, $sce, userService, giftService, textService) {
+    .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', '$timeout',  'UserService', 'GiftService', 'TextService',
+                     function ($location, $http, $document, $window, $sce, $timeout, userService, giftService, textService) {
         console.log('GiftsCtrl loaded') ;
         var self = this;
 
         self.texts = textService.texts ;
+        self.userService = userService ;
 
         var appname = Gofreerev.rails['APP_NAME'];
 
@@ -3703,7 +2958,7 @@ angular.module('gifts', ['ngRoute'])
         self.show_full_gift_link = function (gift, link) {
             var pgm = 'GiftsCtrl.show_full_gift_link: ' ;
             // find overflow div
-            var text_id = "gift-" + gift.gift_id + "-overflow-text" ;
+            var text_id = gift.gid + "-overflow-text" ;
             if (!vertical_overflow(text_id)) return false ; // error or no vertical overflow
             // vertical text overflow found - check for picture true/false
             var picture ;
@@ -3739,11 +2994,11 @@ angular.module('gifts', ['ngRoute'])
         } // show_full_comment_link
 
         // show full gift description. remove style maxHeight and overflow from div container
-        self.show_full_gift_click = function(gift_id) {
+        self.show_full_gift_click = function(gift) {
             // show full text for div with overflow
             var pgm = 'GiftsCtrl.show_full_text: ' ;
             // find overflow div
-            var text_id = "gift-" + gift_id + "-overflow-text" ;
+            var text_id = gift.gid + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
             if (!text) return ; // error - div with gift link and description was not found
             // remove max height ( and hide show-more-text link)
@@ -4021,6 +3276,9 @@ angular.module('gifts', ['ngRoute'])
                     return (currency != null) ;
                 }
             }
+            // todo: resize gift description
+            // Gofreerev.autoresize_text_field(this)
+            // add id to new gift description? or add this as parameter and call onfocus event for description
         }
         init_new_gift() ;
 
@@ -4143,6 +3401,11 @@ angular.module('gifts', ['ngRoute'])
             giftService.sync_gifts() ;
             self.gifts.unshift(gift) ;
             init_new_gift() ;
+            // resize new description textarea after current digest cycle has completed
+            $timeout(function () {
+                var text = $window.document.getElementById('new-gift-description') ;
+                if (text) Gofreerev.autoresize_text_field(text) ;
+            }, 0, false) ;
             // update gifts in local storage - now with created gift in first row
             giftService.save_gifts() ;
         }
@@ -4172,6 +3435,11 @@ angular.module('gifts', ['ngRoute'])
                 old_no_rows = old_no_rows + 1 ;
                 gift.show_no_comments = old_no_rows ;
             }
+            // reset size for new comment textarea after current digest cycle
+            $timeout(function () {
+                var text = $window.document.getElementById(gift.gid + '-new-comment') ;
+                if (text) Gofreerev.autoresize_text_field(text) ;
+            }, 0, false) ;
             giftService.save_gifts() ;
         } // create_new_comment
 

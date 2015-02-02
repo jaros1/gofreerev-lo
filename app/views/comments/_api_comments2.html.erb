@@ -3,7 +3,7 @@
    no_older_comments = first_comment ? first_comment.no_older_comments : 0
 -%>
 
-<tr id='<%= "gift-#{gift.id}-links" %>'>
+<tr>
   <td colspan="2"></td>
   <td colspan="2">
     <% unless ((api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '')) -%>

@@ -8,7 +8,7 @@
       <td></td>
     </tr>
 <% else -%>
-    <tr style="vertical-align: top" id="<%= "gift-#{gift.id}-header" %>">
+    <tr style="vertical-align: top">
       <td>
         <% if api_gift.giver -%>
             <%= @size = 'small'; render '/shared/user_div', :user_div => api_gift.giver %>
@@ -83,7 +83,7 @@
     <%= render :partial => 'comments/api_comments3',
                :locals => {:api_comments3 => gift.api_comments_with_filter(@users, nil), :gift => gift, :api_gift => api_gift} %>
 
-    <tr id='<%= "gift-#{gift.id}-comment-new" %>'>
+    <tr>
       <td colspan="2" style="text-align: right; vertical-align: top">
         <% if gift.show_new_deal_checkbox?(@users) -%>
             <div id="<%= "gift-#{gift.id}-comment-new-status" %>"
@@ -131,7 +131,7 @@
       </td>
     </tr>
 
-    <tr id="<%= "gift-#{gift.id}" %>-footer-1">
+    <tr>
       <td colspan="4">
         <hr/>
       </td>

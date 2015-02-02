@@ -25,12 +25,6 @@ GofreerevFb::Application.routes.draw do
 
   get 'util/new_messages_count'
   post 'util/missing_api_picture_urls'
-  post 'util/like_gift'
-  post 'util/unlike_gift'
-  post 'util/follow_gift'
-  post 'util/unfollow_gift'
-  post 'util/hide_gift'
-  post 'util/delete_gift'
   post 'util/cancel_new_deal'
   post 'util/accept_new_deal'
   post 'util/reject_new_deal'

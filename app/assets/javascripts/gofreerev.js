@@ -408,120 +408,6 @@ var Gofreerev = (function() {
         add_to_tasks_errors2(table_id, msg);
     } // add_to_tasks_errors3
 
-    // translate comment action url (...) to name for related table for ajax error messages
-    function comment_action_url_table_id (url) {
-        var pgm = 'comment_action_url_table_id: ' ;
-        add2log(pgm + 'url = ' + url) ;
-        var giftid, commentid ;
-        var re1a = new RegExp('/comments/[0-9]+\\?giftid=[0-9]+$') ; // format /comments/729?giftid=891
-        var re2a = new RegExp('/util/[a-z]+?_new_deal\\?comment_id=[0-9]+&giftid=[0-9]+$') ; // /util/cancel_new_deal?comment_id=736&giftid=891
-        var re_split = new RegExp('[\\?/=&]') ;
-        var action ;
-        if (url.match(re1a)) {
-            add2log(pgm + 'delete comment url') ;
-            action = 'delete_comment' ;
-            var url_a = url.split(re_split) ;
-            add2log(pgm + 'url_a.length = ' + url_a.length) ;
-            var url_lng = url_a.length ;
-            giftid = url_a[url_lng-1] ;
-            commentid = url_a[url_lng-3] ;
-        }
-        else if (url.match(re2a)) {
-            add2log(pgm + 'cancel/reject/accept comment url') ;
-            var url_a = url.split(re_split) ;
-            add2log(pgm + 'url_a.length = ' + url_a.length) ;
-            var url_lng = url_a.length ;
-            giftid = url_a[url_lng-1] ;
-            commentid = url_a[url_lng-3] ;
-            action = url_a[url_lng-5] ;
-        }
-        var table_id ;
-        if (giftid && commentid) {
-            add2log(pgm + 'giftid = ' + giftid + ', commentid = ' + commentid) ;
-            table_id = 'gift-' + giftid + '-comment-' + commentid + '-errors' ;
-        }
-        else {
-            add2log(pgm + 'giftid and commentid was not found in url') ;
-        }
-        return [table_id, action] ;
-    } // comment_action_url_table_id
-
-    // comment-action-link bind only works for existing rows in gifts table
-    // setup_comment_action_link_ajax is called at startup and after adding new comments to gifts/index page
-    // todo: use jquery on and delegated events: https://api.jquery.com/on/
-    function setup_comment_action_link_ajax ()
-    {
-        var id = ".comment-action-link" ;
-        $(id).unbind("click");
-        $(id).bind("click", function (xhr, settings) {
-            var pgm = id + '.click: ' ;
-            try {
-                // add2log(pgm + 'xhr = ' + xhr + ', settings = ' + settings) ;
-                var url = '' + xhr.target + '' ;
-                add2log(pgm + 'url = "' + url + '"') ;
-                // http://localhost/da/da/comments/729?giftid=891
-                // find giftid and commentid in url
-                var table_id_and_action = comment_action_url_table_id(url) ;
-                var table_id = table_id_and_action [0] ;
-                add2log(pgm + 'table_id = ' + table_id) ;
-                if (table_id && document.getElementById(table_id)) clear_ajax_errors(table_id) ;
-                clear_flash_and_ajax_errors();
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors(I18n.t('js.comment_actions.click_js_error', {error: err, location: 15, debug: 0}));
-            }
-        }) // click
-        $(id).unbind("ajax:error");
-        $(id).bind("ajax:error", function (jqxhr, textStatus, errorThrown) {
-            var pgm = id + '.ajax.error: ' ;
-            var debug = 0 ;
-            try {
-                if (leaving_page) return ;
-                var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown) ;
-                var error = err + '. check server log for more information.' ;
-                var url = '' + jqxhr.target + '' ;
-                add2log(pgm + 'url = "' + url + '"') ;
-                // url:
-                // - /comments/1038?giftid=1478 (delete)
-                // - /util/cancel_new_deal?comment_id=1038&giftid=1478
-                // - /util/reject_new_deal?comment_id=1038&giftid=1478
-                // - /util/accept_new_deal?comment_id=1038&giftid=1478
-                debug = 10 ;
-                var table_id_and_action = comment_action_url_table_id(url) ;
-                var table_id = table_id_and_action[0] ;
-                var action = table_id_and_action[1] ;
-                var valid_actions = ['delete_comment', 'cancel_new_deal', 'reject_new_deal', 'accept_new_deal'] ;
-                if (valid_actions.indexOf(action) == -1) key = 'js.comment_actions.ajax_error' ;
-                else key = 'js.comment_actions.' + action + '_ajax_error' ;
-                var table = document.getElementById(table_id) ;
-                debug = 20 ;
-                add2log(pgm + 'table_id = ' + table_id + ', action = ' + action) ;
-                if (!table && !create_com_link_errors_table(table_id)) {
-                    // could not find table id and table for ajax error messages could not be created
-                    debug = 30 ;
-                    add_to_tasks_errors(I18n.t(key, {error: err, url: url, location: 14, debug: 1}));
-                }
-                else {
-                    // could find table_id or table for ajax error messages has been created
-                    debug = 40 ;
-                    add_to_tasks_errors2(table_id, I18n.t(key, {error: err, url: url, location: 14, debug: 2})) ;
-                }
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err + ', debug = ' + debug);
-                add_to_tasks_errors(I18n.t('js.comment_actions.js_error', {error: err, location: 14, debug: debug}));
-            }
-        }) // ajax:error
-    }
-
-    // error callback for comment actions (cancel, accept, reject, delete - write to debug log + page header
-    // using click event instead of beforeSend or ajaxSend as rails confirm box seems to "disable" use of the 2 events
-    $(document).ready(function () {
-        setup_comment_action_link_ajax() ;
-    })
-
-
     // move ajax error messages from tasks_errors2 to more specific location in page
     // first column is error message. Second column is id for error table in page
     // tasks_errors table in page header will be used of more specific location can not be found
@@ -757,9 +643,7 @@ var Gofreerev = (function() {
     // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
 
     var storage_rules = {
-        comment_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
         did: {session: false, userid: true, compress: false, encrypt: false}, // new unique device id
-        gift_id: {session: false, userid: true, compress: false, encrypt: false}, // local sequence
         gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
         passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
@@ -1134,8 +1018,6 @@ var Gofreerev = (function() {
                 setItem('userid', userid) ;
                 setItem('password', password) ;
                 if (!getItem('sid')) setItem('sid', '' + new Date().getTime()) ;
-                // add new local storages keys to old accounts
-                if (!getItem('gift_id')) setItem('gift_id', 0) ;
                 return userid ;
             }
         }
@@ -1178,33 +1060,11 @@ var Gofreerev = (function() {
             setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
             setItem('did', did) ; // unique device id
             setItem('pubkey', pubkey) ; // public key
-            setItem('gift_id', '0') ; // gift_id sequence
-            setItem('comment_id', '0') ; // gift_id sequence
             return userid ;
         }
         // invalid password (create_new_account=false)
         return 0 ;
     } // client_login
-
-    function next_local_id (seq_name) {
-        var seq = parseInt(getItem(seq_name)) ;
-        seq = seq + 1 ;
-        setItem(seq_name, '' + seq) ;
-        return seq ;
-    } // next_local_id
-
-    // local sequences
-    function next_local_gift_id() {
-        var userid = getItem('userid') ;
-        if (!userid) return ; // not logged in
-        return next_local_id('gift_id') ;
-    }
-
-    function next_local_comment_id() {
-        var userid = getItem('userid') ;
-        if (!userid) return ; // not logged in
-        return next_local_id('comment_id') ;
-    }
 
     // local storage functions <==
 
@@ -1298,8 +1158,6 @@ var Gofreerev = (function() {
         // angular helpers
         set_fb_logged_in_account: set_fb_logged_in_account,
         get_new_uid: get_new_uid,
-        next_local_gift_id: next_local_gift_id,
-        next_local_comment_id: next_local_comment_id,
         client_login: client_login,
         client_sym_encrypt: encrypt,
         client_sym_decrypt: decrypt
@@ -1983,116 +1841,24 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         console.log('GiftService loaded') ;
 
+        // load gifts and comments from localStorage
         var gifts = [] ;
-
-        // test data - gifts
-        // todo 1: load gifts from local storage - maybe a service?
-        // todo 2: more than one api picture url if picture was uploaded to more than one login api
-        //         2a: rails server should not store gift texts and should not store relation between client gift and api pictures.
-        //             rails should upload picture and return api_gift_ids and api picture urls to client.
-        // todo 3: api_picture_url_on_error_at:
-        //       mark as false if picture was not found (img onload and img onerror)
-        //       owner: rails should check if api post has been deleted or if api picture url has changed and send result to client (remove picture or change url)
-        //       not owner: client should ask other client (owner) for new gift information (deleted post, deleted picture or changed url).
-        // todo 4: change giver_user_ids and receiver_user_ids to arrays (support for multpile logins)
-        // todo 5: add version to gift_id. version=0 (seq from local storage), version=1 (seq from server), version>1 (gift_id resequenzed by server)
-
-        var gifts_test_data = [
-            {
-                gift_id: 1731,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1417624621, // '3. dec 2014',
-                price: 0,
-                currency: 'DKK',
-                direction: 'giver',
-                // description: 'b',
-                // description: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-                description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
-                // description: 'b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b b ',
-                like: true,
-                show: true,
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1730,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1417624391, // 3. dec 2014
-                price: 0,
-                currency: 'DKK',
-                direction: 'giver',
-                description: 'b',
-                show: true,
-                comments: [],
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1729,
-                giver_user_ids: [],
-                receiver_user_ids: [998],
-                date: 1417624155, // 3. dec 2014
-                price: 0,
-                currency: 'DKK',
-                direction: 'receiver',
-                description: 'a',
-                show: true,
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1725,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1417253762, // 29. nov 2014
-                price: 0,
-                currency: 'DKK',
-                direction: 'giver',
-                // description: 'xxx',
-                description: 'xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx xxx ',
-                api_picture_url: '/images/temp/mc3vwsegbd.jpeg',
-                api_picture_url_on_error_at: false, // see todo:
-                show: true,
-                new_comment: {comment: ""}
-            },
-            {
-                gift_id: 1710,
-                giver_user_ids: [920],
-                receiver_user_ids: [],
-                date: 1415975141, // 14. nov 2014
-                price: 0,
-                currency: 'SEK',
-                direction: 'giver',
-                description: 'Gofreerev share link',
-                open_graph_url: 'http://www.dr.dk/Nyheder/Kultur/Boeger/2014/11/09/151443.htm',
-                open_graph_title: 'Ingen kan slå denne mand: Alle vil foreviges med Jussi',
-                open_graph_description: 'Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.',
-                open_graph_image: 'http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg',
-                show: true,
-                new_comment: {comment: ""}
-            }
-        ];
-        // add some comments to test data
-        for (var i=1 ; i<=20; i++) {
-            var temp_comment_id = Gofreerev.next_local_comment_id() ;
-            gifts_test_data[1].comments.push({comment_id: temp_comment_id, user_ids: [920], comment: "comment " + temp_comment_id, created_at: 1417624391}) ;
-        }
-        // add a new deal proposal to test data
-        gifts_test_data[1].comments[19].user_ids = [791] ;
-        gifts_test_data[1].comments[19].new_deal = true ;
-
-        // insert gift test data or read gifts from local storage
-        // Gofreerev.removeItem('gifts') ;
-        // if (!Gofreerev.getItem('gifts')) Gofreerev.setItem('gifts', JSON.stringify(gifts_test_data)) ;
         if (Gofreerev.getItem('gifts')) gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
         else Gofreerev.setItem('gifts', JSON.stringify([])) ;
-        // self.gifts = gifts_test_data ;
 
-        // add missing gid (unique gift id)
+        // add missing gid (unique gift id) - todo: remove
         for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) gifts[i].gid = Gofreerev.get_new_uid() ;
+        // add missing cod (unique comment id) - todo: remove
+        for (i=0 ; i<gifts.length ; i++) {
+            if (gifts[i].hasOwnProperty('comments')) {
+                var comments = gifts[i].comments ;
+                for (var j=0 ; j<comments.length ; j++) if (!comments[j].cid) comments[j].cid = Gofreerev.get_new_uid() ;
+            }
+        }
 
         var comments_debug_info = function (comments) {
             var text = 'length = ' + comments.length ;
-            for (var i=0 ; i<comments.length ; i++) text += ', ' + comments[i].comment + ' (' + comments[i].comment_id + ')' ;
+            for (var i=0 ; i<comments.length ; i++) text += ', ' + comments[i].comment + ' (' + comments[i].cid + ')' ;
             return text ;
         } // comments_debug_info
 
@@ -2107,15 +1873,15 @@ angular.module('gifts', ['ngRoute'])
             var comments_index ;
             var init_comments_index = function () {
                 comments_index = {} ;
-                for (var j=0 ; j<comments.length ; j++) comments_index[comments[j].comment_id] = j ;
+                for (var j=0 ; j<comments.length ; j++) comments_index[comments[j].cid] = j ;
             }
             init_comments_index() ;
-            var comment_id, comment_index ;
+            var cid, comment_index ;
             for (var i=0 ; i<new_comments.length ; i++) {
-                comment_id = new_comments[i].comment_id ;
-                if (comments_index.hasOwnProperty(comment_id)) {
+                cid = new_comments[i].cid ;
+                if (comments_index.hasOwnProperty(cid)) {
                     // update comment
-                    comment_index = comments_index[comment_id] ;
+                    comment_index = comments_index[cid] ;
                     if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids ;
                     if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price ;
                     if (comments[comment_index].comment != new_comments[i].comment) comments[comment_index].comment = new_comments[i].comment ;
@@ -2142,10 +1908,10 @@ angular.module('gifts', ['ngRoute'])
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             var new_gift ;
             for (var i=0 ; (!new_gift && (i<new_gifts.length)) ; i++) {
-                if (gift.gift_id == new_gifts[i].gift_id) new_gift = new_gifts[i] ;
+                if (gift.gid == new_gifts[i].gid) new_gift = new_gifts[i] ;
             }
             if (!new_gift) {
-                console.log(pgm + 'error. refresh failed. gift with gift id ' + gift.gift_id + ' was not found in localStorage') ;
+                console.log(pgm + 'error. refresh failed. gift with gid ' + gift.gid + ' was not found in localStorage') ;
                 return ;
             }
             if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
@@ -2172,13 +1938,13 @@ angular.module('gifts', ['ngRoute'])
         // fresh gift and comment before update (changed in an other browser tab)
         var refresh_gift_and_comment = function (gift, comment) {
             var pgm = 'GiftService.refresh_gift_and_comment: ' ;
-            var comment_id = comment.comment_id ;
+            var cid = comment.cid ;
             var old_comments_length = (gift.comments || []).length ;
             refresh_gift(gift) ;
             var comments = gift.comments || [] ;
             var new_comments_length = comments.length ;
             var index = -1 ;
-            for (var i=0 ; i<comments.length ; i++) if (comment_id == comments[i].comment_id) index = i ;
+            for (var i=0 ; i<comments.length ; i++) if (cid == comments[i].cid) index = i ;
             if (index == -1) {
                 // comment has been physically deleted - return empty comment {}
                 for (var key in comment) if (comment.hasOwnProperty(key)) delete comment[key] ;
@@ -2222,18 +1988,18 @@ angular.module('gifts', ['ngRoute'])
             var gifts_index = {} ;
             var init_gifts_index = function () {
                 gifts_index = {} ;
-                for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gift_id] = j ;
+                for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gid] = j ;
             }
             init_gifts_index() ;
             // insert and update gifts (keep sequence)
-            var gift_id ;
+            var gid ;
             var insert_point = new_gifts.length ;
             for (var i=new_gifts.length-1 ; i>=0 ; i--) {
-                gift_id = new_gifts[i].gift_id ;
-                if (gifts_index.hasOwnProperty(gift_id)) {
+                gid = new_gifts[i].gid ;
+                if (gifts_index.hasOwnProperty(gid)) {
                     // update gift
                     // match between gift id in localStorage and gift in js array gifts. insert new gift before this gift
-                    insert_point = gifts_index[gift_id] ;
+                    insert_point = gifts_index[gid] ;
                     // copy any changed values from new_gifts into gifts
                     if (gifts[insert_point].giver_user_ids != new_gifts[i].giver_user_ids) gifts[insert_point].giver_user_ids = new_gifts[i].giver_user_ids ;
                     if (gifts[insert_point].receiver_user_ids != new_gifts[i].receiver_user_ids) gifts[insert_point].receiver_user_ids = new_gifts[i].receiver_user_ids ;
@@ -2256,7 +2022,7 @@ angular.module('gifts', ['ngRoute'])
                 }
                 else {
                     // insert gift
-                    console.log(pgm + 'insert gift id ' + gift_id + ' from localStorage into js gifts array at index ' + insert_point) ;
+                    console.log(pgm + 'insert gid ' + gid + ' from localStorage into js gifts array at index ' + insert_point) ;
                     if (new_gifts[i].hasOwnProperty('gift.show_no_comments')) delete new_gifts[i]['gift.show_no_comments'] ;
                     new_gifts[i].new_comment = {comment: ""} ;
                     gifts.splice(insert_point, 0, new_gifts[i]);
@@ -2265,10 +2031,10 @@ angular.module('gifts', ['ngRoute'])
             }
             // remove deleted gifts
             var new_gifts_index = {} ;
-            for (i=0 ; i<new_gifts.length ; i++) new_gifts_index[new_gifts[i].gift_id] = i ;
+            for (i=0 ; i<new_gifts.length ; i++) new_gifts_index[new_gifts[i].gid] = i ;
             for (i=gifts.length-1 ; i>= 0 ; i--) {
-                gift_id = gifts[i].gift_id
-                if (!new_gifts_index.hasOwnProperty(gift_id)) gifts.splice(i, 1) ;
+                gid = gifts[i].gid
+                if (!new_gifts_index.hasOwnProperty(gid)) gifts.splice(i, 1) ;
             }
         } // sync_gifts
 
@@ -2478,11 +2244,10 @@ angular.module('gifts', ['ngRoute'])
             var show_gift = true ;
             if (gift.deleted_at) return false ;
             if (!gift.show) return false ;
-            // if (gift.gift_id == 12) console.log('GiftsCtrl.gift_filter: gift id = ' + gift.gift_id + ', show gift = ' + show_gift) ;
             // check friend status. giver or receiver must be login user or a friend of login user
             var friend ;
             friend = userService.get_userids_friend_status(gift.giver_user_ids) ;
-            // console.log('GiftsCtrl.gifts_filer: gift_id = ' + gift.gift_id + ', giver_user_ids = ' + JSON.stringify(gift.giver_user_ids) + ', receiver_user_ids = ' + JSON.stringify(gift.receiver_user_ids) + 'friend status = ' + friend) ;
+            // console.log('GiftsCtrl.gifts_filer: gid = ' + gift.gid + ', giver_user_ids = ' + JSON.stringify(gift.giver_user_ids) + ', receiver_user_ids = ' + JSON.stringify(gift.receiver_user_ids) + 'friend status = ' + friend) ;
             if (friend && (friend <= 2)) return true ;
             friend = userService.get_userids_friend_status(gift.receiver_user_ids) ;
             if (friend && (friend <= 2)) return true ;
@@ -2501,7 +2266,7 @@ angular.module('gifts', ['ngRoute'])
             var show ;
             if (comment.deleted_at) show = false ;
             else show = true ;
-            // console.log(pgm + 'comment id = ' + comment.comment_id + ', show = ' + show) ;
+            // console.log(pgm + 'cid = ' + comment.cid + ', show = ' + show) ;
             return show ;
         }
 
@@ -2578,7 +2343,7 @@ angular.module('gifts', ['ngRoute'])
             if (link == 1) show = picture ;
             else if (link == 2) show = !picture ;
             else show = false ;
-            // console.log(pgm + 'gift_id = ' + gift.gift_id + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
+            // console.log(pgm + 'gid = ' + gift.gid + ', link = ' + link + ', picture = ' + picture + ', show = ' + show) ;
             return show ;
         } // show_full_gift_link
 
@@ -2689,16 +2454,16 @@ angular.module('gifts', ['ngRoute'])
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
                 var giver = userService.find_giver(gift) ;
                 if (!giver) {
-                    Gofreerev.add2log(pgm + 'error: giver was not found for gift_id ' + gift.gift_id) ;
+                    Gofreerev.add2log(pgm + 'error: giver was not found for gid ' + gift.gid) ;
                     return ;
                 }
                 var receiver = userService.find_receiver(gift) ;
                 if (!receiver) {
-                    Gofreerev.add2log(pgm + 'error: receiver was not found for gift_id ' + gift.gift_id) ;
+                    Gofreerev.add2log(pgm + 'error: receiver was not found for gid ' + gift.gid) ;
                     return ;
                 }
                 if ((giver.friend != 1) && (receiver.friend != 1)) {
-                    Gofreerev.add2log(pgm + 'error: delete not allowed for gift_id ' + gift.gift_id) ;
+                    Gofreerev.add2log(pgm + 'error: delete not allowed for gid ' + gift.gid) ;
                     return ;
                 }
                 var keyno ;
@@ -2744,7 +2509,7 @@ angular.module('gifts', ['ngRoute'])
 
         self.show_delete_comment_link = function (gift, comment) {
             // from rails Comment.show_delete_comment_link?
-            var pgm = 'GiftsCtrl.show_delete_comment_link. gift id = ' + gift.gift_id + ', comment id = ' + comment.comment_id + '. ';
+            var pgm = 'GiftsCtrl.show_delete_comment_link. gid = ' + gift.gid + ', cid = ' + comment.cid + '. ';
             if (comment.accepted) return false ; // delete accepted proposal is not allow - delete gift is allowed
             if (comment.deleted_at) return false ; // comment has already been marked as deleted
             // console.log(pgm) ;
@@ -2775,7 +2540,7 @@ angular.module('gifts', ['ngRoute'])
         self.delete_comment = function (gift, comment) {
             var pgm = 'GiftsCtrl.delete_comment: ' ;
             giftService.refresh_gift_and_comment(gift, comment) ;
-            if (!comment.comment_id) {
+            if (!comment.cid) {
                 console.log(pgm + 'Comment removed in refresh_gift_and_comment') ;
                 return ;
             } // comment has been deleted
@@ -2785,7 +2550,7 @@ angular.module('gifts', ['ngRoute'])
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
                 giftService.save_gifts() ;
             }
-            // console.log(pgm + 'comment id = ' + comment.comment_id + ', deleted_at = ' + comment.deleted_at) ;
+            // console.log(pgm + 'cid = ' + comment.cid + ', deleted_at = ' + comment.deleted_at) ;
         }
 
         self.show_cancel_new_deal_link = function (gift,comment) {
@@ -2799,7 +2564,7 @@ angular.module('gifts', ['ngRoute'])
         }
         self.cancel_new_deal = function (gift,comment) {
             giftService.refresh_gift_and_comment(gift, comment) ;
-            if (!comment.comment_id) return ; // comment has been deleted
+            if (!comment.cid) return ; // comment has been deleted
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
             if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
             comment.new_deal = false ;
@@ -2825,7 +2590,7 @@ angular.module('gifts', ['ngRoute'])
         }
         self.accept_new_deal = function (gift,comment) {
             giftService.refresh_gift_and_comment(gift, comment) ;
-            if (!comment.comment_id) return ; // comment has been deleted
+            if (!comment.cid) return ; // comment has been deleted
             if (!self.show_accept_new_deal_link(gift,comment)) return false ; // accept link no longer active!
             if (!confirm(self.texts.comments.confirm_accept_new_deal)) return ; // operation cancelled
             // from utilController.
@@ -2841,7 +2606,7 @@ angular.module('gifts', ['ngRoute'])
         }
         self.reject_new_deal = function (gift,comment) {
             giftService.refresh_gift_and_comment(gift, comment) ;
-            if (!comment.comment_id) return ; // comment has been deleted
+            if (!comment.cid) return ; // comment has been deleted
             if (!self.show_reject_new_deal_link(gift,comment)) return false ; // reject link no longer active!
             if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
             // from utilController.reject_new_deal
@@ -2997,7 +2762,6 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'GiftsCtrl.create_new_gift: ' ;
             var gift = {
                 gid: Gofreerev.get_new_uid(),
-                gift_id: Gofreerev.next_local_gift_id(),
                 giver_user_ids: [],
                 receiver_user_ids: [],
                 date: unix_timestamp(),
@@ -3034,13 +2798,12 @@ angular.module('gifts', ['ngRoute'])
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
             var new_comment = {
                 cid: Gofreerev.get_new_uid(),
-                comment_id: Gofreerev.next_local_comment_id(),
                 user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
                 created_at: unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
-            console.log(pgm + 'cid = ' + new_comment.cid + ', comment_id = ' + new_comment.comment_id) ;
+            // console.log(pgm + 'cid = ' + new_comment.cid) ;
             // resize comment textarea after current digest cycle is finish
             resize_textarea(new_comment.comment) ;
             // console.log(pgm + 'created_at = ' + new_comment.created_at) ;
@@ -3230,8 +2993,7 @@ angular.module('gifts', ['ngRoute'])
     }])
     .filter('formatNewProposalTitle', ['UserService', function (userService) {
         return function (gift) {
-            var pgm = 'GiftsCtrl.formatNewProposalTitle: gift id = ' + gift.gift_id + '. ' ;
-            // if (gift.gift_id == 12) console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
+            var pgm = 'GiftsCtrl.formatNewProposalTitle: gid = ' + gift.gid + '. ' ;
             // see also GiftsCtrl.show_new_deal_checkbox
             if (gift.direction == 'both') {
                 // console.log(pgm + 'error. invalid direction') ;
@@ -3242,10 +3004,6 @@ angular.module('gifts', ['ngRoute'])
             var other_user_ids ;
             if (gift.direction == 'giver') other_user_ids = $(login_user_ids).not(gift.giver_user_ids) ;
             else other_user_ids = $(login_user_ids).not(gift.receiver_user_ids) ;
-            //if (gift.gift_id == 12) {
-            //    console.log(pgm + 'login_user_ids = ' + JSON.stringify(login_user_ids) + ', other_user_ids = ' + JSON.stringify(other_user_ids)) ;
-            //    console.log(pgm + 'other_user_ids.length = ' + other_user_ids.length) ;
-            //}
             if (other_user_ids.length == 0) {
                 // console.log(pgm + 'error. other_user_ids.length = 0') ;
                 return '' ;
@@ -3259,7 +3017,7 @@ angular.module('gifts', ['ngRoute'])
                 return '' ;
             }
             var title = I18n.t('js.new_comment.proposal_title', {username: other_user.short_user_name}) ;
-            // console.log(pgm + 'gift id = ' + gift.gift_id + ', title = ' + JSON.stringify(title)) ;
+            // console.log(pgm + 'gid = ' + gift.gid + ', title = ' + JSON.stringify(title)) ;
             return title ;
         }
         // end formatNewProposalTitle filter

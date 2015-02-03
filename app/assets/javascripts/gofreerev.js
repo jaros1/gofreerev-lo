@@ -2171,13 +2171,16 @@ angular.module('gifts', ['ngRoute'])
 
         // fresh gift and comment before update (changed in an other browser tab)
         var refresh_gift_and_comment = function (gift, comment) {
+            var pgm = 'GiftService.refresh_gift_and_comment: ' ;
             var comment_id = comment.comment_id ;
+            var old_comments_length = (gift.comments || []).length ;
             refresh_gift(gift) ;
             var comments = gift.comments || [] ;
-            var index ;
+            var new_comments_length = comments.length ;
+            var index = -1 ;
             for (var i=0 ; i<comments.length ; i++) if (comment_id == comments[i].comment_id) index = i ;
-            if (!index) {
-                // comment has been deleted - return empty comment {}
+            if (index == -1) {
+                // comment has been physically deleted - return empty comment {}
                 for (var key in comment) if (comment.hasOwnProperty(key)) delete comment[key] ;
                 return ;
             }
@@ -2763,8 +2766,11 @@ angular.module('gifts', ['ngRoute'])
 
         self.delete_comment = function (gift, comment) {
             var pgm = 'GiftsCtrl.delete_comment: ' ;
-            refresh_gift_and_comment(gift, comment) ;
-            if (!comment.comment_id) return ; // comment has been deleted
+            giftService.refresh_gift_and_comment(gift, comment) ;
+            if (!comment.comment_id) {
+                console.log(pgm + 'Comment removed in refresh_gift_and_comment') ;
+                return ;
+            } // comment has been deleted
             if (!self.show_delete_comment_link(gift,comment)) return ; // delete link no longer active
             if (confirm(self.texts.comments.confirm_delete_comment)) {
                 comment.deleted_at = unix_timestamp() ;
@@ -2784,7 +2790,7 @@ angular.module('gifts', ['ngRoute'])
             return true ;
         }
         self.cancel_new_deal = function (gift,comment) {
-            refresh_gift_and_comment(gift, comment) ;
+            giftService.refresh_gift_and_comment(gift, comment) ;
             if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
             if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
@@ -2810,7 +2816,7 @@ angular.module('gifts', ['ngRoute'])
             return (user.friend <= 2) ;
         }
         self.accept_new_deal = function (gift,comment) {
-            refresh_gift_and_comment(gift, comment) ;
+            giftService.refresh_gift_and_comment(gift, comment) ;
             if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_accept_new_deal_link(gift,comment)) return false ; // accept link no longer active!
             if (!confirm(self.texts.comments.confirm_accept_new_deal)) return ; // operation cancelled
@@ -2826,7 +2832,7 @@ angular.module('gifts', ['ngRoute'])
             return self.show_accept_new_deal_link(gift,comment) ;
         }
         self.reject_new_deal = function (gift,comment) {
-            refresh_gift_and_comment(gift, comment) ;
+            giftService.refresh_gift_and_comment(gift, comment) ;
             if (!comment.comment_id) return ; // comment has been deleted
             if (!self.show_reject_new_deal_link(gift,comment)) return false ; // reject link no longer active!
             if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
@@ -2910,7 +2916,7 @@ angular.module('gifts', ['ngRoute'])
                         // ok response from rails with preview info
                         // dirty File Upload plugin/angular integration ==>
                         // remove any preview from File Upload plugin
-                        var preview2 = $('#gift_preview2');
+                        var preview2 = $('#gift_preview');
                         if (preview2) preview2.empty();
                         var disp_gift_file = document.getElementById('disp_gift_file');
                         if (disp_gift_file) disp_gift_file.value = '';
@@ -2963,10 +2969,24 @@ angular.module('gifts', ['ngRoute'])
 
         var unix_timestamp = function() {
             return Math.round((new Date).getTime()/1000) ;
-        }
+        };
+
+        // resize input textarea after current digest cycle is finish
+        // todo: find a better way to trigger textarea resize event in angularJS
+        var resize_textarea = function (text) {
+            var textareas = $window.document.getElementsByTagName('textarea') ;
+            var textarea ;
+            for (var i=0 ; i<textareas.length ; i++) if (textareas[i].value == text) textarea = textareas[i] ;
+            if (textarea) {
+                $timeout(function () {
+                    Gofreerev.autoresize_text_field(textarea) ;
+                }, 0, false) ;
+            }
+        };
 
         // new_gift ng-submit
         self.create_new_gift = function () {
+            var pgm = 'GiftsCtrl.create_new_gift: ' ;
             var gift = {
                 gid: Gofreerev.get_new_uid(),
                 gift_id: Gofreerev.next_local_gift_id(),
@@ -2988,12 +3008,10 @@ angular.module('gifts', ['ngRoute'])
             else gift.receiver_user_ids = userService.get_login_userids() ;
             giftService.sync_gifts() ;
             self.gifts.unshift(gift) ;
+            // resize description textarea after current digest cycle is finish
+            resize_textarea(gift.description) ;
+            // reset new gift form
             init_new_gift() ;
-            // resize new description textarea after current digest cycle has completed
-            $timeout(function () {
-                var text = $window.document.getElementById('new-gift-description') ;
-                if (text) Gofreerev.autoresize_text_field(text) ;
-            }, 0, false) ;
             // update gifts in local storage - now with created gift in first row
             giftService.save_gifts() ;
         }
@@ -3013,6 +3031,8 @@ angular.module('gifts', ['ngRoute'])
                 created_at: unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
+            // resize comment textarea after current digest cycle is finish
+            resize_textarea(new_comment.comment) ;
             // console.log(pgm + 'created_at = ' + new_comment.created_at) ;
             gift.new_comment.comment = null ;
             gift.new_comment.new_deal = false ;

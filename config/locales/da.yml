@@ -1070,11 +1070,6 @@ da:
         comment_price_invalid_text: "Pris er ugyldig. Brug kun cifre, højst et decimal-komma/-punktum og højst 2 decimaler. Tusindtalsseparator er ikke tilladt."
      missing_api_picture_urls:
         ajax_error: "Fejl ved tjek af flyttede eller slettede billeder. %{error}. Mere information i server log."
-     new_gift:
-        open_graph_timeout: "Kan ikke vise preview for link. Server svarer desværre ikke i øjeblikket."
-        open_graph_error: "Kan ikke vise preview for link. Status kode %{status}. Mere information i klient og server log."
-        ajax_error: "Fejl ved oprettelse af nyt opslag. %{error}. Mere information i server log."
-        js_error: "Mindre javascript fejl efter oprettelse af opslag. %{error} (%{location},%{debug})."
      gift_actions:
         like_gift_ajax_error: "Kan ikke \"synes om\" opslag. %{error}. Mere information i server log."
         unlike_gift_ajax_error: "Kan ikke fjerne \"synes om\" opslag. %{error}. Mere information i server log."
@@ -1143,6 +1138,10 @@ da:
         link_prompt1: "Link:"
         link_prompt2: "eller link:"
         link_placeholder: "kopier/indsæt url" # todo: angularJS - moved to js.new_gift.placeholder
+        open_graph_timeout: "Kan ikke vise preview for link. Server svarer desværre ikke i øjeblikket."
+        open_graph_error: "Kan ikke vise preview for link. Status kode %{status}. Mere information i klient og server log."
+        ajax_error: "Fejl ved oprettelse af nyt opslag. %{error}. Mere information i server log."
+        js_error: "Mindre javascript fejl efter oprettelse af opslag. %{error} (%{location},%{debug})."
      gifts_header: # main/gifts page - from gifts.table_header
         giver: "Fra:"
         receiver: "Til:"

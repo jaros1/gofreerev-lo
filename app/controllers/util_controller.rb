@@ -416,7 +416,7 @@ class UtilController < ApplicationController
       end
 
       # use a discount version af new_messages_count to ajax replace accepted deal in gifts/index page for current user
-      # that is without @new_messages_count, @comments, only with this accepted gift and without new values for new-newest-gift-id andnew-newest-status-update-at
+      # that is without @new_messages_count, @comments, only with this accepted gift
       # only client insert_update_gifts JS function is called
       # next new_mesage_count request will ajax replace this gift once more, but that is a minor problem
       api_gift.reload

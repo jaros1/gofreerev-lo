@@ -1066,11 +1066,6 @@ en:
         comment_price_invalid_text: "Price is invalid. Only numbers, max 2 decimals, thousands separator not allowed."
      missing_api_picture_urls:
         ajax_error: "Error when checking moved or deleted images. %{error}. More information in server log."
-     new_gift:
-        open_graph_timeout: "Sorry. Cannot show link preview. Server is not responding at the moment." # js.new_gift.open_graph_timeout
-        open_graph_error: "Cannot show link preview. Status code %{status}. More information in client and server logs."
-        ajax_error: "Error when creating new post. %{error}. More information in server log."
-        js_error: "Minor javascript error after creating new post. %{error} (%{location},%{debug})."
      gift_actions:
         like_gift_ajax_error: "Cannot \"like\" post. %{error}. More information in server log."
         unlike_gift_ajax_error: "Cannot remove \"like\" post. %{error}. More information in server log."
@@ -1139,6 +1134,10 @@ en:
         link_prompt1: "Link:"
         link_prompt2: "or link:"
         link_placeholder: "copy/paste url" # todo: angularJS - moved to js.new_gift.placeholder
+        open_graph_timeout: "Sorry. Cannot show link preview. Server is not responding at the moment."
+        open_graph_error: "Cannot show link preview. Status code %{status}. More information in client and server logs."
+        ajax_error: "Error when creating new post. %{error}. More information in server log."
+        js_error: "Minor javascript error after creating new post. %{error} (%{location},%{debug})."
      gifts_header: # main/gifts page - from gifts.table_header.* - for angularJS
         giver: "From:"
         receiver: "To:"

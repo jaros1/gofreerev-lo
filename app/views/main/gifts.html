@@ -1,5 +1,3 @@
-<input id="newest-status-update-at" name="newest_status_update_at" type="hidden">
-
 <div>
     <div style="width: 100%">
         <hr>
@@ -26,7 +24,7 @@
     </div>
 
     <div style="width: 100%">
-        <table id="gifts" style="table-layout:fixed;">
+        <table style="table-layout:fixed;">
             <thead>
             <tr style="vertical-align: bottom;">
                 <th style="width: 52px; text-align: center">{{ctrl.texts.gifts.header.giver}}</th>
@@ -77,8 +75,7 @@
                                 </tr>
                                 <tr title="{{ctrl.texts.new_gift.description_title}}">
                                     <td style="vertical-align: top">{{ctrl.texts.new_gift.description_prompt}}</td>
-                                    <td><textarea ng-model="ctrl.new_gift.description" id="new-gift-description"
-                                                  cols="60" rows="2" required=""
+                                    <td><textarea ng-model="ctrl.new_gift.description" cols="60" rows="2" required=""
                                                   placeholder="{{ctrl.texts.new_gift.description_placeholder}}"
                                                   onfocus="Gofreerev.autoresize_text_field(this)"></textarea>
                                         <input type="submit" value="{{ctrl.texts.new_gift.submit_button_text}}"
@@ -114,8 +111,7 @@
                                                             </td>
                                                             <td>
                                                                 <input type="url" size="28" maxlength="200"
-                                                                       ng-model="ctrl.new_gift.open_graph_url"
-                                                                       id="gift_open_graph_url1"
+                                                                       ng-model="ctrl.new_gift.open_graph_url" id="gift_open_graph_url1"
                                                                        placeholder="{{ctrl.texts.new_gift.link_placeholder}}"
                                                                        ng-change="ctrl.new_gift_open_graph_url_change()">
                                                             </td>
@@ -142,7 +138,7 @@
                                 </tr>
                                 <tr>
                                     <td colspan="2">
-                                        <div id="gift_preview1">
+                                        <div>
                                             <table>
                                                 <tbody>
                                                 <tr ng-show="ctrl.new_gift.open_graph_image">
@@ -161,7 +157,7 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div id="gift_preview2" class="files"></div>
+                                        <div id="gift_preview" class="files"></div>
                                     </td>
                                 </tr>
                                 <tr class="new_gift_submit_small">
@@ -346,7 +342,7 @@
                          ng-click="ctrl.user_div_on_click(ctrl.login_user_ids())"/>
                 </td>
                 <td style="text-align: left; vertical-align: top">
-                    <form name="{{gift.gid}}-form" ng-submit="ctrl.create_new_comment(gift)">
+                    <form name="new_comment_form" ng-submit="ctrl.create_new_comment(gift)">
                         <table style="border-spacing: 0;">
                             <tr ng-show="gift.new_comment.new_deal">
                                 <td colspan="2">
@@ -357,22 +353,21 @@
                             </tr>
                             <tr>
                                 <td>
-                                    <textarea ng-model="gift.new_comment.comment" id="{{gift.gid}}-new-comment"
-                                              cols="60" rows="1" required=""
+                                    <textarea ng-model="gift.new_comment.comment" cols="60" rows="1" required=""
                                               placeholder="{{ctrl.texts.new_comment.comment_placeholder}}"
                                               onfocus="Gofreerev.autoresize_text_field(this)">
                                     </textarea>
                                 </td>
                                 <td>
                                     <input type="submit" value="{{ctrl.texts.new_comment.submit_button_text}}"
-                                           ng-disabled="{{gift.gid}}-form.$invalid"
+                                           ng-disabled="new_comment_form.$invalid"
                                            class="submit_comment_large">
                                 </td>
                             </tr>
                             <tr class="submit_comment_small">
                                 <td colspan="2">
                                     <input type="submit" value="{{ctrl.texts.new_comment.submit_button_text}}"
-                                           ng-disabled="{{gift.gid}}-form.$invalid">
+                                           ng-disabled="new_comment_form.$invalid">
                                 </td>
                             </tr>
                         </table>
@@ -464,8 +459,8 @@
                         data.files.splice(index, 1);
                     }
                     else {
-                        // filetype ok - keep only "last" file in gift_preview2
-                        $('#gift_preview2').empty();
+                        // filetype ok - keep only "last" file in gift_preview
+                        $('#gift_preview').empty();
 
                         // dirty File Upload plugin/angular integration ==>
                         // clear any old open graph url
@@ -488,7 +483,7 @@
                         // <== dirty File Upload plugin/angular integration
 
                         // preview file
-                        data.context = $('<div/>').appendTo('#gift_preview2');
+                        data.context = $('<div/>').appendTo('#gift_preview');
                         var node = $('<p/>');
                         //        .append($('<span/>').text(file.name));
                         if (disp_gift_file) disp_gift_file.value = file.name;

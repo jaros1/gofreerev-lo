@@ -181,7 +181,7 @@
             </tr>
             </tbody>
 
-            <tbody ng-repeat="gift in ctrl.gifts | filter:ctrl.gifts_filter track by gift.gid">
+            <tbody ng-repeat="gift in ctrl.giftService.gifts | filter:ctrl.gifts_filter track by gift.gid">
             <tr style="vertical-align: top">
                 <td>
                     <img ng-src="{{gift.giver_user_ids | formatUserImgSrc}}" ng-show='gift.giver_user_ids'

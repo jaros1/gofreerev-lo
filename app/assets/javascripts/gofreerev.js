@@ -1577,6 +1577,7 @@ angular.module('gifts', ['ngRoute'])
                 // console.log(pgm + 'debug 2') ;
                 Gofreerev.removeItem('password') ;
                 Gofreerev.removeItem('userid') ;
+                giftService.load_gifts() ;
             }
             else {
                 // log in provider log out
@@ -1841,10 +1842,18 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         console.log('GiftService loaded') ;
 
-        // load gifts and comments from localStorage
-        var gifts = [] ;
-        if (Gofreerev.getItem('gifts')) gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
-        else Gofreerev.setItem('gifts', JSON.stringify([])) ;
+        var gifts = [];
+
+        // load/reload gifts and comments from localStorage - used at startup and after login/logout
+        var load_gifts = function () {
+            var new_gifts = [] ;
+            if (Gofreerev.getItem('gifts')) new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+            else Gofreerev.setItem('gifts', JSON.stringify([])) ;
+            gifts.length = 0 ;
+            for (var i=0 ; i<new_gifts.length ; i++) gifts.push(new_gifts[i]) ;
+            console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
+        }
+        load_gifts() ;
 
         // add missing gid (unique gift id) - todo: remove
         for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) gifts[i].gid = Gofreerev.get_new_uid() ;
@@ -2040,6 +2049,7 @@ angular.module('gifts', ['ngRoute'])
 
         return {
             gifts: gifts,
+            load_gifts: load_gifts,
             refresh_gift: refresh_gift,
             refresh_gift_and_comment: refresh_gift_and_comment,
             save_gifts: save_gifts,
@@ -2195,6 +2205,7 @@ angular.module('gifts', ['ngRoute'])
                 self.confirm_device_password = '' ;
                 self.register = '' ;
                 // console.log('AuthCtrl.login_or_register: userid = ' + userid) ;
+                giftService.load_gifts() ;
                 // send old oauth to server for recheck and copy to session
                 // todo: userService should return a promise, and this promise should be used to inject any error messages into auth page
                 // console.log(pgm + 'calling send_oauth') ;
@@ -2219,6 +2230,7 @@ angular.module('gifts', ['ngRoute'])
 
         self.texts = textService.texts ;
         self.userService = userService ;
+        self.giftService = giftService ;
 
         var appname = Gofreerev.rails['APP_NAME'];
 
@@ -2237,8 +2249,6 @@ angular.module('gifts', ['ngRoute'])
             return userService.get_login_userids() ;
         }
 
-        self.gifts = giftService.gifts ;
-
         // gifts filter. hide deleted gift. hide hidden gifts. used in ng-repeat
         self.gifts_filter = function (gift, index) {
             var show_gift = true ;
@@ -2255,9 +2265,9 @@ angular.module('gifts', ['ngRoute'])
         }
 
         self.no_gifts = function() {
-            if (typeof self.gifts == 'undefined') return true  ;
-            if (typeof self.gifts.length == 'undefined') return true ;
-            return (self.gifts.length == 0) ;
+            if (typeof giftService.gifts == 'undefined') return true  ;
+            if (typeof giftService.gifts.length == 'undefined') return true ;
+            return (giftService.gifts.length == 0) ;
         }
 
         // comments filter. hide deleted comments. used in ng-repeat

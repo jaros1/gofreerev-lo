@@ -309,8 +309,7 @@
                     <table>
                         <tr>
                             <td>
-                                <div style="max-height: 150px; overflow: hidden" class="overflow"
-                                     id="comment-{{comment.commentid}}-overflow-text">
+                                <div style="max-height: 150px; overflow: hidden" class="overflow" id="{{comment.cid}}-overflow-text">
                                     {{comment | formatComment:2}}
                                 </div>
                             </td>
@@ -318,7 +317,7 @@
                         <tr>
                             <td style="text-align: center">
                                 <div ng-show="ctrl.show_full_comment_link(comment)" style="float: none">
-                                    <a href ng-click="ctrl.show_full_comment_click(comment.commentid)">{{ctrl.texts.comments.show_full_text}}</a>
+                                    <a href ng-click="ctrl.show_full_comment_click(comment)">{{ctrl.texts.comments.show_full_text}}</a>
                                 </div>
                             </td>
                         </tr>

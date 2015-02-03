@@ -2529,9 +2529,15 @@ angular.module('gifts', ['ngRoute'])
         var vertical_overflow = function (text_id) {
             var pgm = 'GiftsCtrl.vertical_overflow: ' ;
             var text = document.getElementById(text_id) ;
-            if (!text) return false ; // Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+            if (!text) {
+                Gofreerev.add2log(pgm + 'error. overflow div ' + text_id + ' was not found') ;
+                return false ;
+            }
             // check style
-            if (text.style.overflow == 'visible') return false ; // show_full_text has already been activated
+            if (text.style.overflow == 'visible') {
+                Gofreerev.add2log(pgm + 'show_full_text has already been activated for ' + text_id) ;
+                return false ;
+            }
             // check for vertical overflow
             var screen_width = ($document.width !== undefined) ? $document.width : $document.body.offsetWidth;
             var screen_width_factor = screen_width / 320.0 ;
@@ -2580,8 +2586,10 @@ angular.module('gifts', ['ngRoute'])
         self.show_full_comment_link = function (comment) {
             var pgm = 'commentsCtrl.show_full_comment_link: ' ;
             // find overflow div
-            var text_id = "comment-" + comment.comment_id + "-overflow-text" ;
-            return vertical_overflow(text_id) ;
+            var text_id = comment.cid + "-overflow-text" ;
+            var x = vertical_overflow(text_id) ;
+            if (comment.cid == '14229743962942303238') console.log(pgm + 'vertical_overflow("' + text_id + '") = ' + x) ; // todo: debug
+            return x ;
         } // show_full_comment_link
 
         // show full gift description. remove style maxHeight and overflow from div container
@@ -2598,18 +2606,18 @@ angular.module('gifts', ['ngRoute'])
         } // show_full_gift_click
 
         // show full comment description. remove style maxHeight and overflow from div container
-        self.show_full_comment_click = function(comment_id) {
+        self.show_full_comment_click = function(comment) {
             // show full text for div with overflow
             var pgm = 'commentsCtrl.show_full_comment_click: ' ;
+            console.log(pgm + 'cid = ' + comment.cid) ;
             // find overflow div
-            var text_id = "comment-" + comment_id + "-overflow-text" ;
+            var text_id = comment.cid + "-overflow-text" ;
             var text = document.getElementById(text_id) ;
             if (!text) return ; // error - div with comment link and description was not found
             // remove max height ( and hide show-more-text link)
             text.style.maxHeight = 'none' ;
             text.style.overflow = 'visible' ;
         } // show_full_comment_click
-        
 
         // show/hide table row with gift api_picture_url?
         // only show row if api_picture_url and not error marked
@@ -3025,12 +3033,14 @@ angular.module('gifts', ['ngRoute'])
             // $window.alert(pgm + 'gift = ' + JSON.stringify(gift) + ', new_comment = ' + JSON.stringify(gift.new_comment)) ;
             if (typeof gift.comments == 'undefined') gift.comments = [] ;
             var new_comment = {
+                cid: Gofreerev.get_new_uid(),
                 comment_id: Gofreerev.next_local_comment_id(),
                 user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
                 created_at: unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
+            console.log(pgm + 'cid = ' + new_comment.cid + ', comment_id = ' + new_comment.comment_id) ;
             // resize comment textarea after current digest cycle is finish
             resize_textarea(new_comment.comment) ;
             // console.log(pgm + 'created_at = ' + new_comment.created_at) ;

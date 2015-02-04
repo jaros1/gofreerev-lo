@@ -1761,6 +1761,11 @@ class UtilController < ApplicationController
 
     logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
+    # ping transactions
+    # 1) new gifts. create gift and return created_at_server timestamps to client
+    logger.debug2 "created_at_server = #{params[:created_at_server]} (#{params[:created_at_server].class})"
+    @json[:created_at_server] = Gift.create_gifts(params[:created_at_server], get_session_value(:user_ids)) if params[:created_at_server].to_s != ''
+
     # return interval and old_client_timestamp
     format_response
   end # ping

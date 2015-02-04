@@ -1,35 +1,6 @@
 # encoding: utf-8
 module GiftHelper
 
-  # show like/unlike link for gift under gift text and picture
-  # todo: moved to CiftsCtrl in angularJS
-  def link_to_gift_like_unlike (gift)
-    if gift.show_like_gift_link?(@users)
-      key, path = '.like_gift', util_like_gift_path(:gift_id => gift.id)
-    else
-      key, path = '.unlike_gift', util_unlike_gift_path(:gift_id => gift.id)
-    end
-    link_to t(key), path,
-            :id => "gift-#{gift.id}-like-unlike-link", :class => "gift-action-link",
-            :remote => true, :data => { :type => :script }, :format => :js,
-            :method => :post
-  end # link_to_gift_like_unlike
-
-  # show follow/do not follow link for gift under gift text and picture
-  # default is to follow gift as giver, receiver or commenter
-  # todo: moved to CiftsCtrl in angularJS
-  def link_to_gift_follow_unfollow (gift)
-    if gift.show_follow_gift_link?(@users)
-      key, path = '.follow_gift', util_follow_gift_path(:gift_id => gift.id)
-    else
-      key, path = '.unfollow_gift', util_unfollow_gift_path(:gift_id => gift.id)
-    end
-    link_to t(key), path,
-            :id => "gift-#{gift.id}-follow-unfollow-link", :class => "gift-action-link",
-            :remote => true, :data => { :type => :script }, :format => :js,
-            :method => :post
-  end # link_to_gift_follow_unfollow
-
   # todo: moved to CiftsCtrl in angularJS
   def link_to_gift_hide (gift)
     link_to t('.hide_gift'), util_hide_gift_path(:gift_id => gift.id),

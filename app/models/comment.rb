@@ -711,23 +711,8 @@ class Comment < ActiveRecord::Base
         users2_ids = users2.collect { |u| u.user_id }
         users_ids = (users1_ids + users2_ids).uniq
         logger.debug2  "2: users2 = " + users2_ids.join(', ') if debug_notifications
-        # 3) check followers - users that have selected to follow gift comments - users that have selected NOT to follow gift comments
-        users3 = []
-        logger.debug2  "3: adding/removing followers" if debug_notifications
-        GiftLike.where("gift_id = ? and follow is not null", gift.gift_id).each do |gl|
-          next if
-          if gl.follow == 'Y'
-            # user has selected to follow gift
-            users3 << gl.user if !from_userids.index(gl.user.user_id) and !users_ids.index(gl.user_id)
-          else
-            # user has deselected to follow gift
-            users1 = users1.delete_if { |u| u.user_id == gl.user_id }
-            users2 = users2.delete_if { |u| u.user_id == gl.user_id }
-          end
-        end # each
         #logger.debug2  "3: users1 = " + users1_ids.join(', ') if debug_notifications
         #logger.debug2  "3: users2 = " + users2_ids.join(', ') if debug_notifications
-        #logger.debug2  "3: users3 = " + users3_ids.join(', ') if debug_notifications
         # send notifications
         logger.debug2  "start1: send notification from #{User.debug_info(from_users)}" if debug_notifications
         logger.debug2  "start1: send notifications to gifts giver and receiver: #{User.debug_info(users1)}"  if debug_notifications
@@ -739,32 +724,6 @@ class Comment < ActiveRecord::Base
         users2.each { |to_user| send_notification(noti_key_1, noti_key_2, 2, from_users, to_user) }
         logger.debug2  "end2: send notifications to other users that also have commented the gift: #{User.debug_info(users2)}" if debug_notifications
 
-        logger.debug2  "start3: send notification from #{User.debug_info(from_users)}"
-        logger.debug2  "start3: send notifications to users that follows the gift: #{User.debug_info(users3)}" if debug_notifications
-        users3.each { |to_user| send_notification(noti_key_1, noti_key_2, 3, from_users, to_user) }
-        logger.debug2  "end3: send notifications to users that follows the gift: #{User.debug_info(users3)}" if debug_notifications
-
-        # new comment and new proposal - add user as follower of gift - user will receive notifications until user stops following the gift
-        if noti_key_1 <= 2
-          # check for new user_id's - ignore giver and receiver user_id's
-          (api_comments.collect { |ac| ac.user_id} - gift_giver_and_receivers).each do |user_id|
-            gl = GiftLike.where("user_id = ? and gift_id = ?", user_id, gift.gift_id).first
-            if gl
-              gl.follow = 'Y' unless gl.follow
-            else
-              gl = GiftLike.new
-              gl.user_id = user_id
-              gl.gift_id = gift.gift_id
-              gl.like = 'N'
-              gl.follow = 'Y'
-              gl.show = 'Y'
-            end
-            if gl.new_record? or gl.changed?
-              logger.debug2  "added #{user_id} as follower" if debug_notifications
-              gl.save!
-            end
-          end # each user_id
-        end # if
       when noti_key_1 == 3
         # cancelled proposal - send only notification to giver/receiver
         logger.debug2 "cancelled proposal - send only notification to giver/receiver"

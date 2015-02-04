@@ -4,7 +4,6 @@ class Gift < ActiveRecord::Base
   has_many :api_comments, :class_name => 'ApiComment', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
   # todo: :dependent => :destroy does not work for api_gifts. Has added a after_destroy callback to fix this problem
   has_many :api_gifts, :class_name => 'ApiGift', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
-  has_many :likes, :class_name => 'GiftLike', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
 
   before_create :before_create
   before_update :before_update
@@ -522,42 +521,6 @@ class Gift < ActiveRecord::Base
     !show_delete_gift_link?(users)
   end # show_hide_gift_link?
 
-  def show_like_gift_link? (users)
-    user_ids = users.collect { |u| u.user_id }
-    GiftLike.where('gift_id = ? and user_id in (?)', gift_id, user_ids).each do |gl|
-      return false if gl.like == 'Y'
-    end # each gl
-    true
-  end # show_like_gift_link?
-
-  def show_unlike_gift_link? (users)
-    !show_like_gift_link?(users)
-  end # show_unlike_link?
-
-  def show_follow_gift_link? (users)
-    userids = users.collect { |user| user.user_id }
-    if GiftLike.where('gift_id = ? and user_id in (?)', gift_id, userids).find_all { |gl| gl.follow == 'Y' }.first
-      # user has selected to follow this gift
-      false
-    elsif GiftLike.where('gift_id = ? and user_id in (?)', gift_id, userids).find_all { |gl| gl.follow == 'N' }.first
-      # user has selected not to follow this gift
-      true
-    elsif api_gifts.find { |api_gift| userids.index(api_gift.user_id_giver) or userids.index(api_gift.user_id_receiver)}
-      # user is giver or receiver of this gift
-      false
-    elsif api_comments.find { |comment| userids.index(comment.user_id )}
-      # user has commented this gift
-      false
-    else
-      # other users - do not follow
-      true
-    end
-  end # show_follow_gift_link?
-
-  def show_unfollow_gift_link? (users)
-    !show_follow_gift_link?(users)
-  end # show_unfollow_gift_link?
-
   def rel_path_picture_exists?
     return false unless app_picture_rel_path
     full_os_path = Picture.full_os_path :rel_path => app_picture_rel_path
@@ -731,6 +694,15 @@ class Gift < ActiveRecord::Base
     logger.fatal2 "ApiGift without Gift. gift id's #{giftids.join(', ')}"
     raise "ApiGift without Gift. gift id's #{giftids.join(', ')}" # email from exception notifier
     # Process.kill('INT', Process.pid) # stop rails server
+  end
+
+  # receive list with newly created gifts from client and return list with created_at_server timestamps to client
+  def self.create_gifts (created_at_server_request, login_user_ids)
+    logger.debug2 "created_at_server_request = #{created_at_server_request}"
+    logger.debug2 "user_ids = #{login_user_ids}"
+    login_users = User.where(:user_id => login_user_ids)
+    logger.debug2 "not implemented"
+    created_at_server_request
   end
 
 

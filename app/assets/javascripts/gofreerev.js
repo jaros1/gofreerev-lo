@@ -1783,18 +1783,27 @@ angular.module('gifts', ['ngRoute'])
                 // not logged in - wait
                 $timeout(function () { ping(ping_interval); }, ping_interval) ;
                 return ;
-            }
+            };
             var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
             // todo: new gifts. send gift meta-information to server (gid and userids) and get a ok receipt
-            // xxx
-            $http.get('/util/ping.json', {params: {client_userid: userid, sid: sid, client_timestamp: new_client_timestamp}}).then(
+            var new_gifts = [] ;
+            var params = {
+                client_userid: userid,
+                sid: sid,
+                client_timestamp: new_client_timestamp,
+                created_at_server: giftService.created_at_server_request()
+            };
+            // console.log(pgm + 'params: ' + JSON.stringify(params)) ;
+            $http.post('/util/ping.json', params).then(
                 function (ok) {
                     // schedule next ping. todo: now a rails constant. change to a calculation based on server load later
                     console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
                     console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                    // get timestamps for newly created gifts from server
+                    if (ok.data.created_at_server) giftService.created_at_server_response(ok.data.created_at_server) ;
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
                     console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
@@ -2059,7 +2068,29 @@ angular.module('gifts', ['ngRoute'])
                 gid = gifts[i].gid
                 if (!new_gifts_index.hasOwnProperty(gid)) gifts.splice(i, 1) ;
             }
-        } // sync_gifts
+        }; // sync_gifts
+
+        // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps. called from UserService.ping
+        var created_at_server_request = function () {
+            var request = [];
+            var gift, hash;
+            for (var i = 0; i < gifts.length; i++) {
+                gift = gifts[i];
+                if (!gift.created_at_server) {
+                    // console.log('GiftService.created_at_server_request: gift = ' + JSON.stringify(gift));
+                    hash = {gid: gift.gid} ;
+                    if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids ;
+                    if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids ;
+                    request.push(hash) ;
+                } // if
+            } // for i
+            return (request.length == 0 ? null : request) ;
+        }; // created_at_server_request
+        var created_at_server_response = function (response) {
+            var pgm = 'GiftService.created_at_server_response: ' ;
+            console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+            console.log(pgm + 'not implemented') ;
+        };
 
         return {
             gifts: gifts,
@@ -2067,7 +2098,9 @@ angular.module('gifts', ['ngRoute'])
             refresh_gift: refresh_gift,
             refresh_gift_and_comment: refresh_gift_and_comment,
             save_gifts: save_gifts,
-            sync_gifts: sync_gifts
+            sync_gifts: sync_gifts,
+            created_at_server_request: created_at_server_request,
+            created_at_server_response: created_at_server_response
         };
 
         // end GiftService

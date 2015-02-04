@@ -24,7 +24,6 @@ class User < ActiveRecord::Base
   has_many :sent_notifications, :class_name => 'Notification', :primary_key => :user_id, :foreign_key => :from_user_id, :dependent => :destroy
   has_many :received_notifications, :class_name => 'Notification', :primary_key => :user_id, :foreign_key => :to_user_id, :dependent => :destroy
   has_many :api_comments, :class_name => 'ApiComment', :primary_key => :user_id, :foreign_key => :user_id, :dependent => :destroy
-  has_many :gift_likes, :class_name => 'GiftLike', :primary_key => :user_id, :foreign_key => :user_id, :dependent => :destroy
   belongs_to :share_account, :class_name => 'ShareAccount', :primary_key => :share_account_id, :foreign_key => :share_account_id, :counter_cache => :no_users
 
   # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database
@@ -2196,23 +2195,6 @@ class User < ActiveRecord::Base
       # end - remove any multi provider gift doublets
     end
 
-    # remove any hidden gifts (show=N) from api gifts list
-    userids = login_users.collect { |u| u.user_id }
-    giftids = ags.collect { |ag| ag.gift_id }
-    hide_giftids = GiftLike.
-        where("user_id in (?) and gift_id in (?)", userids, giftids).
-        find_all { |gl| gl.show == 'N' }.
-        collect { |gl| gl.gift_id }.
-        uniq
-    if hide_giftids.size > 0
-      # remove hidden gifts
-      logger.debug2 "remove hidden gifts: #{hide_giftids.join(', ')}"
-      old_size = ags.size
-      ags = ags.find_all { |ag| !hide_giftids.index(ag.gift_id) }
-      new_size = ags.size
-      logger.debug2 "#{old_size-new_size} hidden gifts was removed. old size = #{old_size}, new_size = #{new_size}"
-    end
-
     return [ags, nil] if eod # no more rows from db
 
     while ags.size < limit and new_last_status_update_at do
@@ -2412,7 +2394,6 @@ class User < ActiveRecord::Base
         # should not happen as update operations are disabled for delete marked users
         1.upto(2) do
           AjaxComment.where('user_id = ?', user.user_id).delete_all
-          GiftLike.where('user_id = ?', user.user_id).delete_all
           Notification.where('to_user_id = ? or from_user_id = ?', user.user_id, user.user_id).each do |n|
             n.api_comments.delete # delete rows in comments_notifications table - not comments
             n.delete

@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150204155347) do
+ActiveRecord::Schema.define(version: 20150204171938) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -128,10 +128,6 @@ ActiveRecord::Schema.define(version: 20150204155347) do
     t.datetime "deleted_at"
     t.string   "direction",              limit: 10
     t.string   "created_by",             limit: 10
-    t.text     "balance_giver"
-    t.text     "balance_receiver"
-    t.text     "balance_doc_giver"
-    t.text     "balance_doc_receiver"
     t.text     "app_picture_rel_path"
     t.text     "open_graph_url"
     t.string   "open_graph_title"

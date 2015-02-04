@@ -13,8 +13,7 @@ class Gift < ActiveRecord::Base
   # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
   # this is different encrypt for each attribute and each db row
   # _before_type_cast methods are used by form helpers and are redefined
-  crypt_keeper :received_at, :balance_giver, :balance_receiver,
-               :balance_doc_giver, :balance_doc_receiver, :app_picture_rel_path, :encryptor => :aes, :key => ENCRYPT_KEYS[1]
+  crypt_keeper :received_at, :app_picture_rel_path, :encryptor => :aes, :key => ENCRYPT_KEYS[1]
 
 
   ##############
@@ -61,93 +60,9 @@ class Gift < ActiveRecord::Base
 
   # 8) new_price_at - date - not encrypted - almost always = today
 
-  # 15) balance giver - Float in Model. Encrypted text in db.
-  def balance_giver
-    return nil unless (extended_balance_giver = read_attribute(:balance_giver))
-    str_to_float_or_nil encrypt_remove_pre_and_postfix(extended_balance_giver, 'balance_giver', 25)
-  end # balance_giver
-  def balance_giver=(new_balance_giver)
-    if new_balance_giver.to_s != ''
-      check_type('balance_giver', new_balance_giver, 'Float')
-      write_attribute :balance_giver, encrypt_add_pre_and_postfix(new_balance_giver.to_s, 'balance_giver', 25)
-    else
-      write_attribute :balance_giver, nil
-    end
-  end # balance_giver=
-  alias_method :balance_giver_before_type_cast, :balance_giver
-  def balance_giver_was
-    return balance_giver unless balance_giver_changed?
-    return nil unless (extended_balance_giver = attribute_was(:balance_giver))
-    str_to_float_or_nil encrypt_remove_pre_and_postfix(extended_balance_giver, 'balance_giver', 25)
-  end # balance_giver_was
-
-  # 16) balance receiver - Float in model - encrypted text in db
-  def balance_receiver
-    return nil unless (extended_balance_receiver = read_attribute(:balance_receiver))
-    str_to_float_or_nil encrypt_remove_pre_and_postfix(extended_balance_receiver, 'balance_receiver', 26)
-  end
-  def balance_receiver=(new_balance_receiver)
-    if new_balance_receiver.to_s != ''
-      check_type('balance_receiver', new_balance_receiver, 'Float')
-      write_attribute :balance_receiver, encrypt_add_pre_and_postfix(new_balance_receiver.to_s, 'balance_receiver', 26)
-    else
-      write_attribute :balance_receiver, nil
-    end
-  end
-  alias_method :balance_receiver_before_type_cast, :balance_receiver
-  def balance_receiver_was
-    return balance_receiver unless balance_receiver_changed?
-    return nil unless (extended_balance_receiver = attribute_was(:balance_receiver))
-    str_to_float_or_nil encrypt_remove_pre_and_postfix(extended_balance_receiver, 'balance_receiver', 26)
-  end # balance_receiver_was
-
   # 21) deleted_at_api. String Y/N.
 
   # 22) status_change_at - integer - not encrypted - keep track of gifts changed after user has loaded gifts/index page
-
-  # 23) balance_doc_giver. documentation for balance_giver to be used in users/show page
-  # Hash in model, encrypted text in db
-  def balance_doc_giver
-    return nil unless (temp_extended_balance_doc_giver = read_attribute(:balance_doc_giver))
-    # logger.debug2  "temp_extended_balance_doc_giver = #{temp_extended_balance_doc_giver}"
-    YAML::load encrypt_remove_pre_and_postfix(temp_extended_balance_doc_giver, 'balance_doc_giver', 34)
-  end # balance_doc_giver
-  def balance_doc_giver=(new_balance_doc_giver)
-    if new_balance_doc_giver
-      check_type('balance_doc_giver', new_balance_doc_giver, 'Hash')
-      write_attribute :balance_doc_giver, encrypt_add_pre_and_postfix(new_balance_doc_giver.to_yaml, 'balance_doc_giver', 34)
-    else
-      write_attribute :balance_doc_giver, nil
-    end
-  end # balance_doc_giver=
-  alias_method :balance_doc_giver_before_type_cast, :balance_doc_giver
-  def balance_doc_giver_was
-    return balance_doc_giver unless balance_doc_giver_changed?
-    return nil unless (temp_extended_balance_doc_giver = attribute_was(:balance_doc_giver))
-    YAML::load encrypt_remove_pre_and_postfix(temp_extended_balance_doc_giver, 'balance_doc_giver', 34)
-  end # balance_doc_giver_was
-
-  # 24) balance_doc_receiver. documentation for balance_receiver to be used in users/show page
-  # Hash in model, encrypted text in db
-  def balance_doc_receiver
-    return nil unless (temp_extended_balance_doc_receiver = read_attribute(:balance_doc_receiver))
-    # logger.debug2  "temp_extended_balance_doc_receiver = #{temp_extended_balance_doc_receiver}"
-    YAML::load encrypt_remove_pre_and_postfix(temp_extended_balance_doc_receiver, 'balance_doc_receiver', 35)
-  end # balance_doc_receiver
-  def balance_doc_receiver=(new_balance_doc_receiver)
-    if new_balance_doc_receiver
-      check_type('balance_doc_receiver', new_balance_doc_receiver, 'Hash')
-      write_attribute :balance_doc_receiver, encrypt_add_pre_and_postfix(new_balance_doc_receiver.to_yaml, 'balance_doc_receiver', 35)
-    else
-      write_attribute :balance_doc_receiver, nil
-    end
-  end # balance_doc_receiver=
-  alias_method :balance_doc_receiver_before_type_cast, :balance_doc_receiver
-  def balance_doc_receiver_was
-    return balance_doc_receiver unless balance_doc_receiver_changed?
-    return nil unless (temp_extended_balance_doc_receiver = attribute_was(:balance_doc_receiver))
-    YAML::load encrypt_remove_pre_and_postfix(temp_extended_balance_doc_receiver, 'balance_doc_receiver', 35)
-  end # balance_doc_receiver_was
 
   # 26) created_at - timestamp - not encrypted
 
@@ -296,46 +211,6 @@ class Gift < ActiveRecord::Base
   #
   # helper methods
   #
-
-  # get/set balance for actual user. Used in user.recalculate_balance and in /gifts/index page
-  def balance (current_user, login_user)
-    return nil unless direction == 'both'
-    api_gift = api_gifts.find { |ag| [ag.user_id_giver, ag.user_id_receiver].index(current_user.user_id)}
-    return nil unless api_gift # error
-    return nil unless api_gift.user_id_receiver and api_gift.user_id_giver # error
-    balance_current_user = case current_user.user_id
-      when api_gift.user_id_giver then balance_giver
-      when api_gift.user_id_receiver then balance_receiver
-      else nil # error
-    end
-    return nil unless balance_current_user
-    balance_login_user = ExchangeRate.exchange(balance_current_user, 'USD', login_user.currency, received_at)
-    balance_login_user
-  end # balance
-  def balance_doc (current_user)
-    return nil unless direction == 'both'
-    api_gift = api_gifts.find { |ag| [ag.user_id_giver, ag.user_id_receiver].index(current_user.user_id)}
-    return nil unless api_gift
-    case current_user.user_id
-      when api_gift.user_id_giver then balance_doc_giver
-      when api_gift.user_id_receiver then balance_doc_receiver
-      else nil
-    end
-  end # balance_doc
-  def set_balance (user_ids, new_balance, new_balance_doc)
-    # logger.debug2  "Gift.set_balance: id = #{id}, user_id = #{user_id}, new_balance = #{new_balance}, user_id_giver = #{user_id_giver}, user_id_receiver = #{user_id_receiver}"
-    return new_balance unless received_at
-    api_gift = api_gifts.find { |ag| (user_ids.index(ag.user_id_giver) or user_ids.index(ag.user_id_receiver)) }
-    return new_balance unless api_gift
-    if user_ids.index(api_gift.user_id_giver)
-      self.balance_giver = new_balance
-      self.balance_doc_giver = new_balance_doc
-    else
-      self.balance_receiver = new_balance
-      self.balance_doc_receiver = new_balance_doc
-    end
-    new_balance
-  end # set_balance
 
 
   def visible_for? (users)

@@ -13,7 +13,7 @@ class Gift < ActiveRecord::Base
   # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
   # this is different encrypt for each attribute and each db row
   # _before_type_cast methods are used by form helpers and are redefined
-  crypt_keeper :description, :currency, :price, :received_at, :balance_giver, :balance_receiver,
+  crypt_keeper :currency, :price, :received_at, :balance_giver, :balance_receiver,
                :balance_doc_giver, :balance_doc_receiver, :app_picture_rel_path, :encryptor => :aes, :key => ENCRYPT_KEYS[1]
 
 
@@ -32,30 +32,6 @@ class Gift < ActiveRecord::Base
     return self['gid'] if self['gid']
     self['gid'] = new_gid
   end
-
-  # 2) description - required - String in model - encrypted text in db - update not allowed
-  validates_presence_of :description
-  attr_readonly :description
-  def description
-    # logger.debug2  "gift.description: description = #{read_attribute(:description)} (#{read_attribute(:description).class.name})"
-    return nil unless (extended_description = read_attribute(:description))
-    encrypt_remove_pre_and_postfix(extended_description, 'description', 2)
-  end
-  def description=(new_description)
-    # logger.debug2  "gift.description=: description = #{new_description} (#{new_description.class.name})"
-    if new_description
-      check_type('description', new_description, 'String')
-      write_attribute :description, encrypt_add_pre_and_postfix(new_description, 'description', 2)
-    else
-      write_attribute :description, nil
-    end
-  end
-  alias_method :description_before_type_cast, :description
-  def description_was
-    return description unless description_changed?
-    return nil unless (extended_description = attribute_was(:description))
-    encrypt_remove_pre_and_postfix(extended_description, 'description', 2)
-  end # description_was
 
   # 3) currency - required - String in model - encrypted text in db - update not allowed
   validates_presence_of :currency

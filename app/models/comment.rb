@@ -485,7 +485,7 @@ class Comment < ActiveRecord::Base
       if %w(receiver both).index(gift.direction)
         receivername = gift.api_gifts.shuffle.first.receiver.short_user_name
       end
-      noti_options = {:giftid => gift.id, :gifttext => gift.description.first(30),
+      noti_options = {:giftid => gift.id, :gifttext => 'gift.description deleted',
                       :no_users => 0, :no_other_users => -2,
                       :username1 => nil,
                       :username2 => nil,

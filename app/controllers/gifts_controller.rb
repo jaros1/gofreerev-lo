@@ -37,7 +37,6 @@ class GiftsController < ApplicationController
       gift.direction = 'giver' if gift.direction.to_s == ''
       gift.created_by = gift.direction
       gift.currency = @users.first.currency
-      gift.description = params[:gift][:description]
       if params[:gift][:open_graph_url].to_s != ''
         og = OpenGraphLink.find_or_create_link(params[:gift][:open_graph_url])
         if og
@@ -250,7 +249,6 @@ class GiftsController < ApplicationController
     @gift = Gift.new
     @gift.direction = params[:direction] if params[:direction].to_s != ''
     @gift.open_graph_url = params[:url] if params[:url].to_s != ''
-    @gift.description = params[:text] if params[:text].to_s != ''
     if User.dummy_users?(@users)
       # todo: this looks like an error (not logged in user)
       # http: should redirect to auth/index page
@@ -259,7 +257,6 @@ class GiftsController < ApplicationController
       return format_response
     end
     @gift.currency = @users.first.currency unless @gift.currency
-    # logger.debug2  "index: description = #{@gift.description}"
 
     # initialize list of gifts
     # list of gifts with @users as giver or receiver + gifts med @users.friends as giver or receiver
@@ -388,7 +385,7 @@ class GiftsController < ApplicationController
         description = gift.open_graph_description
       else
         # get open graph meta tags from gift direction and description
-        title, description = open_graph_title_and_desc(api_gift)
+        title, description = 'deleted', 'deleted' # open_graph_title_and_desc(api_gift)
       end
       # image = api_gift.picture? ? api_gift.api_picture_url : API_OG_DEF_IMAGE[api_gift.provider]
       if gift.open_graph_image

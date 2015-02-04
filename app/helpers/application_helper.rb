@@ -195,7 +195,7 @@ module ApplicationHelper
     { :date           => format_date(gift.received_at || gift.created_at),
       :direction      => format_direction_with_user(api_gift),
       :optional_price => optional_price,
-      :text           =>  my_sanitize(gift.description)
+      :text           =>  my_sanitize('gift.description deleted from server')
     }
   end # format_gift_param
 

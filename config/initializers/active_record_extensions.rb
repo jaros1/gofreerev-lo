@@ -7,15 +7,15 @@ module ActiveRecordExtensions
   # these 3 methods must be replaces by model specific implementations
   protected
   def encrypt_pk
-    self.gift_id
+    self.gid
   end
   def encrypt_pk=(new_encrypt_pk_value)
-    self.gift_id = new_encrypt_pk_value
+    self.gid = new_encrypt_pk_value
   end
   def new_encrypt_pk
     loop do
-      temp_gift_id = String.generate_random_string(20)
-      return temp_gift_id unless Gift.find_by_gift_id(temp_gift_id)
+      temp_gid = String.generate_random_string(20)
+      return temp_gid unless Gift.find_by_gid(temp_gid)
     end
   end
 

@@ -103,7 +103,7 @@
         <%# remote form for new comment. Sent to comments/create. Inserted in gift-<gift.id>-comments table.
         Post ajax processing done in gofreerev.js / add_post_ajax_comment_handler
     -%>
-        <% comment = Comment.new ; comment.gift_id = gift.gift_id -%>
+        <% comment = Comment.new ; comment.gid = gift.gid -%>
         <%= form_for comment,
                      :remote => true, :data => { :type => :script }, :format => :js,
                      :html => {:id => "gift-#{gift.id}-new-comment-form", :class => 'new_comment' } do |f| %>

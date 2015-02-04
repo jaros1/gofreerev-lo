@@ -7,7 +7,7 @@
 
 charlie_gift_a:
   id: 237
-  gift_id: j0N0uppxbj1nmDfsWBbk
+  gid: j0N0uppxbj1nmDfsWBbk
   user_id_giver: 100006397022113/facebook
   user_id_receiver:
   created_at: '2013-09-02 17:08:24.196811'

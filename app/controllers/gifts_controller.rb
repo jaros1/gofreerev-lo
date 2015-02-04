@@ -89,7 +89,7 @@ class GiftsController < ApplicationController
       # api_picture_url may change in post_on_<provider> tasks if picture store is :api
       @users.each do |user|
         api_gift = ApiGift.new
-        api_gift.gift_id = gift.gift_id
+        api_gift.gid = gift.gid
         api_gift.provider = user.provider
         api_gift.user_id_giver = gift.direction == 'giver' ? user.user_id : nil
         api_gift.user_id_receiver = gift.direction == 'receiver' ? user.user_id : nil

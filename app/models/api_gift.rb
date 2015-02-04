@@ -1,7 +1,7 @@
 class ApiGift < ActiveRecord::Base
 
   #create_table "api_gifts", force: true do |t|
-  #  t.string   "gift_id",                     limit: 20
+  #  t.string   "gid",                     limit: 20
   #  t.string   "provider",                    limit: 20
   #  t.string   "user_id_giver",               limit: 40
   #  t.string   "user_id_receiver",            limit: 40
@@ -19,7 +19,7 @@ class ApiGift < ActiveRecord::Base
   #  t.text     "api_gift_url"
   #end
 
-  belongs_to :gift, :class_name => 'Gift', :primary_key => :gift_id, :foreign_key => :gift_id
+  belongs_to :gift, :class_name => 'Gift', :primary_key => :gid, :foreign_key => :gid
   belongs_to :giver, :class_name => 'User', :primary_key => :user_id, :foreign_key => :user_id_giver
   belongs_to :receiver, :class_name => 'User', :primary_key => :user_id, :foreign_key => :user_id_receiver
 
@@ -38,16 +38,16 @@ class ApiGift < ActiveRecord::Base
   # attributes #
   ##############
 
-  # 1) gift_id - required - not encrypted - readonly
-  validates_presence_of :gift_id
-  validates_uniqueness_of :gift_id, :scope => :provider
-  attr_readonly :gift_id
+  # 1) gid - required - not encrypted - readonly
+  validates_presence_of :gid
+  validates_uniqueness_of :gid, :scope => :provider
+  attr_readonly :gid
   before_validation(on: :create) do
-    self.gift_id = self.new_encrypt_pk unless self.gift_id
+    self.gid = self.new_encrypt_pk unless self.gid
   end
-  def gift_id=(new_gift_id)
-    return self['gift_id'] if self['gift_id']
-    self['gift_id'] = new_gift_id
+  def gid=(new_gid)
+    return self['gid'] if self['gid']
+    self['gid'] = new_gid
   end
 
   # 2) provider - login provider - required - not encrypted - readonly
@@ -566,13 +566,13 @@ class ApiGift < ActiveRecord::Base
   # overwrite non model specific methods defined in /config/initializers/active_record_extensions.rb
   protected
   def encrypt_pk
-    self.gift_id
+    self.gid
   end
   def encrypt_pk=(new_encrypt_pk_value)
-    self.gift_id = new_encrypt_pk_value
+    self.gid = new_encrypt_pk_value
   end
   def new_encrypt_pk
-    raise "gift_id must always be initialized as first attribute"
+    raise "gid must always be initialized as first attribute"
   end
 
 

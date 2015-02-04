@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150204141502) do
+ActiveRecord::Schema.define(version: 20150204145030) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -23,7 +23,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
   add_index "ajax_comments", ["user_id"], name: "index_ajax_comments_on_user_id", using: :btree
 
   create_table "api_comments", force: true do |t|
-    t.string   "gift_id",    limit: 20
+    t.string   "gid",                   null: false
     t.string   "comment_id", limit: 20
     t.string   "provider",   limit: 20
     t.string   "user_id",    limit: 40
@@ -33,7 +33,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
   end
 
   add_index "api_comments", ["comment_id"], name: "index_api_comments_on_comm_id", using: :btree
-  add_index "api_comments", ["gift_id"], name: "index_api_comments_on_gift_id", using: :btree
+  add_index "api_comments", ["gid"], name: "index_api_comments_on_gid", using: :btree
   add_index "api_comments", ["user_id"], name: "index_api_comments_on_user_id", using: :btree
 
   create_table "api_comments_notifications", id: false, force: true do |t|
@@ -45,7 +45,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
   add_index "api_comments_notifications", ["notification_id"], name: "index_comm_noti_on_noti_id", using: :btree
 
   create_table "api_gifts", force: true do |t|
-    t.string   "gift_id",                     limit: 20
+    t.string   "gid",                                    null: false
     t.string   "provider",                    limit: 20
     t.string   "user_id_giver",               limit: 40
     t.string   "user_id_receiver",            limit: 40
@@ -65,7 +65,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
   end
 
   add_index "api_gifts", ["deep_link_id"], name: "index_api_gifts_deep_link_id", using: :btree
-  add_index "api_gifts", ["gift_id", "provider"], name: "index_api_gifts_on_gift_id", unique: true, using: :btree
+  add_index "api_gifts", ["gid", "provider"], name: "index_api_gifts_on_gid", unique: true, using: :btree
   add_index "api_gifts", ["user_id_giver"], name: "index_api_gifts_on_giver", using: :btree
   add_index "api_gifts", ["user_id_receiver"], name: "index_api_gifts_on_receiver", using: :btree
 
@@ -74,7 +74,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
     t.text     "comment",                     null: false
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "gift_id",          limit: 20
+    t.string   "gid",                         null: false
     t.text     "currency"
     t.text     "price"
     t.string   "new_deal_yn",      limit: 1
@@ -86,7 +86,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
 
   add_index "comments", ["comment_id"], name: "index_comments_on_comment_id", unique: true, using: :btree
   add_index "comments", ["deleted_at"], name: "index_comments_on_deleted_at", using: :btree
-  add_index "comments", ["gift_id"], name: "index_comments_on_gift_id", using: :btree
+  add_index "comments", ["gid"], name: "index_comments_on_gid", using: :btree
 
   create_table "exchange_rates", force: true do |t|
     t.string   "from_currency", limit: 3,                          null: false
@@ -120,7 +120,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
   add_index "friends", ["user_id_receiver", "user_id_giver"], name: "index_friends_on_receiver", unique: true, using: :btree
 
   create_table "gifts", force: true do |t|
-    t.string   "gift_id",                limit: 20
+    t.string   "gid",                               null: false
     t.text     "description",                       null: false
     t.text     "currency",                          null: false
     t.text     "price"
@@ -142,7 +142,7 @@ ActiveRecord::Schema.define(version: 20150204141502) do
     t.text     "open_graph_image"
   end
 
-  add_index "gifts", ["gift_id"], name: "index_gifts_on_gift_id", unique: true, using: :btree
+  add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
   add_index "gifts", ["status_update_at"], name: "index_gifts_on_status_updateat", unique: true, using: :btree
 
   create_table "notifications", force: true do |t|

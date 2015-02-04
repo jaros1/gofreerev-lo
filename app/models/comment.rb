@@ -18,7 +18,7 @@ NOTI_KEY_4 = "1" # version
 
 class Comment < ActiveRecord::Base
 
-  belongs_to :gift, :class_name => 'Gift', :primary_key => :gift_id, :foreign_key => :gift_id
+  belongs_to :gift, :class_name => 'Gift', :primary_key => :gid, :foreign_key => :gid
   has_many :api_comments, :class_name => 'ApiComment', :primary_key => :comment_id, :foreign_key => :comment_id, :dependent => :destroy
 
   before_create :before_create

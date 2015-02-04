@@ -561,7 +561,7 @@ class UtilController < ApplicationController
     # find and check gift and api_gift
     gift = Gift.find_by_id(id)
     return [gift, api_gift, deep_link, '.post_on_api_unknown_gift_id', { :provider => provider, :id => id }] unless gift
-    api_gift = ApiGift.find_by_gift_id_and_provider(gift.gift_id, provider)
+    api_gift = ApiGift.find_by_gid_and_provider(gift.gid, provider)
     return [gift, api_gift, deep_link, '.post_on_api_invalid_gift_id', { :provider => provider, :id => gift.id }] unless api_gift
     return [gift, api_gift, deep_link, '.post_on_api_invalid_gift_id', { :provider => provider, :id => gift.id }] unless [api_gift.user_id_giver, api_gift.user_id_receiver].index(login_user.user_id)
     return [gift, api_gift, deep_link, '.post_on_api_old_gift', { :provider => provider, :id => gift.id }] unless gift.created_at > 5.minute.ago

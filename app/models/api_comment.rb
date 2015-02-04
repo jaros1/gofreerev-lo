@@ -1,7 +1,7 @@
 class ApiComment < ActiveRecord::Base
 
   #create_table "api_comments", force: true do |t|
-  #  t.string   "gift_id",    limit: 20
+  #  t.string   "gid",    limit: 20
   #  t.string   "comment_id", limit: 20
   #  t.string   "provider",   limit: 20
   #  t.string   "user_id",    limit: 40
@@ -9,7 +9,7 @@ class ApiComment < ActiveRecord::Base
   #  t.datetime "updated_at"
   #end
 
-  belongs_to :gift, :class_name => 'Gift', :primary_key => :gift_id, :foreign_key => :gift_id
+  belongs_to :gift, :class_name => 'Gift', :primary_key => :gid, :foreign_key => :gift_id
   belongs_to :user, :class_name => 'User', :primary_key => :user_id, :foreign_key => :user_id
   belongs_to :comment, :class_name => 'Comment', :primary_key => :comment_id, :foreign_key => :comment_id
   has_and_belongs_to_many :notifications

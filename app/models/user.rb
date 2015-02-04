@@ -1416,12 +1416,12 @@ class User < ActiveRecord::Base
     # sort: 1 received_at, 2 id
     api_gifts = api_gifts.sort_by { |ag| [ag.gift.received_at, ag.gift.id] }
     # delete gift doublets
-    old_gift_id = -1
+    old_gid = -1
     api_gifts = api_gifts.delete_if do |api_gift|
-      if api_gift.gift.id == old_gift_id
+      if api_gift.gift.id == old_gid
         true
       else
-        old_gift_id = api_gift.gift.id
+        old_gid = api_gift.gift.id
         false
       end
     end # delete_if
@@ -2176,9 +2176,9 @@ class User < ActiveRecord::Base
 
       # delete doublets if creator of gift was using multi provider login
       old_size = ags.size
-      old_gift_id = -1
+      old_gid = -1
       ags.delete_if do |ag|
-        if ag.gift.id == old_gift_id
+        if ag.gift.id == old_gid
           # remove doublet api gift
           true
         else
@@ -2186,7 +2186,7 @@ class User < ActiveRecord::Base
           # delete mark gift (not saved to db) if api gift has been delete marked
           # ( delete marked api gifts is used for "partial" deleted gift when deleting user account )
           ag.gift.deleted_at = ag.deleted_at if !ag.gift.deleted_at and ag.deleted_at
-          old_gift_id = ag.gift.id
+          old_gid = ag.gift.id
           false
         end
       end # delete_if
@@ -2405,7 +2405,7 @@ class User < ActiveRecord::Base
           end
           ApiGift.where('user_id_giver = ? or user_id_receiver = ?', user.user_id, user.user_id).each do |ag|
             ag.delete
-            g = Gift.where('gift_id = ?', ag.gift_id).includes(:api_gifts).first
+            g = Gift.where('gid = ?', ag.gid).includes(:api_gifts).first
             g.delete if g.api_gifts.size == 0
           end
           # delete friends information. keep information about blocked and deselected app friends

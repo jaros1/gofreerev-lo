@@ -1,9 +1,9 @@
 class Gift < ActiveRecord::Base
 
-  has_many :comments, :class_name => 'Comment', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
-  has_many :api_comments, :class_name => 'ApiComment', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
+  has_many :comments, :class_name => 'Comment', :primary_key => :gid, :foreign_key => :gid, :dependent => :destroy
+  has_many :api_comments, :class_name => 'ApiComment', :primary_key => :gid, :foreign_key => :gid, :dependent => :destroy
   # todo: :dependent => :destroy does not work for api_gifts. Has added a after_destroy callback to fix this problem
-  has_many :api_gifts, :class_name => 'ApiGift', :primary_key => :gift_id, :foreign_key => :gift_id, :dependent => :destroy
+  has_many :api_gifts, :class_name => 'ApiGift', :primary_key => :gid, :foreign_key => :gid, :dependent => :destroy
 
   before_create :before_create
   before_update :before_update
@@ -21,16 +21,16 @@ class Gift < ActiveRecord::Base
   # attributes #
   ##############
 
-  # 1) gift_id - required - not encrypted - readonly
-  validates_presence_of :gift_id
-  validates_uniqueness_of :gift_id
-  attr_readonly :gift_id
+  # 1) gid - required - not encrypted - readonly
+  validates_presence_of :gid
+  validates_uniqueness_of :gid
+  attr_readonly :gid
   before_validation(on: :create) do
-    self.gift_id = self.new_encrypt_pk unless self.gift_id
+    self.gid = self.new_encrypt_pk unless self.gid
   end
-  def gift_id=(new_gift_id)
-    return self['gift_id'] if self['gift_id']
-    self['gift_id'] = new_gift_id
+  def gid=(new_gid)
+    return self['gid'] if self['gid']
+    self['gid'] = new_gid
   end
 
   # 2) description - required - String in model - encrypted text in db - update not allowed
@@ -679,16 +679,16 @@ class Gift < ActiveRecord::Base
 
   def after_destroy
     # :dependent => :destroy does not work for api_gifts relation
-    logger.debug2 "before cleanup api gifts. gift_id = #{gift_id}"
-    ApiGift.where('gift_id = ?', gift_id).delete_all
-    logger.debug2 "after cleanup api gifts. gift_id = #{gift_id}"
+    logger.debug2 "before cleanup api gifts. gid = #{gid}"
+    ApiGift.where('gid = ?', gid).delete_all
+    logger.debug2 "after cleanup api gifts. gid = #{gid}"
   end
 
   # todo: there is a problem with api gifts without gifts.
   def self.check_gift_and_api_gift_rel
     giftids = nil
     uncached do
-      giftids = (ApiGift.all.collect { |ag| ag.gift_id } - Gift.all.collect { |g| g.gift_id }).uniq
+      giftids = (ApiGift.all.collect { |ag| ag.gid } - Gift.all.collect { |g| g.gid }).uniq
     end
     return if giftids.size == 0
     logger.fatal2 "ApiGift without Gift. gift id's #{giftids.join(', ')}"
@@ -711,15 +711,15 @@ class Gift < ActiveRecord::Base
   # overwrite non model specific methods defined in /config/initializers/active_record_extensions.rb
     protected
     def encrypt_pk
-      self.gift_id
+      self.gid
     end
     def encrypt_pk=(new_encrypt_pk_value)
-      self.gift_id = new_encrypt_pk_value
+      self.gid = new_encrypt_pk_value
     end
     def new_encrypt_pk
       loop do
-        temp_gift_id = String.generate_random_string(20)
-        return temp_gift_id unless Gift.find_by_gift_id(temp_gift_id)
+        temp_gid = String.generate_random_string(20)
+        return temp_gid unless Gift.find_by_gid(temp_gid)
       end
     end
 

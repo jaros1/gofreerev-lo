@@ -1786,6 +1786,8 @@ angular.module('gifts', ['ngRoute'])
             }
             var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
+            // todo: new gifts. send gift meta-information to server (gid and userids) and get a ok receipt
+            // xxx
             $http.get('/util/ping.json', {params: {client_userid: userid, sid: sid, client_timestamp: new_client_timestamp}}).then(
                 function (ok) {
                     // schedule next ping. todo: now a rails constant. change to a calculation based on server load later
@@ -1850,7 +1852,19 @@ angular.module('gifts', ['ngRoute'])
             if (Gofreerev.getItem('gifts')) new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             else Gofreerev.setItem('gifts', JSON.stringify([])) ;
             gifts.length = 0 ;
-            for (var i=0 ; i<new_gifts.length ; i++) gifts.push(new_gifts[i]) ;
+            var gift ;
+            var migration = false ;
+            for (var i=0 ; i<new_gifts.length ; i++) {
+                gift = new_gifts[i] ;
+                // data migration - rename date to created_at_client - todo: remove
+                if (gift.hasOwnProperty('date')) {
+                    gift.created_at_client = gift.date ;
+                    delete gift.date ;
+                    migration = true ;
+                }
+                gifts.push(new_gifts[i]) ;
+            }
+            if (migration) Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
             console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
         }
         load_gifts() ;
@@ -1925,7 +1939,7 @@ angular.module('gifts', ['ngRoute'])
             }
             if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
             if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids ;
-            if (gift.date != new_gift.date) gift.date = new_gift.date ;
+            if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client ;
             if (gift.price != new_gift.price) gift.price = new_gift.price ;
             if (gift.currency != new_gift.currency) gift.currency = new_gift.currency ;
             if (gift.direction != new_gift.direction) gift.direction = new_gift.direction ;
@@ -2012,7 +2026,7 @@ angular.module('gifts', ['ngRoute'])
                     // copy any changed values from new_gifts into gifts
                     if (gifts[insert_point].giver_user_ids != new_gifts[i].giver_user_ids) gifts[insert_point].giver_user_ids = new_gifts[i].giver_user_ids ;
                     if (gifts[insert_point].receiver_user_ids != new_gifts[i].receiver_user_ids) gifts[insert_point].receiver_user_ids = new_gifts[i].receiver_user_ids ;
-                    if (gifts[insert_point].date != new_gifts[i].date) gifts[insert_point].date = new_gifts[i].date ;
+                    if (gifts[insert_point].created_at_client != new_gifts[i].created_at_client) gifts[insert_point].created_at_client = new_gifts[i].created_at_client ;
                     if (gifts[insert_point].price != new_gifts[i].price) gifts[insert_point].price = new_gifts[i].price ;
                     if (gifts[insert_point].currency != new_gifts[i].currency) gifts[insert_point].currency = new_gifts[i].currency ;
                     if (gifts[insert_point].direction != new_gifts[i].direction) gifts[insert_point].direction = new_gifts[i].direction ;
@@ -2774,7 +2788,7 @@ angular.module('gifts', ['ngRoute'])
                 gid: Gofreerev.get_new_uid(),
                 giver_user_ids: [],
                 receiver_user_ids: [],
-                date: unix_timestamp(),
+                created_at_client: unix_timestamp(),
                 price: self.new_gift.price,
                 currency: self.new_gift.currency,
                 direction: self.new_gift.direction,
@@ -2903,17 +2917,23 @@ angular.module('gifts', ['ngRoute'])
         }
         // end formatCommentPriceOptional
     }])
-    .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatGiftPriceOptionalFilter', 'formatDirectionFilter',
-        function (formatDateShort, formatGiftPriceOptional, formatDirection) {
+    .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatGiftPriceOptionalFilter', 'formatDirectionFilter', 'GiftService',
+        function (formatDateShort, formatGiftPriceOptional, formatDirection, giftService) {
             // format gift link text using translation js.gifts.gift_link_text: %{date} %{optional_price} / %{direction}
             // html: {{gift.date | formatDateShort}} {{gift | formatGiftPriceOptional:2}} / {{gift | formatDirection}}
             // nested format using 3 sub format filters
             // old rails code was t('.gift_link_text', format_gift_param(api_gift))
             return function (gift, precision) {
-                var date = formatDateShort(gift.date);
+                var created_at_client = formatDateShort(gift.created_at_client);
+                if (!created_at_client) {
+                    // fix data migration error (date renamed to created_at_client). todo: remove
+                    console.log('formatGiftLinkText: gift = ' + JSON.stringify(gift)) ;
+                    gift.created_at_client = Math.round((new Date).getTime()/1000) ;
+                    giftService.save_gifts() ;
+                }
                 var optional_price = formatGiftPriceOptional(gift, precision);
                 var direction = formatDirection(gift) ;
-                return I18n.t('js.gifts.gift_link_text', {date: date, optional_price: optional_price, direction: direction }) ;
+                return I18n.t('js.gifts.gift_link_text', {date: created_at_client, optional_price: optional_price, direction: direction }) ;
             }
             // end formatGiftLinkText
     }])

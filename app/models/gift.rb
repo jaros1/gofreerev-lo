@@ -13,7 +13,7 @@ class Gift < ActiveRecord::Base
   # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
   # this is different encrypt for each attribute and each db row
   # _before_type_cast methods are used by form helpers and are redefined
-  crypt_keeper :currency, :price, :received_at, :balance_giver, :balance_receiver,
+  crypt_keeper :received_at, :balance_giver, :balance_receiver,
                :balance_doc_giver, :balance_doc_receiver, :app_picture_rel_path, :encryptor => :aes, :key => ENCRYPT_KEYS[1]
 
 
@@ -32,67 +32,6 @@ class Gift < ActiveRecord::Base
     return self['gid'] if self['gid']
     self['gid'] = new_gid
   end
-
-  # 3) currency - required - String in model - encrypted text in db - update not allowed
-  validates_presence_of :currency
-  validates_inclusion_of :currency, :allow_blank => true, :in => Money::Currency.table.collect { |a| [  a[1][:iso_code] ][0] }
-  validates_each :currency do |record, attr, value|
-    if record.new_record? or !record.currency_changed?
-      nil # new record or unchanged currency - always ok
-    elsif !record.received_at_was and record.received_at
-      nil # deal has just been approved - currency and price have just been copied from proposal
-    else
-      # logger.debug2  "Gift.validates_each currency: gift id #{record.id}, old value = #{record.currency_was}, new value = #{value}"
-      record.errors.add attr, :readonly
-    end
-  end # validates_each :currency
-  def currency
-    return nil unless (extended_currency = read_attribute(:currency))
-    encrypt_remove_pre_and_postfix(extended_currency, 'currency', 3)
-  end
-  def currency=(new_currency)
-    if new_currency
-      check_type('currency', new_currency, 'String')
-      write_attribute :currency, encrypt_add_pre_and_postfix(new_currency, 'currency', 3)
-    else
-      write_attribute :currency, nil
-    end
-  end # currency
-  alias_method :currency_before_type_cast, :currency
-  def currency_was
-    return currency unless currency_changed?
-    return nil unless (extended_currency = attribute_was('currency'))
-    encrypt_remove_pre_and_postfix(extended_currency, 'currency', 3)
-  end # currency_was
-
-  # 4) price - Float in model - encrypted text in db
-  validates_each :price do |record, attr, value|
-    if record.new_record? or value == record.price_was
-      nil # new record or unchanged price - always ok
-    elsif !record.received_at_was and record.received_at
-      nil # deal has just been approved - copy currency and price from proposal
-    else
-      record.errors.add attr, :readonly
-    end
-  end
-  def price
-    return nil unless (temp_extended_price = read_attribute(:price))
-    str_to_float_or_nil encrypt_remove_pre_and_postfix(temp_extended_price, 'price', 4)
-  end # price
-  def price=(new_price)
-    if new_price.to_s != ''
-      check_type('price', new_price, 'Float')
-      write_attribute :price, encrypt_add_pre_and_postfix(new_price.to_s, 'price', 4)
-    else
-      write_attribute :price, nil
-    end
-  end # price=
-  alias_method :price_before_type_cast, :price
-  def price_was
-    return price unless price_changed?
-    return nil unless (temp_extended_price = attribute_was('price'))
-    str_to_float_or_nil encrypt_remove_pre_and_postfix(temp_extended_price, 'price', 4)
-  end # price_was
 
   # 7) received_at. Date in model - encrypted text in db - set once when the deal is closed together with user_id_receiver
   def received_at

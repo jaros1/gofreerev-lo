@@ -2,9 +2,10 @@ module UsersHelper
 
   # document user balance calculation in users/show page (mouse over for balance)
   def gift_balance_calculation_doc(gift, current_user)
+    return nil
     api_gift = gift.api_gifts.find { |ag| [ag.user_id_giver, ag.user_id_receiver].index(current_user.user_id)}
     return nil if !api_gift.user_id_giver or !api_gift.user_id_receiver
-    return nil if !gift.price or gift.price <= 0
+    return nil if !nil or gift.price <= 0
     # format documentation for balance.
     # one format without currency and exchange rate if exchange rate == 1
     # one format with currency and exchange rate if exchange rate != 1
@@ -77,8 +78,8 @@ module UsersHelper
                         :negative_interest => format_price(negative_interest),
                         :sign_currency_gain_loss => sign_gain_loss,
                         :currency_gain_loss => format_price(gain_loss),
-                        :new_currency => users_currency,
-                        :old_currency => gift.currency,
+                        :new_currency => 'USD',
+                        :old_currency => 'USD',
                         :number_of_days => number_of_days
   end # gift_balance_calculation_doc
 

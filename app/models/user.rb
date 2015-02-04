@@ -960,11 +960,13 @@ class User < ActiveRecord::Base
   end
 
   def gifts_given
+    return []
     offers.find_all { |ag| (ag.user_id_receiver and ag.gift.price and ag.gift.price != 0.00 and !ag.gift.deleted_at) }
   end
 
   # gifts_given
   def gifts_received
+    return []
     wishes.find_all { |ag| (ag.user_id_giver and ag.gift.price and ag.gift.price != 0.00 and !ag.gift.deleted_at) }
   end
 
@@ -975,6 +977,7 @@ class User < ActiveRecord::Base
   #  end # collect
   #end # gifts_received_with_sig
   def gifts_given_and_received
+    return []
     gifts_given + gifts_received
   end
 
@@ -2295,7 +2298,7 @@ class User < ActiveRecord::Base
           ag.deleted_at = Time.new
           ag.save!
         end
-        if g.received_at and g.price and g.price != 0.0
+        if g.received_at and nil
           # save gift for notification to affected users (number of gifts, currencies and prices)
           if user.user_id == ag.user_id_giver
             other_user_id = ag.user_id_receiver

@@ -20,7 +20,7 @@
       </td>
       <td></td>
       <td style="text-align: right">
-        <%= t '.optional_price', :price => "#{format_price(gift.price)} #{gift.currency}" if gift.price %>
+        <%= t '.optional_price', :price => "#{format_price(gift.price)} USD" if gift.price %>
       </td>
       <td></td>
       <td style="text-align: right" title="<%= gift_balance_calculation_doc(gift, @user2) %>">

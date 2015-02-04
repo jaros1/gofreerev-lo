@@ -783,11 +783,6 @@ class Comment < ActiveRecord::Base
           end
           ag.save!
         end
-        if price
-          gift.price = price
-          gift.currency = currency
-          # logger.debug2  "Comment.after_update: gift.currency = #{gift.currency}"
-        end
         gift.received_at = updated_at # todo: move to gift callback
         gift.status_update_at = Sequence.next_status_update_at  # todo: move to gift callback
         gift.direction = 'both'

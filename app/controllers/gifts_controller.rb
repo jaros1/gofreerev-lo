@@ -33,10 +33,8 @@ class GiftsController < ApplicationController
 
       # initialize gift
       gift = Gift.new
-      gift.price = params[:gift][:price].gsub(',', '.').to_f unless invalid_price?(params[:gift][:price])
       gift.direction = 'giver' if gift.direction.to_s == ''
       gift.created_by = gift.direction
-      gift.currency = @users.first.currency
       if params[:gift][:open_graph_url].to_s != ''
         og = OpenGraphLink.find_or_create_link(params[:gift][:open_graph_url])
         if og
@@ -79,8 +77,6 @@ class GiftsController < ApplicationController
       end
 
       gift.valid?
-      gift.errors.add :price, :invalid if invalid_price?(params[:gift][:price]) # price= accepts only float and model can not return invalid price error
-      logger.debug2 "gifts.errors = #{gift.errors.full_messages.join(', ')}"
       return format_response_text(gift.errors.full_messages.join(', ')) if gift.errors.size > 0
 
       # add api_gifts - one api_gifts for each provider
@@ -256,7 +252,6 @@ class GiftsController < ApplicationController
       @api_gifts = []
       return format_response
     end
-    @gift.currency = @users.first.currency unless @gift.currency
 
     # initialize list of gifts
     # list of gifts with @users as giver or receiver + gifts med @users.friends as giver or receiver

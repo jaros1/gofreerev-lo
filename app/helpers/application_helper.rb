@@ -191,7 +191,7 @@ module ApplicationHelper
   # todo: angularJS: moved to formatGiftLinkText filter
   def format_gift_param (api_gift)
     gift = api_gift.gift
-    optional_price = gift.price ? "#{t('.optional_price', :price => format_price(gift.price))} #{gift.currency}" : nil
+    optional_price = nil ? "#{t('.optional_price', :price => format_price(nil))}" : nil
     { :date           => format_date(gift.received_at || gift.created_at),
       :direction      => format_direction_with_user(api_gift),
       :optional_price => optional_price,

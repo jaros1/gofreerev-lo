@@ -22,8 +22,8 @@ module GiftHelper
     # confirm delete texts
     # - confirm_delete_gift_1 if delete gift effects user balance
     # - confirm_delete_gift_2 if delete gift does not effect user balance
-    confirm_delete_gift_options = { :price => gift.price, :currency => gift.currency }
-    if gift.received_at and gift.price and gift.price != 0.0
+    confirm_delete_gift_options = { :price => nil, :currency => 'USD' }
+    if gift.received_at and nil
       # todo: check if login users are givers or
       directions = []
       gift.api_gifts.each do |ag|

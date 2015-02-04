@@ -404,16 +404,6 @@ class UtilController < ApplicationController
       comment.accepted_yn = 'Y'
       comment.updated_by = updated_by.join(',')
       comment.save!
-      gift.reload
-      if gift.price and gift.price != 0.0
-        # recalculate new balance for giver and receiver
-        gift.reload
-        gift.api_gifts.each do |api_gift|
-          api_gift.giver.recalculate_balance unless api_gift.giver.dummy_user?
-          api_gift.receiver.recalculate_balance unless api_gift.receiver.dummy_user?
-        end # each api_gift
-        # todo: ajax inject change balance in page header
-      end
 
       # use a discount version af new_messages_count to ajax replace accepted deal in gifts/index page for current user
       # that is without @new_messages_count, @comments, only with this accepted gift

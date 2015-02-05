@@ -6,7 +6,7 @@
 <tr>
   <td colspan="2"></td>
   <td colspan="2">
-    <% unless ((api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '')) -%>
+    <% unless (api_gift.picture? and !api_gift.api_picture_url_on_error_at) -%>
         <div id="<%= "gift-#{gift.id}-overflow-link" %>" data-giftid="<% gift.id %>" class="overflow" style="display: none">
           <%= link_to t('.show_full_text'), "#", :onclick => "return Gofreerev.show_overflow(this)" %> -&nbsp;
         </div>

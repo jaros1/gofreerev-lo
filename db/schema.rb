@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150204171938) do
+ActiveRecord::Schema.define(version: 20150205062618) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -120,19 +120,14 @@ ActiveRecord::Schema.define(version: 20150204171938) do
   add_index "friends", ["user_id_receiver", "user_id_giver"], name: "index_friends_on_receiver", unique: true, using: :btree
 
   create_table "gifts", force: true do |t|
-    t.string   "gid",                               null: false
+    t.string   "gid",                         null: false
     t.text     "received_at"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.integer  "status_update_at",                  null: false
+    t.integer  "status_update_at",            null: false
     t.datetime "deleted_at"
-    t.string   "direction",              limit: 10
-    t.string   "created_by",             limit: 10
-    t.text     "app_picture_rel_path"
-    t.text     "open_graph_url"
-    t.string   "open_graph_title"
-    t.text     "open_graph_description"
-    t.text     "open_graph_image"
+    t.string   "direction",        limit: 10
+    t.string   "created_by",       limit: 10
   end
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree

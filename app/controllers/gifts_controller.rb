@@ -35,16 +35,6 @@ class GiftsController < ApplicationController
       gift = Gift.new
       gift.direction = 'giver' if gift.direction.to_s == ''
       gift.created_by = gift.direction
-      if params[:gift][:open_graph_url].to_s != ''
-        og = OpenGraphLink.find_or_create_link(params[:gift][:open_graph_url])
-        if og
-          # open graph url ok and open graph meta tags was found
-          gift.open_graph_url = og.url
-          gift.open_graph_title = og.title
-          gift.open_graph_description = og.description
-          gift.open_graph_image = og.image
-        end
-      end
       gift_file = params[:gift_file]
       picture = (gift_file.class.name == 'ActionDispatch::Http::UploadedFile')
       if picture
@@ -57,23 +47,6 @@ class GiftsController < ApplicationController
       if picture and gift_file.size > 2.megabytes
         add_error_key '.file_is_too_big', :maxsize => '2 Mb'
         picture = false # continue post without picture
-      end
-      if picture
-        # perm or temp picture store - for example perm for linkedin and temp for facebook
-        # ( configuration in hash constant API_GIFT_PICTURE_STORE - /config/initializers/omniauth.rb )
-        picture_rel_path = Picture.new_perm_rel_path filetype
-        if picture_rel_path
-          gift.app_picture_rel_path = picture_rel_path
-          logger.debug2 "gift.app_picture_rel_path = #{gift.app_picture_rel_path}"
-          picture_url = Picture.url :rel_path => picture_rel_path
-          picture_full_os_path = Picture.full_os_path :rel_path => picture_rel_path
-        else
-          # error - picture store setup was not found for logged in users
-          # invalid picture store setup (API_GIFT_PICTURE_STORE) or file upload should not be allowed
-          providers = @users.collect { |u| u.provider }
-          add_error_key '.invalid_pic_store', :providers => providers.join(', ')
-          picture = false # continue post without picture
-        end
       end
 
       gift.valid?
@@ -120,7 +93,6 @@ class GiftsController < ApplicationController
           end
           # continue post without picture
           add_error_key ".file_mv_error", :error => stderr
-          gift.app_picture_rel_path = nil
           gift.save!
           gift.api_gifts.each do |api_gift|
             api_gift.picture = 'N'
@@ -147,7 +119,6 @@ class GiftsController < ApplicationController
             end
             # continue post without picture
             add_error_key ".file_chmod_error", :error => stderr
-            gift.app_picture_rel_path = nil
             gift.save!
             gift.api_gifts.each do |api_gift|
               api_gift.picture = 'N'
@@ -244,7 +215,6 @@ class GiftsController < ApplicationController
     # initialize gift form in top of gifts/index page
     @gift = Gift.new
     @gift.direction = params[:direction] if params[:direction].to_s != ''
-    @gift.open_graph_url = params[:url] if params[:url].to_s != ''
     if User.dummy_users?(@users)
       # todo: this looks like an error (not logged in user)
       # http: should redirect to auth/index page
@@ -364,57 +334,7 @@ class GiftsController < ApplicationController
     end
 
     # ok - show gift
-    if deep_link or gift.open_graph_title
-      @gift = api_gift
-      # http://ogp.me/
-      # 1) http://wptest.means.us.com/online-meta-tag-length-checker/
-      #    og:title max length: facebook 94, google+ 63, twitter 70
-      #    og:description max length: facebook 200, google+ 155, twitter 200
-      # 2) http://www.joshspeters.com/how-to-optimize-the-ogdescription-tag-for-search-and-social
-      #    og:description max lengths: Facebook 300, linkedIn 225, Google+ 200 (LinkedIn have a 256 character limit in content.description field when posting)
-      # 3) http://moz.com/blog/title-tags-is-70-characters-the-best-practice-whiteboard-friday
-      #    title <= 70 characters
-      if gift.open_graph_title
-        # gift was created with open graph url. Use og meta tags as they were
-        title       = gift.open_graph_title
-        description = gift.open_graph_description
-      else
-        # get open graph meta tags from gift direction and description
-        title, description = 'deleted', 'deleted' # open_graph_title_and_desc(api_gift)
-      end
-      # image = api_gift.picture? ? api_gift.api_picture_url : API_OG_DEF_IMAGE[api_gift.provider]
-      if gift.open_graph_image
-        # gift was created with an open graph url
-        image = gift.open_graph_image
-      elsif !api_gift.picture?
-        image = API_OG_DEF_IMAGE[api_gift.provider]
-      elsif Picture.api_url?(api_gift.api_picture_url)
-        image = api_gift.api_picture_url
-      else
-        image = "#{SITE_URL[0..-2]}#{api_gift.api_picture_url}"
-      end
-      logger.debug2 "OG. provider    = #{api_gift.provider}"
-      logger.debug2 "OG: title       = #{title}"
-      logger.debug2 "OG: description = #{description}"
-      logger.debug2 "OG: image       = #{image}"
-      @open_graph = { :title => title,
-                      :description => description,
-                      :image => image,
-                      :url   => api_gift.deep_link()}
-      # add special twitter meta-tags if available
-      # add twitter:creator if gift was created by a twitter user
-      api_gift_twitter = api_gift.gift.api_gifts.find { |ag| ag.provider == 'twitter' }
-      if api_gift_twitter
-        created_by_user_id = api_gift.gift.created_by == 'giver' ? api_gift_twitter.user_id_giver : api_gift_twitter.user_id_receiver
-        created_by = User.find_by_user_id(created_by_user_id)
-        @open_graph[:twitter_creator] = '@' + created_by.api_profile_url.split('/').last if created_by.api_profile_url
-        logger.debug2 "@open_graph[:twitter_creator] = #{@open_graph[:twitter_creator]}"
-        # @open_graph[:twitter_creator] = Gofreerev
-      end
-      # facebook open graph:
-      # https://developers.facebook.com/tools/debug
-      # http://stackoverflow.com/questions/1138460/how-does-facebook-sharer-select-images
-    elsif gift.api_gifts.length == 1
+    if gift.api_gifts.length == 1
       @gift = gift.api_gifts.first
     else
       # same sort criteria as in user.api_gifts sort (gift.id not relevant here)

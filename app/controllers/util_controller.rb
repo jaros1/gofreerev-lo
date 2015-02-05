@@ -545,32 +545,6 @@ class UtilController < ApplicationController
     [login_user, api_client, key, options]
   end # get_login_user_and_api_client
 
-  def get_gift_and_deep_link (id, login_user, provider)
-    api_gift = deep_link = nil
-
-    # find and check gift and api_gift
-    gift = Gift.find_by_id(id)
-    return [gift, api_gift, deep_link, '.post_on_api_unknown_gift_id', { :provider => provider, :id => id }] unless gift
-    api_gift = ApiGift.find_by_gid_and_provider(gift.gid, provider)
-    return [gift, api_gift, deep_link, '.post_on_api_invalid_gift_id', { :provider => provider, :id => gift.id }] unless api_gift
-    return [gift, api_gift, deep_link, '.post_on_api_invalid_gift_id', { :provider => provider, :id => gift.id }] unless [api_gift.user_id_giver, api_gift.user_id_receiver].index(login_user.user_id)
-    return [gift, api_gift, deep_link, '.post_on_api_old_gift', { :provider => provider, :id => gift.id }] unless gift.created_at > 5.minute.ago
-    return [gift, api_gift, deep_link, '.post_on_api_deleted_gift', { :provider => provider, :id => gift.id }] if gift.deleted_at
-
-    # check picture if any - must exists in /images/temp folder before post on API wall
-    return [gift, api_gift, deep_link, '.gift_posted_6_html', { :apiname => provider}] if api_gift.picture? and !gift.rel_path_picture_exists?
-
-    # initialize and check deep link
-    deep_link = api_gift.init_deep_link()
-    if error = api_gift.deep_link_invalid?
-      # error in deep link page - stop post on API and return error message with deep link and error to gifts/index page
-      return [gift, api_gift, deep_link, ".gift_posted_7_html", { :apiname => provider, :link => deep_link, :error => error }]
-    end
-
-    # ok
-    return [gift, api_gift, deep_link]
-  end # get_gift_and_deep_link
-
 
   ## ajax inject error message to gifts/index page if post_login_<provider> task was not found
   ## there must be one post_login_<provider> task for each login provider to download friend list
@@ -1434,58 +1408,6 @@ class UtilController < ApplicationController
     end
   end # share_accounts
 
-
-  # delete local picture file that was used when posting picture in api wall(s) - see post_on_facebook etc.
-  private
-  def delete_local_picture (id)
-    begin
-      logger.debug2  ""
-
-      # get and check gift
-      gift = Gift.find_by_id(id)
-      return add_error_key('.post_on_api_unknown_gift_id', { :provider => 'API', :id => id }) unless gift
-      return add_error_key('.post_on_api_old_gift', { :provider => 'API', :id => gift.id }) unless gift.created_at > 5.minute.ago
-
-      # check local picture file
-      return add_error_key('.no_local_picture', { :provider => 'API', :id => id }) unless gift.app_picture_rel_path
-      app_picture_full_os_path = Picture.full_os_path :rel_path => gift.app_picture_rel_path
-      app_picture_url          = Picture.url :rel_path => gift.app_picture_rel_path
-      return add_error_key('.local_picture_not_found', { :provider => 'API', :id => id }) unless File.exist?(app_picture_full_os_path)
-
-      # delete file
-      perm_app_picture = Picture.perm_app_url?(app_picture_url)
-      if !perm_app_picture
-        File.delete(app_picture_full_os_path) if File.exists?(app_picture_full_os_path)
-        gift.app_picture_rel_path = nil
-        gift.save!
-      end
-
-      # check temp picture after posting on api walls
-      # should be set in post_in_<provider> tasks, but not after exceptions
-      gift.api_gifts.each do |api_gift|
-        if Picture.temp_app_url?(api_gift.api_picture_url)
-          # temp url - delete or replace with perm url
-          # replace with perm url is only a workaround/fallback for this gift
-          if perm_app_picture
-            api_gift.api_picture_url = app_picture_url
-            logger.warn "fallback after post_on_#{api_gift.provider} failure. Added perm app url for gift id #{gift.id}"
-          else
-            api_gift.api_picture_url = nil
-            api_gift.picture = 'N'
-            logger.debug2 "fallback after post_on_#{api_gift.provider} failure. Blanked picture url for gift id #{gift.id}"
-          end
-          api_gift.save!
-        end
-      end
-
-      nil
-
-    rescue => e
-      logger.debug2  "#{__method__}: Exception: #{e.message.to_s} (#{e.class})"
-      logger.debug2  "#{__method__}: Backtrace: " + e.backtrace.join("\n")
-      raise
-    end
-  end # delete_local_picture
 
   # message for expired access tokens for user share level 3 (dynamic friend lists) and 4 (single sign-on login)
   # post login service message to user about any expired access tokens

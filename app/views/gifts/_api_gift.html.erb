@@ -35,7 +35,7 @@
               </div>
             </td>
           </tr>
-          <% if (api_gift.picture? and !api_gift.api_picture_url_on_error_at) or (gift.open_graph_image.to_s != '') -%>
+          <% if api_gift.picture? and !api_gift.api_picture_url_on_error_at  -%>
               <tr>
                 <td style="text-align: center">
                   <div id="<%= "gift-#{gift.id}-overflow-link" %>" data-giftid="<% gift.id %>" class="overflow" style="display: none; float: none">
@@ -48,29 +48,6 @@
               <tr>
                 <td>
                     <%= image_tag api_gift.api_picture_url, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id} %>
-                </td>
-              </tr>
-          <% end -%>
-          <% if gift.open_graph_image.to_s != '' -%>
-              <tr>
-                <td>
-                  <a href="<%= gift.open_graph_url %>" target="_blank">
-                    <%= image_tag gift.open_graph_image, :onload => "Gofreerev.imgonload(this)", :onerror => "Gofreerev.imgonerror(this)", :data => {:id => api_gift.id} %>
-                  </a>
-                </td>
-              </tr>
-          <% end -%>
-          <% if gift.open_graph_title.to_s != '' -%>
-              <tr>
-                <td>
-                  <b><%= sanitize gift.open_graph_title %></b>
-                </td>
-              </tr>
-          <% end -%>
-          <% if gift.open_graph_description.to_s != '' -%>
-              <tr>
-                <td>
-                  <%= sanitize gift.open_graph_description %>
                 </td>
               </tr>
           <% end -%>

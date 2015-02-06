@@ -7,210 +7,6 @@ class UtilController < ApplicationController
   skip_filter :fetch_users, :only => [:ping]
   skip_filter :set_locale_from_params, :only => [:ping]
 
-  # get array of gift ids with invalid picture url
-  # temp api url can have changed / picture may have been deleted
-  # Parameters: {"gifts"=>{"ids"=>"161"}}
-  def missing_api_picture_urls
-    begin
-      if !params.has_key?("api_gifts") or !params[:api_gifts].has_key?(:ids) or params[:api_gifts][:ids] == ''
-        return format_response_key('.mis_api_pic_no_param')
-      end
-      ids = params[:api_gifts][:ids].split(',')
-      logger.debug2 "ids = #{ids}"
-      api_gifts = ApiGift.where("id in (?)", ids)
-
-      # get new picture urls if possible. Stategies for finding a new valid url:
-      # 1) api_gift_id and deleted_at_api != 'Y'
-      #    1a) logged in as creator - recheck api wall
-      #    1b) not logged in as creator - skip - check later with creator login
-      # 2) no api_gift_id or deleted_at_api == 'Y'
-      #    2a) other provider with an valid api_gift_url - use url as workaround - mark invalid urls with error timestamp
-      #    2b) invalid url and api_gift_id and deleted_at_api != 'Y' and logged in as creator - recheck api wall and use if valid
-      #    2b) invalid url and api_gift_id and deleted_at_api != 'Y' and not
-
-      # todo: 3 - max request picture url once every hour
-      tokens = get_session_value(:tokens)
-      return format_response_key('.mis_api_pic_no_tokens') unless tokens
-      api_clients = {}
-      api_gifts.each do |api_gift|
-        if !api_gift.picture? or api_gift.api_picture_url.to_s == ""
-          logger.debug2 "Ignoring api_gift #{api_gift.id} where picture has been deleted (refresh gifts/index page in browser)"
-          next
-        end
-        if Picture.app_url?(api_gift.api_picture_url)
-          # local url / picture on server, but picture was not found (by browser)
-          # check if file exists. Could be a file protection problems
-          full_os_path = Picture.full_os_path :url => api_gift.api_picture_url
-          rel_path = Picture.rel_path :url => api_gift.api_picture_url
-          if File.exists? full_os_path
-            # picture exists on filesystem but was reported as missing by browser/js
-            # must be invalid file protection for /images/temp/ or /images/perm/ folder
-            logger.error2 "picture #{rel_path} exists in file system but was not found by browser. check file protection"
-            add_error_key '.mis_api_pic_file_exists', :rel_path => rel_path
-            next
-          end
-          # local picture file has been deleted. Continue. Maybe picture is available from an other api provider
-        else
-          # api url. recheck that picture has move or has been deleted
-          image_type = FastImage.type(api_gift.api_picture_url).to_s
-          # flickr: check for redirect to https://s.yimg.com/pw/images/photo_unavailable.gif
-          if image_type == 'gif' and api_gift.provider == 'flickr' and FastImage.size(api_gift.api_picture_url) == [500, 374]
-            # size = size for deleted flickr picture - check redirected url
-            redirected_url = ApiGift.http_get(api_gift.api_picture_url, 30, 3, true)
-            image_type = '' if redirected_url == 'https://s.yimg.com/pw/images/photo_unavailable.gif'
-          end
-          if %w(jpg jpeg gif png bmp).index(image_type)
-            # api url still exists. Could be a temporary problem
-            # todo: write warning in log, ignore error and blank api_gift.api_picture_url_on_error_at
-            logger.warn2 "api gift #{api_gift.id} url #{api_gift.api_picture_url} exists, but was not found by browser"
-            # add_error_key '.mis_api_pic_url_exists', :url => api_gift.api_picture_url
-            api_gift.api_picture_url_on_error_at = nil
-            api_gift.save!
-            next
-          end
-        end
-        # correct that api picture url does not exist - error mark api gift
-        api_gift.api_picture_url_on_error_at = Time.now
-        api_gift.save!
-
-        # check api wall - skip check if logged in user not is creator of post/picture
-        created_by_user_id = api_gift.gift.created_by == 'giver' ? api_gift.user_id_giver : api_gift.user_id_receiver
-        created_by_user = login_user_ids.index(created_by_user_id)
-        if api_gift.api_gift_id and api_gift.deleted_at_api != 'Y' and !created_by_user
-          # recheck api wall later as user created_by_user_id
-          logger.debug2 "check api gift #{api_gift.id} later with creator #{created_by_user_id} permissions"
-          next
-        end
-
-        # check api wall. logged in user is creator of post/picture
-        if api_gift.api_gift_id and api_gift.deleted_at_api != 'Y'
-          # check api wall
-
-          # check/initialize api client
-          api_client = api_clients[api_gift.provider]
-          if !api_client
-            # initialize api client for provider
-            token = tokens[api_gift.provider]
-            if !token
-              logger.warn2 "received api_gift.id #{api_gift.id} for provider #{api_gift.provider}, but user is not connected with provider #{api_gift.provider}"
-              add_error_key '.mis_api_pic_no_token', api_gift.app_and_apiname_hash
-              next
-            end
-
-            # todo: refactor - use generic init_api_client(provider, token) method
-            key, options = init_api_client(api_gift.provider, token)
-            if key.class == String
-              add_error_key key, options
-              next
-            end
-            api_clients[api_gift.provider] = api_client = key
-            #case api_gift.provider
-            #  when 'facebook' then
-            #    api_client = init_api_client_facebook(token)
-            #  when 'google_oauth2' then
-            #    api_client = nil # readonly api - no uploads
-            #  when 'instagram' then
-            #    api_client = nil # readonly api - no uploads
-            #  when 'linkedin' then
-            #    api_client = nil # image shared wih url to local picture store
-            #  when 'twitter' then
-            #    api_client = init_api_client_twitter(token)
-            #  else
-            #    logger.error2 "initialize api client for #{api_gift.provider} not implemented, api_gift.id = #{api_gift.id}"
-            #    @errors << ['.mis_api_pic_not_implemented1', api_gift.app_and_apiname_hash ]
-            #    next
-            #end
-            api_clients[api_gift.provider] = api_client
-          end
-          # api client initialized
-
-          # get new picture url from API
-          if api_client
-            begin
-              # check api wall
-              key, options = get_api_picture_url(api_gift.provider, api_gift, false, api_client) # just_posted = false
-              #case api_gift.provider
-              #  when 'facebook'
-              #    key, options = get_api_picture_url_facebook(api_gift, false, api_client)
-              #  when 'twitter'
-              #    key, options = get_api_picture_url_twitter(api_gift, false, api_client)
-              #  else
-              #    logger.error2 "No get_api_picture_url_#{api_gift.provider} method"
-              #    @errors << ['.mis_api_pic_not_implemented2', api_gift.app_and_apiname_hash ]
-              #    next
-              #end
-              if key
-                key = "util.do_tasks#{key}" if key.first == '.'
-                add_error_key key, options
-                next
-              end
-              # ok - post/picture os still on api wall and new api gift picture url has been received
-              next
-            rescue ApiPostNotFound => e
-              # identical api error response if picture is deleted or if user is not allowed to see picture
-              logger.debug2 "api gift #{api_gift.id} has been deleted on #{api_gift.provider} wall."
-              api_gift.deleted_at_api = 'Y'
-              api_gift.save!
-              # Continue. Maybe picture url is available from an other api provider
-            rescue AppNotAuthorized => e
-              # access token expired or user has deauthorized app
-              logger.debug2 "#{api_gift.provider} access token expired or user has deauthorized app"
-              add_error_key '.mis_api_pic_deauth', {:appname => APP_NAME, :provider => provider_downcase(api_gift.provider)}
-              # log out and skip chek any other api gifts for this provider
-              api_clients.delete(api_gift.provider)
-              logout(api_gift.provider)
-              api_gifts.delete_if { |ag| ag.provider == api_gift.provider }
-              next
-            end # rescue
-          end
-          # end check api wall
-        end
-
-        # api gift no longer on api wall. Check if picture url is available from an other api provider
-        # that is - user was logged in with multiple api providers when gift was created
-        # could be local perm path for linked used for a linkedin api gift
-        # could be a facebook api url used for an not facebook api provider
-        api_gift.reload
-        new_api_picture_url = nil
-        api_gift.gift.api_gifts.delete_if { |ag| ag.id == api_gift.id }.each do |api_gift2|
-          next if !api_gift2.picture?
-          next if api_gift2.api_picture_url_on_error_at
-          next if api_gift2.api_picture_url.to_s == ""
-          image_type2 = FastImage.type(api_gift2.api_picture_url).to_s
-          logger.debug2 "api_gift: provider #{api_gift2.provider}, api_picture_url = #{api_gift2.api_picture_url}, image_type2 = #{image_type2}"
-          next unless %w(jpg jpeg gif png bmp).index(image_type2)
-          new_api_picture_url = api_gift2.api_picture_url
-          break
-        end # each api_gift2
-        if !new_api_picture_url
-          logger.debug2 "api_gift id #{api_gift.id} - did not found api picture url for other provider"
-          api_gift.picture = 'N'
-          api_gift.api_picture_url = nil
-          api_gift.api_picture_url_on_error_at = nil
-          api_gift.save!
-          next
-        end
-
-        # use api_picture_url from other provider
-        logger.debug2 "api gift id #{api_gift.id} - found api picture url for an other provider"
-        logger.debug2 "old provider #{api_gift.provider}"
-        logger.debug2 "url = #{new_api_picture_url}"
-        api_gift.api_picture_url = new_api_picture_url
-        api_gift.api_picture_url_on_error_at = nil
-        api_gift.save!
-
-      end # each api_gift
-
-      format_response
-
-    rescue => e
-      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
-      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
-      format_response_key '.mis_api_pic_exception', :error => e.message
-    end
-  end # missing_api_picture_urls
-
-
   #
   # gift link ajax methods
   #
@@ -1638,6 +1434,7 @@ class UtilController < ApplicationController
       ping.save!
     end
     ping.did = get_session_value(:did) unless ping.did # from login - online devices
+    ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
 
     # debug info
     logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
@@ -1651,7 +1448,6 @@ class UtilController < ApplicationController
     new_timestamp = params[:client_timestamp].to_s.to_i
     set_session_value(:client_timestamp, new_timestamp)
     dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
-    logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
 
     # adjust next ping for this session (median of previous and next ping from other sessions)
     previous_ping = Ping.where('id <> ? and last_ping_at < ?', ping.id, now).order('last_ping_at desc').first
@@ -1671,7 +1467,37 @@ class UtilController < ApplicationController
     ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
     ping.save!
 
+    # ping stat
+    logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
     logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
+
+    # get list of online devices - ignore current session(s) - only online devices with friends are relevant
+    pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
+                       ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
+    login_users_friends = Friend.where(:user_id_giver => login_user_ids)
+                              .find_all { |f| f.friend_status_code == 'Y'}
+                              .collect { |f| f.user_id_receiver } unless pings.size == 0
+    pings = pings.delete_if do |p|
+      if (login_user_ids & p.user_ids).size == 0 and (login_user_friends & p.user_ids).size == 0
+        # no shared login users and not friends - remove from list
+        true
+      else
+        # get user ids for other session
+        p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
+        # include a list of mutual friends between this and other session
+        # ( devices sync gifts for mutual friends )
+        other_session_friends = Friend.where(:user_id_giver => p.user_ids)
+                                    .find_all { |f| f.friend_status_code == 'Y' }
+                                    .collect { |f| f.user_id_receiver }
+        p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
+        # keep in list
+        false
+      end
+    end.collect { |p| {:did => p.did, :user_ids => p.internal_user_ids, :mutual_friends => p.mutual_friends } }
+
+    logger.debug2 "pings.size (after) = #{pings.size}"
+    pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
+    @json[:online] = pings
 
     # ping transactions
     # 1) new gifts. create gift and return created_at_server timestamps to client

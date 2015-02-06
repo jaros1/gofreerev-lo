@@ -363,18 +363,6 @@ class UsersController < ApplicationController
       # show balance for @user2 - only friends can see balance information
       # show gifts for @user2 - only friends can see gifts for @user2
 
-      # get any pictures with invalid picture urls
-      # that is gifts where picture url are marked as invalid and where url lookup in /util/missing_api_picture_urls failed
-      # most possible explanation is that the pictures has been deleted in api
-      # but is could also be a api permission problem (gofreerev user is not allowed to see picture in api)
-      # check picture url again with owner permission
-      # the existing /util/missing_api_picture_urls is used to check invalid picture urls
-      # done in a client js call after the page has been rendered to the user
-      # see last lines in /gifts/index page
-      # see onLoad tag on img
-      # see js functions imgonload and report_missing_api_picture_urls
-      @missing_api_picture_urls = get_missing_api_picture_urls()
-
       # filters: status (open, closed and all) and direction (giver, receiver and both)
       statuses = %w(open closed all)
       status = params[:status] || 'all'

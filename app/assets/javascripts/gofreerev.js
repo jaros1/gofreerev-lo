@@ -209,13 +209,10 @@ var Gofreerev = (function() {
     // JS array with gift ids
     var missing_api_picture_urls = [];
 
-    // preinit array with missing api pictures at page startup (recheck error marked urls with owner privs.)
-    function set_missing_api_picture_urls (array) {
-        missing_api_picture_urls = array
-    }
-
     // function used in onload for img tags
     function imgonload(img) {
+        // todo: not implemented - move to angularJS (GiftService) - gid in data attribute
+        return ;
         var api_gift_id ;
         if (img.dataset) api_gift_id = img.dataset.id ;
         else api_gift_id = img.getAttribute('data-id') ;
@@ -245,6 +242,8 @@ var Gofreerev = (function() {
     } // imgonload
     // function used in onload for img tags
     function imgonerror(img) {
+        // todo: not implemented - move to angularJS (GiftService) - gid in data attribute
+        return ;
         var api_gift_id ;
         if (img.dataset) api_gift_id = img.dataset.id ;
         else api_gift_id = img.getAttribute('data-id') ;
@@ -253,30 +252,6 @@ var Gofreerev = (function() {
         missing_api_picture_urls.push(api_gift_id);
     } // imgonerror
 
-
-    // function to report gift ids with invalid urls. Submitted in end of gifts/index page
-    function report_missing_api_picture_urls() {
-        if (missing_api_picture_urls.length == 0) {
-            // no picture urls to check
-            add2log('report_missing_api_picture_urls: no picture urls to check') ;
-            return;
-        }
-        // Report ids with invalid picture url
-        // add2log('report_missing_api_picture_urls: sending api gift ids to server') ;
-        $.ajax({
-            url: "/util/missing_api_picture_urls.js",
-            type: "POST",
-            dataType: 'script',
-            data: { api_gifts: {ids: missing_api_picture_urls.join() } },
-            error: function (jqxhr, textStatus, errorThrown) {
-                if (leaving_page) return ;
-                var pgm = 'missing_api_picture_urls.error: ' ;
-                var err = add2log_ajax_error('missing_api_picture_urls.ajax.error: ', jqxhr, textStatus, errorThrown) ;
-                add_to_tasks_errors(I18n.t('js.missing_api_picture_urls.ajax_error', {error: err, location: 7, debug: 0})) ;
-            }
-        });
-        missing_api_picture_urls = [];
-    } // report_missing_picture_urls
 
     // http://stackoverflow.com/questions/152483/is-there-a-way-to-print-all-methods-of-an-object-in-javascript
     function getMethods(obj) {
@@ -293,14 +268,6 @@ var Gofreerev = (function() {
         return result;
     }
 
-
-    // abort rails remote submit - ajax is handled by angularJS
-    $(document).ready(function() {
-        $("#new_gift").unbind("ajax:before") ;
-        $("#new_gift").bind("ajax:before", function(){
-            return false ;
-        })
-    })
 
     // auto resize text fields
     // found at http://stackoverflow.com/questions/454202/creating-a-textarea-with-auto-resize
@@ -1012,7 +979,7 @@ var Gofreerev = (function() {
         // check old accounts
         for (i=0 ; i<passwords_a.length ; i++) {
             if (password_sha256 == passwords_a[i]) {
-                // log in ok - account exists
+                // log in ok - account existsgetItem
                 userid = i+1 ;
                 // save login
                 setItem('userid', userid) ;
@@ -1148,9 +1115,6 @@ var Gofreerev = (function() {
         inIframe: inIframe, // Fix bug. App is displayed in a iFrame for opera < 12.16
         reset_last_user_ajax_comment_at: reset_last_user_ajax_comment_at, // used in gifts/index page
         autoresize_text_field: autoresize_text_field,
-        // show more rows functionality - "endless" ajax expanding pages (gifts and users)
-        set_missing_api_picture_urls: set_missing_api_picture_urls,
-        report_missing_api_picture_urls: report_missing_api_picture_urls,
         // local storage helpers
         getItem: getItem,
         setItem: setItem,
@@ -1786,7 +1750,7 @@ angular.module('gifts', ['ngRoute'])
             };
             var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
-            // todo: new gifts. send gift meta-information to server (gid and userids) and get a ok receipt
+            // security: new gifts. send gift meta-information to server and get a ok receipt with server timestamps
             var new_gifts = [] ;
             var params = {
                 client_userid: userid,
@@ -1802,6 +1766,8 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                    // check online users/devices
+                    if (ok.data.online) console.log(pgm + 'ok. ok.data.online = ' + JSON.stringify(ok.data.online)) ;
                     // get timestamps for newly created gifts from server
                     if (ok.data.created_at_server) giftService.created_at_server_response(ok.data.created_at_server) ;
                     // check interval between client timestamp and previous client timestamp
@@ -2070,7 +2036,9 @@ angular.module('gifts', ['ngRoute'])
             }
         }; // sync_gifts
 
-        // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps. called from UserService.ping
+        // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps from server.
+        // called from UserService.ping
+        // gift timestamps: created_at_client (set by client) and created_at_server (returned from server)
         var created_at_server_request = function () {
             var request = [];
             var gift, hash;
@@ -2697,7 +2665,7 @@ angular.module('gifts', ['ngRoute'])
                 show: function () {
                     var currency = userService.get_users_currency() ;
                     // console.log('currency = ' + JSON.stringify(currency)) ;
-                    return (currency != null) ;
+                    return (currency != null) ; // logged in with one or more login providers?
                 }
             }
             // todo: resize gift description

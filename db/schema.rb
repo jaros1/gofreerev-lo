@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150205062618) do
+ActiveRecord::Schema.define(version: 20150206065540) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -127,7 +127,6 @@ ActiveRecord::Schema.define(version: 20150205062618) do
     t.integer  "status_update_at",            null: false
     t.datetime "deleted_at"
     t.string   "direction",        limit: 10
-    t.string   "created_by",       limit: 10
   end
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
@@ -164,6 +163,7 @@ ActiveRecord::Schema.define(version: 20150205062618) do
     t.datetime "last_ping_at"
     t.datetime "next_ping_at"
     t.string   "did"
+    t.text     "user_ids"
   end
 
   add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree

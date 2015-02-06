@@ -221,6 +221,7 @@ class Session < ActiveRecord::Base
   end # tokens_was
 
   # 12) user_ids - Array in model - encrypted text in db - array with currently logged in oauth users
+  # user_ids are stored encrypted in sessions table and are stored in clear in pings table
   def user_ids
     return nil unless (temp_extended_user_ids = read_attribute(:user_ids))
     # logger.debug2  "temp_extended_user_ids = #{temp_extended_user_ids}"

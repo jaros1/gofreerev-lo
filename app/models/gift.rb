@@ -74,19 +74,10 @@ class Gift < ActiveRecord::Base
   validates_each :direction, :allow_blank => true do |record, attr, value|
     if record.new_record? and value == 'both'
       record.errors.add attr, :invalid
-    elsif record.new_record? and record.created_by and value != record.created_by
-      record.errors.add attr, :invalid
-    elsif !record.new_record? and value != 'both' and value != record.created_by
-      record.errors.add attr, :invalid
     elsif record.received_at and value != 'both'
       record.errors.add attr, :invalid
     end
   end
-
-  # 29) created_by - giver or receiver - equal with direction when gift is created
-  attr_readonly :created_by
-  validates_presence_of :created_by
-  validates_inclusion_of :created_by, :allow_blank => true, :in => %w(giver receiver)
 
 
   #

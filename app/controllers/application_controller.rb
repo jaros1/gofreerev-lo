@@ -316,38 +316,6 @@ class ApplicationController < ActionController::Base
     { locale: I18n.locale }
   end
 
-  # get any pictures with invalid picture urls
-  # used in gifts/index page, todo:
-  # that is gifts where picture url are marked as invalid and where url lookup in /util/missing_api_picture_urls failed
-  # most possible explanation is that the pictures has been deleted in api
-  # but is could also be a api permission problem (gofreerev user is not allowed to see picture in api)
-  # check picture url again with owner permission
-  # the existing /util/missing_api_picture_urls is used to check invalid picture urls
-  # done in a client js call after the page has been rendered to the user
-  # see last lines in /gifts/index page
-  # see onLoad tag on img
-  # see js functions imgonload and report_missing_api_picture_urls
-  private
-  def get_missing_api_picture_urls
-    # logger.debug2 "login_user_ids = #{login_user_ids}"
-    return 'missing_api_picture_urls = [] ;' unless login_user_ids.size > 0
-    # all api gifts with @users as giver or receiver
-    api_gifts = ApiGift.where("(user_id_giver in (?) or user_id_receiver in (?)) and " +
-                                  "api_picture_url_on_error_at is not null and " +
-                                  "(deleted_at_api is null or deleted_at_api = 'N')",
-                       login_user_ids, login_user_ids).includes(:gift)
-    # remove api gift where @users are not creator of gift
-    api_gifts.delete_if do |api_gift|
-      user_id_created_by = api_gift.gift.created_by == 'giver' ? api_gift.user_id_giver : api_gift.user_id_receiver
-      !login_user_ids.index(user_id_created_by)
-    end # delete_if
-    if api_gifts.size == 0
-      'missing_api_picture_urls = Gofreerev.set_missing_api_picture_urls([]) ;'
-    else
-      'missing_api_picture_urls = Gofreerev.set_missing_api_picture_urls([' + api_gifts.collect { |ag| ag.id }.join(', ') + ']) ;'
-    end
-  end # get_missing_api_picture_urls
-
   # check get-more-rows ajax request for errors before fetching users or gifts
   # called in start of gifts/index, users/index and users/show and before calling get_next_set_of_rows
   # last_low_id must be correct - max one get-more-rows ajax request every GET_MORE_ROWS_INTERVAL seconds

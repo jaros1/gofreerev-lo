@@ -219,14 +219,14 @@
                         </tr>
                         <tr ng-show="ctrl.show_api_picture_url(gift)">
                             <td>
-                                <img ng-src="{{gift.api_picture_url}}" width="200" onerror="Gofreerev.imgonerror(this)"
-                                     onload="Gofreerev.imgonload(this)">
+                                <img ng-src="{{gift.api_picture_url}}" width="200" data-gid="{{gift.gid}}"
+                                     onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
                             </td>
                         </tr>
                         <tr ng-show="ctrl.show_open_graph_image(gift)">
                             <td>
                                 <a href="{{gift.open_graph_url}}" target="_blank">
-                                    <img ng-src="{{gift.open_graph_image}}" width="200"
+                                    <img ng-src="{{gift.open_graph_image}}" width="200" data-gid="{{gift.gid}}"
                                          onerror="Gofreerev.imgonerror(this)" onload="Gofreerev.imgonload(this)">
                                 </a>
                             </td>
@@ -383,10 +383,6 @@
 
         </table>
     </div>
-
-    <script>
-        setTimeout(Gofreerev.report_missing_api_picture_urls, 2000);
-    </script>
 
 
     <!--

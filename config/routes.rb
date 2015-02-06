@@ -23,7 +23,6 @@ GofreerevFb::Application.routes.draw do
   get '/auth', :to => 'auth#index'
   get '/auth/index'
 
-  post 'util/missing_api_picture_urls'
   post 'util/do_tasks'
   delete 'auth/destroy'
   post 'util/open_graph'

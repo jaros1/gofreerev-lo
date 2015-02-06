@@ -1494,15 +1494,32 @@ class UtilController < ApplicationController
         false
       end
     end.collect { |p| {:did => p.did, :user_ids => p.internal_user_ids, :mutual_friends => p.mutual_friends } }
-
-    logger.debug2 "pings.size (after) = #{pings.size}"
-    pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
+    # logger.debug2 "pings.size (after) = #{pings.size}"
+    # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
     @json[:online] = pings
 
     # ping transactions
+
     # 1) new gifts. create gift and return created_at_server timestamps to client
     logger.debug2 "created_at_server = #{params[:created_at_server]} (#{params[:created_at_server].class})"
     @json[:created_at_server] = Gift.create_gifts(params[:created_at_server], get_session_value(:user_ids)) if params[:created_at_server].to_s != ''
+    # 2) public keys. used in client to client communication
+    pubkeys_request = params[:pubkeys]
+    pubkeys_response = nil
+    logger.debug2 "pubkeys = #{pubkeys_request} (#{pubkeys_request.class})"
+    if pubkeys_request.class == Array and pubkeys_request.size > 0
+      pubkeys_response = Pubkey.where(:did => pubkeys_request).collect { |p| {:did => p.did, :pubkey => p.pubkey }}
+      if pubkeys_request.size != pubkeys_response.size
+        # client request for invalid pid
+        # todo: how to show online devices on other gofreerev-lo servers
+        # todo: how to return public keys from other gofreerev-lo servers
+        # add null response for invalid public key requests
+        (pubkeys_request - pubkeys_response.collect { |p| p.did}).each do |did|
+          pubkeys_response.push({:did => did, :pubkey => null })
+        end
+      end
+      @json[:pubkeys] = pubkeys_response
+    end
 
     # return interval and old_client_timestamp
     format_response

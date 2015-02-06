@@ -1738,6 +1738,66 @@ angular.module('gifts', ['ngRoute'])
             //console.log(pgm + 'new stat: ' + new_stat) ;
         } // sync_users
 
+        // update list of other devices (online and offline)
+        var devices = [] ;
+        var devices_index = {} ;
+        var init_devices_index = function () {
+            devices_index = {} ;
+            for (i=0 ; i<devices.length ; i++) devices_index[devices[i].did] = i ;
+        }
+        init_devices_index() ;
+        var update_devices = function (new_devices) {
+            var pgm = 'UserService.update_devices: ' ;
+            console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
+            // add index
+            var i ;
+            var new_devices_index = {} ;
+            for (i=0 ; i<new_devices.length ; i++) new_devices_index[new_devices[i].did] = i ;
+            // check old devices
+            for (i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                device.online = new_devices_index.hasOwnProperty(device.did) ;
+            }
+            // add new devices
+            var device ;
+            for (i=0 ; i<new_devices.length ; i++) {
+                device = new_devices[i] ;
+                device.online = true ;
+                if (!devices_index.hasOwnProperty(device.did)) devices.push(device) ;
+            }
+            init_devices_index() ;
+            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+        } // update_devices
+
+        // get/set pubkey for devices - used in client to cient communication
+        var pubkeys_request = function () {
+            var request = [] ;
+            var device ;
+            for (var i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                if (!device.hasOwnProperty('pubkey')) request.push(device.did) ;
+            }
+            return request.length == 0 ? null : request ;
+        }
+        var pubkeys_response = function (pubkeys) {
+            var pgm = 'UserService.pubkeys_response: ' ;
+            console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
+            var did, index, device ;
+            for (var i=0 ; i<pubkeys.length ; i++) {
+                if (pubkeys[i].hasOwnProperty('did')) {
+                    did = pubkeys[i].did ;
+                    if (devices_index.hasOwnProperty(did)) {
+                        index = devices_index[did] ;
+                        device = devices[index] ;
+                        if (device.hasOwnProperty('pubkey')) console.log(pgm + 'invalid pubkeys response from ping. pubkey for did has already been received from server') ;
+                        else device.pubkey = pubkeys[i].pubkey ;
+                    }
+                    else console.log(pgm + 'invalid pubkeys response from ping. Unknown did') ;
+                }
+                else console.log(pgm + 'invalid pubkeys response from ping. did property was not found.') ;
+            } // for
+        } // pubkeys_response
+
         // ping server once every minute - server maintains a list of online users / devices
         var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
         var ping = function (old_ping_interval) {
@@ -1756,7 +1816,8 @@ angular.module('gifts', ['ngRoute'])
                 client_userid: userid,
                 sid: sid,
                 client_timestamp: new_client_timestamp,
-                created_at_server: giftService.created_at_server_request()
+                created_at_server: giftService.created_at_server_request(),
+                pubkeys: pubkeys_request()
             };
             // console.log(pgm + 'params: ' + JSON.stringify(params)) ;
             $http.post('/util/ping.json', params).then(
@@ -1766,8 +1827,11 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
+
                     // check online users/devices
-                    if (ok.data.online) console.log(pgm + 'ok. ok.data.online = ' + JSON.stringify(ok.data.online)) ;
+                    if (ok.data.online) update_devices(ok.data.online) ;
+                    // check for new public keys for online users/devices
+                    if (ok.data.pubkeys) pubkeys_response(ok.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
                     if (ok.data.created_at_server) giftService.created_at_server_response(ok.data.created_at_server) ;
                     // check interval between client timestamp and previous client timestamp

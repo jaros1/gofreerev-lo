@@ -965,13 +965,18 @@ var Gofreerev = (function() {
         return id ;
     } // get_new_uid
 
+    // sha256 digest - used for one way password encryption and signatures for gifts and comments
+    function sha256 (text) {
+        return CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1)
+    }
+
     // client login (password from client-login-dialog-form)
     // 0 = invalid password, > 0 : userid
     // use create_new_account = true to force create a new user account
     // support for more than one user account
     function client_login (password, create_new_account) {
         var password_sha256, passwords_s, passwords_a, i, userid, did, crypt, pubkey, prvkey, prvkey_aes, giftid_key ;
-        password_sha256 = CryptoJS.SHA256(password).toString(CryptoJS.enc.Latin1);
+        password_sha256 = sha256(password);
         // passwords: array with hashed passwords. size = number of accounts
         passwords_s = getItem('passwords') ;
         if ((passwords_s == null) || (passwords_s == '')) passwords_a = [] ;
@@ -1122,6 +1127,7 @@ var Gofreerev = (function() {
         // angular helpers
         set_fb_logged_in_account: set_fb_logged_in_account,
         get_new_uid: get_new_uid,
+        sha256: sha256,
         client_login: client_login,
         client_sym_encrypt: encrypt,
         client_sym_decrypt: decrypt
@@ -1816,7 +1822,7 @@ angular.module('gifts', ['ngRoute'])
                 client_userid: userid,
                 sid: sid,
                 client_timestamp: new_client_timestamp,
-                created_at_server: giftService.created_at_server_request(),
+                new_gifts: giftService.new_gifts_request(),
                 pubkeys: pubkeys_request()
             };
             // console.log(pgm + 'params: ' + JSON.stringify(params)) ;
@@ -1833,7 +1839,7 @@ angular.module('gifts', ['ngRoute'])
                     // check for new public keys for online users/devices
                     if (ok.data.pubkeys) pubkeys_response(ok.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
-                    if (ok.data.created_at_server) giftService.created_at_server_response(ok.data.created_at_server) ;
+                    if (ok.data.new_gifts) giftService.new_gifts_response(ok.data.new_gifts) ;
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
                     console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
@@ -1884,6 +1890,12 @@ angular.module('gifts', ['ngRoute'])
         console.log('GiftService loaded') ;
 
         var gifts = [];
+        var gifts_index = {} ;
+        var init_gifts_index = function () {
+            gifts_index = {} ;
+            for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gid] = j ;
+        }
+
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
@@ -1903,14 +1915,18 @@ angular.module('gifts', ['ngRoute'])
                 }
                 gifts.push(new_gifts[i]) ;
             }
+            init_gifts_index() ;
             if (migration) Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
             console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
         }
         load_gifts() ;
 
         // add missing gid (unique gift id) - todo: remove
-        for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) gifts[i].gid = Gofreerev.get_new_uid() ;
-        // add missing cod (unique comment id) - todo: remove
+        for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) {
+            gifts[i].gid = Gofreerev.get_new_uid() ;
+            init_gifts_index() ;
+        }
+        // add missing cid (unique comment id) - todo: remove
         for (i=0 ; i<gifts.length ; i++) {
             if (gifts[i].hasOwnProperty('comments')) {
                 var comments = gifts[i].comments ;
@@ -1965,6 +1981,7 @@ angular.module('gifts', ['ngRoute'])
         } // refresh_comments
 
         // refresh gift from localStorage before update (changed in an other browser tab)
+        // called before adding change to js object in this browser tab
         var refresh_gift = function (gift) {
             var pgm = 'GiftService.refresh_gift: ' ;
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
@@ -2028,7 +2045,7 @@ angular.module('gifts', ['ngRoute'])
         //       one or more (other) attributes can have been changed in an other browser tabs
         //       one testcase could be like+follow. like in session 1 and follow in session 2. the result should be like+follow in both browser tabs.
         var save_gifts = function() {
-            // remove some session specifik attributes before save
+            // remove some session specific attributes before save
             var gifts_clone = JSON.parse(JSON.stringify(gifts)) ;
             for (var i=0 ; i<gifts_clone.length ; i++) {
                 if (gifts_clone[i].hasOwnProperty('show_no_comments')) delete gifts_clone[i]['show_no_comments'] ;
@@ -2048,10 +2065,7 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'start') ;
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             var gifts_index = {} ;
-            var init_gifts_index = function () {
-                gifts_index = {} ;
-                for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gid] = j ;
-            }
+            // todo: remove - index should normally always be up-to-date
             init_gifts_index() ;
             // insert and update gifts (keep sequence)
             var gid ;
@@ -2103,14 +2117,16 @@ angular.module('gifts', ['ngRoute'])
         // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps from server.
         // called from UserService.ping
         // gift timestamps: created_at_client (set by client) and created_at_server (returned from server)
-        var created_at_server_request = function () {
+        var new_gifts_request = function () {
             var request = [];
-            var gift, hash;
+            var gift, hash, sha256_client ;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
                 if (!gift.created_at_server) {
-                    // console.log('GiftService.created_at_server_request: gift = ' + JSON.stringify(gift));
-                    hash = {gid: gift.gid} ;
+                    // send meta-data for new gift to server and generate a sha256 signature for gift on server
+                    // server sha256 signature is checked after replication to other clients
+                    sha256_client = Gofreerev.sha256('' + gift.created_at_client + ',' + gift.description) ;
+                    hash = {gid: gift.gid, sha256: sha256_client} ;
                     if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids ;
                     if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids ;
                     request.push(hash) ;
@@ -2118,11 +2134,106 @@ angular.module('gifts', ['ngRoute'])
             } // for i
             return (request.length == 0 ? null : request) ;
         }; // created_at_server_request
-        var created_at_server_response = function (response) {
-            var pgm = 'GiftService.created_at_server_response: ' ;
+        var new_gifts_response = function (response) {
+            var pgm = 'GiftService.new_gifts_response: ' ;
             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-            console.log(pgm + 'not implemented') ;
-        };
+            //response = {
+            //    "data": [{
+            //        "gid": "14229514138964586797",
+            //        "created_at_server": 1423296637
+            //    }, {"gid": "14228839210394557243", "created_at_server": 1423296637}, {
+            //        "gid": "14227858909092774064",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
+            //    }, {"gid": "14229516705672581510", "created_at_server": 1423296637}, {
+            //        "gid": "14227858909099118894",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 2 users."
+            //    }, {"gid": "14228869693050229969", "created_at_server": 1423296637}, {
+            //        "gid": "14228738708866072714",
+            //        "created_at_server": 1423296637
+            //    }, {
+            //        "gid": "14227858909099516924",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 4 users."
+            //    }, {"gid": "14229508314280917733", "created_at_server": 1423296637}, {
+            //        "gid": "14228840768667706614",
+            //        "created_at_server": 1423296637
+            //    }, {
+            //        "gid": "14227858909095856034",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
+            //    }, {
+            //        "gid": "14227858909094376718",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
+            //    }, {"gid": "14229458799143433947", "created_at_server": 1423296637}, {
+            //        "gid": "14228841714818194784",
+            //        "created_at_server": 1423296637
+            //    }, {"gid": "14227859070825639222", "created_at_server": 1423296637}, {
+            //        "gid": "14227858909095625366",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
+            //    }, {"gid": "14229469715612452382", "created_at_server": 1423296637}, {
+            //        "gid": "14228846020659244239",
+            //        "created_at_server": 1423296637
+            //    }, {"gid": "14228847907148347389", "created_at_server": 1423296637}, {
+            //        "gid": "14229453397785180700",
+            //        "created_at_server": 1423296637
+            //    }, {"gid": "14229506863060435629", "created_at_server": 1423296637}, {
+            //        "gid": "14229511343352118493",
+            //        "created_at_server": 1423296637
+            //    }, {"gid": "14229490040820451568", "created_at_server": 1423296637}, {
+            //        "gid": "14229464338760345870",
+            //        "created_at_server": 1423296637
+            //    }, {"gid": "14229520600268413308", "created_at_server": 1423296637}, {
+            //        "gid": "14229506724902965072",
+            //        "created_at_server": 1423296637
+            //    }, {
+            //        "gid": "14227858909097979608",
+            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
+            //    }, {"gid": "14229488632524838524", "created_at_server": 1423296637}], "no_errors": 7
+            //}
+            if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
+            if (response.hasOwnProperty('no_errors')) console.log(pgm + response.no_errors + ' gifts was not created') ;
+            if (!response.hasOwnProperty('data')) return ;
+            var new_gifts = response.data ;
+            var new_gift, gid, index, gift, created_at_server ;
+            var save = false ;
+            for (var i=0 ; i<new_gifts.length ; i++) {
+                new_gift = new_gifts[i] ;
+                // validate new_gift in response.data array
+                if (!new_gift.hasOwnProperty('gid')) {
+                    // invalid json response
+                    console.log(pgm + 'Invalid response. gid property was missing error in data[' + i + '].') ;
+                    continue ;
+                }
+                gid = new_gift.gid ;
+                if (new_gift.hasOwnProperty('error')) {
+                    // report error from server validation
+                    console.log(pgm + 'data[' + i + '].error = ' + new_gift.error) ;
+                    continue ;
+                }
+                if (!gifts_index.hasOwnProperty(gid)) {
+                    console.log(pgm + 'Invalid response. Unknown gid in data[' + i + '].') ;
+                    continue ;
+                }
+                index = gifts_index[gid] ;
+                gift = gifts[index] ;
+                if (!new_gift.hasOwnProperty('created_at_server')) {
+                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '].') ;
+                    continue ;
+                }
+                if (gift.hasOwnProperty('created_at_server')) {
+                    if (new_gift.created_at_server == gift.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.') ;
+                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for gift.');
+                    continue ;
+                }
+                refresh_gift(gift) ;
+                if (gift.hasOwnProperty('created_at_server')) {
+                    if (new_gift.created_at_server == gift.created_at_server) null ; // ok - received in an other browser session
+                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for gift.');
+                    continue ;
+                }
+                gift.created_at_server = new_gift.created_at_server ;
+                save = true ;
+            } // for i
+            if (save) save_gifts() ;
+        }; // new_gifts_response
 
         return {
             gifts: gifts,
@@ -2131,8 +2242,8 @@ angular.module('gifts', ['ngRoute'])
             refresh_gift_and_comment: refresh_gift_and_comment,
             save_gifts: save_gifts,
             sync_gifts: sync_gifts,
-            created_at_server_request: created_at_server_request,
-            created_at_server_response: created_at_server_response
+            new_gifts_request: new_gifts_request,
+            new_gifts_response: new_gifts_response
         };
 
         // end GiftService

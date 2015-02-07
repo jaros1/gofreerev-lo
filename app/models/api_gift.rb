@@ -395,7 +395,6 @@ class ApiGift < ActiveRecord::Base
     if !deleted_at_was and deleted_at
       # api gift has been delete marked in User.delete_user (partial delete gift when deleting user account)
       # update gift.status_update_at so that gift will be ajax updated or deleted in other browser sessions
-      gift.status_update_at = Sequence.next_status_update_at
       gift.save!
     end # if
   end # before_update

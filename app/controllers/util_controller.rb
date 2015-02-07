@@ -1498,11 +1498,12 @@ class UtilController < ApplicationController
     # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
     @json[:online] = pings
 
-    # ping transactions
+    # ping transactions:
 
-    # 1) new gifts. create gift and return created_at_server timestamps to client
-    logger.debug2 "created_at_server = #{params[:created_at_server]} (#{params[:created_at_server].class})"
-    @json[:created_at_server] = Gift.create_gifts(params[:created_at_server], get_session_value(:user_ids)) if params[:created_at_server].to_s != ''
+    # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
+    logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
+    @json[:new_gifts] = Gift.new_gifts(params[:new_gifts], login_user_ids) if params[:new_gifts].to_s != ''
+
     # 2) public keys. used in client to client communication
     pubkeys_request = params[:pubkeys]
     pubkeys_response = nil

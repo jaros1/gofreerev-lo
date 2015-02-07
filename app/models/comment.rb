@@ -784,7 +784,6 @@ class Comment < ActiveRecord::Base
           ag.save!
         end
         gift.received_at = updated_at # todo: move to gift callback
-        gift.status_update_at = Sequence.next_status_update_at  # todo: move to gift callback
         gift.direction = 'both'
         gift.save!
         # mark users for balance recalculation - ensures that balance is recalculated even if accept new deal post processing should fail for some reason

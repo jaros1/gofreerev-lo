@@ -1,20 +1,10 @@
 class Gift < ActiveRecord::Base
 
-  has_many :comments, :class_name => 'Comment', :primary_key => :gid, :foreign_key => :gid, :dependent => :destroy
-  has_many :api_comments, :class_name => 'ApiComment', :primary_key => :gid, :foreign_key => :gid, :dependent => :destroy
-  # todo: :dependent => :destroy does not work for api_gifts. Has added a after_destroy callback to fix this problem
-  has_many :api_gifts, :class_name => 'ApiGift', :primary_key => :gid, :foreign_key => :gid, :dependent => :destroy
-
-  before_create :before_create
-  before_update :before_update
-  after_destroy :after_destroy
-
   # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database
   # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
   # this is different encrypt for each attribute and each db row
   # _before_type_cast methods are used by form helpers and are redefined
   crypt_keeper :received_at, :encryptor => :aes, :key => ENCRYPT_KEYS[1]
-
 
   ##############
   # attributes #
@@ -68,16 +58,6 @@ class Gift < ActiveRecord::Base
 
   # 27) updated_at - timestamp - not encrypted
 
-  # 28) direction - giver, receiver or both - starts with giver or receiver and is changed to both when the deal is accepted
-  validates_presence_of :direction
-  validates_inclusion_of :direction, :allow_blank => true, :in => %w(giver receiver both)
-  validates_each :direction, :allow_blank => true do |record, attr, value|
-    if record.new_record? and value == 'both'
-      record.errors.add attr, :invalid
-    elsif record.received_at and value != 'both'
-      record.errors.add attr, :invalid
-    end
-  end
 
 
   #
@@ -157,7 +137,6 @@ class Gift < ActiveRecord::Base
     logger.debug2 "users.class = #{users.class}"
     return false unless [Array, ActiveRecord::Relation::ActiveRecord_Relation_User].index(users.class) and users.size > 0
     return false if User.dummy_users?(users)
-    return false if direction == 'both' # closed deal
     count = 0
     api_gifts.each do |api_gift|
       user = users.find { |user2| user2.provider == api_gift.provider }
@@ -190,29 +169,6 @@ class Gift < ActiveRecord::Base
   attr_accessor :datatype
 
 
-  def before_create
-    self.status_update_at = Sequence.next_status_update_at
-  end
-
-  def before_update
-    if !deleted_at_was and deleted_at
-      # gift has been delete marked in util_controller.delete_gift
-      # update status_update_at so that gift will be ajax deleted in other sessions
-      self.status_update_at = Sequence.next_status_update_at
-      # destroy all notifications for this gift
-      api_comments.each do |api_comment|
-        api_comment.remove_from_notifications
-      end # each api_comment
-    end # if
-  end # before_update
-
-  def after_destroy
-    # :dependent => :destroy does not work for api_gifts relation
-    logger.debug2 "before cleanup api gifts. gid = #{gid}"
-    ApiGift.where('gid = ?', gid).delete_all
-    logger.debug2 "after cleanup api gifts. gid = #{gid}"
-  end
-
   # todo: there is a problem with api gifts without gifts.
   def self.check_gift_and_api_gift_rel
     giftids = nil
@@ -225,14 +181,106 @@ class Gift < ActiveRecord::Base
     # Process.kill('INT', Process.pid) # stop rails server
   end
 
-  # receive list with newly created gifts from client and return list with created_at_server timestamps to client
-  def self.create_gifts (created_at_server_request, login_user_ids)
-    logger.debug2 "created_at_server_request = #{created_at_server_request}"
+  # receive list with newly gifts from client,
+  # verify user ids, generate a sha256 digest, save gifts and return created_at_server timestamps to client
+  # sha256 digest can be used as a a control when replicating gifts between clients
+  # todo: use short internal user id (sequence) or use full user id (uid+provider) in client js gifts array?
+  #       the app should support replication gift from device a on app server 1 to device b on app server 2
+  #       but interval user ids can not be used across two different gofreerev-lo servers
+  def self.new_gifts (new_gifts, login_user_ids)
+    logger.debug2 "new_gifts = #{new_gifts}"
     logger.debug2 "user_ids = #{login_user_ids}"
-    login_users = User.where(:user_id => login_user_ids)
-    logger.debug2 "not implemented"
-    created_at_server_request
-  end
+    msg = "Could not save signature for new gift on server. "
+    # check params
+    if new_gifts.class != Array or new_gifts.size == 0
+      return { :error => "#{msg}Invalid request. Expected array with one or more new gifts."}
+    end
+    if login_user_ids.class != Array or login_user_ids.size == 0
+      return { :error => "#{msg}System error. Expected array with one or more login user ids."}
+    end
+    # verify user ids.
+    login_users = User.where(:user_id => login_user_ids).order('user_id')
+    if login_users.size < login_user_ids.size
+      return { :error => "#{msg}System error. Invalid login. Expected #{login_user_ids.size} users. Found #{login_users.size} users."}
+    end
+    logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
+    # check and create sha256 digest for the new gift(s)
+    new_gifts.shuffle!
+    data = []
+    no_errors = 0
+    new_gifts.each do |new_gift|
+      # verify new_gift hash. expects gid, created_at_client and either a giver_user_ids array or a receiver_user_ids array
+      # check gid (unix timestamp (10 decimals) + milliseconds (3 decimals) + random number (7 decimals))
+      if !new_gift.has_key?('gid')
+        return { :data => data, :error => "#{msg}Invalid request. gid property is missing for one or more gifts"}
+      end
+      gid = new_gift['gid'].to_s
+      # check client sha256 signature (from client side fields created_at_client and description)
+      if new_gift['sha256'].to_s == ''
+        return { :data => data, :error => "#{msg}Invalid request. sha256 property is missing for one or more gifts"}
+      end
+      sha256_client = new_gift['sha256'].to_s
+      # check giver/receiver user ids. Must have either giver or receiver but not both
+      if new_gift.has_key?('giver_user_ids') and new_gift['giver_user_ids'].class == Array and new_gift.size > 0
+        giver_user_ids = new_gift['giver_user_ids']
+      else
+        giver_user_ids = nil
+      end
+      if new_gift.has_key?('receiver_user_ids') and new_gift['receiver_user_ids'].class == Array and new_gift.size > 0
+        receiver_user_ids = new_gift['receiver_user_ids']
+      else
+        receiver_user_ids = nil
+      end
+      if !giver_user_ids and !receiver_user_ids
+        data << { :gid => gid, :error => "#{msg}giver_user_ids or receiver_user_ids property was missing" }
+        no_errors += 1
+        next
+      end
+      if giver_user_ids and receiver_user_ids
+        data << { :gid => gid, :error => "#{msg}giver_user_ids and receiver_user_ids properties are not allowed for a new gift." }
+        no_errors += 1
+        next
+      end
+      # check authorization. login user ids from rails session and gift user ids from client must match.
+      # can fail if social network logins has changed between time when gift was created at client and gifts upload to server (offline client)
+      direction = giver_user_ids ? 'giver' : 'receiver'
+      gift_user_ids = giver_user_ids || receiver_user_ids
+      gift_user_ids = gift_user_ids.collect { |id| id.to_s }
+      logger.debug2 "gid = #{gid}, direction = #{direction}, gift_user_ids = #{gift_user_ids}"
+      if login_users.size != gift_user_ids.size
+        data << { :gid => gid, :error => "#{msg}Invalid authorization. Expected #{login_users.size} users. Found #{gift_user_ids.size} users."}
+        no_errors += 1
+        next
+      end
+      no_auth_users = login_users.find_all { |u| (gift_user_ids.index(u.id.to_s) or gift_user_ids.index(u.user_id)) }.size
+      if login_users.size != no_auth_users
+        data << { :gid => gid, :error => "#{msg}Invalid authorization. Expected #{login_users.size} users. Found #{no_auth_users} users."}
+        no_errors += 1
+        next
+      end
+      # server side sha256 digest
+      sha256_server_text = ([gid, sha256_client, direction] + login_users.collect { |u| u.user_id }).join(',')
+      sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
+      logger.debug2 "sha256_server = #{sha256_server}"
+      g = Gift.find_by_gid(gid)
+      if g
+        # gift already exists - check signature
+        if g.sha256 == sha256_server
+          data << { :gid => gid, :created_at_server => g.created_at.to_i }
+        else
+          data << { :gid => gid, :error => "#{msg}Gift already exists but signature was invalid." }
+          no_errors += 1
+        end
+        next
+      end
+      g = Gift.new
+      g.gid = gid
+      g.sha256 = sha256_server
+      g.save!
+      data << { :gid => gid, :created_at_server => g.created_at.to_i }
+    end
+    return { :data => data, :no_errors => no_errors }
+  end # self.new_gifts
 
 
   # https://github.com/jmazzi/crypt_keeper gem encrypts all attributes and all rows in db with the same key

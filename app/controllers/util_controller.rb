@@ -1444,7 +1444,8 @@ class UtilController < ApplicationController
     # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
     # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
     # see angularJS UserService.ping function (sync_users and sync_gifts)
-    @json[:old_client_timestamp] = old_timestamp  = get_session_value(:client_timestamp)
+    old_timestamp  = get_session_value(:client_timestamp)
+    @json[:old_client_timestamp] = old_timestamp if old_timestamp
     new_timestamp = params[:client_timestamp].to_s.to_i
     set_session_value(:client_timestamp, new_timestamp)
     dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
@@ -1483,7 +1484,7 @@ class UtilController < ApplicationController
         true
       else
         # get user ids for other session
-        p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
+        # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
         # include a list of mutual friends between this and other session
         # ( devices sync gifts for mutual friends )
         other_session_friends = Friend.where(:user_id_giver => p.user_ids)
@@ -1493,10 +1494,14 @@ class UtilController < ApplicationController
         # keep in list
         false
       end
-    end.collect { |p| {:did => p.did, :user_ids => p.internal_user_ids, :mutual_friends => p.mutual_friends } }
+    end.collect do |p|
+      {:did => p.did,
+       # :user_ids => p.internal_user_ids,
+       :mutual_friends => p.mutual_friends }
+    end
     # logger.debug2 "pings.size (after) = #{pings.size}"
     # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
-    @json[:online] = pings
+    @json[:online] = pings if pings.size > 0
 
     # ping transactions:
 
@@ -1523,6 +1528,7 @@ class UtilController < ApplicationController
     end
 
     # return interval and old_client_timestamp
+    logger.debug2 "@json = #{@json}"
     format_response
   end # ping
 

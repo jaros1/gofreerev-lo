@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150207121156) do
+ActiveRecord::Schema.define(version: 20150208085524) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -158,7 +158,7 @@ ActiveRecord::Schema.define(version: 20150207121156) do
   create_table "pings", force: true do |t|
     t.string   "session_id",    limit: 32
     t.integer  "client_userid"
-    t.string   "client_sid",    limit: 15
+    t.string   "client_sid",    limit: 20
     t.datetime "last_ping_at"
     t.datetime "next_ping_at"
     t.string   "did"

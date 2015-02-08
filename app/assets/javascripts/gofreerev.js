@@ -821,6 +821,12 @@ var Gofreerev = (function() {
             else return null ; // key not found
         }
 
+        // todo: remove old data migration. truncate did from 21 to 20 characters
+        if (rename_uid && (value.length > 21)) {
+            value = value.substr(0,21) ;
+            localStorage.setItem(key, value) ;
+        }
+
         // get storage flag - how was data stored - first character in value
         var storage_flag = value.substr(0,1) ;
         value = value.substr(1) ;
@@ -989,7 +995,7 @@ var Gofreerev = (function() {
                 // save login
                 setItem('userid', userid) ;
                 setItem('password', password) ;
-                if (!getItem('sid')) setItem('sid', '' + new Date().getTime()) ;
+                if (!getItem('sid')) setItem('sid', Gofreerev.get_new_uid()) ;
                 return userid ;
             }
         }
@@ -1547,6 +1553,7 @@ angular.module('gifts', ['ngRoute'])
                 // console.log(pgm + 'debug 2') ;
                 Gofreerev.removeItem('password') ;
                 Gofreerev.removeItem('userid') ;
+                Gofreerev.removeItem('sid') ;
                 giftService.load_gifts() ;
             }
             else {
@@ -1817,7 +1824,6 @@ angular.module('gifts', ['ngRoute'])
             var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
             // security: new gifts. send gift meta-information to server and get a ok receipt with server timestamps
-            var new_gifts = [] ;
             var params = {
                 client_userid: userid,
                 sid: sid,
@@ -1825,6 +1831,8 @@ angular.module('gifts', ['ngRoute'])
                 new_gifts: giftService.new_gifts_request(),
                 pubkeys: pubkeys_request()
             };
+            for (var key in params) if (params[key] == null) delete params[key] ;
+            console.log(pgm + 'ping request = ' + JSON.stringify(params)) ;
             // console.log(pgm + 'params: ' + JSON.stringify(params)) ;
             $http.post('/util/ping.json', params).then(
                 function (ok) {
@@ -2136,58 +2144,7 @@ angular.module('gifts', ['ngRoute'])
         }; // created_at_server_request
         var new_gifts_response = function (response) {
             var pgm = 'GiftService.new_gifts_response: ' ;
-            console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-            //response = {
-            //    "data": [{
-            //        "gid": "14229514138964586797",
-            //        "created_at_server": 1423296637
-            //    }, {"gid": "14228839210394557243", "created_at_server": 1423296637}, {
-            //        "gid": "14227858909092774064",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
-            //    }, {"gid": "14229516705672581510", "created_at_server": 1423296637}, {
-            //        "gid": "14227858909099118894",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 2 users."
-            //    }, {"gid": "14228869693050229969", "created_at_server": 1423296637}, {
-            //        "gid": "14228738708866072714",
-            //        "created_at_server": 1423296637
-            //    }, {
-            //        "gid": "14227858909099516924",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 4 users."
-            //    }, {"gid": "14229508314280917733", "created_at_server": 1423296637}, {
-            //        "gid": "14228840768667706614",
-            //        "created_at_server": 1423296637
-            //    }, {
-            //        "gid": "14227858909095856034",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
-            //    }, {
-            //        "gid": "14227858909094376718",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
-            //    }, {"gid": "14229458799143433947", "created_at_server": 1423296637}, {
-            //        "gid": "14228841714818194784",
-            //        "created_at_server": 1423296637
-            //    }, {"gid": "14227859070825639222", "created_at_server": 1423296637}, {
-            //        "gid": "14227858909095625366",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
-            //    }, {"gid": "14229469715612452382", "created_at_server": 1423296637}, {
-            //        "gid": "14228846020659244239",
-            //        "created_at_server": 1423296637
-            //    }, {"gid": "14228847907148347389", "created_at_server": 1423296637}, {
-            //        "gid": "14229453397785180700",
-            //        "created_at_server": 1423296637
-            //    }, {"gid": "14229506863060435629", "created_at_server": 1423296637}, {
-            //        "gid": "14229511343352118493",
-            //        "created_at_server": 1423296637
-            //    }, {"gid": "14229490040820451568", "created_at_server": 1423296637}, {
-            //        "gid": "14229464338760345870",
-            //        "created_at_server": 1423296637
-            //    }, {"gid": "14229520600268413308", "created_at_server": 1423296637}, {
-            //        "gid": "14229506724902965072",
-            //        "created_at_server": 1423296637
-            //    }, {
-            //        "gid": "14227858909097979608",
-            //        "error": "Could not create new gift. Invalid authorization. Expected 3 users. Found 1 users."
-            //    }, {"gid": "14229488632524838524", "created_at_server": 1423296637}], "no_errors": 7
-            //}
+            // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
             if (response.hasOwnProperty('no_errors')) console.log(pgm + response.no_errors + ' gifts was not created') ;
             if (!response.hasOwnProperty('data')) return ;
@@ -2199,24 +2156,24 @@ angular.module('gifts', ['ngRoute'])
                 // validate new_gift in response.data array
                 if (!new_gift.hasOwnProperty('gid')) {
                     // invalid json response
-                    console.log(pgm + 'Invalid response. gid property was missing error in data[' + i + '].') ;
+                    console.log(pgm + 'Invalid response. gid property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift)) ;
                     continue ;
                 }
                 gid = new_gift.gid ;
                 if (new_gift.hasOwnProperty('error')) {
                     // report error from server validation
                     console.log(pgm + 'data[' + i + '].error = ' + new_gift.error) ;
+                    // todo: delete gift and display error message in page header
                     continue ;
                 }
                 if (!gifts_index.hasOwnProperty(gid)) {
-                    console.log(pgm + 'Invalid response. Unknown gid in data[' + i + '].') ;
+                    console.log(pgm + 'Invalid response. Unknown gid in data[' + i + ' = ' + JSON.stringify(new_gift)) ;
                     continue ;
                 }
                 index = gifts_index[gid] ;
                 gift = gifts[index] ;
                 if (!new_gift.hasOwnProperty('created_at_server')) {
-                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '].') ;
-                    continue ;
+                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift)) ;
                 }
                 if (gift.hasOwnProperty('created_at_server')) {
                     if (new_gift.created_at_server == gift.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.') ;

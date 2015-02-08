@@ -210,6 +210,9 @@ gem 'angular_rails_csrf'
 # http://stackoverflow.com/questions/8362458/error-when-running-rails-app-execjsruntimeerror
 gem 'therubyracer'
 
+# validate server side json
+gem 'json-schema'
+
 # use when moving to an other db environment. See issue 12
 # https://github.com/ludicast/yaml_db
 # https://github.com/ludicast/yaml_db/pull/45

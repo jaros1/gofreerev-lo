@@ -1395,6 +1395,16 @@ class UtilController < ApplicationController
   def ping
     now = Time.zone.now
 
+    # validate json ping request
+    ping_request = params.clone
+    %w(controller action format util).each { |key| ping_request.delete(key) }
+    ping_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_request], ping_request)
+    if ping_request_errors.size > 0
+      # json error: basic ping operations only
+      @json[:error] = "Invalid ping request: #{ping_request_errors.join(', ')}"
+      logger.error2 @json[:error]
+    end
+
     # all client sessions should ping server once every server ping cycle
     # check server load average the last 5 minutes and increase/decrease server ping cycle
     s = Sequence.get_server_ping_cycle
@@ -1503,32 +1513,44 @@ class UtilController < ApplicationController
     # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
     @json[:online] = pings if pings.size > 0
 
-    # ping transactions:
+    if ping_request_errors.size == 0
+      # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
 
-    # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
-    logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
-    @json[:new_gifts] = Gift.new_gifts(params[:new_gifts], login_user_ids) if params[:new_gifts].to_s != ''
+      # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
+      logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
+      @json[:new_gifts] = Gift.new_gifts(params[:new_gifts], login_user_ids) if params[:new_gifts].to_s != ''
 
-    # 2) public keys. used in client to client communication
-    pubkeys_request = params[:pubkeys]
-    pubkeys_response = nil
-    logger.debug2 "pubkeys = #{pubkeys_request} (#{pubkeys_request.class})"
-    if pubkeys_request.class == Array and pubkeys_request.size > 0
-      pubkeys_response = Pubkey.where(:did => pubkeys_request).collect { |p| {:did => p.did, :pubkey => p.pubkey }}
-      if pubkeys_request.size != pubkeys_response.size
-        # client request for invalid pid
-        # todo: how to show online devices on other gofreerev-lo servers
-        # todo: how to return public keys from other gofreerev-lo servers
-        # add null response for invalid public key requests
-        (pubkeys_request - pubkeys_response.collect { |p| p.did}).each do |did|
-          pubkeys_response.push({:did => did, :pubkey => null })
+      # 2) public keys. used in client to client communication
+      pubkeys_request = params[:pubkeys]
+      pubkeys_response = nil
+      logger.debug2 "pubkeys = #{pubkeys_request} (#{pubkeys_request.class})"
+      if pubkeys_request.class == Array and pubkeys_request.size > 0
+        pubkeys_response = Pubkey.where(:did => pubkeys_request).collect { |p| {:did => p.did, :pubkey => p.pubkey }}
+        if pubkeys_request.size != pubkeys_response.size
+          # client request for invalid pid
+          # todo: how to show online devices on other gofreerev-lo servers
+          # todo: how to return public keys from other gofreerev-lo servers
+          # add null response for invalid public key requests
+          (pubkeys_request - pubkeys_response.collect { |p| p.did}).each do |did|
+            pubkeys_response.push({:did => did, :pubkey => null })
+          end
         end
+        @json[:pubkeys] = pubkeys_response
       end
-      @json[:pubkeys] = pubkeys_response
+
+    end
+
+    # validate json response
+    # logger.debug2 "@json = #{@json}"
+    if !@json[:error]
+      ping_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_response], @json)
+      if ping_response_errors.size > 0
+        @json[:error] = "Invalid ping response: #{ping_response_errors.join(', ')}"
+        logger.error2 @json[:error]
+      end
     end
 
     # return interval and old_client_timestamp
-    logger.debug2 "@json = #{@json}"
     format_response
   end # ping
 

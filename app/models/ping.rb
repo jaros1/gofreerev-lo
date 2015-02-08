@@ -23,7 +23,12 @@ class Ping < ActiveRecord::Base
     YAML::load temp_user_ids
   end # user_ids_was
 
+  # array with internal user ids - used in ping response (online devices)
+  # replicate gifts for mutual friends between online devices
   attr_accessor :mutual_friends
-  attr_accessor :internal_user_ids
+
+  # attr_accessor :internal_user_ids
+
+
 
 end

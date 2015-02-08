@@ -1,6 +1,6 @@
 # validate json request/response with json schemas
 # server side: https://github.com/ruby-json-schema/json-schema
-# client side: ?
+# client side: https://github.com/geraintluff/tv4
 
 # helper expression for gid, sid, cid etc (20 decimal string). To big to be a JS integer. From 2015-01-01 and one year forward in time
 uid_from = (Time.zone.parse '2015-01-01').to_i
@@ -64,6 +64,8 @@ JSON_SCHEMA = {
                       :required => %w(did mutual_friends),
                       :additionalProperties => false
                   }},
+              # optional - return fatal errors to client (invalid json request)
+              :error => {:type => 'string'},
               # object and array with created_at_server timestamps (or error messages) response for new_gifts request
               :new_gifts => {
                   :type => 'object',
@@ -88,12 +90,25 @@ JSON_SCHEMA = {
                           }
                       },
                       # optional number of errors returned in data array
-                      :no_errors => { :type => 'integer'}
+                      :no_errors => {:type => 'integer'}
                   },
                   :additionalProperties => false
               },
               # array with did and public keys response for pubkeys request
-              :pubkeys => {:type => 'array'}
+              :pubkeys => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # unique device id from pubkeys request
+                          :did => {:type => 'string', :pattern => uid_full_range},
+                          # public key or null if unknown did
+                          :pubkey => {:type => 'string'}
+                      },
+                      :required => %w(did),
+                      :additionalProperties => false
+                  }
+              }
              },
          :required => %w(interval),
          :additionalProperties => false

@@ -1821,27 +1821,44 @@ angular.module('gifts', ['ngRoute'])
                 $timeout(function () { ping(ping_interval); }, ping_interval) ;
                 return ;
             };
+            // make ping request
             var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
-            // security: new gifts. send gift meta-information to server and get a ok receipt with server timestamps
-            var params = {
+            var ping_request = {
                 client_userid: userid,
                 sid: sid,
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
                 pubkeys: pubkeys_request()
             };
-            for (var key in params) if (params[key] == null) delete params[key] ;
-            console.log(pgm + 'ping request = ' + JSON.stringify(params)) ;
-            // console.log(pgm + 'params: ' + JSON.stringify(params)) ;
-            $http.post('/util/ping.json', params).then(
+            for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
+            // validate json request before sending ping to server
+            var valid_ping_request = tv4.validate(ping_request, Gofreerev.rails['JSON_SCHEMA'].ping_request) ;
+            if (!valid_ping_request) {
+                var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                delete error.stack ;
+                console.log(pgm + 'Error in JSON ping request. Ping was not sent.') ;
+                console.log(pgm + 'request: ' + JSON.stringify(ping_request)) ;
+                console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                return ;
+            }
+            // console.log(pgm + 'params: ' + JSON.stringify(ping_request)) ;
+            $http.post('/util/ping.json', ping_request).then(
                 function (ok) {
                     // schedule next ping. todo: now a rails constant. change to a calculation based on server load later
                     console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
                     console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
-
+                    // validate ping response received from server
+                    var valid_ping_response = tv4.validate(ok.data, Gofreerev.rails['JSON_SCHEMA'].ping_response) ;
+                    if (!valid_ping_response) {
+                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                        delete error.stack ;
+                        console.log(pgm + 'Error in JSON ping response from server.') ;
+                        console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
+                        console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                    }
                     // check online users/devices
                     if (ok.data.online) update_devices(ok.data.online) ;
                     // check for new public keys for online users/devices

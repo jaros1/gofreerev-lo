@@ -9,6 +9,40 @@ uid_short_range = `rgxg range -Z #{uid_from} #{uid_to}`.strip
 uid_full_range = "^#{uid_short_range}[0-9]{10}$"
 
 JSON_SCHEMA = {
+    # login request/response is used in local device login. oauth information is send to server, validated and updated api friend lists are returned
+    # oauth information is stored encrypted in localStorage in browser and only temporary available for server
+    # oauth information is deleted from session cookie and from server when login process is finished
+    :login_request => {
+        :type => 'object',
+        :properties => {
+            # client userid normally = 1. Allow up to 100 user accounts in localStorage
+            :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
+            # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            :did => {:type => 'string', :pattern => uid_full_range},
+            # pubkey key for unique device - used in encrypted client to client information replication
+            :pubkey => {:type => 'string'},
+            # object with oauth authorization for social networks - properties/keys = providers
+            # for each provider a object with oauth token, user_id (uid+provider) and expires_at timestamp
+            :oauth => JSON.parse("{\"type\":\"object\",\"properties\":{" +
+                                     API_ID.keys.collect do |key|
+                                       "\"#{key}\":" +
+                                           "{\"type\":\"object\", " +
+                                            "\"properties\":{" +
+                                                 "\"token\":{\"type\":\"string\"},"+
+                                                 "\"user_id\":{\"type\":\"string\"}," +
+                                                 "\"expires_at\":{" +
+                                                       "\"type\":\"integer\", " +
+                                                       "\"minimum\":" + (Time.zone.parse '2015-01-01').to_i.to_s + ", " +
+                                                       "\"maximum\":" + 15.months.from_now.to_i.to_s + "} }," +
+                                            "\"required\":[\"token\",\"user_id\",\"expires_at\"]," +
+                                            "\"additionalProperties\":false" +
+                                       "}"
+                                     end.join(',') + "},\"additionalProperties\":false }")
+        },
+        :required => %w(client_userid did pubkey oauth),
+        :additionalProperties => false
+    },
+    :login_response => {},
     # ping request/response is the central message used in synchronization of information between servers and clients
     # number of pings per time period are regulated after average server load
     # client pings are distributed equally over time

@@ -1305,6 +1305,18 @@ class UtilController < ApplicationController
   public
   def login
     begin
+      # validate json ping request (JSON_SCHEMA[:ping_request])
+      login_request = params.clone
+      %w(controller action format util).each { |key| login_request.delete(key) }
+      logger.secret2 "login_request = #{login_request}"
+      login_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:login_request], login_request)
+      if login_request_errors.size > 0
+        # todo: stop or continue?
+        @json[:error] = "Invalid login request: #{login_request_errors.join(', ')}"
+        logger.error2 @json[:error]
+        return
+      end
+
       # remember unique device uid - used when sync. data between user devices
       set_session_value :did, params[:did]
 
@@ -1393,165 +1405,159 @@ class UtilController < ApplicationController
   # total server ping interval cycle is adjusted to load average for the last 5 minutes (3.6 for a 4 core cpu / 0.6 for a 1 core cpu)
   # client pings are distributed equally over each server ping cycle with mini adjustments
   def ping
-    now = Time.zone.now
+    begin
+      now = Time.zone.now
 
-    # validate json ping request
-    ping_request = params.clone
-    %w(controller action format util).each { |key| ping_request.delete(key) }
-    ping_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_request], ping_request)
-    if ping_request_errors.size > 0
-      # json error: basic ping operations only
-      @json[:error] = "Invalid ping request: #{ping_request_errors.join(', ')}"
-      logger.error2 @json[:error]
-    end
-
-    # all client sessions should ping server once every server ping cycle
-    # check server load average the last 5 minutes and increase/decrease server ping cycle
-    s = Sequence.get_server_ping_cycle
-    old_server_ping_cycle = s.value
-    avg5 = IO.read('/proc/loadavg').split[1].to_f # load average the last 5 minutes
-    if s.updated_at < 30.seconds.ago(now) and (((avg5 < MAX_AVG_LOAD - 0.1) and (s.value >= 3000)) or (avg5 > MAX_AVG_LOAD + 0.1))
-      # only adjust server_ping_interval once every 30 seconds
-      if avg5 < MAX_AVG_LOAD
-        # low server load average - decrease interval between pings
-        s.value = s.value - 1000
-      else
-        # height server load average - increase interval between pings
-        s.value = s.value + 1000
-      end
-      s.save!
-    end
-    new_server_ping_cycle = s.value
-
-    # find number of active sessions in pings table
-    max_server_ping_cycle = [old_server_ping_cycle, new_server_ping_cycle].max + 2000 ;
-    no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_cycle/1000).seconds.ago(now)).count
-    no_active_sessions = 1 if no_active_sessions == 0
-    avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
-
-    # keep track of pings. find/create ping. used when adjusting pings for individual sessions
-    # Ping - one row for each client browser tab windue
-    Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
-    sid = params[:sid]
-    ping = Ping.find_by_session_id_and_client_userid_and_client_sid(get_sessionid, get_client_userid, sid)
-    if !ping
-      ping = Ping.new
-      ping.session_id = get_sessionid
-      ping.client_userid = get_client_userid
-      ping.client_sid = sid
-      ping.next_ping_at = now
-      ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
-      ping.save!
-    end
-    ping.did = get_session_value(:did) unless ping.did # from login - online devices
-    ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
-
-    # debug info
-    logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
-    logger.debug2 "old server ping interval = #{old_server_ping_cycle}, new server ping interval = #{new_server_ping_cycle}"
-    logger.debug2 "no_active_sessions = #{no_active_sessions}, avg_ping_interval = #{avg_ping_interval}"
-
-    # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
-    # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
-    # see angularJS UserService.ping function (sync_users and sync_gifts)
-    old_timestamp  = get_session_value(:client_timestamp)
-    @json[:old_client_timestamp] = old_timestamp if old_timestamp
-    new_timestamp = params[:client_timestamp].to_s.to_i
-    set_session_value(:client_timestamp, new_timestamp)
-    dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
-
-    # adjust next ping for this session (median of previous and next ping from other sessions)
-    previous_ping = Ping.where('id <> ? and last_ping_at < ?', ping.id, now).order('last_ping_at desc').first
-    previous_ping_interval = now - previous_ping.last_ping_at if previous_ping
-    previous_ping_interval = avg_ping_interval unless previous_ping_interval and previous_ping_interval <= 2 * avg_ping_interval
-    # find next ping by other sessions - interval to next ping be should close to avg_ping_interval
-    next_ping = Ping.where('id <> ? and next_ping_at > ?', ping.id, now).order('next_ping_at').first
-    next_ping_interval = next_ping ? next_ping.next_ping_at - now : avg_ping_interval # seconds
-    # calc adjustment for this ping. Should be in midle between previous ping and next ping
-    avg_ping_interval2 = (previous_ping_interval + next_ping_interval) / 2 # seconds
-    adjust_this_ping = -previous_ping_interval + avg_ping_interval2 # seconds
-    # next ping
-    @json[:interval] = new_server_ping_cycle + (adjust_this_ping*1000).round # milliseconds
-
-    # save ping timestamps. Used in next ping interval calculation
-    ping.last_ping_at = now
-    ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
-    ping.save!
-
-    # ping stat
-    logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
-    logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
-
-    # get list of online devices - ignore current session(s) - only online devices with friends are relevant
-    pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
-                       ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
-    login_users_friends = Friend.where(:user_id_giver => login_user_ids)
-                              .find_all { |f| f.friend_status_code == 'Y'}
-                              .collect { |f| f.user_id_receiver } unless pings.size == 0
-    pings = pings.delete_if do |p|
-      if (login_user_ids & p.user_ids).size == 0 and (login_user_friends & p.user_ids).size == 0
-        # no shared login users and not friends - remove from list
-        true
-      else
-        # get user ids for other session
-        # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
-        # include a list of mutual friends between this and other session
-        # ( devices sync gifts for mutual friends )
-        other_session_friends = Friend.where(:user_id_giver => p.user_ids)
-                                    .find_all { |f| f.friend_status_code == 'Y' }
-                                    .collect { |f| f.user_id_receiver }
-        p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
-        # keep in list
-        false
-      end
-    end.collect do |p|
-      {:did => p.did,
-       # :user_ids => p.internal_user_ids,
-       :mutual_friends => p.mutual_friends }
-    end
-    # logger.debug2 "pings.size (after) = #{pings.size}"
-    # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
-    @json[:online] = pings if pings.size > 0
-
-    if ping_request_errors.size == 0
-      # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
-
-      # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
-      logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
-      @json[:new_gifts] = Gift.new_gifts(params[:new_gifts], login_user_ids) if params[:new_gifts].to_s != ''
-
-      # 2) public keys. used in client to client communication
-      pubkeys_request = params[:pubkeys]
-      pubkeys_response = nil
-      logger.debug2 "pubkeys = #{pubkeys_request} (#{pubkeys_request.class})"
-      if pubkeys_request.class == Array and pubkeys_request.size > 0
-        pubkeys_response = Pubkey.where(:did => pubkeys_request).collect { |p| {:did => p.did, :pubkey => p.pubkey }}
-        if pubkeys_request.size != pubkeys_response.size
-          # client request for invalid pid
-          # todo: how to show online devices on other gofreerev-lo servers
-          # todo: how to return public keys from other gofreerev-lo servers
-          # add null response for invalid public key requests
-          (pubkeys_request - pubkeys_response.collect { |p| p.did}).each do |did|
-            pubkeys_response.push({:did => did, :pubkey => null })
-          end
-        end
-        @json[:pubkeys] = pubkeys_response
-      end
-
-    end
-
-    # validate json response
-    # logger.debug2 "@json = #{@json}"
-    if !@json[:error]
-      ping_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_response], @json)
-      if ping_response_errors.size > 0
-        @json[:error] = "Invalid ping response: #{ping_response_errors.join(', ')}"
+      # validate json ping request (JSON_SCHEMA[:ping_request])
+      ping_request = params.clone
+      %w(controller action format util).each { |key| ping_request.delete(key) }
+      ping_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_request], ping_request)
+      if ping_request_errors.size > 0
+        # json error: basic ping operations only
+        @json[:error] = "Invalid ping request: #{ping_request_errors.join(', ')}"
         logger.error2 @json[:error]
       end
-    end
 
-    # return interval and old_client_timestamp
-    format_response
+      # all client sessions should ping server once every server ping cycle
+      # check server load average the last 5 minutes and increase/decrease server ping cycle
+      s = Sequence.get_server_ping_cycle
+      old_server_ping_cycle = s.value
+      avg5 = IO.read('/proc/loadavg').split[1].to_f # load average the last 5 minutes
+      if s.updated_at < 30.seconds.ago(now) and (((avg5 < MAX_AVG_LOAD - 0.1) and (s.value >= 3000)) or (avg5 > MAX_AVG_LOAD + 0.1))
+        # only adjust server_ping_interval once every 30 seconds
+        if avg5 < MAX_AVG_LOAD
+          # low server load average - decrease interval between pings
+          s.value = s.value - 1000
+        else
+          # height server load average - increase interval between pings
+          s.value = s.value + 1000
+        end
+        s.save!
+      end
+      new_server_ping_cycle = s.value
+
+      # find number of active sessions in pings table
+      max_server_ping_cycle = [old_server_ping_cycle, new_server_ping_cycle].max + 2000;
+      no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_cycle/1000).seconds.ago(now)).count
+      no_active_sessions = 1 if no_active_sessions == 0
+      avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
+
+      # keep track of pings. find/create ping. used when adjusting pings for individual sessions
+      # Ping - one row for each client browser tab windue
+      Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
+      sid = params[:sid]
+      ping = Ping.find_by_session_id_and_client_userid_and_client_sid(get_sessionid, get_client_userid, sid)
+      if !ping
+        ping = Ping.new
+        ping.session_id = get_sessionid
+        ping.client_userid = get_client_userid
+        ping.client_sid = sid
+        ping.next_ping_at = now
+        ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
+        ping.save!
+      end
+      ping.did = get_session_value(:did) unless ping.did # from login - online devices
+      ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
+
+      # debug info
+      logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
+      logger.debug2 "old server ping interval = #{old_server_ping_cycle}, new server ping interval = #{new_server_ping_cycle}"
+      logger.debug2 "no_active_sessions = #{no_active_sessions}, avg_ping_interval = #{avg_ping_interval}"
+
+      # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
+      # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
+      # see angularJS UserService.ping function (sync_users and sync_gifts)
+      old_timestamp = get_session_value(:client_timestamp)
+      @json[:old_client_timestamp] = old_timestamp if old_timestamp
+      new_timestamp = params[:client_timestamp].to_s.to_i
+      set_session_value(:client_timestamp, new_timestamp)
+      dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
+
+      # adjust next ping for this session (median of previous and next ping from other sessions)
+      previous_ping = Ping.where('id <> ? and last_ping_at < ?', ping.id, now).order('last_ping_at desc').first
+      previous_ping_interval = now - previous_ping.last_ping_at if previous_ping
+      previous_ping_interval = avg_ping_interval unless previous_ping_interval and previous_ping_interval <= 2 * avg_ping_interval
+      # find next ping by other sessions - interval to next ping be should close to avg_ping_interval
+      next_ping = Ping.where('id <> ? and next_ping_at > ?', ping.id, now).order('next_ping_at').first
+      next_ping_interval = next_ping ? next_ping.next_ping_at - now : avg_ping_interval # seconds
+      # calc adjustment for this ping. Should be in midle between previous ping and next ping
+      avg_ping_interval2 = (previous_ping_interval + next_ping_interval) / 2 # seconds
+      adjust_this_ping = -previous_ping_interval + avg_ping_interval2 # seconds
+      # next ping
+      @json[:interval] = new_server_ping_cycle + (adjust_this_ping*1000).round # milliseconds
+
+      # save ping timestamps. Used in next ping interval calculation
+      ping.last_ping_at = now
+      ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
+      ping.save!
+
+      # ping stat
+      logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
+      logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
+
+      # get list of online devices - ignore current session(s) - only online devices with friends are relevant
+      pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
+                         ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
+      login_users_friends = Friend.where(:user_id_giver => login_user_ids)
+                                .find_all { |f| f.friend_status_code == 'Y' }
+                                .collect { |f| f.user_id_receiver } unless pings.size == 0
+      pings = pings.delete_if do |p|
+        if (login_user_ids & p.user_ids).size == 0 and (login_user_friends & p.user_ids).size == 0
+          # no shared login users and not friends - remove from list
+          true
+        else
+          # get user ids for other session
+          # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
+          # include a list of mutual friends between this and other session
+          # ( devices sync gifts for mutual friends )
+          other_session_friends = Friend.where(:user_id_giver => p.user_ids)
+                                      .find_all { |f| f.friend_status_code == 'Y' }
+                                      .collect { |f| f.user_id_receiver }
+          p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
+          # keep in list
+          false
+        end
+      end.collect do |p|
+        {:did => p.did,
+         # :user_ids => p.internal_user_ids,
+         :mutual_friends => p.mutual_friends}
+      end
+      # logger.debug2 "pings.size (after) = #{pings.size}"
+      # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
+      @json[:online] = pings if pings.size > 0
+
+      if ping_request_errors.size == 0
+        # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
+
+        # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
+        # sha256 signature should ensure that gift information is not unauthorized updated
+        # logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
+        new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids)
+        @json[:new_gifts] = new_gifts_response if new_gifts_response
+
+        # 2) public keys. used in client to client communication (public/private key encryption)
+        pubkeys_response = Ping.pubkeys params[:pubkeys]
+        @json[:pubkeys] = pubkeys_response if pubkeys_response
+
+      end
+
+      # validate json response (JSON_SCHEMA[:ping_response])
+      # logger.debug2 "@json = #{@json}"
+      if !@json[:error]
+        ping_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_response], @json)
+        if ping_response_errors.size > 0
+          @json[:error] = "Invalid ping response: #{ping_response_errors.join(', ')}"
+          logger.error2 @json[:error]
+        end
+      end
+
+      # return interval and old_client_timestamp
+      format_response
+    rescue => e
+      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
+      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
+      format_response_key '.exception', :error => e.message
+    end
   end # ping
 
 end # UtilController

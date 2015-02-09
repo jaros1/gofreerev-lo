@@ -1706,9 +1706,24 @@ angular.module('gifts', ['ngRoute'])
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash (authorization for one or more login providers) to server
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
-            var did = Gofreerev.getItem('did') ;
-            var pubkey = Gofreerev.getItem('pubkey')
-            return $http.post('/util/login.json', {client_userid: userid, oauth: oauth, did: did, pubkey: pubkey})
+            var login_request = {
+                client_userid: userid,
+                oauth: oauth,
+                did: Gofreerev.getItem('did'),
+                pubkey: Gofreerev.getItem('pubkey')} ;
+            // validate json login request before sending request to server
+            for (var key in login_request) if (login_request[key] == null) delete login_request[key] ;
+            // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].login_request)) ;
+            var valid_login_request = tv4.validate(login_request, Gofreerev.rails['JSON_SCHEMA'].login_request) ;
+            if (!valid_login_request) {
+                var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                delete error.stack ;
+                console.log(pgm + 'Error in JSON login request. Login information was not sent.') ;
+                console.log(pgm + 'request: ' + JSON.stringify(login_request)) ;
+                console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                return ;
+            }
+            return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;

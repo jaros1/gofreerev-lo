@@ -9,9 +9,9 @@ uid_short_range = `rgxg range -Z #{uid_from} #{uid_to}`.strip
 uid_full_range = "^#{uid_short_range}[0-9]{10}$"
 
 JSON_SCHEMA = {
-    # login request/response is used in local device login. oauth information is send to server, validated and updated api friend lists are returned
-    # oauth information is stored encrypted in localStorage in browser and only temporary available for server
-    # oauth information is deleted from session cookie and from server when login process is finished
+    # login request/response is used after local device login. oauth information is send to server, validated and updated api friend lists are returned to client
+    # oauth information is stored encrypted in localStorage in browser and only temporary in server session doing log in
+    # oauth information is deleted from session cookie and from server session when login process is finished
     :login_request => {
         :type => 'object',
         :properties => {
@@ -21,8 +21,9 @@ JSON_SCHEMA = {
             :did => {:type => 'string', :pattern => uid_full_range},
             # pubkey key for unique device - used in encrypted client to client information replication
             :pubkey => {:type => 'string'},
-            # object with oauth authorization for social networks - properties/keys = providers
+            # object with oauth authorization for zero, one or more social networks - properties/keys = api login providers
             # for each provider a object with oauth token, user_id (uid+provider) and expires_at timestamp
+            # ( API_ID is from omniauth setup in /config/initializers/omniauth.rb )
             :oauth => JSON.parse("{\"type\":\"object\",\"properties\":{" +
                                      API_ID.keys.collect do |key|
                                        "\"#{key}\":" +
@@ -42,7 +43,29 @@ JSON_SCHEMA = {
         :required => %w(client_userid did pubkey oauth),
         :additionalProperties => false
     },
-    :login_response => {},
+    :login_response => {
+        :type => 'object',
+        :properties => {
+            :users => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        :user_id => { :type => 'integer', :minimum => 1},
+                        :provider => { :type => 'string', :pattern => '^(' + API_ID.keys.join('|') + ')$'},
+                        :user_name => { :type => 'string'},
+                        :api_profile_picture_url => { :type => 'string' },
+                        :friend => { :type => 'integer', :minimum => 1, :maximum => 8}
+                    },
+                    :required => %w(user_id provider user_name api_profile_picture_url friend),
+                    :additionalProperties => false
+                }
+            },
+            :error => {:type => 'string'}
+        },
+        :required => %w(users),
+        :additionalProperties => false
+    },
     # ping request/response is the central message used in synchronization of information between servers and clients
     # number of pings per time period are regulated after average server load
     # client pings are distributed equally over time

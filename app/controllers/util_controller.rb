@@ -479,272 +479,7 @@ class UtilController < ApplicationController
     end
   end # generic_post_login
 
-  # post login task for facebook - get permissions and friends - using koala gem
-  # called from do_tasks - ajax requests after login
-  # must return nil or a valid input to translate
-  #private
-  #def post_login_facebook
-  #  begin
-  #    ## get facebook user and facebook api client (koala)
-  #    provider = "facebook"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #    login_user_id = login_user.user_id
-  #
-  #    # get user information - permissions and picture
-  #    api_request = 'me?fields=permissions,picture'
-  #    # logger.debug2  "api_request = #{api_request}"
-  #    api_response = api_client.get_object api_request
-  #    # logger.debug2  "api_response = #{api_response.to_s}"
-  #
-  #    # update permissions
-  #    login_user.permissions = api_response['permissions']['data']
-  #    login_user.permissions = {} if login_user.permissions == []
-  #    login_user.save!
-  #
-  #    # update profile picture - picture received in auth/create is too small
-  #    image = api_response['picture']['data']['url'] if api_response['picture'] and api_response['picture']['data']
-  #    logger.debug2 "image = #{image}"
-  #    key, options = User.update_profile_image(login_user_id, image)
-  #    return [key, options] if key # error when updating profile picture information
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ] if new_user
-  #
-  #    # ok
-  #    nil
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s}"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_facebook
 
-
-
-  ## post login task for flickr - get connections
-  ## using flickraw gem
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate  private
-  #private
-  #def post_login_flickr
-  #  begin
-  #
-  #    # get flickr login user flickraw api client
-  #    provider = "flickr"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # 3) update balance
-  #    login_user.recalculate_balance if login_user.balance_at != Date.today
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_flickr
-  
-  ## post login task for foursquare - get friends - using foursquare2 gem
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate
-  ## friends information is included in auth_hash that is received in post auth/create,
-  ## but friends update can take some time and is done here in post_login_foursquare
-  #private
-  #def post_login_foursquare
-  #  begin
-  #    # get facebook user and foursquare2 api client
-  #    provider = "foursquare"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s}"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_foursquare
-
-  ## post login task for google+
-  ## using google-api-client
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate
-  #private
-  #def post_login_google_oauth2
-  #  begin
-  #    # get google user and api client
-  #    provider = "google_oauth2"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # 3) update balance
-  #    login_user.recalculate_balance if login_user.balance_at != Date.today
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #  rescue => e
-  #    logger.error2  "Exception: #{e.message.to_s}"
-  #    logger.error2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_google_oauth2
-
-  ## post login task for instagram - get follows and followed-by friend lists
-  ## using instagram gem
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate  private
-  #private
-  #def post_login_instagram
-  #  begin
-  #
-  #    # get instagram user and instagram api client
-  #    provider = "instagram"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # 3) update balance
-  #    login_user.recalculate_balance if login_user.balance_at != Date.today
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_instagram
-  
-
-  ## post login task for linkedIn - get connections
-  ## using linked gem
-  ## is using old version 0.4.4 - map error in 0.4.6 - https://github.com/hexgnu/linkedin/issues/216
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate  private
-  #private
-  #def post_login_linkedin
-  #  begin
-  #
-  #    # get linkedin user and linkedin api client
-  #    provider = "linkedin"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # 3) update balance
-  #    login_user.recalculate_balance if login_user.balance_at != Date.today
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #
-  #  rescue LinkedIn::Errors::AccessDeniedError => e
-  #    return ['.linkedin_access_denied', {:provider => provider}] if e.message.to_s =~ /Access to connections denied/
-  #    logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_linkedin
-
-
-  ## post login task for twitter - get friends
-  ## using twitter gem
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate  private
-  #private
-  #def post_login_twitter
-  #  begin
-  #
-  #    # get twitter user, friends and twitter api client
-  #    provider = "twitter"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # 3) update balance
-  #    login_user.recalculate_balance if login_user.balance_at != Date.today
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_twitter
-
-
-  ## post login task for vkontakte - get friends
-  ## using vkontakte gem
-  ## called from do_tasks - ajax requests after login
-  ## must return nil or a valid input to translate  private
-  #private
-  #def post_login_vkontakte
-  #  begin
-  #
-  #    # get vkontakte user (no "api client" for vkontakte)
-  #    provider = "vkontakte"
-  #
-  #    # get login user, initialize api client, get and update friends information
-  #    login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-  #    return [key, options] if key.class == String
-  #
-  #    # 3) update balance
-  #    login_user.recalculate_balance if login_user.balance_at != Date.today
-  #
-  #    # special post login message to new users
-  #    return ['.post_login_new_user', login_user.app_and_apiname_hash ]if new_user
-  #
-  #    # ok
-  #    nil
-  #
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end # post_login_vkontakte
-  
-  
   # recalculate user balance
   # use after login, at new day, after new deal, after deleted deal etc
   def recalculate_user_balance (id)
@@ -1308,7 +1043,7 @@ class UtilController < ApplicationController
       # validate json ping request (JSON_SCHEMA[:ping_request])
       login_request = params.clone
       %w(controller action format util).each { |key| login_request.delete(key) }
-      logger.secret2 "login_request = #{login_request}"
+      # logger.secret2 "login_request = #{login_request}"
       login_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:login_request], login_request)
       if login_request_errors.size > 0
         # todo: stop or continue?
@@ -1380,10 +1115,8 @@ class UtilController < ApplicationController
           { :user_id => user.id,
             :provider => user.provider,
             :user_name => user.user_name,
-            :balance => nil,
             :api_profile_picture_url => user.api_profile_picture_url,
-            :friend => login_user.friends_hash[user.user_id],
-            :currency => user.currency }
+            :friend => login_user.friends_hash[user.user_id] }
         end
       end # each provider
 
@@ -1391,8 +1124,21 @@ class UtilController < ApplicationController
       # should only be used to download friend lists from apis
       # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
 
-      # format json response. oauth is irrelevant in this context
+      # oauth (returned from post_login_update_friends) is irrelevant in this context
       @json.delete :oauth
+
+      # validate json response
+      # logger.secret2 "@json = #{@json}"
+      # validate json response (JSON_SCHEMA[:ping_response])
+      # logger.debug2 "@json = #{@json}"
+      if !@json[:error]
+        login_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:login_response], @json)
+        if login_response_errors.size > 0
+          @json[:error] = "Invalid login response: #{login_response_errors.join(', ')}"
+          logger.error2 @json[:error]
+        end
+      end
+
       format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"

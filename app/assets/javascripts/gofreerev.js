@@ -1727,6 +1727,16 @@ angular.module('gifts', ['ngRoute'])
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
+                    // validate ping response received from server
+                    var valid_login_response = tv4.validate(response.data, Gofreerev.rails['JSON_SCHEMA'].login_response) ;
+                    if (!valid_login_response) {
+                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                        delete error.stack ;
+                        console.log(pgm + 'Error in JSON login response from server.') ;
+                        console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
+                        console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                        return $q.reject(response.data.error) ;
+                    }
                     if (response.data.users) {
                         // fresh user info array was received from server
                         console.log(pgm + 'login. users = ' + JSON.stringify(response.data.users)) ;

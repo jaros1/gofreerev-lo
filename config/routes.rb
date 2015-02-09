@@ -27,8 +27,8 @@ GofreerevFb::Application.routes.draw do
   delete 'auth/destroy'
   post 'util/open_graph'
   post 'util/upload'
-  post 'util/logout'
   post 'util/login'
+  post 'util/logout'
   post 'util/ping'
 
   # The priority is based upon order of creation: first created -> highest priority.

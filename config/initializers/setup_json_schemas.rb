@@ -46,15 +46,24 @@ JSON_SCHEMA = {
     :login_response => {
         :type => 'object',
         :properties => {
+            # array with login user and friends information (friends etc). from api friend lists
             :users => {
                 :type => 'array',
                 :items => {
                     :type => 'object',
+                    # fields in user record (login user, friend etc)
                     :properties => {
+                        # internal user id (sequence)
                         :user_id => { :type => 'integer', :minimum => 1},
+                        # login provider - facebook, foursquare etc
                         :provider => { :type => 'string', :pattern => '^(' + API_ID.keys.join('|') + ')$'},
+                        # full user name
                         :user_name => { :type => 'string'},
+                        # url to profile picture
                         :api_profile_picture_url => { :type => 'string' },
+                        # friend:
+                        # - 1: logged in user, 2: mutual friends, 3: follows, 4: stalked by,
+                        # - 5: deselected api friends, 6: friends of friends, 7: friends proposals, 8: others
                         :friend => { :type => 'integer', :minimum => 1, :maximum => 8}
                     },
                     :required => %w(user_id provider user_name api_profile_picture_url friend),
@@ -66,6 +75,26 @@ JSON_SCHEMA = {
         :required => %w(users),
         :additionalProperties => false
     },
+
+    # log out request/response is used for device log out (without provider) or log out for a social network (with provider)
+    :logout_request => {
+        :type => 'object',
+        :properties => {
+            # client userid normally = 1. Old client userid at device logout (provider=null). Allow up to 100 user accounts in localStorage
+            :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
+            # optional log out provider. null=device: device log out. <>null: social network log out
+            :provider => { :type => 'string', :pattern => '^(' + API_ID.keys.join('|') + ')$'}
+        },
+        :required => %w(client_userid),
+        :additionalProperties => false
+    },
+    :logout_response => {
+        :type => 'object',
+        # optional error message is the only property in log out response
+        :properties => { :error => { :type => 'string'} },
+        :additionalProperties => false
+    },
+
     # ping request/response is the central message used in synchronization of information between servers and clients
     # number of pings per time period are regulated after average server load
     # client pings are distributed equally over time

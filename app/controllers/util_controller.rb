@@ -1005,37 +1005,6 @@ class UtilController < ApplicationController
     logger.debug2 "params = #{params}"
   end
 
-  # client logout. either global log out for all providers or log out for one login provider
-  # remove oauth information from session
-  # always an empty json response
-  public
-  def logout
-    begin
-      logger.debug2 "params = #{params}"
-      find_or_create_session
-      return format_response if @s.new_record? # don't save and delete new session
-      provider = params[:provider]
-      provider = nil unless valid_omniauth_provider?(provider)
-      if provider
-        # api provider log out
-        delete_session_array_value :tokens, provider
-        delete_session_array_value :expires_at, provider
-        delete_session_array_value :refresh_tokens, provider
-        user_ids = get_session_value :user_ids
-        user_ids = user_ids.delete_if { |user_id| (user_id.split('/').last == provider) }
-        set_session_value :user_ids, user_ids
-      else
-        # local log out - log out for all providers
-        @s.destroy unless @s.new_record?
-      end
-      format_response
-    rescue => e
-      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
-      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
-      format_response_key '.exception', :error => e.message
-    end
-  end # logout
-
   # client login. receive oauth hash from client, insert oauth in server session and update/download friends information
   public
   def login
@@ -1146,6 +1115,67 @@ class UtilController < ApplicationController
       format_response_key '.exception', :error => e.message
     end
   end # login
+
+  # client logout. either global log out for all providers or log out for one login provider
+  # remove oauth information from session
+  # always an empty json response
+  public
+  def logout
+    begin
+      logger.debug2 "params = #{params}"
+
+      # validate json logout request (JSON_SCHEMA[:logout_request])
+      logout_request = params.clone
+      %w(controller action format util).each { |key| logout_request.delete(key) }
+      logout_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:logout_request], logout_request)
+      if logout_request_errors.size > 0
+        # json error: basic logout operations only
+        @json[:error] = "Invalid logout request: #{logout_request_errors.join(', ')}"
+        logger.error2 @json[:error]
+      end
+
+      find_or_create_session
+      return format_response if @s.new_record? # don't save and delete new session
+      provider = params[:provider]
+      provider = nil unless valid_omniauth_provider?(provider)
+      if provider
+        # api provider log out
+
+        # todo: dump tokens, expires_at and refresh tokens - should not be stored in server session
+        logger.secret2 "tokens[#{provider}] = #{get_session_array_value(:tokens, provider)}"
+        logger.secret2 "expires_at[#{provider}] = #{get_session_array_value(:expires_at, provider)}"
+        logger.secret2 "refresh_tokens[#{provider}] = #{get_session_array_value(:refresh_tokens, provider)}"
+
+        delete_session_array_value :tokens, provider
+        delete_session_array_value :expires_at, provider
+        delete_session_array_value :refresh_tokens, provider
+        user_ids = get_session_value :user_ids
+        user_ids = user_ids.delete_if { |user_id| (user_id.split('/').last == provider) }
+        set_session_value :user_ids, user_ids
+      else
+        # local log out - log out for all providers
+        @s.destroy unless @s.new_record?
+      end
+
+      # validate json response
+      # logger.debug2 "@json = #{@json}"
+      # validate json response (JSON_SCHEMA[:ping_response])
+      # logger.debug2 "@json = #{@json}"
+      if !@json[:error]
+        logout_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:logout_response], @json)
+        if logout_response_errors.size > 0
+          @json[:error] = "Invalid logout response: #{logout_response_errors.join(', ')}"
+          logger.error2 @json[:error]
+        end
+      end
+      
+      format_response
+    rescue => e
+      logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
+      logger.debug2 "Backtrace: " + e.backtrace.join("\n")
+      format_response_key '.exception', :error => e.message
+    end
+  end # logout
 
   # client must ping server once every server ping cycle
   # total server ping interval cycle is adjusted to load average for the last 5 minutes (3.6 for a 4 core cpu / 0.6 for a 1 core cpu)

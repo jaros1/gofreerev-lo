@@ -1547,10 +1547,12 @@ angular.module('gifts', ['ngRoute'])
         var logout = function (provider) {
             var pgm = 'UserService.logout: ' ;
             console.log(pgm + 'provider = ' + provider) ;
+            var old_client_userid = client_userid() ;
             // console.log(pgm + 'debug 1') ;
             if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) {
                 // device log out = session log out - note that no local storage info are removed
                 // console.log(pgm + 'debug 2') ;
+                provider = null ;
                 Gofreerev.removeItem('password') ;
                 Gofreerev.removeItem('userid') ;
                 Gofreerev.removeItem('sid') ;
@@ -1583,7 +1585,39 @@ angular.module('gifts', ['ngRoute'])
             }
             // update oauth info in server session
             // console.log(pgm + 'debug 5') ;
-            $http.post('/util/logout.json?client_userid=' + client_userid(), {provider: provider || ''}) ;
+            var logout_request = { client_userid: old_client_userid};
+            if (provider) logout_request.provider = provider ;
+
+            // validate json logout request before sending request to server
+            // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].logout_request)) ;
+            var valid_logout_request = tv4.validate(logout_request, Gofreerev.rails['JSON_SCHEMA'].logout_request) ;
+            if (!valid_logout_request) {
+                var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                delete error.stack ;
+                console.log(pgm + 'Error in JSON log out request. Log out information was not sent.') ;
+                console.log(pgm + 'request: ' + JSON.stringify(logout_request)) ;
+                console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                return ;
+            }
+            $http.post('/util/logout.json', logout_request)
+                .then(function (response) {
+                    // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
+                    if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
+                    // validate ping response received from server (should only be error message)
+                    var valid_logout_response = tv4.validate(response.data, Gofreerev.rails['JSON_SCHEMA'].logout_response) ;
+                    if (!valid_logout_response) {
+                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                        delete error.stack ;
+                        console.log(pgm + 'Error in JSON logout response from server.') ;
+                        console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
+                        console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                        return $q.reject(response.data.error) ;
+                    }
+                },
+                function (error) {
+                    console.log(pgm + 'log out error = ' + JSON.stringify(error)) ;
+                    return $q.reject(JSON.stringify(error)) ;
+                }) ;
         } // logout
 
         // test data - users - todo: receive array with users after login (login users and friends)

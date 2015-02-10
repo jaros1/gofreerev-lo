@@ -61,7 +61,8 @@ module ActionControllerExtensions
   def get_session_array_value (key, index)
     find_or_create_session()
     save_session()
-    eval("@s.#{key}")[index]
+    hash = eval("@s.#{key}") || {}
+    hash[index]
   end
   def set_session_value (key, value)
     key = key.to_sym
@@ -80,6 +81,7 @@ module ActionControllerExtensions
   def set_session_array_value (key, value, index)
     key = key.to_sym
     hash = get_session_value(key)
+    hash = {} unless hash
     hash[index] = value
     set_session_value(key, hash)
     value
@@ -87,6 +89,7 @@ module ActionControllerExtensions
   def delete_session_array_value( key, index)
     key = key.to_sym
     hash = get_session_value(key)
+    hash = {} unless hash
     value = hash.delete(index)
     set_session_value(key, hash)
     value

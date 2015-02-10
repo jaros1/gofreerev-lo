@@ -114,7 +114,8 @@ class ApplicationController < ActionController::Base
     login_user_ids.each do |user_id|
       uid, provider = user_id.split('/')
       next if uid == 'gofreerev' # dummy user for not connected session
-      expires_at = (get_session_value(:expires_at) || {})[provider]
+      ## expires_at = (get_session_value(:expires_at) || {})[provider]
+      expires_at = get_session_array_value(:expires_at, provider)
       # refresh google+ access token once every hour
       # http://stackoverflow.com/questions/12572723/rails-google-client-api-unable-to-exchange-a-refresh-token-for-access-token
       if expires_at and (expires_at.abs < Time.now.to_i) and (provider == 'google_oauth2')
@@ -292,6 +293,7 @@ class ApplicationController < ActionController::Base
   # locale is also saved in session for language support in api provider callbacks
   private
   def set_locale_from_params
+    return if request.path_parameters[:format] == 'json' # skip for angularJS json requests
     logger.debug2 "start"
     params[:locale] = nil if params.has_key?(:locale) and xhr?
     language = valid_locale(params[:locale]) || get_session_value(:language)

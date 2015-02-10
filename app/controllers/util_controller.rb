@@ -4,7 +4,7 @@ require 'linkedin'
 class UtilController < ApplicationController
 
   before_filter :login_required, :except => [:do_tasks, :open_graph, :logout, :login, :ping]
-  skip_filter :fetch_users, :only => [:ping]
+  skip_filter :fetch_users, :only => [:ping, :login, :logout]
   skip_filter :set_locale_from_params, :only => [:ping]
 
   #
@@ -369,13 +369,16 @@ class UtilController < ApplicationController
     return [login_user, api_client, friends_hash, new_user, key, options] if key
     login_user_id = login_user.user_id
 
-    # send oauth authorization to client. saved encrypted in locale storage
-    # refresh token is only relevant for google+
+    # return oauth authorization temporary stored in rails session to client. saved encrypted in locale storage
     @json[:oauth] = {} unless @json[:oauth]
     @json[:oauth][provider] = {:user_id    => login_user.user_id,
                                :token      => get_session_array_value(:tokens, provider),
                                :expires_at => get_session_array_value(:expires_at, provider)}
     @json[:oauth][provider][:refresh_token] = get_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
+
+    # remove oauth authorization from rails session. keep only expires_at timestamp
+    delete_session_array_value(:tokens, provider)
+    delete_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
 
     # update user
     # note what many fields are updated in User.find_or_create_user doing login
@@ -421,6 +424,7 @@ class UtilController < ApplicationController
   def generic_post_login (provider)
     begin
       # get login user, initialize api client, get and update friends information
+      # also initialized @json[:oauth] hash with oauth information to
       login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
       #logger.debug2 "login_user   = #{login_user}"
       #logger.debug2 "api_client   = #{api_client}"
@@ -1056,11 +1060,11 @@ class UtilController < ApplicationController
       set_session_value(:user_ids, new_user_ids)
 
       # remove any old not authorized providers from server session (missing or failed server logout)
-      tokens = get_session_value(:tokens)
+      tokens = get_session_value(:tokens) || {}
       (tokens.keys - providers).each { |provider| delete_session_array_value(:tokens, provider) }
-      expires_at = get_session_value(:expires_at)
+      expires_at = get_session_value(:expires_at) || {}
       (expires_at.keys - providers).each { |provider| delete_session_array_value(:expires_at, provider) }
-      refresh_tokens = get_session_value(:refresh_tokens)
+      refresh_tokens = get_session_value(:refresh_tokens) || {}
       (refresh_tokens.keys - providers).each { |provider| delete_session_array_value(:refresh_tokens, provider) }
       # logger.secret2 "new tokens = #{tokens}"
       # logger.debug2 "new expires_at = #{expires_at}"
@@ -1140,18 +1144,21 @@ class UtilController < ApplicationController
       provider = nil unless valid_omniauth_provider?(provider)
       if provider
         # api provider log out
-
-        # todo: dump tokens, expires_at and refresh tokens - should not be stored in server session
-        logger.secret2 "tokens[#{provider}] = #{get_session_array_value(:tokens, provider)}"
-        logger.secret2 "expires_at[#{provider}] = #{get_session_array_value(:expires_at, provider)}"
-        logger.secret2 "refresh_tokens[#{provider}] = #{get_session_array_value(:refresh_tokens, provider)}"
-
+        if get_session_array_value(:tokens, provider) or
+            get_session_array_value(:expires_at, provider) or
+            get_session_array_value(:refresh_tokens, provider)
+          # oauth information should have been deleted from rails session in login or generic_post_login
+          logger.warn2 "Found old not deleted oauth information for #{provider} in rails session"
+        end
         delete_session_array_value :tokens, provider
         delete_session_array_value :expires_at, provider
         delete_session_array_value :refresh_tokens, provider
+        # remove provider from user_ids array
         user_ids = get_session_value :user_ids
+        logger.debug2 "session user_ids before #{provider} logout: " + user_ids.join(', ')
         user_ids = user_ids.delete_if { |user_id| (user_id.split('/').last == provider) }
         set_session_value :user_ids, user_ids
+        logger.debug2 "session user_ids after #{provider} logout: " + user_ids.join(', ')
       else
         # local log out - log out for all providers
         @s.destroy unless @s.new_record?
@@ -1234,6 +1241,7 @@ class UtilController < ApplicationController
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
       ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
+      logger.error2 "user_ids was not found in sessions table and not copied to pings table" unless ping.user_ids
 
       # debug info
       logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"

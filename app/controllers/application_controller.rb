@@ -87,23 +87,27 @@ class ApplicationController < ActionController::Base
   end
 
   # check expired access tokens
-  # use google refresh token if possible to get a new google access token
+  # use google refresh token if possible to get a new google access token (refresh_tokens parameter)
   # called from fetch_users and util/ping
   # returns a list with expired providers
   private
-  def check_expired_tokens
+  def check_expired_tokens (refresh_tokens=[])
+    logger.secret2 "refresh_tokens = #{refresh_tokens}"
     expired_tokens = []
+    oauth = nil # only google+
     # remove logged in users with expired access token
     login_user_ids.each do |user_id|
       uid, provider = user_id.split('/')
       next if uid == 'gofreerev' # dummy user for not connected session
-      ## expires_at = (get_session_value(:expires_at) || {})[provider]
       expires_at = get_session_array_value(:expires_at, provider)
       # refresh google+ access token once every hour
       # http://stackoverflow.com/questions/12572723/rails-google-client-api-unable-to-exchange-a-refresh-token-for-access-token
-      if expires_at and (expires_at.abs < Time.now.to_i) and (provider == 'google_oauth2')
+      if expires_at and (expires_at < Time.now.to_i) and (provider == 'google_oauth2')
         logger.debug2 "refreshing expired google+ access token"
-        refresh_token = get_session_array_value(:refresh_tokens, provider)
+        # get refresh token from ping request - params[:refresh_tokens]
+        refresh_token = nil
+        refresh_tokens.each { |hash| refresh_token = hash["refresh_token"] if hash["provider"] == provider }
+        logger.secret2 "refresh_token = #{refresh_token}"
         if refresh_token
           api_client = Google::APIClient.new(
               :application_name => 'Gofreerev',
@@ -139,21 +143,16 @@ class ApplicationController < ActionController::Base
             logger.secret2 "res1 = #{res1}"
             res2 = api_client.authorization
             logger.secret2 "res2 = #{res2}"
-            logger.debug2 "res2.methods = #{res2.methods.sort.join(', ')}"
             logger.secret2 "res2.access_token = #{res2.access_token}"
             logger.debug2 "res2.expires_at = #{res2.expires_at}"
-            set_session_array_value(:tokens, res2.access_token, provider)
-            sign = expires_at >= 0 ? 1 : -1 # keep sign for expires_at (positive=web login, negative=single sign-on)
-            expires_at = sign * res2.expires_at.to_i
-            set_session_array_value(:expires_at, expires_at, provider)
+            set_session_array_value(:expires_at, res2.expires_at.to_i, provider)
             logger.debug2 'google+ access token was refreshed'
-            # save new access token
-            user = User.find_by_user_id(user_id)
-            if user.share_account and user.share_account.share_level > 2
-              user.access_token = res2.access_token.to_yaml
-              user.access_token_expires = expires_at.abs
-              user.save!
-            end
+            oauth = [{
+                :user_id => user_id,
+                :token => res2.access_token,
+                :expires_at => res2.expires_at.to_i,
+                :refresh_token => expires_at
+            }]
           end
         else
           logger.warn2 'no refresh token was found for google+. unable to refresh google+ access token'
@@ -171,8 +170,9 @@ class ApplicationController < ActionController::Base
         expired_tokens << provider
       end
     end
+    expired_tokens = expired_tokens.size == 0 ? nil : expired_tokens
 
-    expired_tokens.size == 0 ? nil : expired_tokens
+    [expired_tokens, oauth]
 
   end # check_expired_tokens
 

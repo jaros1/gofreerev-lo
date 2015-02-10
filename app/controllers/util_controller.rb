@@ -1223,9 +1223,10 @@ class UtilController < ApplicationController
         ping.save!
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
-      # check for expired api access tokens - todo: return expired providers to client
-      expired_tokens = check_expired_tokens()
-      @json[:expired_tokens] = expired_tokens if expired_tokens
+      # check for expired api access tokens -
+      expired_providers, oauth = check_expired_tokens(params[:refresh_tokens])
+      @json[:expired_tokens] = expired_providers if expired_providers
+      @json[:oauth] = oauth if oauth # only google+
       ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
 
       # debug info

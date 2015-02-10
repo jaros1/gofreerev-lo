@@ -1107,6 +1107,9 @@ var Gofreerev = (function() {
         is_fb_logged_in_account = boolean ;
     }
 
+    function unix_timestamp () {
+        return Math.round((new Date).getTime()/1000) ;
+    };
 
     // export public used methods (views)
     return {
@@ -1136,7 +1139,8 @@ var Gofreerev = (function() {
         sha256: sha256,
         client_login: client_login,
         client_sym_encrypt: encrypt,
-        client_sym_decrypt: decrypt
+        client_sym_decrypt: decrypt,
+        unix_timestamp: unix_timestamp
     };
 })();
 // Gofreerev closure end
@@ -1663,7 +1667,18 @@ angular.module('gifts', ['ngRoute'])
         // init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
         if (Gofreerev.getItem('users')) init_users(JSON.parse(Gofreerev.getItem('users'))) ;
         else Gofreerev.setItem('users', JSON.stringify([])) ;
-        self.expires_at = {} ;
+
+        // cache some oauth information - used in ping
+        self.expires_at = {} ; // unix timestamps for oauth access tokens
+        self.refresh_tokens = {} ; // true/false - only used for google+ offline access
+        (function () {
+            var oauth = get_oauth() ;
+            for (var provider in oauth) {
+                self.expires_at[provider] = oauth[provider].expires_at ;
+                self.refresh_tokens[provider] = oauth[provider].hasOwnProperty('refresh_token') ;
+
+            }
+        })();
 
         var save_oauth = function (oauth) {
             var pgm = 'UserService.save_oauth: ' ;
@@ -1685,11 +1700,14 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
             // merge new oauth into current oauth - loop for each login provider
-            for (var key in new_oauth) if (new_oauth.hasOwnProperty(key)) oauth[key] = new_oauth[key] ;
+            for (var key in new_oauth) if (new_oauth.hasOwnProperty(key)) {
+                oauth[key] = new_oauth[key] ;
+                // cache some information for quick access in ping operation
+                self.expires_at[key] = oauth[key].expires_at ;
+                self.refresh_tokens[key] = oauth[key].hasOwnProperty('refresh_token') ;
+            }
             save_oauth(oauth) ;
-            // extract expires_at so that timestamps can be check without decrypt
-            for (var key in oauth) if (oauth.hasOwnProperty(key)) self.expires_at[key] = oauth[key].expires_at ;
-            console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
+            console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
         } // add_oauth
         var remove_oauth = function (provider) {
             var pgm = 'UserService.remove_oauth: ' ;
@@ -1711,8 +1729,9 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'debug 5') ;
             // update unencrypted has with expires_at timestamps
             delete self.expires_at[provider] ;
+            delete self.refresh_tokens[provider] ;
             // console.log(pgm + 'debug 6') ;
-            console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at)) ;
+            console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
         }
         // after local login - send local oauth to server
         // server checks tokens and inserts tokens into server session (encrypted in session table and secret in session cookie)
@@ -1876,10 +1895,46 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'UserService.ping: ' ;
             var userid = client_userid() ;
             if (userid == 0) {
-                // not logged in - wait
+                // no device login
+                console.log(pgm + 'wait - no device login') ;
                 $timeout(function () { ping(ping_interval); }, ping_interval) ;
                 return ;
             };
+            // check api logins - there must be minimum one not expired api login
+            var now = Gofreerev.unix_timestamp() ;
+            var logged_in_provider = false ; // true if one not expired api login
+            var expired_providers = [] ; // array with any expired login providers
+            var refresh_tokens_request ; // array with refresh token (google+ only)
+
+            console.log(pgm + 'time = ' + (new Date()).toUTCString());
+            console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
+            var oauth ;
+            for (var provider in self.expires_at) {
+                if (self.expires_at[provider] > now) logged_in_provider = true ;
+                else if (self.refresh_tokens[provider]) {
+                    // google+ - access token expired but can maybe be renewed on server with refresh token
+                    logged_in_provider = true ;
+                    // add refresh token in next ping request
+                    if (!refresh_tokens_request) refresh_tokens_request = [] ;
+                    if (!oauth) oauth = get_oauth() ;
+                    refresh_tokens_request.push({
+                        provider: provider,
+                        refresh_token: oauth[provider].refresh_token
+                    });
+                } // special refresh token for google+
+                else expired_providers.push(provider) ;
+            }
+            for (var i=0 ; i<expired_providers.lenghth ; i++) {
+                provider = expired_providers[i] ;
+                console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
+                remove_oauth(provider) ;
+            }
+            if (!logged_in_provider) {
+                // no social network logins was found
+                console.log(pgm + 'wait - no social network logins was found') ;
+                $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                return ;
+            }
             // make ping request
             var sid = Gofreerev.getItem('sid') ;
             var new_client_timestamp = (new Date).getTime() ;
@@ -1888,7 +1943,8 @@ angular.module('gifts', ['ngRoute'])
                 sid: sid,
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
-                pubkeys: pubkeys_request()
+                pubkeys: pubkeys_request(),
+                refresh_tokens: refresh_tokens_request
             };
             for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
             // validate json request before sending ping to server
@@ -1917,6 +1973,7 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'Error in JSON ping response from server.') ;
                         console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
                         console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                        // todo: stop or continue?
                     }
                     // check online users/devices
                     if (ok.data.online) update_devices(ok.data.online) ;
@@ -1924,6 +1981,28 @@ angular.module('gifts', ['ngRoute'])
                     if (ok.data.pubkeys) pubkeys_response(ok.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
                     if (ok.data.new_gifts) giftService.new_gifts_response(ok.data.new_gifts) ;
+                    // check expired access token (server side check)
+                    var provider, i ;
+                    if (ok.data.expired_tokens) {
+                        for (i=0 ; i<ok.data.expired_tokens.length ; i++) {
+                            provider = ok.data.expired_tokens[i] ;
+                            console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
+                            remove_oauth(provider) ;
+                        }
+                    }
+                    // check for new oauth (google+ only)
+                    var oauth_hash, oauth ;
+                    if (ok.data.oauth) {
+                        // convert from array to an hash before calling add_oauth
+                        console.log(pgm + 'ok.data.oauth = ' + JSON.stringify(ok.data.oauth)) ;
+                        var oauth_hash = {} ;
+                        for (i=0 ; i<ok.data.oauth.length ; i++) {
+                            oauth = ok.data.oauth[i] ;
+                            oauth_hash[oauth.provider] = oauth ;
+                            delete oauth_hash[oauth.provider].provider ;
+                        }
+                        add_oauth(oauth_hash) ;
+                    }
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
                     console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
@@ -2779,7 +2858,7 @@ angular.module('gifts', ['ngRoute'])
             } // comment has been deleted
             if (!self.show_delete_comment_link(gift,comment)) return ; // delete link no longer active
             if (confirm(self.texts.comments.confirm_delete_comment)) {
-                comment.deleted_at = unix_timestamp() ;
+                comment.deleted_at = Gofreerev.unix_timestamp() ;
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
                 giftService.save_gifts() ;
             }
@@ -2973,10 +3052,6 @@ angular.module('gifts', ['ngRoute'])
 
         // <== new gift link open graph preview in gifts/index page
 
-        var unix_timestamp = function() {
-            return Math.round((new Date).getTime()/1000) ;
-        };
-
         // resize input textarea after current digest cycle is finish
         // todo: find a better way to trigger textarea resize event in angularJS
         var resize_textarea = function (text) {
@@ -2997,7 +3072,7 @@ angular.module('gifts', ['ngRoute'])
                 gid: Gofreerev.get_new_uid(),
                 giver_user_ids: [],
                 receiver_user_ids: [],
-                created_at_client: unix_timestamp(),
+                created_at_client: Gofreerev.unix_timestamp(),
                 price: self.new_gift.price,
                 currency: self.new_gift.currency,
                 direction: self.new_gift.direction,
@@ -3033,7 +3108,7 @@ angular.module('gifts', ['ngRoute'])
                 cid: Gofreerev.get_new_uid(),
                 user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
-                created_at: unix_timestamp(),
+                created_at: Gofreerev.unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
             // console.log(pgm + 'cid = ' + new_comment.cid) ;

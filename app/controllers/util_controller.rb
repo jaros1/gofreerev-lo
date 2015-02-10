@@ -5,7 +5,6 @@ class UtilController < ApplicationController
 
   before_filter :login_required, :except => [:do_tasks, :open_graph, :logout, :login, :ping]
   skip_filter :fetch_users, :only => [:ping, :login, :logout]
-  skip_filter :set_locale_from_params, :only => [:ping]
 
   #
   # gift link ajax methods
@@ -944,22 +943,6 @@ class UtilController < ApplicationController
   end # share_accounts
 
 
-  # message for expired access tokens for user share level 3 (dynamic friend lists) and 4 (single sign-on login)
-  # post login service message to user about any expired access tokens
-  private
-  def check_expired_tokens(user_id, first_login)
-    begin
-      logger.debug2 "user_id = #{user_id}, first_login = #{first_login}"
-      # user_id = 790, first_login = true
-      nil
-    rescue => e
-      logger.debug2  "#{__method__}: Exception: #{e.message.to_s} (#{e.class})"
-      logger.debug2  "#{__method__}: Backtrace: " + e.backtrace.join("\n")
-      raise
-    end
-  end # check_expired_tokens
-
-
   # wrapper for User.find_friends_batch
   # run as a batch task without login user array.
   # error message is not relevant for current login user(s)
@@ -1240,8 +1223,10 @@ class UtilController < ApplicationController
         ping.save!
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
+      # check for expired api access tokens - todo: return expired providers to client
+      expired_tokens = check_expired_tokens()
+      @json[:expired_tokens] = expired_tokens if expired_tokens
       ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
-      logger.error2 "user_ids was not found in sessions table and not copied to pings table" unless ping.user_ids
 
       # debug info
       logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"

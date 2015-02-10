@@ -86,30 +86,13 @@ class ApplicationController < ActionController::Base
     get_session_value(:client_userid)
   end
 
-
-  # fetch user info. initialize @users array. One user with each login API. Used in page heading, security etc
+  # check expired access tokens
+  # use google refresh token if possible to get a new google access token
+  # called from fetch_users and util/ping
+  # returns a list with expired providers
   private
-  def fetch_users
-    logger.debug2 "start"
-    # language support
-    # logger.debug2  "start. sessionid = #{request.session_options[:id]}"
-    # logger.debug2  "I18n.locale = #{I18n.locale}"
-
-    # cookie note in page header for the first 30 seconds for a new session
-    # eu cookie law - also called Directive on Privacy and Electronic Communications
-    # accepted cookie is a permanent cookie set if user accepts cookies
-    if SHOW_COOKIE_NOTE and SHOW_COOKIE_NOTE > 0 and cookies[:cookies] != 'accepted'
-      set_session_value(:created, Time.new) unless get_session_value(:created).class == Time
-      cookie_note = SHOW_COOKIE_NOTE - (Time.new - get_session_value(:created))
-      @cookie_note = cookie_note if cookie_note >= 0.5
-    end
-
-    # initialize empty session variables for new session
-    set_session_value(:user_ids, []) unless get_session_value(:user_ids) # array with user_ids
-    set_session_value(:tokens, {}) unless get_session_value(:tokens) # hash with oauth access token index by provider
-    set_session_value(:expires_at, {}) unless get_session_value(:expires_at) # hash with unix expire timestamp for oauth access token index by provider
-    set_session_value(:refresh_tokens, {}) unless get_session_value(:refresh_tokens) # hash with "refresh token" (google+ only ) index by provider
-
+  def check_expired_tokens
+    expired_tokens = []
     # remove logged in users with expired access token
     login_user_ids.each do |user_id|
       uid, provider = user_id.split('/')
@@ -120,8 +103,7 @@ class ApplicationController < ActionController::Base
       # http://stackoverflow.com/questions/12572723/rails-google-client-api-unable-to-exchange-a-refresh-token-for-access-token
       if expires_at and (expires_at.abs < Time.now.to_i) and (provider == 'google_oauth2')
         logger.debug2 "refreshing expired google+ access token"
-        refresh_tokens = get_session_value(:refresh_tokens) || {}
-        refresh_token = refresh_tokens[provider]
+        refresh_token = get_session_array_value(:refresh_tokens, provider)
         if refresh_token
           api_client = Google::APIClient.new(
               :application_name => 'Gofreerev',
@@ -141,7 +123,8 @@ class ApplicationController < ActionController::Base
             add_error_key 'auth.destroy.refresh_token_error1', :apiname => provider_downcase(provider)
             res1 = nil
             expires_at = nil
-            refresh_tokens[provider] = nil
+            delete_session_array_value(:refresh_tokens, provider)
+            expired_tokens << provider
           rescue => e
             # other errors.
             logger.debug2 "Google+: could not use refresh_token to get a new access_token"
@@ -149,7 +132,8 @@ class ApplicationController < ActionController::Base
             add_error_key 'auth.destroy.refresh_token_error2', :apiname => provider_downcase(provider), :error => e.message
             res1 = nil
             expires_at = nil
-            refresh_tokens[provider] = nil
+            delete_session_array_value(:refresh_tokens, provider)
+            expired_tokens << provider
           end
           if res1
             logger.secret2 "res1 = #{res1}"
@@ -175,7 +159,7 @@ class ApplicationController < ActionController::Base
           logger.warn2 'no refresh token was found for google+. unable to refresh google+ access token'
         end
       end
-      if !expires_at or (expires_at.abs < Time.now.to_i)
+      if !expires_at or (expires_at < Time.now.to_i)
         # found login with missing or expired access token
         # this message is also used after single sign-on with one or more expired access tokens
         logger.debug2 "found login user with missing or expired access token. provider = #{provider}, expires_at = #{expires_at}"
@@ -184,8 +168,40 @@ class ApplicationController < ActionController::Base
         delete_session_array_value(:user_ids, user_id)
         delete_session_array_value(:tokens, provider)
         delete_session_array_value(:expires_at, provider)
+        expired_tokens << provider
       end
     end
+
+    expired_tokens.size == 0 ? nil : expired_tokens
+
+  end # check_expired_tokens
+
+
+  # fetch user info. initialize @users array. One user with each login API. Used in page heading, security etc
+  private
+  def fetch_users
+    logger.debug2 "start"
+    # language support
+    # logger.debug2  "start. sessionid = #{request.session_options[:id]}"
+    # logger.debug2  "I18n.locale = #{I18n.locale}"
+
+    # cookie note in page header for the first 30 seconds for a new session
+    # eu cookie law - also called Directive on Privacy and Electronic Communications
+    # accepted cookie is a permanent cookie set if user accepts cookies
+    if SHOW_COOKIE_NOTE and SHOW_COOKIE_NOTE > 0 and cookies[:cookies] != 'accepted'
+      set_session_value(:created, Time.new) unless get_session_value(:created).class == Time
+      cookie_note = SHOW_COOKIE_NOTE - (Time.new - get_session_value(:created))
+      @cookie_note = cookie_note if cookie_note >= 0.5
+    end
+
+    # initialize empty session variables for new session
+    set_session_value(:user_ids, []) unless get_session_value(:user_ids) # array with user_ids
+    set_session_value(:tokens, {}) unless get_session_value(:tokens) # hash with oauth access token index by provider
+    set_session_value(:expires_at, {}) unless get_session_value(:expires_at) # hash with unix expire timestamp for oauth access token index by provider
+    set_session_value(:refresh_tokens, {}) unless get_session_value(:refresh_tokens) # hash with "refresh token" (google+ only ) index by provider
+
+    # check for expired api access tokens
+    check_expired_tokens
 
     # fetch user(s)
     if login_user_ids.length > 0
@@ -696,9 +712,6 @@ class ApplicationController < ActionController::Base
     # 5) send friends_find notifications once a week for active users.
     # first login is used as a trigger for this batch job
     add_task 'find_friends_batch', 5 if first_login
-    # 6) message for expired access tokens for user share level 3 (dynamic friend lists) and 4 (single sign-on login)
-    # post login service message to user about any expired access tokens
-    add_task "check_expired_tokens(#{user.id},#{first_login})" if share_account and [3,4].index(share_account.share_level)
     # ok
     nil
   end # login

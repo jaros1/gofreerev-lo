@@ -799,7 +799,7 @@ var Gofreerev = (function() {
             if ((typeof userid == 'undefined') || (userid == null) || (userid=='')) userid = 0 ;
             else userid = parseInt(userid) ;
             if (userid == 0) {
-                console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
+                // console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
                 return null ;
             }
             key = userid + '_' + key ;
@@ -878,7 +878,7 @@ var Gofreerev = (function() {
             if ((typeof userid == 'undefined') || (userid == null) || (userid=='')) userid = 0 ;
             else userid = parseInt(userid) ;
             if (userid == 0) {
-                console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
+                // console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found') ;
                 return ;
             }
             key = userid + '_' + key ;
@@ -1306,6 +1306,18 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         console.log('UserService loaded') ;
 
+        // initialize list with providers. used in validations and in main/auth page
+        var providers = [] ;
+        (function () {
+            var api_names = Gofreerev.rails['API_CAMELIZE_NAME'] ;
+            for (var key in api_names) {
+                if (api_names.hasOwnProperty(key)) {
+                    providers.push(key) ;
+                }
+            }
+            console.log('UserService: providers = ' + JSON.stringify(providers)) ;
+        })();
+
         // users - read from local storage - used in angularJS filter functions
         var users = [] ;
         var users_index_by_user_id = {} ;
@@ -1668,18 +1680,6 @@ angular.module('gifts', ['ngRoute'])
         if (Gofreerev.getItem('users')) init_users(JSON.parse(Gofreerev.getItem('users'))) ;
         else Gofreerev.setItem('users', JSON.stringify([])) ;
 
-        // cache some oauth information - used in ping
-        self.expires_at = {} ; // unix timestamps for oauth access tokens
-        self.refresh_tokens = {} ; // true/false - only used for google+ offline access
-        (function () {
-            var oauth = get_oauth() ;
-            for (var provider in oauth) {
-                self.expires_at[provider] = oauth[provider].expires_at ;
-                self.refresh_tokens[provider] = oauth[provider].hasOwnProperty('refresh_token') ;
-
-            }
-        })();
-
         var save_oauth = function (oauth) {
             var pgm = 'UserService.save_oauth: ' ;
             // console.log(pgm + 'debug 1') ;
@@ -1689,6 +1689,27 @@ angular.module('gifts', ['ngRoute'])
             Gofreerev.setItem('oauth', oauth_str) ;
             // console.log(pgm + 'debug 3') ;
         }
+
+        // cache some oauth information - used in ping
+        self.expires_at = {} ; // unix timestamps for oauth access tokens
+        self.refresh_tokens = {} ; // true/false - only used for google+ offline access
+        (function () {
+            var oauth = get_oauth() ;
+            for (var provider in oauth) {
+                if (!oauth.hasOwnProperty(provider)) continue ;
+                // todo: remove after debug
+                if ((typeof provider == 'undefined') || (provider == null) || (provider == 'undefined')) {
+                    console.log('UserService: error in oauth hash. oauth = ' + JSON.stringify(oauth)) ;
+                    delete oauth[provider] ;
+                    save_oauth(oauth) ;
+                    continue ;
+                }
+                self.expires_at[provider] = oauth[provider].expires_at ;
+                self.refresh_tokens[provider] = oauth[provider].hasOwnProperty('refresh_token') ;
+
+            }
+        })();
+
         // save oauth received from server into oauth in local storage
         // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
         var add_oauth = function (new_oauth) {
@@ -1701,6 +1722,11 @@ angular.module('gifts', ['ngRoute'])
             }
             // merge new oauth into current oauth - loop for each login provider
             for (var key in new_oauth) if (new_oauth.hasOwnProperty(key)) {
+                if (providers.indexOf(key) == -1) {
+                    // todo: find invalid call
+                    console.log(pgm + 'invalid provider ' + key + ' in add_oauth call.') ;
+                    continue ;
+                }
                 oauth[key] = new_oauth[key] ;
                 // cache some information for quick access in ping operation
                 self.expires_at[key] = oauth[key].expires_at ;
@@ -1773,8 +1799,9 @@ angular.module('gifts', ['ngRoute'])
                 delete error.stack ;
                 console.log(pgm + 'Error in JSON login request. Login information was not sent.') ;
                 console.log(pgm + 'request: ' + JSON.stringify(login_request)) ;
-                console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                return ;
+                console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].login_request)) ;
+                console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
+                return $q.reject('System error in login request. Login information was not sent. More information in log.') ;
             }
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
@@ -1910,6 +1937,7 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
             var oauth ;
             for (var provider in self.expires_at) {
+                if (!self.expires_at.hasOwnProperty(provider)) continue;
                 if (self.expires_at[provider] > now) logged_in_provider = true ;
                 else if (self.refresh_tokens[provider]) {
                     // google+ - access token expired but can maybe be renewed on server with refresh token
@@ -1918,7 +1946,7 @@ angular.module('gifts', ['ngRoute'])
                     if (!refresh_tokens_request) refresh_tokens_request = [] ;
                     if (!oauth) oauth = get_oauth() ;
                     refresh_tokens_request.push({
-                        provider: provider,
+                        provider: '' + provider,
                         refresh_token: oauth[provider].refresh_token
                     });
                 } // special refresh token for google+
@@ -1975,6 +2003,8 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
                         // todo: stop or continue?
                     }
+                    // todo: where to report ping error in UI.
+                    if (ok.data.error) console.log(pgm + 'error: ' + ok.data.error) ;
                     // check online users/devices
                     if (ok.data.online) update_devices(ok.data.online) ;
                     // check for new public keys for online users/devices
@@ -2001,6 +2031,7 @@ angular.module('gifts', ['ngRoute'])
                             oauth_hash[oauth.provider] = oauth ;
                             delete oauth_hash[oauth.provider].provider ;
                         }
+                        console.log(pgm + 'oauth_hash = ' + JSON.stringify(oauth_hash)) ;
                         add_oauth(oauth_hash) ;
                     }
                     // check interval between client timestamp and previous client timestamp
@@ -2026,6 +2057,7 @@ angular.module('gifts', ['ngRoute'])
         }
 
         return {
+            providers: providers,
             is_logged_in: is_logged_in,
             is_logged_in_with_device: is_logged_in_with_device,
             is_logged_in_with_provider: is_logged_in_with_provider,
@@ -2401,7 +2433,7 @@ angular.module('gifts', ['ngRoute'])
                     var oauth = response.data.oauth ;
                     if (oauth) {
                         // new oauth token(s) received from util.generic_post_login task (token, expires_at and refresh token)
-                        // console.log('post login. oauth = ' + oauth) ;
+                        console.log(pgm + 'oauth = ' + JSON.stringify(oauth)) ;
                         userService.add_oauth(oauth) ;
                     }
                     var new_users = response.data.users ;
@@ -2428,15 +2460,7 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
-        self.providers = [] ;
-        // self.providers.push({provider: 'gofreerev', name: 'Gofreerev'}) ;
-        var api_names = Gofreerev.rails['API_CAMELIZE_NAME'] ;
-        for (var key in api_names) {
-            if (api_names.hasOwnProperty(key)) {
-                self.providers.push(key) ;
-            }
-        }
-        console.log('AuthCtrl. providers = ' + JSON.stringify(self.providers)) ;
+        // console.log('AuthCtrl. providers = ' + JSON.stringify(self.providers)) ;
         self.is_gofreerev = function (provider) {
             return (provider.provider == 'gofreerev')
         };

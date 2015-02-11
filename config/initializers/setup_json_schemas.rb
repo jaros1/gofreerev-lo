@@ -32,6 +32,7 @@ JSON_SCHEMA = {
                                            "{\"type\":\"object\", " +
                                            "\"properties\":{" +
                                            "\"token\":{\"type\":\"string\"},"+
+                                           "\"refresh_token\":{\"type\":\"string\"},"+
                                            "\"user_id\":{\"type\":\"string\"}," +
                                            "\"expires_at\":{" +
                                            "\"type\":\"integer\", " +

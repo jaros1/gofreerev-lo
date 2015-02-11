@@ -62,7 +62,7 @@
             <tr>
                 <td colspan="5"><b>{{ctrl.texts.auth.provider_login_header}}</b></td>
             </tr>
-            <tr ng-repeat="provider in ctrl.providers">
+            <tr ng-repeat="provider in ctrl.userService.providers">
                 <td><a href="{{provider|formatProviderHomeUrl}}" target="_blank">{{provider|formatProviderName}}</a></td>
                 <td><img ng-src="{{provider|formatProviderSrc}}" class="small_pro_pic"></td>
                 <td><img ng-src="{{ctrl.trafic_light_status(provider)|formatProviderTraficLightSrc}}" class="small_pro_pic"></td>

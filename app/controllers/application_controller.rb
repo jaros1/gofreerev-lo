@@ -90,9 +90,18 @@ class ApplicationController < ActionController::Base
   # use google refresh token if possible to get a new google access token (refresh_tokens parameter)
   # called from fetch_users and util/ping
   # returns a list with expired providers
+  # context is :ping if called from util/ping or :login if called from util/login
   private
-  def check_expired_tokens (refresh_tokens=[])
-    logger.secret2 "refresh_tokens = #{refresh_tokens}"
+  def check_expired_tokens (context, refresh_tokens=nil)
+    refresh_tokens=[] unless refresh_tokens
+    logger.secret2 "context = #{context}, refresh_tokens = #{refresh_tokens}"
+    if context == :login
+      # called from util/login and fetch_users - get refresh_tokens (google+ only) from sessions table
+      refresh_tokens_hash = get_session_value(:refresh_tokens) || {}
+      refresh_tokens = refresh_tokens_hash.collect { |key, value| { "provider" => key.to_s, "refresh_token" => value} }
+      logger.secret2 "context=login. refresh_tokens from session = #{refresh_tokens}"
+    end
+
     expired_tokens = []
     oauth = nil # only google+
     # remove logged in users with expired access token
@@ -145,13 +154,15 @@ class ApplicationController < ActionController::Base
             logger.secret2 "res2 = #{res2}"
             logger.secret2 "res2.access_token = #{res2.access_token}"
             logger.debug2 "res2.expires_at = #{res2.expires_at}"
-            set_session_array_value(:expires_at, res2.expires_at.to_i, provider)
+            expires_at = res2.expires_at.to_i
+            set_session_array_value(:expires_at, expires_at, provider)
             logger.debug2 'google+ access token was refreshed'
             oauth = [{
+                :provider => provider,
                 :user_id => user_id,
                 :token => res2.access_token,
-                :expires_at => res2.expires_at.to_i,
-                :refresh_token => expires_at
+                :expires_at => expires_at,
+                :refresh_token => refresh_token
             }]
           end
         else
@@ -179,7 +190,7 @@ class ApplicationController < ActionController::Base
 
   # fetch user info. initialize @users array. One user with each login API. Used in page heading, security etc
   private
-  def fetch_users
+  def fetch_users (context=nil)
     logger.debug2 "start"
     # language support
     # logger.debug2  "start. sessionid = #{request.session_options[:id]}"
@@ -201,7 +212,7 @@ class ApplicationController < ActionController::Base
     set_session_value(:refresh_tokens, {}) unless get_session_value(:refresh_tokens) # hash with "refresh token" (google+ only ) index by provider
 
     # check for expired api access tokens
-    check_expired_tokens
+    check_expired_tokens context
 
     # fetch user(s)
     if login_user_ids.length > 0
@@ -1111,10 +1122,10 @@ class ApplicationController < ActionController::Base
         # logger.debug2  "result.error_message.class = #{result.error_message.class}"
         # logger.debug2  "result.error_message = #{result.error_message}"
         # known errors from Google API
-        return ['.google_access_not_configured', {:provider => provider}] if result.error_message.to_s == 'Access Not Configured'
-        return ['.google_insufficient_permission', {:provider => provider}] if result.error_message.to_s == 'Insufficient Permission'
+        return [friends_hash, 'util.do_tasks.google_access_not_configured', {:provider => provider}] if result.error_message.to_s == 'Access Not Configured'
+        return [friends_hash, 'util.do_tasks.google_insufficient_permission', {:provider => provider}] if result.error_message.to_s == 'Insufficient Permission'
         # other errors from Google API
-        return ['.google_other_errors', {:provider => provider, :error => result.error_message}] if !result.data.total_items
+        return [friends_hash, 'util.do_tasks.google_other_errors', {:provider => provider, :error => result.error_message}] if !result.data.total_items
 
         # copy friends to hash.
         # logger.debug2  "result.data.items = #{result.data.items}"
@@ -1396,7 +1407,9 @@ class ApplicationController < ActionController::Base
   # add_error_xxx adds error to @errors. format_response_xxx adds any error to @errors and format js or html response
   # note that all ajax calls must set format and datatype: :remote => true, :data => { :type => :script }, :format => :js
   private
-  def add_error_key (key, options = {})
+  def add_error_key (key, options = nil)
+    raise "invalid call. key is missing" if key.class != String or key == ''
+    options = {} unless options
     table = options.delete(:table) || 'tasks_errors'
     options[:raise] = I18n::MissingTranslationData if xhr? # force stack dump
     @errors << { :msg => t(key, options), :id => table }

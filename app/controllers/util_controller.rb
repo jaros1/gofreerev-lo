@@ -365,6 +365,7 @@ class UtilController < ApplicationController
   def post_login_update_friends (provider)
     friends_hash = new_user = nil
     login_user, api_client, key, options = get_login_user_and_api_client(provider, __method__)
+    logger.debug2 "debug 1: key = #{key} (#{key.class})"
     return [login_user, api_client, friends_hash, new_user, key, options] if key
     login_user_id = login_user.user_id
 
@@ -386,9 +387,11 @@ class UtilController < ApplicationController
       # fetch info about login user from API
       user_hash, key, options = api_client.gofreerev_get_user logger
       logger.debug2 "user_hash = #{user_hash}, key = #{key}, options = #{options}"
+      logger.debug2 "debug 2: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options] if key
       # update user
       key, options = login_user.update_api_user_from_hash user_hash
+      logger.debug2 "debug 3: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options] if key
       login_user.reload
       logger.debug2 "api_profile_picture_url = #{login_user.api_profile_picture_url}"
@@ -400,20 +403,28 @@ class UtilController < ApplicationController
     if !api_client.respond_to? :gofreerev_get_friends
       # api client without gofreerev_get_friends method - cannot download and update friend list from api provider
       key, options = ['.api_client_gofreerev_get_friends', login_user.app_and_apiname_hash]
+      logger.debug2 "debug 4: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options]
     end
     begin
       friends_hash, key, options = api_client.gofreerev_get_friends logger
+      logger.debug2 "debug 5: key = #{key} (#{key.class})"
     rescue AppNotAuthorized => e
       # app has been deauthorized after login and before executing post login task for this provider
       logout(provider)
       key, options = ['.post_login_fl_not_authorized', login_user.app_and_apiname_hash]
+      logger.debug2 "debug 6: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options]
+    rescue => e
+      logger.debug2 "ecception: #{e.message}"
+      raise
     end
     return [login_user, api_client, friends_hash, new_user, key, options] if key
+    logger.debug2 "debug 7: key = #{key} (#{key.class})"
 
     # update friends list in db (api friend = Y/N)
     new_user, key, options = Friend.update_api_friends_from_hash :login_user_id => login_user_id, :friends_hash => friends_hash
+    logger.debug2 "debug 8: key = #{key} (#{key.class})"
     [login_user, api_client, friends_hash, new_user, key, options]
   end # post_login_update_friends
 
@@ -1055,7 +1066,8 @@ class UtilController < ApplicationController
       # update and download friends information
 
       # check tokens / get updated friends info after new login
-      fetch_users
+
+      fetch_users :login
       @json[:users] = []
       providers.each do |provider|
         # get hash with user_id and friend category
@@ -1223,11 +1235,21 @@ class UtilController < ApplicationController
         ping.save!
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
+
       # check for expired api access tokens -
-      expired_providers, oauth = check_expired_tokens(params[:refresh_tokens])
+      expired_providers, oauth = check_expired_tokens(:ping, params[:refresh_tokens])
       @json[:expired_tokens] = expired_providers if expired_providers
       @json[:oauth] = oauth if oauth # only google+
-      ping.user_ids = login_user_ids = get_session_value(:user_ids) # user_ids is stored encrypted in sessions but unencrypted in pings
+
+      # copy login user ids from sessions to pings table (user_ids is stored encrypted in sessions but unencrypted in pings)
+      login_user_ids = get_session_value(:user_ids)
+      if login_user_ids.class == Array and login_user_ids.size > 0
+        ping.user_ids = login_user_ids
+      else
+        logger.warn2 "Not logged in"
+        @json[:error] = 'Login information was not found in server. Please use device log out + log in to refresh server authorization' unless @json[:error]
+        login_user_ids = []
+      end
 
       # debug info
       logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
@@ -1261,42 +1283,43 @@ class UtilController < ApplicationController
       ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
       ping.save!
 
-      # ping stat
-      logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
-      logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
+      if !@json[:error]
 
-      # get list of online devices - ignore current session(s) - only online devices with friends are relevant
-      pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
-                         ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
-      login_users_friends = Friend.where(:user_id_giver => login_user_ids)
-                                .find_all { |f| f.friend_status_code == 'Y' }
-                                .collect { |f| f.user_id_receiver } unless pings.size == 0
-      pings = pings.delete_if do |p|
-        if (login_user_ids & p.user_ids).size == 0 and (login_user_friends & p.user_ids).size == 0
-          # no shared login users and not friends - remove from list
-          true
-        else
-          # get user ids for other session
-          # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
-          # include a list of mutual friends between this and other session
-          # ( devices sync gifts for mutual friends )
-          other_session_friends = Friend.where(:user_id_giver => p.user_ids)
-                                      .find_all { |f| f.friend_status_code == 'Y' }
-                                      .collect { |f| f.user_id_receiver }
-          p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
-          # keep in list
-          false
+        # ping stat
+        logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
+        logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
+
+        # get list of online devices - ignore current session(s) - only online devices with friends are relevant
+        pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
+                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
+        login_users_friends = Friend.where(:user_id_giver => login_user_ids)
+                                  .find_all { |f| f.friend_status_code == 'Y' }
+                                  .collect { |f| f.user_id_receiver } unless pings.size == 0
+        pings = pings.delete_if do |p|
+          if (login_user_ids & p.user_ids).size == 0 and (login_user_friends & p.user_ids).size == 0
+            # no shared login users and not friends - remove from list
+            true
+          else
+            # get user ids for other session
+            # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
+            # include a list of mutual friends between this and other session
+            # ( devices sync gifts for mutual friends )
+            other_session_friends = Friend.where(:user_id_giver => p.user_ids)
+                                        .find_all { |f| f.friend_status_code == 'Y' }
+                                        .collect { |f| f.user_id_receiver }
+            p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
+            # keep in list
+            false
+          end
+        end.collect do |p|
+          {:did => p.did,
+           # :user_ids => p.internal_user_ids,
+           :mutual_friends => p.mutual_friends}
         end
-      end.collect do |p|
-        {:did => p.did,
-         # :user_ids => p.internal_user_ids,
-         :mutual_friends => p.mutual_friends}
-      end
-      # logger.debug2 "pings.size (after) = #{pings.size}"
-      # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
-      @json[:online] = pings if pings.size > 0
+        # logger.debug2 "pings.size (after) = #{pings.size}"
+        # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
+        @json[:online] = pings if pings.size > 0
 
-      if ping_request_errors.size == 0
         # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
 
         # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client

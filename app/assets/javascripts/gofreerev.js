@@ -1934,7 +1934,7 @@ angular.module('gifts', ['ngRoute'])
             var refresh_tokens_request ; // array with refresh token (google+ only)
 
             console.log(pgm + 'time = ' + (new Date()).toUTCString());
-            console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
+            // console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
             var oauth ;
             for (var provider in self.expires_at) {
                 if (!self.expires_at.hasOwnProperty(provider)) continue;
@@ -1988,9 +1988,9 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'params: ' + JSON.stringify(ping_request)) ;
             $http.post('/util/ping.json', ping_request).then(
                 function (ok) {
-                    // schedule next ping. todo: now a rails constant. change to a calculation based on server load later
-                    console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
-                    console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
+                    // schedule next ping.
+                    // console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
+                    // console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
                     // validate ping response received from server
@@ -2036,15 +2036,17 @@ angular.module('gifts', ['ngRoute'])
                     }
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
-                    console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
+                    // console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
                     if (!ok.data.old_client_timestamp) return ; // first ping for new session
                     var interval = new_client_timestamp - ok.data.old_client_timestamp ;
-                    console.log(pgm + 'ok. interval = ' + interval) ;
+                    // console.log(pgm + 'ok. interval = ' + interval) ;
                     if (interval > old_ping_interval - 100) return ;
-                    // interval less that <old_ping_interval> seconds. refresh JS arrays from local storage (oauth, users & gifts)
-                    // console.log(pgm + 'interval less that 60 seconds. refresh JS arrays from local storage (oauth, users & gifts)') ;
+                    console.log(
+                        pgm + 'ok. multiple logins for client userid ' + userid +
+                        '. old timestamp = ' + ok.data.old_client_timestamp +
+                        ', new timestamp = ' + new_client_timestamp +
+                        ',interval = ' + interval);
                     // sync JS users array with any changes in local storage users string
-                    // console.log(pgm + 'sync users. old users.length = ' + users.length) ;
                     sync_users() ;
                     giftService.sync_gifts() ;
                 },

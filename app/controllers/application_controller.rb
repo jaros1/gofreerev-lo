@@ -114,16 +114,33 @@ class ApplicationController < ActionController::Base
     end
 
     oauth = nil # only google+
+
+    # todo: expires_at check. how to handle uic time dif between server and client. not expired on client + expired on server!
+    client_timestamp = (params[:client_timestamp].to_i / 1000).floor
+    server_timestamp = Time.zone.now.to_i
+    timestamp_dif = server_timestamp - client_timestamp
+    if timestamp_dif.abs < 120
+      # little dif between server time and client time - use client timestamp when checking for expired access tokens
+      now = client_timestamp
+    else
+      # big dif between server time and client time - use server timestamp when checking for expired access tokens
+      now = server timestamp
+    end
+    logger.debug2 "client_timestamp = #{client_timestamp}, server_timestamp = #{server_timestamp}, timestamp_dif = #{timestamp_dif}, now = #{now}"
+
     # remove logged in users with expired access token
     login_user_ids.each do |user_id|
       uid, provider = user_id.split('/')
       next if uid == 'gofreerev' # dummy user for not connected session
+
       expires_at = get_session_array_value(:expires_at, provider)
+      # logger.debug2 "expires_at[#{provider}] = #{expires_at}"
+
       # refresh google+ access token once every hour
       # http://stackoverflow.com/questions/12572723/rails-google-client-api-unable-to-exchange-a-refresh-token-for-access-token
-      if expires_at and (expires_at < Time.now.to_i) and (provider == 'google_oauth2')
-        logger.debug2 "refreshing expired google+ access token"
-        # get refresh token from ping request - params[:refresh_tokens]
+      if expires_at and (expires_at <= now) and (provider == 'google_oauth2')
+        logger.debug2 "refreshing expired google+ access token. expires_at[#{provider}] = #{expires_at}"
+        # get refresh token from ping or login request
         refresh_token = nil
         refresh_tokens.each { |hash| refresh_token = hash["refresh_token"] if hash["provider"] == provider }
         logger.secret2 "refresh_token = #{refresh_token}"

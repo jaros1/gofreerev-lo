@@ -1108,7 +1108,7 @@ var Gofreerev = (function() {
     }
 
     function unix_timestamp () {
-        return Math.round((new Date).getTime()/1000) ;
+        return Math.floor((new Date).getTime()/1000) ;
     };
 
     // export public used methods (views)
@@ -1819,6 +1819,7 @@ angular.module('gifts', ['ngRoute'])
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
             var login_request = {
                 client_userid: userid,
+                client_timestamp: (new Date).getTime(),
                 oauth: oauth,
                 did: Gofreerev.getItem('did'),
                 pubkey: Gofreerev.getItem('pubkey')} ;
@@ -1965,7 +1966,8 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             };
             // check api logins - there must be minimum one not expired api login
-            var now = Gofreerev.unix_timestamp() ;
+            var new_client_timestamp = (new Date).getTime() ; // unix timestamp with milliseconds
+            var now = Math.floor(new_client_timestamp/1000) ; // unix timestamp
             var logged_in_provider = false ; // true if one not expired api login
             var expired_providers = [] ; // array with any expired login providers
             var refresh_tokens_request ; // array with refresh token (google+ only)
@@ -2002,7 +2004,6 @@ angular.module('gifts', ['ngRoute'])
             }
             // make ping request
             var sid = Gofreerev.getItem('sid') ;
-            var new_client_timestamp = (new Date).getTime() ;
             var ping_request = {
                 client_userid: userid,
                 sid: sid,

@@ -41,6 +41,10 @@ expired_tokens_type = {
     }
 }
 
+# client unix timestamp (10) with milliseconds (3) - total 13 decimals
+# used when distribution pings equally over time (ping) and used when checking for expired access token on server (login and ping)
+client_timestamp_type = {:type => 'integer', :minimum => 1.day.ago.to_i*1000, :maximum => 1.year.from_now.to_i*1000}
+
 JSON_SCHEMA = {
     # login request/response is used after local device login. oauth information is send to server, validated and updated api friend lists are returned to client
     # oauth information is stored encrypted in localStorage in browser and only temporary in server session doing log in
@@ -50,6 +54,8 @@ JSON_SCHEMA = {
         :properties => {
             # client userid normally = 1. Allow up to 100 user accounts in localStorage
             :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
+            # client unix timestamp (10) with milliseconds (3) - total 13 decimals
+            :client_timestamp => client_timestamp_type,
             # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :did => {:type => 'string', :pattern => uid_pattern},
             # pubkey key for unique device - used in encrypted client to client information replication
@@ -74,7 +80,7 @@ JSON_SCHEMA = {
                                            "}"
                                      end.join(',') + "},\"additionalProperties\":false }")
         },
-        :required => %w(client_userid did pubkey oauth),
+        :required => %w(client_userid client_timestamp did pubkey oauth),
         :additionalProperties => false
     },
     :login_response => {
@@ -143,7 +149,7 @@ JSON_SCHEMA = {
              {# client userid normally = 1. Allow up to 100 user accounts in localStorage
               :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
               # client unix timestamp (10) with milliseconds (3) - total 13 decimals
-              :client_timestamp => {:type => 'integer', :minimum => 1.day.ago.to_i*1000, :maximum => 1.year.from_now.to_i*1000},
+              :client_timestamp => client_timestamp_type,
               # sid - unique session id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
               :sid => {:type => 'string', :pattern => uid_pattern},
               # new_gifts - optional array with minimal meta-information for new gifts (gid, sha256 and user ids)
@@ -183,7 +189,7 @@ JSON_SCHEMA = {
         {:type => 'object',
          :properties =>
              {# client unix timestamp (10) with milliseconds (3) for previous ping request from same unique device (did or session_id + user_clientid)
-              :old_client_timestamp => {:type => 'integer', :minimum => 1.day.ago.to_i*1000, :maximum => 1.year.from_now.to_i*1000},
+              :old_client_timestamp => client_timestamp_type,
               # interval in milliseconds before next ping request from client. used when distribution client pings equal over time
               :interval => {:type => 'integer', :minimum => 1000},
               # array with online friends/devices - tells the client which devices are available for information synchronization

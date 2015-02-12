@@ -1524,7 +1524,7 @@ angular.module('gifts', ['ngRoute'])
             var user_ids = get_login_userids() ;
             var user = get_user(user_ids[0]) ;
             if (!user) return null ;
-            return user.currency ;
+            return user.currency || 'USD' ;
         }
         var find_giver = function (gift) {
             var giver, user, i ;
@@ -1759,6 +1759,38 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'debug 6') ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
         }
+
+        // process expired tokens response - used in login and ping response processing
+        var expired_tokens_response = function (expired_tokens) {
+            var pgm = 'expired_tokens_response: ' ;
+            if (!expired_tokens) return ;
+            var provider, i ;
+            for (i=0 ; i<expired_tokens.length ; i++) {
+                provider = expired_tokens[i] ;
+                console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
+                remove_oauth(provider) ;
+            }
+        } // expired_tokens_response
+        
+        // process oauths array response - used in login and ping response processing
+        var oauths_response = function (oauths) {
+            var pgm = 'oauths_response: ' ;
+            if (!oauths) return ;
+            // check for new oauth authorization (google+ only)
+            var oauth_hash, oauth ;
+            // convert from array to an hash before calling add_oauth
+            console.log(pgm + 'oauths = ' + JSON.stringify(oauths)) ;
+            oauth_hash = {} ;
+            for (var i=0 ; i<oauths.length ; i++) {
+                oauth = oauths[i] ;
+                oauth_hash[oauth.provider] = oauth ;
+                delete oauth_hash[oauth.provider].provider ;
+            }
+            console.log(pgm + 'oauth_hash = ' + JSON.stringify(oauth_hash)) ;
+            add_oauth(oauth_hash) ;
+
+        } // oauths_response
+        
         // after local login - send local oauth to server
         // server checks tokens and inserts tokens into server session (encrypted in session table and secret in session cookie)
         var send_oauth = function () {
@@ -1817,6 +1849,11 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
                         return $q.reject(response.data.error) ;
                     }
+                    // check expired access token (server side check)
+                    if (ok.data.expired_tokens) expired_tokens_response(ok.data.expired_tokens) ;
+                    // check for new oauth authorization (google+ only)
+                    if (ok.data.oauths) oauths_response(ok.data.oauths) ;
+                    // check users array
                     if (response.data.users) {
                         // fresh user info array was received from server
                         console.log(pgm + 'login. users = ' + JSON.stringify(response.data.users)) ;
@@ -2012,28 +2049,9 @@ angular.module('gifts', ['ngRoute'])
                     // get timestamps for newly created gifts from server
                     if (ok.data.new_gifts) giftService.new_gifts_response(ok.data.new_gifts) ;
                     // check expired access token (server side check)
-                    var provider, i ;
-                    if (ok.data.expired_tokens) {
-                        for (i=0 ; i<ok.data.expired_tokens.length ; i++) {
-                            provider = ok.data.expired_tokens[i] ;
-                            console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
-                            remove_oauth(provider) ;
-                        }
-                    }
-                    // check for new oauth (google+ only)
-                    var oauth_hash, oauth ;
-                    if (ok.data.oauth) {
-                        // convert from array to an hash before calling add_oauth
-                        console.log(pgm + 'ok.data.oauth = ' + JSON.stringify(ok.data.oauth)) ;
-                        var oauth_hash = {} ;
-                        for (i=0 ; i<ok.data.oauth.length ; i++) {
-                            oauth = ok.data.oauth[i] ;
-                            oauth_hash[oauth.provider] = oauth ;
-                            delete oauth_hash[oauth.provider].provider ;
-                        }
-                        console.log(pgm + 'oauth_hash = ' + JSON.stringify(oauth_hash)) ;
-                        add_oauth(oauth_hash) ;
-                    }
+                    if (ok.data.expired_tokens) expired_tokens_response(ok.data.expired_tokens) ;
+                    // check for new oauth authorization (google+ only)
+                    if (ok.data.oauths) oauths_response(ok.data.oauths) ;
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
                     // console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
@@ -2093,13 +2111,14 @@ angular.module('gifts', ['ngRoute'])
             for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gid] = j ;
         }
 
-
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
+            var pgm = 'GiftService.load_gifts: ' ;
             var new_gifts = [] ;
             if (Gofreerev.getItem('gifts')) new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             else Gofreerev.setItem('gifts', JSON.stringify([])) ;
             gifts.length = 0 ;
+            gifts_index = {} ;
             var gift ;
             var migration = false ;
             for (var i=0 ; i<new_gifts.length ; i++) {
@@ -2110,9 +2129,15 @@ angular.module('gifts', ['ngRoute'])
                     delete gift.date ;
                     migration = true ;
                 }
+                // error cleanup - remove doublets from gifts array
+                if (gifts_index.hasOwnProperty(gift.gid)) {
+                    console.log(pgm + 'Error. removed gift doublet with gid ' + gift.gid) ;
+                    migration = true ;
+                    continue ;
+                }
+                gifts_index[gift.gid] = gifts.length ;
                 gifts.push(new_gifts[i]) ;
             }
-            init_gifts_index() ;
             if (migration) Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
             console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
         }
@@ -2261,7 +2286,6 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'GiftService. sync_gift: ' ;
             console.log(pgm + 'start') ;
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
-            var gifts_index = {} ;
             // todo: remove - index should normally always be up-to-date
             init_gifts_index() ;
             // insert and update gifts (keep sequence)
@@ -2310,6 +2334,16 @@ angular.module('gifts', ['ngRoute'])
                 if (!new_gifts_index.hasOwnProperty(gid)) gifts.splice(i, 1) ;
             }
         }; // sync_gifts
+
+        var unshift_gift = function (gift) {
+            var pgm = 'GiftService.unshift_gift: '
+            if (gifts_index.hasOwnProperty(gift.gid)) {
+                console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array') ;
+                return ;
+            }
+            gifts.unshift(gift) ;
+            init_gifts_index() ;
+        } // unshift_gift
 
         // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps from server.
         // called from UserService.ping
@@ -2388,6 +2422,7 @@ angular.module('gifts', ['ngRoute'])
             refresh_gift_and_comment: refresh_gift_and_comment,
             save_gifts: save_gifts,
             sync_gifts: sync_gifts,
+            unshift_gift: unshift_gift,
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response
         };
@@ -3113,14 +3148,14 @@ angular.module('gifts', ['ngRoute'])
             if (gift.direction == 'giver') gift.giver_user_ids = userService.get_login_userids() ;
             else gift.receiver_user_ids = userService.get_login_userids() ;
             giftService.sync_gifts() ;
-            self.gifts.unshift(gift) ;
+            giftService.unshift_gift(gift) ;
             // resize description textarea after current digest cycle is finish
             resize_textarea(gift.description) ;
             // reset new gift form
             init_new_gift() ;
             // update gifts in local storage - now with created gift in first row
             giftService.save_gifts() ;
-        }
+        } // self.create_new_gift
 
         // new comment ng-submit
         self.create_new_comment = function (gift) {

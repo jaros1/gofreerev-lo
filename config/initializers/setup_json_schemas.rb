@@ -8,7 +8,38 @@ uid_to = 1.year.from_now.to_i
 uid_short_pattern = `rgxg range -Z #{uid_from} #{uid_to}`.strip
 uid_pattern = "^#{uid_short_pattern}[0-9]{10}$"
 
+# pattern with valid providers
 providers_pattern = '^(' + API_ID.keys.join('|') + ')$'
+
+# array with omniauth authorizations. One item for each provider. Used in json schema definitions for login and ping response
+oauths_type = {
+    :type => 'array',
+    :items => {
+        :type => 'object',
+        :properties => {
+            # provider: facebook, foursquare etc
+            :provider => {:type => 'string', :pattern => providers_pattern},
+            # server side user id (uid + provider)
+            :user_id => {:type => 'string'},
+            # access token
+            :token => {:type => 'string'},
+            # unix expires at timestamp
+            :expires_at => {:type => 'integer', :minimum => (Time.zone.parse '2015-01-01').to_i, :maximum => 15.months.from_now.to_i},
+            # optional refresh token (google+ only)
+            :refresh_token => {:type => 'string'}
+        },
+        :required => %w(provider user_id token expires_at),
+        :additionalProperties => false
+    }
+}
+
+# array with providers with expired access token. One item for each expired provider. Used in json schema definitions for login and ping response
+expired_tokens_type = {
+    :type => 'array',
+    :items => {
+        :type => 'string', :pattern => providers_pattern
+    }
+}
 
 JSON_SCHEMA = {
     # login request/response is used after local device login. oauth information is send to server, validated and updated api friend lists are returned to client
@@ -73,6 +104,11 @@ JSON_SCHEMA = {
                     :additionalProperties => false
                 }
             },
+            # optional array with providers with expired oauth authorization
+            :expired_tokens => expired_tokens_type,
+            # optional array with new oauth authorization - for now only used for google+
+            :oauths => oauths_type,
+            # optiona error message from login
             :error => {:type => 'string'}
         },
         :required => %w(users),
@@ -209,34 +245,10 @@ JSON_SCHEMA = {
                       :additionalProperties => false
                   }
               },
-              # optional array with providers (expired access token)
-              :expired_tokens => {
-                  :type => 'array',
-                  :items => {
-                      :type => 'string', :pattern => providers_pattern
-                  }
-              },
+              # optional array with providers with expired oauth authorization
+              :expired_tokens => expired_tokens_type,
               # optional array with new oauth authorization - for now only used for google+
-              :oauth => {
-                  :type => 'array',
-                  :items => {
-                      :type => 'object',
-                      :properties => {
-                          # provider: facebook, foursquare etc
-                          :provider => {:type => 'string', :pattern => providers_pattern},
-                          # server side user id (uid + provider)
-                          :user_id => {:type => 'string'},
-                          # access token
-                          :token => {:type => 'string'},
-                          # unix expires at timestamp
-                          :expires_at => {:type => 'integer', :minimum => (Time.zone.parse '2015-01-01').to_i, :maximum => 15.months.from_now.to_i},
-                          # optional refresh token (google+ only)
-                          :refresh_token => {:type => 'string'}
-                      },
-                      :required => %w(provider user_id token expires_at),
-                      :additionalProperties => false
-                  }
-              }
+              :oauths => oauths_type
              },
          :required => %w(interval),
          :additionalProperties => false

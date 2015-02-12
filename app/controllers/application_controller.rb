@@ -103,6 +103,16 @@ class ApplicationController < ActionController::Base
     end
 
     expired_tokens = []
+    if context == :ping and refresh_tokens.size > 0
+      # received refresh token for expired google+ token on client
+      # add google+ to expired providers if not logged in with google+ on server
+      # will send a log out signal to client
+      refresh_tokens.each do |hash|
+        expired_tokens << hash['provider'] unless login_user_ids.find { |user_id| user_id.split('/').last == hash['provider'] }
+      end
+      logger.warn2 "received refresh tokens from not logged in providers #{expired_tokens.join(', ')}" if expired_tokens.size > 0
+    end
+
     oauth = nil # only google+
     # remove logged in users with expired access token
     login_user_ids.each do |user_id|
@@ -212,7 +222,7 @@ class ApplicationController < ActionController::Base
     set_session_value(:refresh_tokens, {}) unless get_session_value(:refresh_tokens) # hash with "refresh token" (google+ only ) index by provider
 
     # check for expired api access tokens
-    check_expired_tokens context
+    expired_providers, oauths = check_expired_tokens context
 
     # fetch user(s)
     if login_user_ids.length > 0
@@ -229,18 +239,6 @@ class ApplicationController < ActionController::Base
       @users.each { |user| new_tokens[user.provider] = tokens[user.provider] }
       set_session_value(:user_ids, login_user_ids_tmp)
       set_session_value(:tokens, new_tokens)
-    end
-
-    # refresh and check authorization information from db
-    # one db user can be connected in multiple sessions / browsers
-    @users.each do |user|
-      if user.share_account and [3, 4].index(user.share_account.share_level) and user.access_token and user.access_token_expires
-        # keep sign for session[:expires_at] (positive for web page login users, negative for single sign-on users)
-        provider = user.provider
-        sign = get_session_array_value(:expires_at, provider) >= 0 ? 1 : -1
-        set_session_array_value(:tokens, (YAML::load(user.access_token)), provider)
-        set_session_array_value(:expires_at, (sign * user.access_token_expires), provider)
-      end
     end
 
     # friends information is used many different places
@@ -306,12 +304,8 @@ class ApplicationController < ActionController::Base
     # get new exchange rates? add to task queue
     add_task 'fetch_exchange_rates', 10 if logged_in? and ExchangeRate.fetch_exchange_rates?
 
-    # todo: delete ==>
-    #if login_user_ids.index('xxxxxx/facebook')
-    #  token = (session[:tokens] || {})['facebook']
-    #  logger.secret2 "token = #{token}"
-    #end
-    # todo: delete <==
+    # only used in util/login
+    return [expired_providers, oauths]
 
   end # fetch_user
 

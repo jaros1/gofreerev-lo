@@ -1067,7 +1067,11 @@ class UtilController < ApplicationController
 
       # check tokens / get updated friends info after new login
 
-      fetch_users :login
+      # get login users, check expired providers, refresh google access token
+      expired_providers, oauths_response = fetch_users :login
+      @json[:expired_tokens] = expired_providers if expired_providers
+
+      # update friend lists from login providers and return user info to client
       @json[:users] = []
       providers.each do |provider|
         # get hash with user_id and friend category
@@ -1094,6 +1098,9 @@ class UtilController < ApplicationController
 
       # oauth (returned from post_login_update_friends) is irrelevant in this context
       @json.delete :oauth
+
+      # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
+      @json[:oauths] = oauths_response if oauths_response # only google+
 
       # validate json response
       # logger.secret2 "@json = #{@json}"
@@ -1236,10 +1243,10 @@ class UtilController < ApplicationController
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
 
-      # check for expired api access tokens -
-      expired_providers, oauth = check_expired_tokens(:ping, params[:refresh_tokens])
+      # check for expired api access tokens + refresh google+ access token
+      expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens])
       @json[:expired_tokens] = expired_providers if expired_providers
-      @json[:oauth] = oauth if oauth # only google+
+      @json[:oauths] = oauths if oauths # only google+
 
       # copy login user ids from sessions to pings table (user_ids is stored encrypted in sessions but unencrypted in pings)
       login_user_ids = get_session_value(:user_ids)

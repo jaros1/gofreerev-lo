@@ -2475,12 +2475,25 @@ angular.module('gifts', ['ngRoute'])
             else Gofreerev.add2log('stop_tasks_form_spinner: spinner was not found') ;
         } // stop_tasks_form_spinner
 
-        // post page task - execute some "post page" ajax tasks and get fresh json data from server (oauth and users)
+        // post page task - execute some post-page / post-login ajax tasks and get fresh json data from server (oauth and users)
         var do_tasks = function () {
             var pgm = 'NavCtrl.do_tasks: ' ;
             console.log(pgm + 'start');
+            var do_tasks_request = {client_userid: userService.client_userid(), timezone: get_js_timezone()} ;
+            // validate json logout request before sending request to server
+            // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].logout_request)) ;
+            var valid_do_tasks_request = tv4.validate(do_tasks_request, Gofreerev.rails['JSON_SCHEMA'].do_tasks_request) ;
+            if (!valid_do_tasks_request) {
+                var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                delete error.stack ;
+                console.log(pgm + 'Error in JSON do_tasks request. Post page / post login tasks was not executed.') ;
+                console.log(pgm + 'request: ' + JSON.stringify(do_tasks_request)) ;
+                console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].do_tasks_request)) ;
+                console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
+                return ;
+            }
             start_do_tasks_spinner();
-            $http.post('/util/do_tasks.json', {client_userid: userService.client_userid(), timezone: get_js_timezone()})
+            $http.post('/util/do_tasks.json', do_tasks_request)
                 .then(function (response) {
                     // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                     var oauth = response.data.oauth ;

@@ -45,6 +45,10 @@ expired_tokens_type = {
 # used when distribution pings equally over time (ping) and used when checking for expired access token on server (login and ping)
 client_timestamp_type = {:type => 'integer', :minimum => 1.day.ago.to_i*1000, :maximum => 1.year.from_now.to_i*1000}
 
+# client userid required in all requests. Normally 1. But up to 100 local user accounts are supported
+# ( localStorage and server session are divided into a section for each user )
+client_userid_type = {:type => 'integer', :minimum => 1, :maximum => 100}
+
 JSON_SCHEMA = {
     # login request/response is used after local device login. oauth information is send to server, validated and updated api friend lists are returned to client
     # oauth information is stored encrypted in localStorage in browser and only temporary in server session doing log in
@@ -53,7 +57,7 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # client userid normally = 1. Allow up to 100 user accounts in localStorage
-            :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
+            :client_userid => client_userid_type,
             # client unix timestamp (10) with milliseconds (3) - total 13 decimals
             :client_timestamp => client_timestamp_type,
             # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
@@ -109,7 +113,7 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # client userid normally = 1. Old client userid at device logout (provider=null). Allow up to 100 user accounts in localStorage
-            :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
+            :client_userid => client_userid_type,
             # optional log out provider. null=device: device log out. <>null: social network log out
             :provider => {:type => 'string', :pattern => providers_pattern}
         },
@@ -123,6 +127,21 @@ JSON_SCHEMA = {
         :additionalProperties => false
     },
 
+    # do tasks is used to do some "post page" / "post login" ajax tasks on server
+    # set server timezone, move oauth from sessions table to localStorage and get friend list from login provider
+    :do_tasks_request => {
+        :type => 'object',
+        :properties => {
+            # client userid normally = 1. Old client userid at device logout (provider=null). Allow up to 100 user accounts in localStorage
+            :client_userid => client_userid_type,
+            # Timezone offset in hours. todo: remove - all dates should be formatted with javascript, not rails
+            :timezone => { :type => 'number', :minimum => -12, :maximum => 14}
+        },
+        :required => %w(client_userid timezone),
+        :additionalProperties => false
+    },
+    :do_tasks_response => {},
+
     # ping request/response is the central message used in synchronization of information between servers and clients
     # number of pings per time period are regulated after average server load
     # client pings are distributed equally over time
@@ -130,7 +149,7 @@ JSON_SCHEMA = {
         {:type => 'object',
          :properties =>
              {# client userid normally = 1. Allow up to 100 user accounts in localStorage
-              :client_userid => {:type => 'integer', :minimum => 1, :maximum => 100},
+              :client_userid => client_userid_type,
               # client unix timestamp (10) with milliseconds (3) - total 13 decimals
               :client_timestamp => client_timestamp_type,
               # sid - unique session id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals

@@ -1735,6 +1735,7 @@ angular.module('gifts', ['ngRoute'])
             save_oauth(oauth) ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
         } // add_oauth
+
         var remove_oauth = function (provider) {
             var pgm = 'UserService.remove_oauth: ' ;
             console.log(pgm + 'provider = ' + provider) ;
@@ -1758,7 +1759,7 @@ angular.module('gifts', ['ngRoute'])
             delete self.refresh_tokens[provider] ;
             // console.log(pgm + 'debug 6') ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
-        }
+        } // remove_oauth
 
         // process expired tokens response - used in login and ping response processing
         var expired_tokens_response = function (expired_tokens) {
@@ -1771,21 +1772,35 @@ angular.module('gifts', ['ngRoute'])
                 remove_oauth(provider) ;
             }
         } // expired_tokens_response
-        
-        // process oauths array response - used in login and ping response processing
-        var oauths_response = function (oauths) {
-            var pgm = 'oauths_response: ' ;
-            if (!oauths) return ;
-            // check for new oauth authorization (google+ only)
-            var oauth_hash, oauth ;
-            // convert from array to an hash before calling add_oauth
-            console.log(pgm + 'oauths = ' + JSON.stringify(oauths)) ;
-            oauth_hash = {} ;
-            for (var i=0 ; i<oauths.length ; i++) {
-                oauth = oauths[i] ;
+
+        // convert oauth hash/array - saved as hash but sent/received (json) as array
+        var oauth_array_to_hash = function (oauth_array) {
+            var oauth, oauth_hash = {} ;
+            for (var i=0 ; i<oauth_array.length ; i++) {
+                oauth = oauth_array[i] ;
                 oauth_hash[oauth.provider] = oauth ;
                 delete oauth_hash[oauth.provider].provider ;
             }
+            return oauth_hash ;
+        } // oauth_array_to_hash
+        var oauth_hash_to_array = function (oauth_hash) {
+            var oauth, oauth_array = [] ;
+            for (var provider in oauth_hash) {
+                if (!oauth_hash.hasOwnProperty(provider)) continue ;
+                oauth = oauth_hash[provider] ;
+                oauth.provider = provider ;
+                oauth_array.push(oauth) ;
+            }
+            return oauth_array ;
+        } // oauth_hash_to_array
+
+        // process oauths array response - used in login and ping response processing
+        var oauths_response = function (oauth_array) {
+            var pgm = 'oauths_response: ' ;
+            if (!oauth_array) return ;
+            // convert from array to an hash before calling add_oauth
+            console.log(pgm + 'oauth_array = ' + JSON.stringify(oauth_array)) ;
+            var oauth_hash = oauth_array_to_hash(oauth_array) ;
             console.log(pgm + 'oauth_hash = ' + JSON.stringify(oauth_hash)) ;
             add_oauth(oauth_hash) ;
 
@@ -1820,7 +1835,7 @@ angular.module('gifts', ['ngRoute'])
             var login_request = {
                 client_userid: userid,
                 client_timestamp: (new Date).getTime(),
-                oauth: oauth,
+                oauths: oauth_hash_to_array(oauth),
                 did: Gofreerev.getItem('did'),
                 pubkey: Gofreerev.getItem('pubkey')} ;
             // validate json login request before sending request to server
@@ -1846,14 +1861,14 @@ angular.module('gifts', ['ngRoute'])
                         var error = JSON.parse(JSON.stringify(tv4.error)) ;
                         delete error.stack ;
                         console.log(pgm + 'Error in JSON login response from server.') ;
-                        console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
+                        console.log(pgm + 'response: ' + JSON.stringify(response.data)) ;
                         console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
                         return $q.reject(response.data.error) ;
                     }
                     // check expired access token (server side check)
-                    if (ok.data.expired_tokens) expired_tokens_response(ok.data.expired_tokens) ;
+                    if (response.data.expired_tokens) expired_tokens_response(response.data.expired_tokens) ;
                     // check for new oauth authorization (google+ only)
-                    if (ok.data.oauths) oauths_response(ok.data.oauths) ;
+                    if (response.data.oauths) oauths_response(response.data.oauths) ;
                     // check users array
                     if (response.data.users) {
                         // fresh user info array was received from server

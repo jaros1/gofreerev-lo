@@ -124,7 +124,7 @@ class ApplicationController < ActionController::Base
       now = client_timestamp
     else
       # big dif between server time and client time - use server timestamp when checking for expired access tokens
-      now = server timestamp
+      now = server_timestamp
     end
     logger.debug2 "client_timestamp = #{client_timestamp}, server_timestamp = #{server_timestamp}, timestamp_dif = #{timestamp_dif}, now = #{now}"
 

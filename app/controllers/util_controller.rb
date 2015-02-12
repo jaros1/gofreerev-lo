@@ -1033,7 +1033,7 @@ class UtilController < ApplicationController
         p.save!
       end
 
-      oauth = params[:oauth]
+      oauths = params[:oauths] # array with oauth authorization
       tokens = get_session_value(:tokens)
       expires_at = get_session_value(:expires_at)
       refresh_tokens = get_session_value(:refresh_tokens)
@@ -1042,14 +1042,20 @@ class UtilController < ApplicationController
       # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
 
       # insert oauth received from client local storage into server session
-      providers = oauth.keys
+      providers = []
       new_user_ids = []
-      providers.each do |provider|
+      oauths.each do |oauth|
+        provider = oauth['provider']
+        if providers.index(provider)
+          @json[:error] = "Dublicate provider #{provider} in oauths array"
+          next
+        end
+        providers << provider
         # logger.secret2 "oauth[#{provider}] = #{oauth[provider]}"
-        new_user_ids << oauth[provider]["user_id"]
-        set_session_array_value(:tokens, oauth[provider]["token"], provider)
-        set_session_array_value(:expires_at, oauth[provider]["expires_at"], provider)
-        set_session_array_value(:refresh_tokens, oauth[provider]["refresh_token"], provider) if provider == 'google_oauth2'
+        new_user_ids << oauth["user_id"]
+        set_session_array_value(:tokens, oauth["token"], provider)
+        set_session_array_value(:expires_at, oauth["expires_at"], provider)
+        set_session_array_value(:refresh_tokens, oauth["refresh_token"], provider) if provider == 'google_oauth2'
       end
       set_session_value(:user_ids, new_user_ids)
 
@@ -1254,7 +1260,7 @@ class UtilController < ApplicationController
         ping.user_ids = login_user_ids
       else
         logger.warn2 "Not logged in"
-        @json[:error] = 'Login information was not found in server. Please use device log out + log in to refresh server authorization' unless @json[:error]
+        @json[:error] = 'Authorization was not found on server. Please use device log out + log in to refresh server authorization' unless @json[:error]
         login_user_ids = []
       end
 

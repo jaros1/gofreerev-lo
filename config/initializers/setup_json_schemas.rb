@@ -60,27 +60,10 @@ JSON_SCHEMA = {
             :did => {:type => 'string', :pattern => uid_pattern},
             # pubkey key for unique device - used in encrypted client to client information replication
             :pubkey => {:type => 'string'},
-            # object with oauth authorization for zero, one or more social networks - properties/keys = api login providers
-            # for each provider a object with oauth token, user_id (uid+provider) and expires_at timestamp
-            # ( API_ID is from omniauth setup in /config/initializers/omniauth.rb )
-            :oauth => JSON.parse("{\"type\":\"object\",\"properties\":{" +
-                                     API_ID.keys.collect do |key|
-                                       "\"#{key}\":" +
-                                           "{\"type\":\"object\", " +
-                                           "\"properties\":{" +
-                                           "\"token\":{\"type\":\"string\"},"+
-                                           "\"refresh_token\":{\"type\":\"string\"},"+
-                                           "\"user_id\":{\"type\":\"string\"}," +
-                                           "\"expires_at\":{" +
-                                           "\"type\":\"integer\", " +
-                                           "\"minimum\":" + (Time.zone.parse '2015-01-01').to_i.to_s + ", " +
-                                           "\"maximum\":" + 15.months.from_now.to_i.to_s + "} }," +
-                                           "\"required\":[\"token\",\"user_id\",\"expires_at\"]," +
-                                           "\"additionalProperties\":false" +
-                                           "}"
-                                     end.join(',') + "},\"additionalProperties\":false }")
+            # array with oauth authorization for zero, one or more social networks (from localStorage)
+            :oauths => oauths_type
         },
-        :required => %w(client_userid client_timestamp did pubkey oauth),
+        :required => %w(client_userid client_timestamp did pubkey oauths),
         :additionalProperties => false
     },
     :login_response => {

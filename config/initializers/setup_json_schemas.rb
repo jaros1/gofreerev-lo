@@ -49,6 +49,31 @@ client_timestamp_type = {:type => 'integer', :minimum => 1.day.ago.to_i*1000, :m
 # ( localStorage and server session are divided into a section for each user )
 client_userid_type = {:type => 'integer', :minimum => 1, :maximum => 100}
 
+# array with login user and friends information (friends etc). from api friend lists. used in login and do_tasks response
+users_type = {
+    :type => 'array',
+    :items => {
+        :type => 'object',
+        # fields in user record (login user, friend etc)
+        :properties => {
+            # internal user id (sequence)
+            :user_id => {:type => 'integer', :minimum => 1},
+            # login provider - facebook, foursquare etc
+            :provider => {:type => 'string', :pattern => providers_pattern},
+            # full user name
+            :user_name => {:type => 'string'},
+            # url to profile picture
+            :api_profile_picture_url => {:type => 'string'},
+            # friend:
+            # - 1: logged in user, 2: mutual friends, 3: follows, 4: stalked by,
+            # - 5: deselected api friends, 6: friends of friends, 7: friends proposals, 8: others
+            :friend => {:type => 'integer', :minimum => 1, :maximum => 8}
+        },
+        :required => %w(user_id provider user_name api_profile_picture_url friend),
+        :additionalProperties => false
+    }
+}
+
 JSON_SCHEMA = {
     # login request/response is used after local device login. oauth information is send to server, validated and updated api friend lists are returned to client
     # oauth information is stored encrypted in localStorage in browser and only temporary in server session doing log in
@@ -74,34 +99,12 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # array with login user and friends information (friends etc). from api friend lists
-            :users => {
-                :type => 'array',
-                :items => {
-                    :type => 'object',
-                    # fields in user record (login user, friend etc)
-                    :properties => {
-                        # internal user id (sequence)
-                        :user_id => {:type => 'integer', :minimum => 1},
-                        # login provider - facebook, foursquare etc
-                        :provider => {:type => 'string', :pattern => providers_pattern},
-                        # full user name
-                        :user_name => {:type => 'string'},
-                        # url to profile picture
-                        :api_profile_picture_url => {:type => 'string'},
-                        # friend:
-                        # - 1: logged in user, 2: mutual friends, 3: follows, 4: stalked by,
-                        # - 5: deselected api friends, 6: friends of friends, 7: friends proposals, 8: others
-                        :friend => {:type => 'integer', :minimum => 1, :maximum => 8}
-                    },
-                    :required => %w(user_id provider user_name api_profile_picture_url friend),
-                    :additionalProperties => false
-                }
-            },
+            :users => users_type,
             # optional array with providers with expired oauth authorization
             :expired_tokens => expired_tokens_type,
             # optional array with new oauth authorization - for now only used for google+
             :oauths => oauths_type,
-            # optiona error message from login
+            # optional error message from login
             :error => {:type => 'string'}
         },
         :required => %w(users),
@@ -127,8 +130,8 @@ JSON_SCHEMA = {
         :additionalProperties => false
     },
 
-    # do tasks is used to do some "post page" / "post login" ajax tasks on server
-    # set server timezone, move oauth from sessions table to localStorage and get friend list from login provider
+    # do tasks is used to do some post page startup ajax tasks on server
+    # ( set server timezone, move oauth from sessions table to localStorage, get friend list from login provider etc )
     :do_tasks_request => {
         :type => 'object',
         :properties => {
@@ -140,7 +143,18 @@ JSON_SCHEMA = {
         :required => %w(client_userid timezone),
         :additionalProperties => false
     },
-    :do_tasks_response => {},
+    :do_tasks_response => {
+        :type => 'object',
+        :properties => {
+            # optional array with new oauth authorization to client (temporary stored in server session after api omniauth login
+            :oauths => oauths_type,
+            # array with login user and friends information (friends etc). from api friend lists
+            :users => users_type,
+            # optional error message from do_tasks
+            :error => {:type => 'string'}
+        },
+        :additionalProperties => false
+    },
 
     # ping request/response is the central message used in synchronization of information between servers and clients
     # number of pings per time period are regulated after average server load

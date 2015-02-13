@@ -2109,6 +2109,7 @@ angular.module('gifts', ['ngRoute'])
             logout: logout,
             client_userid: client_userid,
             update_users: update_users,
+            oauth_array_to_hash: oauth_array_to_hash,
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
             send_oauth: send_oauth,
@@ -2445,7 +2446,7 @@ angular.module('gifts', ['ngRoute'])
 
         // end GiftService
     }])
-    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', function(textService, userService, $timeout, $http) {
+    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', '$q', function(textService, userService, $timeout, $http, $q) {
         console.log('NavCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
@@ -2482,11 +2483,12 @@ angular.module('gifts', ['ngRoute'])
             var do_tasks_request = {client_userid: userService.client_userid(), timezone: get_js_timezone()} ;
             // validate json logout request before sending request to server
             // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].logout_request)) ;
+            // todo: dry - refactor json request validation to a method
             var valid_do_tasks_request = tv4.validate(do_tasks_request, Gofreerev.rails['JSON_SCHEMA'].do_tasks_request) ;
             if (!valid_do_tasks_request) {
                 var error = JSON.parse(JSON.stringify(tv4.error)) ;
                 delete error.stack ;
-                console.log(pgm + 'Error in JSON do_tasks request. Post page / post login tasks was not executed.') ;
+                console.log(pgm + 'Error in JSON do_tasks request. Certain required "startup" tasks have not been executed and the page will not be working 100% as expected.') ;
                 console.log(pgm + 'request: ' + JSON.stringify(do_tasks_request)) ;
                 console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].do_tasks_request)) ;
                 console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
@@ -2496,11 +2498,30 @@ angular.module('gifts', ['ngRoute'])
             $http.post('/util/do_tasks.json', do_tasks_request)
                 .then(function (response) {
                     // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-                    var oauth = response.data.oauth ;
-                    if (oauth) {
+                    stop_do_tasks_spinner() ;
+                    if (response.data.error) {
+                        console.log(pgm + 'Error when executing required "startup" tasks. The page will not be working 100% as expected. error = ' + response.data.error) ;
+                        // todo: stop or continue?
+                    }
+
+                    // validate do_tasks response received from server
+                    var valid_do_tasks_response = tv4.validate(response.data, Gofreerev.rails['JSON_SCHEMA'].do_tasks_response) ;
+                    if (!valid_do_tasks_response) {
+                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                        delete error.stack ;
+                        console.log(pgm + 'Error in JSON do_tasks response from server. The page will not be working 100% as expected.') ;
+                        console.log(pgm + 'response: ' + JSON.stringify(response.data)) ;
+                        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].do_tasks_response)) ;
+                        console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
+                        // todo: stop or continue?
+                        return $q.reject('Error in JSON do_tasks response from server. The page will not be working 100% as expected. Errors = ' + JSON.stringify(error)) ;
+                    }
+                    var oauths = response.data.oauths ;
+                    if (oauths) {
                         // new oauth token(s) received from util.generic_post_login task (token, expires_at and refresh token)
-                        console.log(pgm + 'oauth = ' + JSON.stringify(oauth)) ;
-                        userService.add_oauth(oauth) ;
+                        console.log(pgm + 'oauths = ' + JSON.stringify(oauths)) ;
+                        oauths = userService.oauth_array_to_hash(oauths) ;
+                        userService.add_oauth(oauths) ;
                     }
                     var new_users = response.data.users ;
                     if (new_users) {
@@ -2508,13 +2529,10 @@ angular.module('gifts', ['ngRoute'])
                         console.log('post login. new users = ' + new_users) ;
                         userService.update_users(new_users, false) ; // replace=false - add new users
                     }
-                    stop_do_tasks_spinner() ;
-                    console.log(pgm + 'stop');
                 },
                 function (error) {
-                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
                     stop_do_tasks_spinner() ;
-                    console.log(pgm + 'stop');
+                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
                 }) ;
 
         }

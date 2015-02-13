@@ -227,6 +227,22 @@ class UtilController < ApplicationController
   # - upload post and optional picture to login provider (ok)
   def do_tasks
     begin
+
+      # validate json do_tasks request (JSON_SCHEMA[:do_tasks_request])
+      # todo: refactor request json validation to a method or a filter
+      do_tasks_request = params.clone
+      %w(controller action format util).each { |key| do_tasks_request.delete(key) }
+      # logger.secret2 "do_tasks_request = #{do_tasks_request}"
+      do_tasks_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:do_tasks_request], do_tasks_request)
+      if do_tasks_request_errors.size > 0
+        # todo: stop or continue?
+        @json[:error] = "Invalid do_tasks request: #{do_tasks_request_errors.join(', ')}"
+        logger.error2 @json[:error]
+        format_response
+        return
+      end
+
+
       # todo: debug why IE is not setting state before redirecting to facebook in facebook/autologin
       logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
       # save timezone received from javascript
@@ -254,38 +270,21 @@ class UtilController < ApplicationController
           logger.debug2 "Backtrace: " + e.backtrace.join("\n")
           add_error_key '.do_task_exception', :task => at.task, :error => e.message.to_s
         end
-        # logger.debug2  "task #{at.task}, response = #{res}"
-        # next unless res
-        ## check response from task. Must be a valid input to translate
-        #begin
-        #  key, options = res
-        #  key2 = key
-        #  key2 = 'shared.translate_ajax_errors' + key if key2.to_s.first(1) == '.'
-        #  options = {} unless options
-        #  options[:raise] = I18n::MissingTranslationData
-        #  t key2, options
-        #rescue I18n::MissingTranslationData => e
-        #  res = [ '.ajax_task_missing_translate_key', { :key => key, :task => at.task, :response => res, :exception => e.message.to_s } ]
-        #rescue I18n::MissingInterpolationArgument => e
-        #  logger.debug2  "exception = #{e.message.to_s}"
-        #  logger.debug2  "response = #{res}"
-        #  argument = $1 if e.message.to_s =~ /:(.+?)\s/
-        #  logger.debug2  "argument = #{argument}"
-        #  res = [ '.ajax_task_missing_translate_arg', { :key => key, :task => at.task, :argument => argument, :response => res, :exception => e.message.to_s } ]
-        #rescue => e
-        #  logger.debug2  "invalid response from task #{at.task}. Must be nil or a valid input to translate. Response: #{res}"
-        #  res = [ '.ajax_task_invalid_response', { :task => at.task, :response => res, :exception => e.message.to_s }]
-        #end
-        # logger.debug2  "task = #{at.task}, res = #{res}"
       end
       logger.debug2 "@errors.size = #{@errors.size}"
-      format_response
-      return
-      if @errors.size == 0
-        render :nothing => true
-      else
-        format_response
+
+      # todo: DRY - refactor to a filter or a method
+      # validate json response (JSON_SCHEMA[:do_tasks_response])
+      # logger.debug2 "@json = #{@json}"
+      if !@json[:error]
+        do_tasks_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:do_tasks_response], @json)
+        if do_tasks_response_errors.size > 0
+          @json[:error] = "Invalid do_tasks response: #{do_tasks_response_errors.join(', ')}"
+          logger.error2 @json[:error]
+        end
       end
+
+      format_response
     rescue => e
       logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
       logger.debug2  "Backtrace: " + e.backtrace.join("\n")
@@ -369,14 +368,17 @@ class UtilController < ApplicationController
     return [login_user, api_client, friends_hash, new_user, key, options] if key
     login_user_id = login_user.user_id
 
-    # return oauth authorization temporary stored in rails session to client. saved encrypted in locale storage
-    @json[:oauth] = {} unless @json[:oauth]
-    @json[:oauth][provider] = {:user_id    => login_user.user_id,
-                               :token      => get_session_array_value(:tokens, provider),
-                               :expires_at => get_session_array_value(:expires_at, provider)}
-    @json[:oauth][provider][:refresh_token] = get_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
+    # return oauth authorization from temporary storage in rails session to client. stored encrypted in client localStorage
+    @json[:oauths] = [] unless @json[:oauths]
+    @json[:oauths].delete_if { |oauth| oauth[:provider] == provider }
+    oauth = {:provider => provider,
+             :user_id    => login_user.user_id,
+             :token      => get_session_array_value(:tokens, provider),
+             :expires_at => get_session_array_value(:expires_at, provider)}
+    oauth[:refresh_token] = get_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
+    @json[:oauths] << oauth
 
-    # remove oauth authorization from rails session. keep only expires_at timestamp
+    # remove oauth authorization from rails session. keep expires_at timestamp in server session. used in access token expiration check
     delete_session_array_value(:tokens, provider)
     delete_session_array_value(:refresh_tokens, provider) if provider == 'google_oauth2'
 
@@ -434,7 +436,7 @@ class UtilController < ApplicationController
   def generic_post_login (provider)
     begin
       # get login user, initialize api client, get and update friends information
-      # also initialized @json[:oauth] hash with oauth information to
+      # also initialized @json[:oauths] array with oauth information to client (stored encrypted in localStorage)
       login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
       #logger.debug2 "login_user   = #{login_user}"
       #logger.debug2 "api_client   = #{api_client}"
@@ -452,10 +454,8 @@ class UtilController < ApplicationController
         { :user_id => user.id,
           :provider => user.provider,
           :user_name => user.user_name,
-          :balance => nil,
           :api_profile_picture_url => user.api_profile_picture_url,
-          :friend => login_user.friends_hash[user.user_id],
-          :currency => user.currency }
+          :friend => login_user.friends_hash[user.user_id] }
       end
 
       # update number of friends.
@@ -1102,8 +1102,8 @@ class UtilController < ApplicationController
       # should only be used to download friend lists from apis
       # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
 
-      # oauth (returned from post_login_update_friends) is irrelevant in this context
-      @json.delete :oauth
+      # oauths array (returned from post_login_update_friends) is irrelevant in this context
+      @json.delete :oauths
 
       # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
       @json[:oauths] = oauths_response if oauths_response # only google+

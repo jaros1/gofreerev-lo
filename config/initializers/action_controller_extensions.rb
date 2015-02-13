@@ -2,14 +2,18 @@ module ActionControllerExtensions
 
   private
   def get_sessionid
-    (request || @inject_request).session_options[:id]
+    if defined? request
+      request.session_options[:id]
+    else
+      @inject_request.session_options[:id]
+    end
   end
   def get_client_userid
     session[:client_userid] || 0
   end
   def get_secret
     session[:secret] = String.generate_random_string(256) unless session[:secret]
-    logger.debug2 "secret = #{session[:secret]}"
+    logger.debug2 "secret = #{session[:secret]}" if defined? logger
     session[:secret]
   end
 

@@ -1111,6 +1111,62 @@ var Gofreerev = (function() {
         return Math.floor((new Date).getTime()/1000) ;
     };
 
+    // check if json request is invalid. used in do_tasks, login, logout and ping
+    // returns null (ok) or an error message
+    function is_json_request_invalid (pgm, json_request, action, msg) {
+        if (!msg) msg = '' ;
+        // remove null keys before checking json
+        for (var key in json_request) if (json_request[key] == null) delete json_request[key];
+        // check if schema definition exists
+        var json_schema = action + '_request';
+        var error ;
+        if (!Gofreerev.rails['JSON_SCHEMA'].hasOwnProperty(json_schema)) {
+            console.log(pgm + 'Error. JSON schema defintion ' + json_schema + ' was not found. ' + action + ' request was not sent to server.');
+            error = 'JSON schema definition ' + json_schema + ' was not found. ' + action + ' request was not sent to server. ' + msg ;
+            console.log(pgm + error);
+            return error;
+        }
+        // validate json request before sending action to server
+        if (tv4.validate(json_request, Gofreerev.rails['JSON_SCHEMA'][json_schema])) return null;
+        // report error
+        var json_error = JSON.parse(JSON.stringify(tv4.error));
+        delete json_error.stack;
+        var json_errors = JSON.stringify(json_error) ;
+        error = 'Error in JSON ' + action + ' request. ' + action + ' request was not sent to server.' + msg ;
+        console.log(pgm + error);
+        console.log(pgm + 'request: ' + JSON.stringify(json_request));
+        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
+        console.log(pgm + 'errors : ' + json_errors);
+        return error + '. ' + json_errors ;
+    } // is_json_request_invalid
+
+    // check if json response is invalid. used in do_tasks, login, logout and ping
+    // returns null (ok) or an error message
+    function is_json_response_invalid (pgm, json_response, action, msg) {
+        if (!msg) msg = '' ;
+        // check if schema definition exists
+        var json_schema = action + '_response';
+        var error ;
+        if (!Gofreerev.rails['JSON_SCHEMA'].hasOwnProperty(json_schema)) {
+            error = 'JSON schema definition ' + json_schema + ' was not found. ' + action + ' response could not be validated. ' + msg ;
+            console.log(pgm + error);
+            return error;
+        }
+        // validate do_tasks response received from server
+        if (tv4.validate(json_response, Gofreerev.rails['JSON_SCHEMA'][json_schema])) return null ; // json is valid
+        // report error
+        var json_error = JSON.parse(JSON.stringify(tv4.error));
+        delete json_error.stack;
+        var json_errors = JSON.stringify(json_error) ;
+        error = 'Error in JSON ' + action + ' response from server. ' + msg ;
+        console.log(pgm + error);
+        console.log(pgm + 'response: ' + JSON.stringify(json_response));
+        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
+        console.log(pgm + 'errors : ' + json_errors);
+        // return error
+        return error + '. ' + json_errors ;
+    } // is_json_response_invalid
+
     // export public used methods (views)
     return {
         // constants from ruby on rails. see ruby_to.js.erb
@@ -1140,7 +1196,9 @@ var Gofreerev = (function() {
         client_login: client_login,
         client_sym_encrypt: encrypt,
         client_sym_decrypt: decrypt,
-        unix_timestamp: unix_timestamp
+        unix_timestamp: unix_timestamp,
+        is_json_request_invalid: is_json_request_invalid,
+        is_json_response_invalid: is_json_response_invalid
     };
 })();
 // Gofreerev closure end
@@ -1599,36 +1657,19 @@ angular.module('gifts', ['ngRoute'])
                 // console.log(pgm + 'debug 4') ;
                 remove_oauth(provider) ;
             }
-            // update oauth info in server session
+            // update login userids in server session
             // console.log(pgm + 'debug 5') ;
             var logout_request = { client_userid: old_client_userid};
             if (provider) logout_request.provider = provider ;
-
-            // validate json logout request before sending request to server
-            // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].logout_request)) ;
-            var valid_logout_request = tv4.validate(logout_request, Gofreerev.rails['JSON_SCHEMA'].logout_request) ;
-            if (!valid_logout_request) {
-                var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                delete error.stack ;
-                console.log(pgm + 'Error in JSON log out request. Log out information was not sent.') ;
-                console.log(pgm + 'request: ' + JSON.stringify(logout_request)) ;
-                console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                return ;
-            }
+            var json_errors ;
+            if (json_errors=Gofreerev.is_json_request_invalid(pgm, logout_request, 'logout')) return $q.reject(json_errors) ;
             $http.post('/util/logout.json', logout_request)
                 .then(function (response) {
-                    // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
-                    if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
-                    // validate ping response received from server (should only be error message)
-                    var valid_logout_response = tv4.validate(response.data, Gofreerev.rails['JSON_SCHEMA'].logout_response) ;
-                    if (!valid_logout_response) {
-                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                        delete error.stack ;
-                        console.log(pgm + 'Error in JSON logout response from server.') ;
-                        console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
-                        console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                        return $q.reject(response.data.error) ;
-                    }
+                    // console.log(pgm + 'logout response = ' + JSON.stringify(response)) ;
+                    if (response.data.error) console.log(pgm + 'logout error = ' + response.data.error) ;
+                    // validate logout response received from server (should only be error message)
+                    var json_errors ;
+                    if (json_errors=Gofreerev.is_json_response_invalid(pgm, response.data, 'logout', '')) return $q.reject(json_errors) ;
                 },
                 function (error) {
                     console.log(pgm + 'log out error = ' + JSON.stringify(error)) ;
@@ -1839,32 +1880,15 @@ angular.module('gifts', ['ngRoute'])
                 did: Gofreerev.getItem('did'),
                 pubkey: Gofreerev.getItem('pubkey')} ;
             // validate json login request before sending request to server
-            for (var key in login_request) if (login_request[key] == null) delete login_request[key] ;
-            // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].login_request)) ;
-            var valid_login_request = tv4.validate(login_request, Gofreerev.rails['JSON_SCHEMA'].login_request) ;
-            if (!valid_login_request) {
-                var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                delete error.stack ;
-                console.log(pgm + 'Error in JSON login request. Login information was not sent.') ;
-                console.log(pgm + 'request: ' + JSON.stringify(login_request)) ;
-                console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].login_request)) ;
-                console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
-                return $q.reject('System error in login request. Login information was not sent. More information in log.') ;
-            }
+            var json_errors ;
+            if (json_errors=Gofreerev.is_json_request_invalid(pgm, login_request, 'login')) return $q.reject(json_errors)  ;
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
                     // validate ping response received from server
-                    var valid_login_response = tv4.validate(response.data, Gofreerev.rails['JSON_SCHEMA'].login_response) ;
-                    if (!valid_login_response) {
-                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                        delete error.stack ;
-                        console.log(pgm + 'Error in JSON login response from server.') ;
-                        console.log(pgm + 'response: ' + JSON.stringify(response.data)) ;
-                        console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                        return $q.reject(response.data.error) ;
-                    }
+                    var json_errors ;
+                    if (json_errors=Gofreerev.is_json_response_invalid(pgm, response.data, 'login', '')) return $q.reject(json_errors) ;
                     // check expired access token (server side check)
                     if (response.data.expired_tokens) expired_tokens_response(response.data.expired_tokens) ;
                     // check for new oauth authorization (google+ only)
@@ -2029,55 +2053,51 @@ angular.module('gifts', ['ngRoute'])
             };
             for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
             // validate json request before sending ping to server
-            var valid_ping_request = tv4.validate(ping_request, Gofreerev.rails['JSON_SCHEMA'].ping_request) ;
-            if (!valid_ping_request) {
-                var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                delete error.stack ;
-                console.log(pgm + 'Error in JSON ping request. Ping was not sent.') ;
-                console.log(pgm + 'request: ' + JSON.stringify(ping_request)) ;
-                console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+            if (Gofreerev.is_json_request_invalid(pgm, ping_request, 'ping')) {
+                console.log(pgm + 'Ping loop aborted. Please correct error.') ;
                 return ;
             }
-            // console.log(pgm + 'params: ' + JSON.stringify(ping_request)) ;
             $http.post('/util/ping.json', ping_request).then(
-                function (ok) {
+                function (response) {
                     // schedule next ping.
                     // console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
                     // console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
-                    if (ok.data.interval && (ok.data.interval >= 1000)) ping_interval = ok.data.interval ;
+                    if (response.data.interval && (response.data.interval >= 1000)) ping_interval = response.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
+
                     // validate ping response received from server
-                    var valid_ping_response = tv4.validate(ok.data, Gofreerev.rails['JSON_SCHEMA'].ping_response) ;
-                    if (!valid_ping_response) {
-                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                        delete error.stack ;
-                        console.log(pgm + 'Error in JSON ping response from server.') ;
-                        console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
-                        console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                        // todo: stop or continue?
-                    }
                     // todo: where to report ping error in UI.
-                    if (ok.data.error) console.log(pgm + 'error: ' + ok.data.error) ;
+                    if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
+                    //var valid_ping_response = tv4.validate(ok.data, Gofreerev.rails['JSON_SCHEMA'].ping_response) ;
+                    //if (!valid_ping_response) {
+                    //    var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                    //    delete error.stack ;
+                    //    console.log(pgm + 'Error in JSON ping response from server.') ;
+                    //    console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
+                    //    console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                    //    // todo: stop or continue?
+                    //}
+                    if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
                     // check online users/devices
-                    if (ok.data.online) update_devices(ok.data.online) ;
+                    if (response.data.online) update_devices(response.data.online) ;
                     // check for new public keys for online users/devices
-                    if (ok.data.pubkeys) pubkeys_response(ok.data.pubkeys) ;
+                    if (response.data.pubkeys) pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
-                    if (ok.data.new_gifts) giftService.new_gifts_response(ok.data.new_gifts) ;
+                    if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
                     // check expired access token (server side check)
-                    if (ok.data.expired_tokens) expired_tokens_response(ok.data.expired_tokens) ;
+                    if (response.data.expired_tokens) expired_tokens_response(response.data.expired_tokens) ;
                     // check for new oauth authorization (google+ only)
-                    if (ok.data.oauths) oauths_response(ok.data.oauths) ;
+                    if (response.data.oauths) oauths_response(response.data.oauths) ;
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
                     // console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
-                    if (!ok.data.old_client_timestamp) return ; // first ping for new session
-                    var interval = new_client_timestamp - ok.data.old_client_timestamp ;
+                    if (!response.data.old_client_timestamp) return ; // first ping for new session
+                    var interval = new_client_timestamp - response.data.old_client_timestamp ;
                     // console.log(pgm + 'ok. interval = ' + interval) ;
                     if (interval > old_ping_interval - 100) return ;
                     console.log(
                         pgm + 'ok. multiple logins for client userid ' + userid +
-                        '. old timestamp = ' + ok.data.old_client_timestamp +
+                        '. old timestamp = ' + response.data.old_client_timestamp +
                         ', new timestamp = ' + new_client_timestamp +
                         ',interval = ' + interval);
                     // sync JS users array with any changes in local storage users string
@@ -2481,41 +2501,20 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'NavCtrl.do_tasks: ' ;
             console.log(pgm + 'start');
             var do_tasks_request = {client_userid: userService.client_userid(), timezone: get_js_timezone()} ;
-            // validate json logout request before sending request to server
-            // console.log(pgm + 'json schema = ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].logout_request)) ;
-            // todo: dry - refactor json request validation to a method
-            var valid_do_tasks_request = tv4.validate(do_tasks_request, Gofreerev.rails['JSON_SCHEMA'].do_tasks_request) ;
-            if (!valid_do_tasks_request) {
-                var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                delete error.stack ;
-                console.log(pgm + 'Error in JSON do_tasks request. Certain required "startup" tasks have not been executed and the page will not be working 100% as expected.') ;
-                console.log(pgm + 'request: ' + JSON.stringify(do_tasks_request)) ;
-                console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].do_tasks_request)) ;
-                console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
-                return ;
-            }
+            var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
+            if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();
             $http.post('/util/do_tasks.json', do_tasks_request)
                 .then(function (response) {
                     // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                     stop_do_tasks_spinner() ;
                     if (response.data.error) {
-                        console.log(pgm + 'Error when executing required "startup" tasks. The page will not be working 100% as expected. error = ' + response.data.error) ;
+                        console.log(pgm + 'Error when executing required "startup" tasks.' + msg + '. error = ' + response.data.error) ;
                         // todo: stop or continue?
                     }
-
                     // validate do_tasks response received from server
-                    var valid_do_tasks_response = tv4.validate(response.data, Gofreerev.rails['JSON_SCHEMA'].do_tasks_response) ;
-                    if (!valid_do_tasks_response) {
-                        var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                        delete error.stack ;
-                        console.log(pgm + 'Error in JSON do_tasks response from server. The page will not be working 100% as expected.') ;
-                        console.log(pgm + 'response: ' + JSON.stringify(response.data)) ;
-                        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'].do_tasks_response)) ;
-                        console.log(pgm + 'errors : ' + JSON.stringify(error)) ;
-                        // todo: stop or continue?
-                        return $q.reject('Error in JSON do_tasks response from server. The page will not be working 100% as expected. Errors = ' + JSON.stringify(error)) ;
-                    }
+                    var json_errors ;
+                    if (json_errors=Gofreerev.is_json_response_invalid(pgm, response.data, 'do_tasks', msg)) return $q.reject(json_errors);
                     var oauths = response.data.oauths ;
                     if (oauths) {
                         // new oauth token(s) received from util.generic_post_login task (token, expires_at and refresh token)

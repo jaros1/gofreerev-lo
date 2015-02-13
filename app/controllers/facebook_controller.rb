@@ -1,7 +1,7 @@
 class FacebookController < ApplicationController
 
-  skip_before_filter :verify_authenticity_token, :only => [:create] # no crsf token when facebook starts the App with post /facebook
-  after_filter :allow_iframe
+  skip_before_action :verify_authenticity_token, :only => [:create] # no crsf token when facebook starts the App with post /facebook
+  after_action :allow_iframe
 
 
   # post /facebook = facebook/create is called when facebook starts the APP.

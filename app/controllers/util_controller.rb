@@ -3,8 +3,9 @@ require 'linkedin'
 
 class UtilController < ApplicationController
 
-  before_filter :login_required, :except => [:do_tasks, :open_graph, :logout, :login, :ping]
+  before_action :login_required, :except => [:do_tasks, :open_graph, :logout, :login, :ping]
   skip_filter :fetch_users, :only => [:ping, :login, :logout]
+  before_action :validate_json_request, :only => [:do_tasks, :login, :logout, :ping]
 
   #
   # gift link ajax methods
@@ -216,6 +217,53 @@ class UtilController < ApplicationController
     end
   end # accept_new_deal
 
+  # before action filter. validate json request against json schema definition
+  # used in do_tasks, login, logout and ping
+  private
+  def validate_json_request
+    json_schema = "#{params[:action]}_request".to_sym
+    if !JSON_SCHEMA.has_key? json_schema
+      # abort action and report error
+      @json[:error] = "Could not JSON validate #{params[:action]} request. JSON schema definition #{json_schema} was not found."
+      logger.error2 @json[:error]
+      format_response
+      return
+    end
+    # validate request
+    json_request = params.clone
+    %w(controller action format util).each { |key| json_request.delete(key) }
+    logger.secret2 "#{json_schema} = #{json_request}"
+    do_tasks_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], json_request)
+    return true if do_tasks_request_errors.size == 0
+    @json[:error] = "Invalid #{params[:action]} request: #{do_tasks_request_errors.join(', ')}"
+    logger.error2 @json[:error]
+    # stop or continue?
+    if %w(do_tasks login).index(params[:action].to_s)
+      # error in login - abort action and report error
+      format_response
+      return
+    end
+    # error in ping and logout - continue
+  end # validate_json_request
+
+  # validate json response against json schema definition - used in do_tasks, login, logout and ping
+  private
+  def validate_json_response
+    return if @json[:error]
+    # check if json schema definition exists
+    json_schema = "#{params[:action]}_response".to_sym
+    if !JSON_SCHEMA.has_key? json_schema
+      # abort action and report error
+      @json[:error] = "Could not JSON validate #{params[:action]} response. JSON schema definition #{json_schema} was not found."
+      logger.error2 @json[:error]
+      return
+    end
+    # validate json response
+    do_tasks_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], @json)
+    return if do_tasks_response_errors.size == 0
+    @json[:error] = "Invalid #{params[:action]} response: #{do_tasks_response_errors.join(', ')}"
+    logger.error2 @json[:error]
+  end # validate_json_response
 
   # process tasks from queue
   # that is tasks that could slow request/response cycle or information that is not available on server (client timezone)
@@ -225,23 +273,9 @@ class UtilController < ApplicationController
   # - get friend lists from login provider after login (ok)
   # - get currency rates for a new date (ok)
   # - upload post and optional picture to login provider (ok)
+  public
   def do_tasks
     begin
-
-      # validate json do_tasks request (JSON_SCHEMA[:do_tasks_request])
-      # todo: refactor request json validation to a method or a filter
-      do_tasks_request = params.clone
-      %w(controller action format util).each { |key| do_tasks_request.delete(key) }
-      # logger.secret2 "do_tasks_request = #{do_tasks_request}"
-      do_tasks_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:do_tasks_request], do_tasks_request)
-      if do_tasks_request_errors.size > 0
-        # todo: stop or continue?
-        @json[:error] = "Invalid do_tasks request: #{do_tasks_request_errors.join(', ')}"
-        logger.error2 @json[:error]
-        format_response
-        return
-      end
-
 
       # todo: debug why IE is not setting state before redirecting to facebook in facebook/autologin
       logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
@@ -273,17 +307,7 @@ class UtilController < ApplicationController
       end
       logger.debug2 "@errors.size = #{@errors.size}"
 
-      # todo: DRY - refactor to a filter or a method
-      # validate json response (JSON_SCHEMA[:do_tasks_response])
-      # logger.debug2 "@json = #{@json}"
-      if !@json[:error]
-        do_tasks_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:do_tasks_response], @json)
-        if do_tasks_response_errors.size > 0
-          @json[:error] = "Invalid do_tasks response: #{do_tasks_response_errors.join(', ')}"
-          logger.error2 @json[:error]
-        end
-      end
-
+      validate_json_response
       format_response
     rescue => e
       logger.debug2  "Exception: #{e.message.to_s} (#{e.class})"
@@ -1007,17 +1031,6 @@ class UtilController < ApplicationController
   public
   def login
     begin
-      # validate json ping request (JSON_SCHEMA[:ping_request])
-      login_request = params.clone
-      %w(controller action format util).each { |key| login_request.delete(key) }
-      # logger.secret2 "login_request = #{login_request}"
-      login_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:login_request], login_request)
-      if login_request_errors.size > 0
-        # todo: stop or continue?
-        @json[:error] = "Invalid login request: #{login_request_errors.join(', ')}"
-        logger.error2 @json[:error]
-        return
-      end
 
       # remember unique device uid - used when sync. data between user devices
       set_session_value :did, params[:did]
@@ -1108,18 +1121,7 @@ class UtilController < ApplicationController
       # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
       @json[:oauths] = oauths_response if oauths_response # only google+
 
-      # validate json response
-      # logger.secret2 "@json = #{@json}"
-      # validate json response (JSON_SCHEMA[:ping_response])
-      # logger.debug2 "@json = #{@json}"
-      if !@json[:error]
-        login_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:login_response], @json)
-        if login_response_errors.size > 0
-          @json[:error] = "Invalid login response: #{login_response_errors.join(', ')}"
-          logger.error2 @json[:error]
-        end
-      end
-
+      validate_json_response
       format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
@@ -1134,17 +1136,6 @@ class UtilController < ApplicationController
   public
   def logout
     begin
-      logger.debug2 "params = #{params}"
-
-      # validate json logout request (JSON_SCHEMA[:logout_request])
-      logout_request = params.clone
-      %w(controller action format util).each { |key| logout_request.delete(key) }
-      logout_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:logout_request], logout_request)
-      if logout_request_errors.size > 0
-        # json error: basic logout operations only
-        @json[:error] = "Invalid logout request: #{logout_request_errors.join(', ')}"
-        logger.error2 @json[:error]
-      end
 
       find_or_create_session
       return format_response if @s.new_record? # don't save and delete new session
@@ -1172,18 +1163,7 @@ class UtilController < ApplicationController
         @s.destroy unless @s.new_record?
       end
 
-      # validate json response
-      # logger.debug2 "@json = #{@json}"
-      # validate json response (JSON_SCHEMA[:ping_response])
-      # logger.debug2 "@json = #{@json}"
-      if !@json[:error]
-        logout_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:logout_response], @json)
-        if logout_response_errors.size > 0
-          @json[:error] = "Invalid logout response: #{logout_response_errors.join(', ')}"
-          logger.error2 @json[:error]
-        end
-      end
-      
+      validate_json_response
       format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
@@ -1198,16 +1178,6 @@ class UtilController < ApplicationController
   def ping
     begin
       now = Time.zone.now
-
-      # validate json ping request (JSON_SCHEMA[:ping_request])
-      ping_request = params.clone
-      %w(controller action format util).each { |key| ping_request.delete(key) }
-      ping_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_request], ping_request)
-      if ping_request_errors.size > 0
-        # json error: basic ping operations only
-        @json[:error] = "Invalid ping request: #{ping_request_errors.join(', ')}"
-        logger.error2 @json[:error]
-      end
 
       # all client sessions should ping server once every server ping cycle
       # check server load average the last 5 minutes and increase/decrease server ping cycle
@@ -1347,17 +1317,7 @@ class UtilController < ApplicationController
 
       end
 
-      # validate json response (JSON_SCHEMA[:ping_response])
-      # logger.debug2 "@json = #{@json}"
-      if !@json[:error]
-        ping_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[:ping_response], @json)
-        if ping_response_errors.size > 0
-          @json[:error] = "Invalid ping response: #{ping_response_errors.join(', ')}"
-          logger.error2 @json[:error]
-        end
-      end
-
-      # return interval and old_client_timestamp
+      validate_json_response
       format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"

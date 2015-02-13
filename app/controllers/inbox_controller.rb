@@ -1,7 +1,7 @@
 class InboxController < ApplicationController
 
-  before_filter :login_required
-  before_filter :clear_state_cookie_store
+  before_action :login_required
+  before_action :clear_state_cookie_store
 
   def index
     # todo: delete ==>

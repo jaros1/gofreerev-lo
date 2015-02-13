@@ -1052,7 +1052,7 @@ en:
         exception: "System error. Could not complete log in on server. %{error}. More information in server log."
      logout:
         exception: "System error. Could not complete log out on server. %{error}. More information in server log."
-     logout:
+     ping:
         exception: "System error in server ping. %{error}. More information in server log."
 
   # translation keys used in javascript (error) messages

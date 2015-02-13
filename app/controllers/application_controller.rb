@@ -5,8 +5,8 @@ require 'money/bank/google_currency'
 #noinspection RubyResolve
 class ApplicationController < ActionController::Base
 
-  before_filter :setup_json_and_errors
-  before_filter :request_start_time
+  before_action :setup_json_and_errors
+  before_action :request_start_time
 
   # protect cookie information on public web servers
   force_ssl if: :ssl_configured?
@@ -14,9 +14,9 @@ class ApplicationController < ActionController::Base
   # Prevent CSRF attacks by raising an exception.
   # For APIs, you may want to use :null_session instead.
   protect_from_forgery with: :exception
-  before_filter :request_url_for_header
-  before_filter :get_client_userid
-  before_filter :fetch_users
+  before_action :request_url_for_header
+  before_action :get_client_userid
+  before_action :fetch_users
   before_action :set_locale_from_params
   before_action :get_timezone
 

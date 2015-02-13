@@ -1,7 +1,7 @@
 class UsersController < ApplicationController
 
-  before_filter :login_required, :except =>  [:destroy]
-  before_filter :clear_state_cookie_store
+  before_action :login_required, :except =>  [:destroy]
+  before_action :clear_state_cookie_store
 
   def new
   end

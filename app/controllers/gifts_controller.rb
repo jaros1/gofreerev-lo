@@ -1,8 +1,8 @@
 # encoding: utf-8
 class GiftsController < ApplicationController
 
-  before_filter :clear_state_cookie_store, :if => lambda {|c| !xhr?}
-  before_filter :login_required, :except => [:create, :index, :show]
+  before_action :clear_state_cookie_store, :if => lambda {|c| !xhr?}
+  before_action :login_required, :except => [:create, :index, :show]
 
   def new
   end

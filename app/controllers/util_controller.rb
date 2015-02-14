@@ -5,7 +5,7 @@ class UtilController < ApplicationController
 
   before_action :login_required, :except => [:do_tasks, :open_graph, :logout, :login, :ping]
   skip_filter :fetch_users, :only => [:ping, :login, :logout]
-  before_action :validate_json_request, :only => [:do_tasks, :login, :logout, :ping]
+  before_action :validate_json_request, :only => [:do_tasks, :open_graph, :login, :logout, :ping]
 
   #
   # gift link ajax methods
@@ -261,8 +261,11 @@ class UtilController < ApplicationController
     # validate json response
     do_tasks_response_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], @json)
     return if do_tasks_response_errors.size == 0
+    logger.debug "Invalid #{params[:action]} json response:"
+    logger.debug "response: #{@json.to_json}"
+    logger.debug "schema: #{JSON_SCHEMA[json_schema].to_json}"
+    logger.debug "errors: #{do_tasks_response_errors.join(', ')}"
     @json[:error] = "Invalid #{params[:action]} response: #{do_tasks_response_errors.join(', ')}"
-    logger.error2 @json[:error]
   end # validate_json_response
 
   # process tasks from queue
@@ -911,15 +914,19 @@ class UtilController < ApplicationController
   def open_graph
     begin
       return format_response_key('.not_logged_in', {}) if !logged_in?
+
+      # check url with embed.ly API or opengraph_parser
       url = params[:url]
-      logger.debug2 "url = #{url}"
+      # logger.debug2 "url = #{url}"
       og = OpenGraphLink.find_or_create_link(url)
-      return format_response unless og # url not found - empty json response
-      @json = { :url  => og.url,
-                :title => og.title.to_s.sanitize,
-                :description => og.description.to_s.sanitize,
-                :image => og.image
-             }
+      if og
+        @json[:url] = og.url
+        @json[:title] = og.title.to_s.sanitize
+        @json[:description] = og.description.to_s.sanitize
+        @json[:image] = og.image
+      end
+
+      validate_json_response
       format_response
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"

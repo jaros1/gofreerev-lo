@@ -274,5 +274,33 @@ JSON_SCHEMA = {
              },
          :required => %w(interval),
          :additionalProperties => false
-        }
+        },
+
+    # new gift - preview open graph link. server is using either Embedly::API or opengraph_parser gems to fetch OG tags for url
+    :open_graph_request => {
+        :type => 'object',
+        :properties => {
+            # client userid normally = 1. Allow up to 100 user accounts in localStorage
+            :client_userid => client_userid_type,
+            # client unix timestamp (10) with milliseconds (3) - total 13 decimals
+            :client_timestamp => client_timestamp_type,
+            # lookup url
+            :url => { :type => 'string'}
+        },
+        :required => %w(client_userid client_timestamp url),
+        :additionalProperties => false
+    },
+    :open_graph_response => {
+        :type => 'object',
+        :properties => {
+            # open graph meta-tags - blank if url does not exist
+            :url => { :type => 'string' },
+            :title => { :type => 'string' },
+            :description => { :type => 'string' },
+            :image => { :type => 'string' },
+            # optional error message (server errors)
+            :error => { :type => 'string' }
+        },
+        :additionalProperties => false
+    }
 }

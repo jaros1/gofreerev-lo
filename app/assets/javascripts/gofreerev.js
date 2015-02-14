@@ -955,7 +955,7 @@ var Gofreerev = (function() {
         var json_schema = action + '_request';
         var error ;
         if (!Gofreerev.rails['JSON_SCHEMA'].hasOwnProperty(json_schema)) {
-            console.log(pgm + 'Error. JSON schema defintion ' + json_schema + ' was not found. ' + action + ' request was not sent to server.');
+            console.log(pgm + 'Error. JSON schema defintion for ' + json_schema + ' was not found. ' + action + ' request was not sent to server.');
             error = 'JSON schema definition ' + json_schema + ' was not found. ' + action + ' request was not sent to server. ' + msg ;
             console.log(pgm + error);
             return error;
@@ -1720,7 +1720,7 @@ angular.module('gifts', ['ngRoute'])
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
-                    // validate ping response received from server
+                    // validate login response received from server
                     var json_errors ;
                     if (json_errors=Gofreerev.is_json_response_invalid(pgm, response.data, 'login', '')) return $q.reject(json_errors) ;
                     // check expired access token (server side check)
@@ -2918,30 +2918,44 @@ angular.module('gifts', ['ngRoute'])
             self.new_gift.open_graph_title = null ;
             self.new_gift.open_graph_image = null ;
             self.new_gift.open_graph_error = null ;
-            self.new_gift.open_graph_status = null ;
-            self.new_gift.open_graph_time = null ;
             Gofreerev.clear_flash_and_ajax_errors() ;
         }
 
         // user is done typing - get open graph meta tags in an ajax request
-        function gift_open_graph_url_done () {
-            reset_open_graph_preview() ;
-            if (self.new_gift.open_graph_url == '') return ;
+        function gift_open_graph_url_done() {
+            var pgm = 'GiftsCtrl.gift_open_graph_url_done: ';
+            var userid = userService.client_userid() ;
+            if (userid == 0) {
+                console.log(pgm + 'Error. Not logged in.') ;
+                return  ;
+            }
+            reset_open_graph_preview();
+            if (self.new_gift.open_graph_url == '') return;
             // check url & get open graph meta tags - timeout 3 seconds
-            var timeout = 3000 ;
-            $http.post('/util/open_graph.json', {url: self.new_gift.open_graph_url}, {
-                timeout: timeout,
-                starttime: (new Date).getTime()
-            }).
-                success(function (data, status, headers, config) {
-                    // OK response - can be empty - can be an error message
-                    // console.log('/util/open_graph - success. data = ' + JSON.stringify(data));
-                    self.new_gift.open_graph_status = status ;
-                    if (data.error) {
-                        // "nice" error message from rails
-                        self.new_gift.open_graph_error  = $sce.trustAsHtml(data.error) ;
+            var open_graph_request = {
+                client_userid: userid,
+                client_timestamp: (new Date).getTime(),
+                url: self.new_gift.open_graph_url
+            } ;
+            var config = {timeout: 3000} ;
+            if (Gofreerev.is_json_request_invalid(pgm, open_graph_request, 'open_graph')) {
+                self.new_gift.open_graph_error = $sce.trustAsHtml('Error in preview request for link. See more information in browser log.') ;
+                return ;
+            }
+            $http.post('/util/open_graph.json', open_graph_request, config)
+                .then(function (response) {
+                    // OK response - can be empty - could by be an error message
+                    // console.log(pgm + 'ok. response = ' + JSON.stringify(response));
+                    // validate open_graph response received from server
+                    if (Gofreerev.is_json_response_invalid(pgm, response.data, 'open_graph', '')) {
+                        self.new_gift.open_graph_error = $sce.trustAsHtml('Error in preview response for link. See more information in browser log.') ;
+                        return ;
                     }
-                    else if (data.url) {
+                    if (response.data.error) {
+                        // "nice" error message from server
+                        self.new_gift.open_graph_error = $sce.trustAsHtml(response.data.error);
+                    }
+                    else if (response.data.url) {
                         // ok response from rails with preview info
                         // dirty File Upload plugin/angular integration ==>
                         // remove any preview from File Upload plugin
@@ -2951,38 +2965,31 @@ angular.module('gifts', ['ngRoute'])
                         if (disp_gift_file) disp_gift_file.value = '';
                         // <== dirty File Upload plugin/angular integration
                         // insert open graph preview
-                        self.new_gift.open_graph_url = data.url;
-                        self.new_gift.open_graph_description = data.description;
-                        self.new_gift.open_graph_title = data.title;
-                        self.new_gift.open_graph_image = data.image;
+                        self.new_gift.open_graph_url = response.data.url;
+                        self.new_gift.open_graph_description = response.data.description;
+                        self.new_gift.open_graph_title = response.data.title;
+                        self.new_gift.open_graph_image = response.data.image;
                     }
                     else {
                         // ok response from rails - url must be invalid
                         null;
                     }
-                }).
-                error(function (data, status, headers, config) {
+                }, function (error) {
                     // ERROR response - server not responding, timeout, other http errors
                     // status == 0 (try again later) used for:
                     // 1) firefox work offline     - few ms
                     // 2) rails server not running - few ms
                     // 3) rails server timeout     > 3000 ms
-                    var starttime = config.starttime;
+                    // console.log(pgm + 'error respose ' + JSON.stringify(error));
+                    var starttime = error.config.data.client_timestamp;
                     var endtime = (new Date).getTime();
                     var elapsedtime = endtime - starttime;
-                    console.log('/util/open_graph.json: error: status = ' + status +
-                    ', starttime = ' + starttime + ', endtime = ' + endtime +
-                    ', timeout = ' + timeout + ', elapsedtime = ' + elapsedtime);
-                    if (status != 0) {
-                        console.log('data = ' + JSON.stringify(data)) ;
-                        console.log('status = ' + JSON.stringify(status)) ;
-                        console.log('headers = ' + JSON.stringify(headers)) ;
-                        console.log('config = ' + JSON.stringify(config)) ;
-                    }
-                    self.new_gift.open_graph_status = status ;
-                    self.new_gift.open_graph_time = endtime ;
-                    if (status == 0) self.new_gift.open_graph_error = $sce.trustAsHtml(I18n.t('js.new_gift.open_graph_timeout')) ;
-                    else self.new_gift.open_graph_error = $sce.trustAsHtml(I18n.t('js.new_gift.open_graph_error', {status: status})) ;
+                    //console.log('/util/open_graph.json: error: status = ' + error.status +
+                    //', starttime = ' + starttime + ', endtime = ' + endtime +
+                    //', timeout = ' + error.config.timeout + ', elapsedtime = ' + elapsedtime);
+                    if (error.status != 0) console.log(pgm + 'error respose ' + JSON.stringify(error));
+                    if (error.status == 0) self.new_gift.open_graph_error = $sce.trustAsHtml(I18n.t('js.new_gift.open_graph_timeout'));
+                    else self.new_gift.open_graph_error = $sce.trustAsHtml(I18n.t('js.new_gift.open_graph_error', {status: error.status}));
                 });
         } // gift_open_graph_url_done
 

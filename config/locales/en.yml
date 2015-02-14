@@ -130,26 +130,6 @@ en:
         en: "Engelsk"
         title: "Select language. Currently only English and Danish. Happy to receive help with translation into other languages. See FAQ and contact information on GitHub."
         prompt: "Language"
-     share_accounts:
-        title: "Use this check box if you want to gather your accounts across login providers to a joint account. If you select X you get a total balance with the sum of the value of the gifts you have given and received across all your login providers. Select X to allow cross login provider friends lists compare. You can get a list of the friends you are missing and your friends can get a list of the friends they are missing. That is, people who are your friends at one login provider and who is your friend's friend at an other login provider. Your friends get fewer friends proposals without X in check box as your friend lists are not used in friends proposals. Use link \"Find friends\" to get friends proposals. X in the check box is NOT single sign-on for all access providers. You'll still need to log in each login provider where you want to view, create or comment posts."
-        checkbox_prompt: "Share accounts?"
-        shared_accounts_prompt: "Details: "
-        no_shared_accounts_text: "No shared accounts"
-        not_logged_in_note: "*=not connected"
-        expired_token_note: "#=access token expired"
-        find_friends_link_text: "Find friends"
-        lov_prompt: "Share accounts?"
-        lov_text_0: "no sharing across APIs"
-        lov_text_1: "share balance across APIs"
-        lov_text_2: "share bal. and static friend lists"
-        lov_text_3: "share bal. and dynamic friend lists"
-        lov_text_4: "single sign-on"
-        lov_text_5: "mixed sharing. See text below"
-     share_accounts_dialog:
-        dialog_title: "Security alert!"
-        dialog_title_text_true: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs."
-        dialog_title_text_false: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs. Optional you can enter your email if you wish to receive email with friend suggestions once every fortnight. Please use correct email address. IP-address and your API contact information will be included in email to prevent spam."
-        dialog_text: "Save access tokens on server?"
      client_login_dialog:
         dialog_title: "Browser log in (local storage)"
         dialog_title_text: "To enable share dynamic friend lists, single sign-on and offline friend suggestions functionality you must allow Gofreerev to store your API access tokens on server. The API access tokens will be stored encrypted on server and will only be used for offline friend list updates, single sign-on and friend suggestions. You can change share accounts choice later and you can always revoke Gofreerev permissions at your login APIs."
@@ -1034,13 +1014,6 @@ en:
         invalid_updated_by: "System error. Did not find any valid \"updated by\" users."
         ok: "Proposal has been accepted."
         exception: "System error. Cannot accept proposal. %{error}. More information in server log."
-     share_accounts:
-        not_logged_in: "Cannot change \"Share accounts?\" choice. You are not logged in. Please refresh page."
-        unknown_share_accounts: "System error. Unknown choice for share accounts. Change in Share accounts? has not been saved."
-        no_access_token: "System error. Cannot change \"Share accounts?\" choice. Access token was not found."
-        no_expires_at: "System error. Cannot change \"Share accounts?\" choice. Expire timestamp for access token was not found."
-        reconnect_required: "Sorry. Share dynamic friend lists and single sign-on choice is currently available for flickr. New log in is required. Log out and log back in flickr and then select again \"Share accounts?\""
-        exception: "System error. Could not change Share accounts? choice. %{error}. More information in server log."
      find_friends_batch:
         not_dev_user: "Cannot send friends suggestion to %{user} in development environment. Please check environment variable ENV['GOFREEREV_LO_DEV_EN_USERIDS'])"
         fb_error: "Cannot send friends suggestions to facebook. %{type} %{message}"
@@ -1093,17 +1066,6 @@ en:
         click_js_error: "Minor javascript error for comment link. %{error} (%{location},%{debug})."
      post_on_wall:
         ajax_error: "Error when changing \"Post?\" choice. %{error}. More information in server log."
-     share_accounts:
-        lov_not_found: "System error when changing \"Share accounts?\" choice. Element share_level_lov was not found."
-        ajax_error: "Cannot change \"Share accounts?\" choice. %{error}. More information in server log."
-        js_error: "Cannot change \"Share accounts?\" choice. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
-     share_accounts_dialog:
-        accept: "Yes"
-        reject: "No"
-        email: "email"
-        invalid_length: "Length of %{field} must be between %{min} and %{max}."
-        invalid_email: "eg. ui@jquery.com"
-        js_error: "Cannot change \"Share accounts?\" choice. Javascript fejl %{error} (%{location},%{debug}). More information in client and server logs."
      client_login_dialog:
         login: "Log in"
         create: "Create"

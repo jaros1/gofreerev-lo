@@ -427,172 +427,6 @@ var Gofreerev = (function() {
     })
 
 
-    // from https://jqueryui.com/resources/demos/dialog/modal-form.html - Copyright 2014 jQuery Foundation and other contributors; Licensed MIT
-    // modal dialog form used in share accounts share level 3 and 4
-    // used must accept that access tokens are stored on server + optional email notifications with friend suggestions
-    $(function() {
-
-        var dialog, form,
-
-        // From http://www.whatwg.org/specs/web-apps/current-work/multipage/states-of-the-type-attribute.html#e-mail-state-%28type=email%29
-            emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
-            email = $( "#share-accounts-email" ),
-            allFields = $( [] ).add( email ),
-            tips = $( ".validateTips"),
-            accept_text = I18n.t('js.share_accounts_dialog.accept'),
-            reject_text = I18n.t('js.share_accounts_dialog.reject') ;
-
-        function updateTips( t ) {
-            tips
-                .text( t )
-                .addClass( "ui-state-highlight" );
-            setTimeout(function() {
-                tips.removeClass( "ui-state-highlight", 1500 );
-            }, 500 );
-        }
-
-        function checkLength( o, n, min, max ) {
-            if ( o.val().length > max || o.val().length < min ) {
-                o.addClass( "ui-state-error" );
-                updateTips(I18n.t('js.share_accounts_dialog.invalid_length', {field: n, min: min, max: max}));
-                return false;
-            } else {
-                return true;
-            }
-        }
-
-        function checkRegexp( o, regexp, n ) {
-            if ( !( regexp.test( o.val() ) ) ) {
-                o.addClass( "ui-state-error" );
-                updateTips( n );
-                return false;
-            } else {
-                return true;
-            }
-        }
-
-        function accept() {
-            var pgm='share-accounts-dialog-form.accept: ';
-            try {
-                var valid = true;
-                allFields.removeClass("ui-state-error");
-                if ((email.length > 0) && (email.val() != '')) {
-                    // email exists in dialog form and is not blank
-                    valid = valid && checkLength(email, I18n.t('js.share_accounts_dialog.email'), 6, 200);
-
-                    valid = valid && checkRegexp(email, emailRegex, I18n.t('js.share_accounts_dialog.invalid_email'));
-                }
-
-                if (valid) {
-                    // send ajax request and close dialog
-                    share_accounts_ajax(true, email.val());
-                    dialog.dialog("close");
-                }
-                return valid
-            }
-            catch (err) {
-                add2log(pgm + 'failed with JS error: ' + err);
-                add_to_tasks_errors2('share_accounts_errors',I18n.t('js.share_accounts.js_error', {error: err, location: 19, debug: 2}));
-                return false;
-            }
-        } // accept
-
-        function reject() {
-            // restore old LOV value without triggering new share accounts dialog form
-            var share_level_lov = document.getElementById('share_level_lov') ;
-            var old_share_level_lov = document.getElementById('old_share_level_lov') ;
-            if (share_level_lov && old_share_level_lov) share_level_lov.value = old_share_level_lov.value ;
-            dialog.dialog( "close" );
-        }
-
-        dialog = $( "#share-accounts-dialog-form" ).dialog({
-            autoOpen: false,
-            height: fb_logged_in_account() ? 225 : 300, // only show email for logins without fb account
-            width: 350,
-            modal: true,
-            buttons:[
-                {
-                    text: accept_text,
-                    click: accept
-                },
-                {
-                    text: reject_text,
-                    click: reject
-                }],
-            close: function() {
-                form[ 0 ].reset();
-                allFields.removeClass( "ui-state-error" );
-            }
-        });
-
-        form = dialog.find( "form" ).on( "submit", function( event ) {
-            event.preventDefault();
-            accept();
-        });
-
-        $( "#share-accounts" ).button().on( "click", function() {
-            dialog.dialog( "open" );
-        });
-    });
-
-
-    // set/reset user,share_account_id
-    // used in shared/share_accounts partial
-    // used in auth/index and users/index?friends=me tab
-    // accepted: false when called from LOV. True when called from accept in dialog form. Only relevant for share level 3 and 4
-    function share_accounts_ajax(accepted, email) {
-        var pgm = 'share_accounts_ajax: ' ;
-        try {
-
-            var share_level_lov = document.getElementById('share_level_lov');
-            if (!share_level_lov) {
-                add_to_tasks_errors(I18n.t('js.share_accounts.lov_not_found'));
-                return;
-            }
-            var share_level = share_level_lov.options[share_level_lov.selectedIndex].value;
-            clear_ajax_errors('share_accounts_errors');
-            add2log(pgm + 'share_level = ' + share_level + ', email = ' + email);
-            if (!accepted && ((share_level == '3') || (share_level == 4))) {
-                // share level 3 - dynamic friend lists
-                // share level 4 - single sign-on
-                // Security alert dialog. yes/no to save access tokens on server for offline access
-                var share_accounts_button = document.getElementById('share-accounts') ;
-                // todo: check safari 5 workaround. See show_more_rows
-                share_accounts_button.click() ;
-                return false ;
-            }
-            $.ajax({
-                url: "/util/share_accounts.js",
-                type: "POST",
-                dataType: 'script',
-                data: { share_level: share_level, email: email },
-                beforeSend: function () {
-                    // add2log(pgm + 'beforesend') ;
-                    share_level_lov.disabled = true;
-                    share_level_lov.readonly = true;
-                },
-                error: function (jqxhr, textStatus, errorThrown) {
-                    var pgm = 'share_accounts_ajax:error: ';
-                    if (leaving_page) return;
-                    var err = add2log_ajax_error(pgm, jqxhr, textStatus, errorThrown);
-                    add_to_tasks_errors(I18n.t('js.share_accounts.ajax_error', {error: err, location: 19, debug: 1}));
-                },
-                complete: function () {
-                    // add2log(pgm + 'complete') ;
-                    share_level_lov.disabled = false;
-                    share_level_lov.readonly = false;
-                }
-            });
-        }
-        catch (err) {
-            add2log(pgm + 'failed with JS error: ' + err) ;
-            add_to_tasks_errors(I18n.t('js.share_accounts.js_error', {error: err, location: 19, debug: 0})) ;
-        }
-
-    } // share_accounts_ajax
-
-
-
     // local or session storage functions ==>
 
     // values in sessionStorage:
@@ -1734,7 +1568,7 @@ angular.module('gifts', ['ngRoute'])
         // cache some oauth information - used in ping
         self.expires_at = {} ; // unix timestamps for oauth access tokens
         self.refresh_tokens = {} ; // true/false - only used for google+ offline access
-        (function () {
+        var cache_oauth_info = function () {
             var oauth = get_oauth() ;
             for (var provider in oauth) {
                 if (!oauth.hasOwnProperty(provider)) continue ;
@@ -1747,9 +1581,9 @@ angular.module('gifts', ['ngRoute'])
                 }
                 self.expires_at[provider] = oauth[provider].expires_at ;
                 self.refresh_tokens[provider] = oauth[provider].hasOwnProperty('refresh_token') ;
-
             }
-        })();
+        } // init_expires_at
+        cache_oauth_info() ;
 
         // save oauth received from server into oauth in local storage
         // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
@@ -1881,7 +1715,7 @@ angular.module('gifts', ['ngRoute'])
                 pubkey: Gofreerev.getItem('pubkey')} ;
             // validate json login request before sending request to server
             var json_errors ;
-            if (json_errors=Gofreerev.is_json_request_invalid(pgm, login_request, 'login')) return $q.reject(json_errors)  ;
+            if (json_errors=Gofreerev.is_json_request_invalid(pgm, login_request, 'login')) return $q.reject(json_errors) ;
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
@@ -2011,7 +1845,7 @@ angular.module('gifts', ['ngRoute'])
             var expired_providers = [] ; // array with any expired login providers
             var refresh_tokens_request ; // array with refresh token (google+ only)
 
-            console.log(pgm + 'time = ' + (new Date()).toUTCString());
+            // console.log(pgm + 'time = ' + (new Date()).toUTCString());
             // console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
             var oauth ;
             for (var provider in self.expires_at) {
@@ -2133,6 +1967,7 @@ angular.module('gifts', ['ngRoute'])
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
             send_oauth: send_oauth,
+            cache_oauth_info: cache_oauth_info,
             ping: ping
         }
         // end UserService
@@ -2613,6 +2448,8 @@ angular.module('gifts', ['ngRoute'])
                 self.device_password = '' ;
                 self.confirm_device_password = '' ;
                 self.register = '' ;
+                // cache some oauth information used in ping.
+                userService.cache_oauth_info() ;
                 // console.log('AuthCtrl.login_or_register: userid = ' + userid) ;
                 giftService.load_gifts() ;
                 // send old oauth to server for recheck and copy to session

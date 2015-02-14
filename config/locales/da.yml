@@ -131,26 +131,6 @@ da:
         en: "Engelsk"
         title: "Vælg sprog. I øjeblikket kun dansk og engelsk. Modtager gerne hjælp til oversættelse til andre sprog. Se FAQ og kontakt information på GitHub."
         prompt: "Sprog"
-     share_accounts:
-        title: "Brug valgliste hvis du ønsker at samle dine konti på tværs af login udbydere til en fælles konto. Du kan vælge imellem 4 forskellige niveauer af deling på tværs af konti. Laveste niveauer er deling af saldo og dine nuværende vennelister. Her gemmes autorisationsoplysninger i en cookie i din browser. Højeste niveauer er deling af saldo og opdaterede vennelister og evt. fælles login for login udbydere. Her gemmes autorisationsoplysninger krypteret på serveren hvis du giver tilladelse til dette. Autorisationsoplysninger er såkaldt access token / adgangsbillet til API og er altså ikke brugernavn og kodeord. Deling af saldo indebærer en fælles saldo på tværs af login udbydere for de gaver du har givet og modtaget. Deling af vennelister giver dig og dine venner mulighed for at sammenligne vennelister på tværs login udbydere og finde evt. manglede venner. Fælles login er delt login i %{appname} med begrænset adgang til API funktioner hos dine login udbydere."
-        checkbox_prompt: "Saml konti?"
-        shared_accounts_prompt: "Delte konti: "
-        no_shared_accounts_text: "Ingen delte konti"
-        not_logged_in_note: "*=ikke forbundet"
-        expired_token_note: "#=adgangsbillet ikke længere gyldig"
-        find_friends_link_text: "Find venner"
-        lov_prompt: "Saml konti?"
-        lov_text_0: "Ingen deling på tværs af API'er"
-        lov_text_1: "Del saldo på tværs af API'er"
-        lov_text_2: "Del saldo og statiske vennelister"
-        lov_text_3: "Del saldo og dynamiske vennelister"
-        lov_text_4: "Fælles login på tværs af API'er"
-        lov_text_5: "Blandet deling. Se nedenstående tekst"
-     share_accounts_dialog:
-        dialog_title: "Sikkerhedsspørgsmål!"
-        dialog_title_text_true: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er."
-        dialog_title_text_false: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er. Du kan indtaste din e-mail, hvis du ønsker at modtage email med venneforslag en gang hver fjortende dag. Brug venligst korrekte e-mail-adresse. Dine kontaktoplysninger vil blive inkluderet i email for at forhindre at venneforslag bliver anvendt til spam."
-        dialog_text: "Gem API autorisation på server?"
      client_login_dialog:
         dialog_title: "Browser log ind (lokalt lager)"
         dialog_title_text: "For at aktivere dynamisk vennelister, fælles login og offline venneforslag funktionalitet, skal du give Gofreerev lov til at gemme din API adgang på serveren. API adgang vil blive gemt krypteret på serveren og vil kun blive brugt til offline venneliste opdateringer, fælles login og venneforslag. Du kan altid ændre 'Saml konti?' valg senere, og du kan altid fjerne Gofreerev tilladelser hos dine login API'er."
@@ -1038,13 +1018,6 @@ da:
         invalid_updated_by: "Systemfejl. Fandt ingen lovlige \"opdateret af\" brugere."
         ok: "Forslag er blevet godkendt."
         exception: "Systemfejl. Kunne ikke godkende forslag. %{error}. Mere information i server log."
-     share_accounts:
-        not_logged_in: "Kan ikke ændre \"Saml konti?\" valg. Du er ikke logget ind. Opdater venligst siden."
-        unknown_share_accounts: "Systemfejl. Ukendt valg ved ændring af \"Saml konti?\". Valg er ikke blevet gemt."
-        no_access_token: "Systemfejl. Kan ikke ændre \"Saml konti?\" valg. Adgangsbillet blev ikke fundet for %{apiname}."
-        no_expires_at: "Systemfejl. Kan ikke ændre \"Saml konti?\" valg. Tidsstempel for udløb af adgangsbillet blev ikke fundet for %{apiname}."
-        reconnect_required: "Beklager. Del dynamiske vennelister og fælles login valg er pt. ikke mulige for %{apinames}. Nyt log ind er påkrævet. Log ud og Log ind igen for %{apinames} og vælg dernæst igen \"Saml konti?\"."
-        exception: "Systemfejl. Kunne ikke ændre \"Saml konti?\" valg. %{error}. Mere information i server log."
      find_friends_batch:
         not_dev_user: "Kan ikke sende venneforslag til %{user} i udviklingsmiljøet. Tjek venligst environment variable ENV['GOFREEREV_LO_DEV_EN_USERIDS'])"
         fb_error: "Kan ikke sende venneforslag til facebook. %{type} %{message}"
@@ -1097,17 +1070,6 @@ da:
         click_js_error: "Mindre javascript fejl for kommentar link. %{error} (%{location},%{debug})."
      post_on_wall:
         ajax_error: "Fejl ved ændring af \"Opslag?\" valg. %{error}. Mere information i server log."
-     share_accounts:
-        lov_not_found: "Systemfejl ved ændring af \"Saml konti?\" valg. Element share_level_lov blev ikke fundet."
-        ajax_error: "Kan ikke ændre \"Saml konti?\" valg. %{error}. Mere information i server log."
-        js_error: "Kan ikke ændre \"Saml konti?\" valg. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
-     share_accounts_dialog:
-        accept: "Ja"
-        reject: "Nej"
-        email: "Email"
-        invalid_length: "%{field} skal bestå af mindst %{min} og højst %{max} tegn"
-        invalid_email: "fx. ui@jquery.com"
-        js_error: "Kan ikke ændre \"Saml konti?\" valg. Javascript fejl %{error} (%{location},%{debug}). Mere information i klient og server log."
      client_login_dialog:
         login: "Log ind"
         create: "Opret"

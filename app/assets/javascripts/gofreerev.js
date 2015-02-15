@@ -1878,6 +1878,40 @@ angular.module('gifts', ['ngRoute'])
             } // for
         } // pubkeys_response
 
+        var check_logged_in_providers = function (now) {
+            var logged_in_provider = false; // true if one not expired api login
+            var expired_providers = []; // array with any expired login providers
+            var refresh_tokens_request; // array with refresh token (google+ only)
+
+            // console.log(pgm + 'time = ' + (new Date()).toUTCString());
+            // console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
+            var oauth;
+            for (var provider in self.expires_at) {
+                if (!self.expires_at.hasOwnProperty(provider)) continue;
+                if (self.expires_at[provider] > now) logged_in_provider = true;
+                else if (self.refresh_tokens[provider]) {
+                    // google+ - access token expired but can maybe be renewed on server with refresh token
+                    logged_in_provider = true;
+                    // add refresh token in next ping request
+                    if (!refresh_tokens_request) refresh_tokens_request = [];
+                    if (!oauth) oauth = get_oauth();
+                    refresh_tokens_request.push({
+                        provider: '' + provider,
+                        refresh_token: oauth[provider].refresh_token
+                    });
+                } // special refresh token for google+
+                else expired_providers.push(provider);
+            }
+            for (var i = 0; i < expired_providers.lenghth; i++) {
+                provider = expired_providers[i];
+                console.log(pgm + 'log off for ' + provider + '. access token was expired');
+                remove_oauth(provider);
+            }
+            return {
+                logged_in_provider: logged_in_provider,
+                refresh_tokens_request: refresh_tokens_request
+            };
+        } // check_logged_in_providers
 
         return {
             providers: providers,
@@ -1901,7 +1935,12 @@ angular.module('gifts', ['ngRoute'])
             remove_oauth: remove_oauth,
             send_oauth: send_oauth,
             cache_oauth_info: cache_oauth_info,
-            ping: ping
+            check_logged_in_providers: check_logged_in_providers,
+            pubkeys_request: pubkeys_request,
+            pubkeys_response: pubkeys_response,
+            update_devices: update_devices,
+            expired_tokens_response: expired_tokens_response,
+            oauths_response: oauths_response
         }
         // end UserService
     }])
@@ -2273,17 +2312,108 @@ angular.module('gifts', ['ngRoute'])
 
         // end GiftService
     }])
-    .controller('NavCtrl', ['TextService', 'UserService', '$timeout', '$http', '$q', function(textService, userService, $timeout, $http, $q) {
+    .controller('NavCtrl', ['TextService', 'UserService', 'GiftService', '$timeout', '$http', '$q', function(textService, userService, giftService, $timeout, $http, $q) {
         console.log('NavCtrl loaded') ;
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
 
         // ping server once PING_INTERVAL miliseconds to maintain a list of online users/devices
-        // todo: now a rails constant. change to a calculation based on server load later
+
+        // ping server once every minute - server maintains a list of online users / devices
         var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
-        console.log('NavCtrl.start ping process. ping_interval = ' + ping_interval) ;
-        $timeout(function () { userService.ping(ping_interval); }, ping_interval) ;
+        var ping = function (old_ping_interval) {
+            var pgm = 'NavCtrl.ping: ' ;
+            var userid = userService.client_userid() ;
+            if (userid == 0) {
+                // no device login
+                console.log(pgm + 'wait - no device login') ;
+                $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                return ;
+            };
+            // check logins - there must be minimum one not expired login
+            // returns logged_in_provider: true/false and an optional oauth array with refresh token for expired google+ login
+            var new_client_timestamp = (new Date).getTime() ; // unix timestamp with milliseconds
+            var now = Math.floor(new_client_timestamp/1000) ; // unix timestamp
+            var result = userService.check_logged_in_providers(now) ;
+            if (!result.logged_in_provider) {
+                // no social network logins was found
+                console.log(pgm + 'wait - no social network logins was found') ;
+                $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                return ;
+            }
+            // make ping request
+            var sid = Gofreerev.getItem('sid') ;
+            var ping_request = {
+                client_userid: userid,
+                sid: sid,
+                client_timestamp: new_client_timestamp,
+                new_gifts: giftService.new_gifts_request(),
+                pubkeys: userService.pubkeys_request(),
+                refresh_tokens: result.refresh_tokens_request
+            };
+            for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
+            // validate json request before sending ping to server
+            if (Gofreerev.is_json_request_invalid(pgm, ping_request, 'ping')) {
+                console.log(pgm + 'Ping loop aborted. Please correct error.') ;
+                return ;
+            }
+            $http.post('/util/ping.json', ping_request).then(
+                function (response) {
+                    // schedule next ping.
+                    // console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
+                    // console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
+                    if (response.data.interval && (response.data.interval >= 1000)) ping_interval = response.data.interval ;
+                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
+
+                    // validate ping response received from server
+                    // todo: where to report ping error in UI.
+                    if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
+                    //var valid_ping_response = tv4.validate(ok.data, Gofreerev.rails['JSON_SCHEMA'].ping_response) ;
+                    //if (!valid_ping_response) {
+                    //    var error = JSON.parse(JSON.stringify(tv4.error)) ;
+                    //    delete error.stack ;
+                    //    console.log(pgm + 'Error in JSON ping response from server.') ;
+                    //    console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
+                    //    console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
+                    //    // todo: stop or continue?
+                    //}
+                    if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
+                    // check online users/devices
+                    if (response.data.online) userService.update_devices(response.data.online) ;
+                    // check for new public keys for online users/devices
+                    if (response.data.pubkeys) userService.pubkeys_response(response.data.pubkeys) ;
+                    // get timestamps for newly created gifts from server
+                    if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
+                    // check expired access token (server side check)
+                    if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens) ;
+                    // check for new oauth authorization (google+ only)
+                    if (response.data.oauths) userService.oauths_response(response.data.oauths) ;
+                    // check interval between client timestamp and previous client timestamp
+                    // interval should be 60000 = 60 seconds
+                    // console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
+                    if (!response.data.old_client_timestamp) return ; // first ping for new session
+                    var interval = new_client_timestamp - response.data.old_client_timestamp ;
+                    // console.log(pgm + 'ok. interval = ' + interval) ;
+                    if (interval > old_ping_interval - 100) return ;
+                    console.log(
+                        pgm + 'ok. multiple logins for client userid ' + userid +
+                        '. old timestamp = ' + response.data.old_client_timestamp +
+                        ', new timestamp = ' + new_client_timestamp +
+                        ',interval = ' + interval);
+                    // sync JS users array with any changes in local storage users string
+                    userService.sync_users() ;
+                    giftService.sync_gifts() ;
+                },
+                function (error) {
+                    // schedule next ping
+                    console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval) ;
+                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
+                })
+        } // ping
+        $timeout(function () { ping(ping_interval); }, ping_interval) ;
+        console.log('NavCtrl.start ping process. start up ping interval = ' + ping_interval) ;
 
         var get_js_timezone = function () {
             return -(new Date().getTimezoneOffset()) / 60.0 ;

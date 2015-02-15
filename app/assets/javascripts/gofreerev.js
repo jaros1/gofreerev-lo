@@ -1978,6 +1978,7 @@ angular.module('gifts', ['ngRoute'])
             gifts_index = {} ;
             var gift ;
             var migration = false ;
+            var j, comment ;
             for (var i=0 ; i<new_gifts.length ; i++) {
                 gift = new_gifts[i] ;
                 // data migration - rename date to created_at_client - todo: remove data migration
@@ -2000,6 +2001,17 @@ angular.module('gifts', ['ngRoute'])
                     delete gift.created_at_server ;
                     console.log(pgm + 'migration after sha256 signature change. old gid = ' + old_gid + ', new gid = ' + gift.gid) ;
                     migration = true ;
+                }
+                // data migration. rename comment.created_at to created_at_client - todo: remove data migration
+                if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
+                    for (j=0 ; j<gift.comments.length ; j++) {
+                        comment = gift.comments[j] ;
+                        if (comment.hasOwnProperty('created_at')) {
+                            comment.created_at_client = comment.created_at ;
+                            delete comment.created_at ;
+                            migration = true ;
+                        }
+                    }
                 }
                 gifts_index[gift.gid] = gifts.length ;
                 gifts.push(new_gifts[i]) ;
@@ -2051,7 +2063,7 @@ angular.module('gifts', ['ngRoute'])
                     if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids ;
                     if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price ;
                     if (comments[comment_index].comment != new_comments[i].comment) comments[comment_index].comment = new_comments[i].comment ;
-                    if (comments[comment_index].created_at != new_comments[i].created_at) comments[comment_index].created_at = new_comments[i].created_at ;
+                    if (comments[comment_index].created_at_client != new_comments[i].created_at_client) comments[comment_index].created_at_client = new_comments[i].created_at_client ;
                     if (comments[comment_index].new_deal != new_comments[i].new_deal) comments[comment_index].new_deal = new_comments[i].new_deal ;
                     if (comments[comment_index].deleted_at != new_comments[i].deleted_at) comments[comment_index].deleted_at = new_comments[i].deleted_at ;
                     if (comments[comment_index].accepted != new_comments[i].accepted) comments[comment_index].accepted = new_comments[i].accepted ;
@@ -2122,7 +2134,7 @@ angular.module('gifts', ['ngRoute'])
             if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids ;
             if (comment.price != comments[index].price) comment.price = comments[index].price ;
             if (comment.comment != comments[index].comment) comment.comment = comments[index].comment ;
-            if (comment.created_at != comments[index].created_at) comment.created_at = comments[index].created_at ;
+            if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client ;
             if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal ;
             if (comment.deleted_at != comments[index].deleted_at) comment.deleted_at = comments[index].deleted_at ;
             if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted ;
@@ -2147,7 +2159,7 @@ angular.module('gifts', ['ngRoute'])
 
         // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
         //
-        var sha256_comment = function (comment) {
+        var calc_sha256_for_comment = function (comment) {
             return '' ;
         }
 
@@ -2193,7 +2205,7 @@ angular.module('gifts', ['ngRoute'])
             else comments = gift.comments ;
             var comments_sha256 = [], s ;
             for (i=0 ; i<comments.length ; i++) {
-                s = sha256_comment(comments[i]) ;
+                s = calc_sha256_for_comment(comments[i]) ;
                 if (!s) return null ; // error in sha256 calc. error has been written to log
                 comments_sha256.push(s) ;
             } ;
@@ -3205,13 +3217,13 @@ angular.module('gifts', ['ngRoute'])
                 cid: Gofreerev.get_new_uid(),
                 user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
-                created_at: Gofreerev.unix_timestamp(),
+                created_at_client: Gofreerev.unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
             // console.log(pgm + 'cid = ' + new_comment.cid) ;
             // resize comment textarea after current digest cycle is finish
             resize_textarea(new_comment.comment) ;
-            // console.log(pgm + 'created_at = ' + new_comment.created_at) ;
+            // console.log(pgm + 'created_at_client = ' + new_comment.created_at_client) ;
             gift.new_comment.comment = null ;
             gift.new_comment.new_deal = false ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
@@ -3389,7 +3401,7 @@ angular.module('gifts', ['ngRoute'])
     .filter('formatComment', ['formatDateShortFilter', 'formatCommentPriceOptionalFilter', function (formatDateShort, formatCommentPriceOptional) {
         return function (comment, precision) {
             var pgm = 'GiftsCtrl.formatComment: ';
-            var date = formatDateShort(comment.created_at);
+            var date = formatDateShort(comment.created_at_client);
             var optional_price = formatCommentPriceOptional(comment, precision);
             // console.log(pgm + 'date = ' + date) ;
             // console.log(pgm + 'optional_price = ' + optional_price) ;

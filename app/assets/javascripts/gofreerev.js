@@ -806,14 +806,27 @@ var Gofreerev = (function() {
     } // get_new_uid
 
     // sha256 digest - used for one way password encryption and signatures for gifts and comments
-    // arguments: list of text fields
+    // arguments: list of fields
     function sha256 () {
         var text = '' ;
         for (var i=0; i < arguments.length; i++) {
             if (i>0) text += ',' ;
-            if ((typeof arguments[i]=='undefined') || (arguments[i]==null)) continue ;
-            if (typeof arguments[i] == 'string') text += arguments[i] ;
-            else text += JSON.stringify(arguments[i]) ;
+            switch(typeof arguments[i]) {
+                case 'string' :
+                    text += arguments[i] ;
+                    break ;
+                case 'boolean':
+                    text += arguments[i] ;
+                    break ;
+                case 'number':
+                    text += arguments[i].toString();
+                    break ;
+                case 'undefined':
+                    break ;
+                default:
+                    if (arguments[i] == null) break;
+                    text += JSON.stringify(arguments[i]) ;
+            } // switch
         };
         return CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1);
     } // sha256
@@ -1202,7 +1215,7 @@ angular.module('gifts', ['ngRoute'])
         }
         // end TextService
     }])
-    .factory('UserService', ['$window', '$http', '$q', '$timeout', 'GiftService', function($window, $http, $q, $timeout, giftService) {
+    .factory('UserService', ['$window', '$http', '$q', function($window, $http, $q) {
         var self = this ;
         console.log('UserService loaded') ;
 
@@ -1944,7 +1957,7 @@ angular.module('gifts', ['ngRoute'])
         }
         // end UserService
     }])
-    .factory('GiftService', [function() {
+    .factory('GiftService', ['UserService', function(userService) {
         var self = this ;
         console.log('GiftService loaded') ;
 
@@ -2132,15 +2145,19 @@ angular.module('gifts', ['ngRoute'])
             Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
         }
 
-        // calculate sha256 value for gift. used when comparing gift lists between devices - replicate gifts with changed sha256 value
+        // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
+        //
+        var sha256_comment = function (comment) {
+            return '' ;
+        }
+
+        // calculate sha256 value for gift. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
         // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 value:
         //   created_at_client, description, open_graph_url, open_graph_title, open_graph_description and open_graph_image,
         //   direction, giver_user_ids and receiver_user_ids
-        //   direction=giver: giver_user_ids can not be changed - receiver_user_ids are added later
-        //   direction=receiver: receiver_user_ids can not be changed - giver_uds_ids are added latter
+        //   direction=giver: giver_user_ids can not be changed, receiver_user_ids are added later, use receiver_user_ids in sha256 value
+        //   direction=receiver: receiver_user_ids can not be changed, giver_uds_ids are added latter, use receiver user ids in sha256 value
         // - created_at_server timestamp is readonly and is returned from ping/new_gifts response - not included in sha256 value
-        // - direction=giver: include receiver_user_ids in sha256 value
-        // - direction=receiver: include giver_user_ids in sha256 value
         // - price and currency - should not change, but include in sha256 value
         // - likes - change to array or object and keep last like/unlike for each user - include in sha256 value
         // - follow - change to array and keep last follow/unfollow for each logged in users - not included in sha256 value
@@ -2148,16 +2165,42 @@ angular.module('gifts', ['ngRoute'])
         // - show - device only field or logged in user only field - replicate hide to other devices with identical logged in users? - not included in sha256 value
         // - deleted_at - included in sha256 value
         // - comments - array with comments - included comments sha256_values in gift sha256 value
-        var sha256_gift = function (gift) {
+        var calc_sha256_for_gift = function (gift) {
+            var pgm = 'GiftService.sha256_gift: ' ;
+            // other participant in gift. null until closed/given/received
             var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids ;
             if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids == [] ;
-            var other_participant_external_ids ;
+            var other_participant_external_ids = [];
             var user ;
             for (var i=0 ; i<other_participant_internal_ids.length ; i++) {
                 user = userService.get_user(other_participant_internal_ids[i]) ;
+                if (!user) {
+                    console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]) ;
+                    return null ;
+                } ;
+                other_participant_external_ids.push(user.uid + '/' + user.provider) ;
             }
-            var hash = {} ;
-        }
+            other_participant_external_ids = other_participant_external_ids.sort ;
+            other_participant_external_ids.unshift(other_participant_external_ids.length.toString()) ;
+            var other_participant_str = other_participant_external_ids.join(',') ;
+            // price and currency
+            // likes - todo: change like from boolean to an array of like and unlike with user id and timestamp
+            var likes_str = '' ;
+            // deleted_at
+            // comments. string with sha256 value for each comment
+            var comments, comment_sha256_temp ;
+            if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [] ;
+            else comments = gift.comments ;
+            var comments_sha256 = [], s ;
+            for (i=0 ; i<comments.length ; i++) {
+                s = sha256_comment(comments[i]) ;
+                if (!s) return null ; // error in sha256 calc. error has been written to log
+                comments_sha256.push(s) ;
+            } ;
+            comments_sha256.unshift(comments.length.toString()) ;
+            var comments_str = comments_sha256.join(',') ;
+            return Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at,comments_str) ;
+        } // sha256_gift
 
         // less that <ping_interval> milliseconds (see ping) between util/ping for client_userid
         // there must be more than one browser tab open with identical client login

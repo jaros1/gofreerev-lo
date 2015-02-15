@@ -56,8 +56,10 @@ users_type = {
         :type => 'object',
         # fields in user record (login user, friend etc)
         :properties => {
-            # internal user id (sequence)
+            # internal user id (sequence) - used in internal arrays
             :user_id => {:type => 'integer', :minimum => 1},
+            # provider unique user id - used in signatures and in communication between clients
+            :uid => {:type => 'string'},
             # login provider - facebook, foursquare etc
             :provider => {:type => 'string', :pattern => providers_pattern},
             # full user name
@@ -69,7 +71,7 @@ users_type = {
             # - 5: deselected api friends, 6: friends of friends, 7: friends proposals, 8: others
             :friend => {:type => 'integer', :minimum => 1, :maximum => 8}
         },
-        :required => %w(user_id provider user_name api_profile_picture_url friend),
+        :required => %w(user_id uid provider user_name friend),
         :additionalProperties => false
     }
 }
@@ -303,4 +305,8 @@ JSON_SCHEMA = {
         },
         :additionalProperties => false
     }
+
+    # device to device communication (server spec)
+
+    # device to device communication (client spec)
 }

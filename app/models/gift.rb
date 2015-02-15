@@ -198,6 +198,7 @@ class Gift < ActiveRecord::Base
       return { :error => "#{msg}System error. Expected array with one or more login user ids."}
     end
     # verify user ids. should never fail. user ids are from sessions table and should be valid
+    # order by user id - order is used in sha256 server signature
     login_users = User.where(:user_id => login_user_ids).order('user_id')
     if login_users.size < login_user_ids.size
       return { :error => "#{msg}System error. Invalid login. Expected #{login_user_ids.size} users. Found #{login_users.size} users."}
@@ -245,6 +246,8 @@ class Gift < ActiveRecord::Base
       signature_users = login_users.find_all { |u| gift_user_ids.index(u.id)}
       if signature_users.size == gift_user_ids.size
         # authorization ok. create server side sha256 digest signature
+        #       field should be readonly and gift signature check can verify that field is not updated by client
+        # todo: include created_at_server in server side sha256 signature? no, but return created_at_server timestamp in signature check
         sha256_server_text = ([gid, sha256_client, direction] + signature_users.collect { |u| u.user_id }).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
         logger.debug2 "sha256_server = #{sha256_server}"
@@ -254,7 +257,7 @@ class Gift < ActiveRecord::Base
           if g.sha256 == sha256_server
             data << { :gid => gid, :created_at_server => g.created_at.to_i }
           else
-            data << { :gid => gid, :error => "#{msg}Gift already exists but signature was invalid." }
+            data << { :gid => gid, :error => "#{msg}Gift already exists but sha256 signature was invalid." }
             no_errors += 1
           end
           next
@@ -282,7 +285,7 @@ class Gift < ActiveRecord::Base
       if (changed_login_providers.size > 0)
         data << { :gid => gid, :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since gift was created. Please log in with old #{changed_login_providers.join('. ')} user."}
       else
-        data << { :gid => gid, :error => "#{msg}Log out for for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
+        data << { :gid => gid, :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
       end
       no_errors += 1
 

@@ -478,11 +478,13 @@ class UtilController < ApplicationController
       users = User.where(:user_id => login_user.friends_hash.keys)
       @json[:users] = [] unless @json[:users]
       @json[:users] += users.collect do |user|
-        { :user_id => user.id,
-          :provider => user.provider,
-          :user_name => user.user_name,
-          :api_profile_picture_url => user.api_profile_picture_url,
-          :friend => login_user.friends_hash[user.user_id] }
+        hash = { :user_id => user.id,
+                 :uid => user.uid,
+                 :provider => user.provider,
+                 :user_name => user.user_name,
+                 :friend => login_user.friends_hash[user.user_id] }
+        hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+        hash
       end
 
       # update number of friends.
@@ -1016,11 +1018,13 @@ class UtilController < ApplicationController
         User.cache_friend_info([login_user])
         users = User.where(:user_id => login_user.friends_hash.keys)
         @json[:users] += users.collect do |user|
-          { :user_id => user.id,
-            :provider => user.provider,
-            :user_name => user.user_name,
-            :api_profile_picture_url => user.api_profile_picture_url,
-            :friend => login_user.friends_hash[user.user_id] }
+          hash = {:user_id => user.id,
+                  :uid => user.uid,
+                  :provider => user.provider,
+                  :user_name => user.user_name,
+                  :friend => login_user.friends_hash[user.user_id]}
+          hash[:api_profile_picture_url] if user.api_profile_picture_url
+          hash
         end
       end # each provider
 
@@ -1204,6 +1208,11 @@ class UtilController < ApplicationController
                                         .find_all { |f| f.friend_status_code == 'Y' }
                                         .collect { |f| f.user_id_receiver }
             p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
+            logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+            logger.debug2 "login_users_friends = #{login_users_friends.join(', ')}"
+            logger.debug2 "p.user_ids = #{p.user_ids.join(', ')}"
+            logger.debug2 "p.friends = #{other_session_friends.join(', ')}"
+            logger.debug2 "p.mutual_friends = #{p.mutual_friends.join(', ')}"
             # keep in list
             false
           end
@@ -1214,7 +1223,10 @@ class UtilController < ApplicationController
         end
         # logger.debug2 "pings.size (after) = #{pings.size}"
         # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }
-        @json[:online] = pings if pings.size > 0
+        if pings.size > 0
+          @json[:online] = pings
+          logger.debug2 "@json[:online] = #{@json[:online]}"
+        end
 
         # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
 

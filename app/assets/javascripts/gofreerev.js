@@ -806,9 +806,17 @@ var Gofreerev = (function() {
     } // get_new_uid
 
     // sha256 digest - used for one way password encryption and signatures for gifts and comments
-    function sha256 (text) {
-        return CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1)
-    }
+    // arguments: list of text fields
+    function sha256 () {
+        var text = '' ;
+        for (var i=0; i < arguments.length; i++) {
+            if (i>0) text += ',' ;
+            if ((typeof arguments[i]=='undefined') || (arguments[i]==null)) continue ;
+            if (typeof arguments[i] == 'string') text += arguments[i] ;
+            else text += JSON.stringify(arguments[i]) ;
+        };
+        return CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1);
+    } // sha256
 
     // client login (password from client-login-dialog-form)
     // 0 = invalid password, > 0 : userid
@@ -1464,7 +1472,7 @@ angular.module('gifts', ['ngRoute'])
                 Gofreerev.removeItem('password') ;
                 Gofreerev.removeItem('userid') ;
                 Gofreerev.removeItem('sid') ;
-                giftService.load_gifts() ;
+                // giftService.load_gifts() ; // moved to AuthCtrl
             }
             else {
                 // log in provider log out
@@ -1768,13 +1776,34 @@ angular.module('gifts', ['ngRoute'])
         } // sync_users
 
         // update list of other devices (online and offline)
-        var devices = [] ;
+        // todo: update a list of gift listeners - one message buffer for each
+        var devices = [] ; // list with online and offline devices
         var devices_index = {} ;
+        var user_devices = {} ; // list with online devices for each user id (mutual friend)
         var init_devices_index = function () {
-            devices_index = {} ;
-            for (i=0 ; i<devices.length ; i++) devices_index[devices[i].did] = i ;
+            var pgm = 'UserService.init_devices_index: ' ;
+            devices_index = {} ; // one index for each device
+            user_devices = {} ; // one index for each userid
+            var device, i, j, mutual_friend_userid ;
+            for (i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                devices_index[device.did] = i ;
+                // list with relevant devices for mutual friend
+                for (j=0 ; j<device.mutual_friends.length ; j++) {
+                    mutual_friend_userid = device.mutual_friends[j] ;
+                    if (!user_devices[mutual_friend_userid]) user_devices[mutual_friend_userid] = [] ;
+                    user_devices[mutual_friend_userid].push(i) ; // index to devices array
+                } // for j
+            } // for j
+            console.log(pgm + 'user_devices = ' + JSON.stringify(user_devices)) ;
         }
         init_devices_index() ;
+        // device actions:
+        // - online => offline - continue to buffer messages
+        // - old offline => online - deliver old messages in next ping
+        // - new device online - request gift info for mutual friends
+        // - new mutual friend for online device - request gift info for new mutual friend
+        // - removed mutual friend for online device - continue to buffer messages, but don't deliver in next  ping
         var update_devices = function (new_devices) {
             var pgm = 'UserService.update_devices: ' ;
             console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
@@ -1782,23 +1811,45 @@ angular.module('gifts', ['ngRoute'])
             var i ;
             var new_devices_index = {} ;
             for (i=0 ; i<new_devices.length ; i++) new_devices_index[new_devices[i].did] = i ;
-            // check old devices
+            // update old devices
+            var j, new_mutual_friends ;
             for (i=0 ; i<devices.length ; i++) {
                 device = devices[i] ;
                 device.online = new_devices_index.hasOwnProperty(device.did) ;
+                if (device.online) {
+                    j = new_devices_index[device.did] ;
+                    new_mutual_friends = $(new_devices[j].mutual_friends).not(device.mutual_friends).get() ;
+                    device.mutual_friends = new_devices[j].mutual_friends ;
+                    if (new_mutual_friends.length > 0) {
+                        // start sync. - step 1 - compare sha256 values for gifts for new mutual friends
+                        device.outbox.push({
+                            msgtype: 'gifts-sha256',
+                            mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
+                        }) ;
+                    } ;
+                }
             }
             // add new devices
             var device ;
             for (i=0 ; i<new_devices.length ; i++) {
                 device = new_devices[i] ;
                 device.online = true ;
-                if (!devices_index.hasOwnProperty(device.did)) devices.push(device) ;
+                if (!devices_index.hasOwnProperty(device.did)) {
+                    // new device
+                    device.outbox = [] ;
+                    // start sync. - step 1 - compare sha256 values for gifts for mutual friends
+                    device.outbox.push({
+                        msgtype: 'gifts-sha256',
+                        mutual_friends: JSON.parse(JSON.stringify(device.mutual_friends))
+                    }) ;
+                    devices.push(device) ;
+                }
             }
             init_devices_index() ;
             console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
         } // update_devices
 
-        // get/set pubkey for devices - used in client to cient communication
+        // get/set pubkey for devices - used in client to client communication
         var pubkeys_request = function () {
             var request = [] ;
             var device ;
@@ -1827,124 +1878,6 @@ angular.module('gifts', ['ngRoute'])
             } // for
         } // pubkeys_response
 
-        // ping server once every minute - server maintains a list of online users / devices
-        var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
-        var ping = function (old_ping_interval) {
-            var pgm = 'UserService.ping: ' ;
-            var userid = client_userid() ;
-            if (userid == 0) {
-                // no device login
-                console.log(pgm + 'wait - no device login') ;
-                $timeout(function () { ping(ping_interval); }, ping_interval) ;
-                return ;
-            };
-            // check api logins - there must be minimum one not expired api login
-            var new_client_timestamp = (new Date).getTime() ; // unix timestamp with milliseconds
-            var now = Math.floor(new_client_timestamp/1000) ; // unix timestamp
-            var logged_in_provider = false ; // true if one not expired api login
-            var expired_providers = [] ; // array with any expired login providers
-            var refresh_tokens_request ; // array with refresh token (google+ only)
-
-            // console.log(pgm + 'time = ' + (new Date()).toUTCString());
-            // console.log(pgm + 'self.expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
-            var oauth ;
-            for (var provider in self.expires_at) {
-                if (!self.expires_at.hasOwnProperty(provider)) continue;
-                if (self.expires_at[provider] > now) logged_in_provider = true ;
-                else if (self.refresh_tokens[provider]) {
-                    // google+ - access token expired but can maybe be renewed on server with refresh token
-                    logged_in_provider = true ;
-                    // add refresh token in next ping request
-                    if (!refresh_tokens_request) refresh_tokens_request = [] ;
-                    if (!oauth) oauth = get_oauth() ;
-                    refresh_tokens_request.push({
-                        provider: '' + provider,
-                        refresh_token: oauth[provider].refresh_token
-                    });
-                } // special refresh token for google+
-                else expired_providers.push(provider) ;
-            }
-            for (var i=0 ; i<expired_providers.lenghth ; i++) {
-                provider = expired_providers[i] ;
-                console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
-                remove_oauth(provider) ;
-            }
-            if (!logged_in_provider) {
-                // no social network logins was found
-                console.log(pgm + 'wait - no social network logins was found') ;
-                $timeout(function () { ping(ping_interval); }, ping_interval) ;
-                return ;
-            }
-            // make ping request
-            var sid = Gofreerev.getItem('sid') ;
-            var ping_request = {
-                client_userid: userid,
-                sid: sid,
-                client_timestamp: new_client_timestamp,
-                new_gifts: giftService.new_gifts_request(),
-                pubkeys: pubkeys_request(),
-                refresh_tokens: refresh_tokens_request
-            };
-            for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
-            // validate json request before sending ping to server
-            if (Gofreerev.is_json_request_invalid(pgm, ping_request, 'ping')) {
-                console.log(pgm + 'Ping loop aborted. Please correct error.') ;
-                return ;
-            }
-            $http.post('/util/ping.json', ping_request).then(
-                function (response) {
-                    // schedule next ping.
-                    // console.log(pgm + 'ok. old_ping_interval = ' + old_ping_interval) ;
-                    // console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
-                    if (response.data.interval && (response.data.interval >= 1000)) ping_interval = response.data.interval ;
-                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
-
-                    // validate ping response received from server
-                    // todo: where to report ping error in UI.
-                    if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
-                    //var valid_ping_response = tv4.validate(ok.data, Gofreerev.rails['JSON_SCHEMA'].ping_response) ;
-                    //if (!valid_ping_response) {
-                    //    var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                    //    delete error.stack ;
-                    //    console.log(pgm + 'Error in JSON ping response from server.') ;
-                    //    console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
-                    //    console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                    //    // todo: stop or continue?
-                    //}
-                    if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
-                    // check online users/devices
-                    if (response.data.online) update_devices(response.data.online) ;
-                    // check for new public keys for online users/devices
-                    if (response.data.pubkeys) pubkeys_response(response.data.pubkeys) ;
-                    // get timestamps for newly created gifts from server
-                    if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
-                    // check expired access token (server side check)
-                    if (response.data.expired_tokens) expired_tokens_response(response.data.expired_tokens) ;
-                    // check for new oauth authorization (google+ only)
-                    if (response.data.oauths) oauths_response(response.data.oauths) ;
-                    // check interval between client timestamp and previous client timestamp
-                    // interval should be 60000 = 60 seconds
-                    // console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;
-                    if (!response.data.old_client_timestamp) return ; // first ping for new session
-                    var interval = new_client_timestamp - response.data.old_client_timestamp ;
-                    // console.log(pgm + 'ok. interval = ' + interval) ;
-                    if (interval > old_ping_interval - 100) return ;
-                    console.log(
-                        pgm + 'ok. multiple logins for client userid ' + userid +
-                        '. old timestamp = ' + response.data.old_client_timestamp +
-                        ', new timestamp = ' + new_client_timestamp +
-                        ',interval = ' + interval);
-                    // sync JS users array with any changes in local storage users string
-                    sync_users() ;
-                    giftService.sync_gifts() ;
-                },
-                function (error) {
-                    // schedule next ping
-                    console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval) ;
-                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
-                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
-                })
-        }
 
         return {
             providers: providers,
@@ -1972,7 +1905,7 @@ angular.module('gifts', ['ngRoute'])
         }
         // end UserService
     }])
-    .factory('GiftService', ['$window', '$http', '$q', function($window, $http, $q) {
+    .factory('GiftService', [function() {
         var self = this ;
         console.log('GiftService loaded') ;
 
@@ -1995,17 +1928,26 @@ angular.module('gifts', ['ngRoute'])
             var migration = false ;
             for (var i=0 ; i<new_gifts.length ; i++) {
                 gift = new_gifts[i] ;
-                // data migration - rename date to created_at_client - todo: remove
+                // data migration - rename date to created_at_client - todo: remove data migration
                 if (gift.hasOwnProperty('date')) {
                     gift.created_at_client = gift.date ;
                     delete gift.date ;
                     migration = true ;
                 }
-                // error cleanup - remove doublets from gifts array
+                // error cleanup - remove doublets from gifts array - todo: remove data migration
                 if (gifts_index.hasOwnProperty(gift.gid)) {
                     console.log(pgm + 'Error. removed gift doublet with gid ' + gift.gid) ;
                     migration = true ;
                     continue ;
+                }
+                // data migration. server side sha256 signature is invalid after 4 open graph fields have been added to client side part of signature - todo: remove data migration
+                if ((typeof gift.open_graph_url != 'undefined') && (gift.open_graph_url != null) && (gift.open_graph_url != '') && (gift.hasOwnProperty('created_at_server'))) {
+                    // gift with open graph attributes.
+                    var old_gid = gift.gid ;
+                    gift.gid = Gofreerev.get_new_uid() ;
+                    delete gift.created_at_server ;
+                    console.log(pgm + 'migration after sha256 signature change. old gid = ' + old_gid + ', new gid = ' + gift.gid) ;
+                    migration = true ;
                 }
                 gifts_index[gift.gid] = gifts.length ;
                 gifts.push(new_gifts[i]) ;
@@ -2090,6 +2032,7 @@ angular.module('gifts', ['ngRoute'])
             if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
             if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids ;
             if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client ;
+            if (gift.created_at_server != new_gift.created_at_server) gift.created_at_server = new_gift.created_at_server ;
             if (gift.price != new_gift.price) gift.price = new_gift.price ;
             if (gift.currency != new_gift.currency) gift.currency = new_gift.currency ;
             if (gift.direction != new_gift.direction) gift.direction = new_gift.direction ;
@@ -2150,9 +2093,36 @@ angular.module('gifts', ['ngRoute'])
             Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
         }
 
-        // less that 60 seconds between util/ping for client_userid
+        // calculate sha256 value for gift. used when comparing gift lists between devices - replicate gifts with changed sha256 value
+        // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 value:
+        //   created_at_client, description, open_graph_url, open_graph_title, open_graph_description and open_graph_image,
+        //   direction, giver_user_ids and receiver_user_ids
+        //   direction=giver: giver_user_ids can not be changed - receiver_user_ids are added later
+        //   direction=receiver: receiver_user_ids can not be changed - giver_uds_ids are added latter
+        // - created_at_server timestamp is readonly and is returned from ping/new_gifts response - not included in sha256 value
+        // - direction=giver: include receiver_user_ids in sha256 value
+        // - direction=receiver: include giver_user_ids in sha256 value
+        // - price and currency - should not change, but include in sha256 value
+        // - likes - change to array or object and keep last like/unlike for each user - include in sha256 value
+        // - follow - change to array and keep last follow/unfollow for each logged in users - not included in sha256 value
+        //   find some other way to replicate follow/unfollow between logged in users - not shared with friends
+        // - show - device only field or logged in user only field - replicate hide to other devices with identical logged in users? - not included in sha256 value
+        // - deleted_at - included in sha256 value
+        // - comments - array with comments - included comments sha256_values in gift sha256 value
+        var sha256_gift = function (gift) {
+            var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids ;
+            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids == [] ;
+            var other_participant_external_ids ;
+            var user ;
+            for (var i=0 ; i<other_participant_internal_ids.length ; i++) {
+                user = userService.get_user(other_participant_internal_ids[i]) ;
+            }
+            var hash = {} ;
+        }
+
+        // less that <ping_interval> milliseconds (see ping) between util/ping for client_userid
         // there must be more than one browser tab open with identical client login
-        // js array gifts can be out of sync
+        // js array gifts could be out of sync
         // sync changes in gifts array in local storage with js gifts array
         var sync_gifts = function () {
             var pgm = 'GiftService. sync_gift: ' ;
@@ -2173,6 +2143,7 @@ angular.module('gifts', ['ngRoute'])
                     if (gifts[insert_point].giver_user_ids != new_gifts[i].giver_user_ids) gifts[insert_point].giver_user_ids = new_gifts[i].giver_user_ids ;
                     if (gifts[insert_point].receiver_user_ids != new_gifts[i].receiver_user_ids) gifts[insert_point].receiver_user_ids = new_gifts[i].receiver_user_ids ;
                     if (gifts[insert_point].created_at_client != new_gifts[i].created_at_client) gifts[insert_point].created_at_client = new_gifts[i].created_at_client ;
+                    if (gifts[insert_point].created_at_server != new_gifts[i].created_at_server) gifts[insert_point].created_at_server = new_gifts[i].created_at_server ;
                     if (gifts[insert_point].price != new_gifts[i].price) gifts[insert_point].price = new_gifts[i].price ;
                     if (gifts[insert_point].currency != new_gifts[i].currency) gifts[insert_point].currency = new_gifts[i].currency ;
                     if (gifts[insert_point].direction != new_gifts[i].direction) gifts[insert_point].direction = new_gifts[i].direction ;
@@ -2222,13 +2193,14 @@ angular.module('gifts', ['ngRoute'])
         // gift timestamps: created_at_client (set by client) and created_at_server (returned from server)
         var new_gifts_request = function () {
             var request = [];
-            var gift, hash, sha256_client ;
+            var gift, hash, text_client, sha256_client ;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
                 if (!gift.created_at_server) {
                     // send meta-data for new gift to server and generate a sha256 signature for gift on server
-                    // server sha256 signature is checked after replication to other clients
-                    sha256_client = Gofreerev.sha256('' + gift.created_at_client + ',' + gift.description) ;
+                    sha256_client = Gofreerev.sha256(
+                        gift.created_at_client.toString(), gift.description, gift.open_graph_url,
+                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image) ;
                     hash = {gid: gift.gid, sha256: sha256_client} ;
                     if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids ;
                     if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids ;
@@ -2414,6 +2386,7 @@ angular.module('gifts', ['ngRoute'])
             if (!logged_in) return ;
             console.log('AuthCtrl.logout: debug 2') ;
             userService.logout(provider) ;
+            if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) giftService.load_gifts() ;
             console.log('AuthCtrl.logout: debug 3') ;
             $location.path('/auth/0') ;
             $location.replace() ;

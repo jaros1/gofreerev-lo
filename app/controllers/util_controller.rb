@@ -1023,7 +1023,7 @@ class UtilController < ApplicationController
                   :provider => user.provider,
                   :user_name => user.user_name,
                   :friend => login_user.friends_hash[user.user_id]}
-          hash[:api_profile_picture_url] if user.api_profile_picture_url
+          hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
           hash
         end
       end # each provider

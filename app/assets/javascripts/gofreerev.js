@@ -1063,52 +1063,52 @@ var Gofreerev = (function() {
 
 angular.module('gifts', ['ngRoute'])
     .config(function ($routeProvider) {
-        var get_local_userid = function() {
+        var get_local_userid = function () {
             var userid = Gofreerev.getItem('userid');
-            if (typeof userid == 'undefined') return '0' ;
-            else if (userid == null) return '0' ;
-            else if (userid == '') return '0' ;
-            else return ('' + parseInt(userid)) ;
+            if (typeof userid == 'undefined') return '0';
+            else if (userid == null) return '0';
+            else if (userid == '') return '0';
+            else return ('' + parseInt(userid));
         };
         // todo: add route to show gift - as gifts page with one gift and without create new gift
         // todo: is there any reason for :userid in angularJS - will not be 100% correct if link to a gift is shared with an other gofreerev-lo user
-        $routeProvider.when('/gifts/:userid?', {
-            templateUrl: 'main/gifts',
-            controller: 'GiftsCtrl as ctrl',
-            resolve: {
-                check_userid: ['$route', '$location', function($route, $location) {
-                    var userid = get_local_userid() ;
-                    if (userid != $route.current.params.userid) {
-                        $location.path('/gifts/' + userid) ;
-                        $location.replace() ;
-                    }
-                }]
-            }
-        })
+        $routeProvider
+            .when('/gifts/:userid?', {
+                templateUrl: 'main/gifts',
+                controller: 'GiftsCtrl as ctrl',
+                resolve: {
+                    check_userid: ['$route', '$location', function ($route, $location) {
+                        var userid = get_local_userid();
+                        if (userid != $route.current.params.userid) {
+                            $location.path('/gifts/' + userid);
+                            $location.replace();
+                        }
+                    }]
+                }
+            })
             .when('/auth/:userid?', {
                 templateUrl: 'main/auth',
                 controller: 'AuthCtrl as ctrl',
                 resolve: {
-                    check_userid: ['$route', '$location', function($route, $location) {
-                        var userid = get_local_userid() ;
+                    check_userid: ['$route', '$location', function ($route, $location) {
+                        var userid = get_local_userid();
                         if (userid != $route.current.params.userid) {
-                            $location.path('/auth/' + userid) ;
-                            $location.replace() ;
+                            $location.path('/auth/' + userid);
+                            $location.replace();
                         }
                     }]
                 }
+            })
+            .otherwise({
+                redirectTo: function (routeParams, path, search) {
+                    var userid = Gofreerev.getItem('userid');
+                    if (typeof userid == 'undefined') userid = 0;
+                    else if (userid == null) userid = 0;
+                    else if (userid == '') userid = 0;
+                    else userid = parseInt(userid);
+                    return '/gifts/' + userid;
+                }
             });
-        // $routeProvider.otherwise({redirectTo: '/gifts'});
-        $routeProvider.otherwise({
-            redirectTo: function (routeParams, path, search) {
-                var userid = Gofreerev.getItem('userid');
-                if (typeof userid == 'undefined') userid = 0 ;
-                else if (userid == null) userid = 0 ;
-                else if (userid == '') userid = 0 ;
-                else userid = parseInt(userid) ;
-                return '/gifts/' + userid;
-            }
-        });
         // end config (ng-routes)
     })
     .factory('TextService', ['$sce', function($sce) {
@@ -1257,6 +1257,7 @@ angular.module('gifts', ['ngRoute'])
         } // provider_stat
 
         var init_users = function (array) {
+            console.log('UserService.init_users: users = ' + JSON.stringify(array)) ;
             users = array ;
             users_index_by_user_id = {}
             for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
@@ -1380,6 +1381,8 @@ angular.module('gifts', ['ngRoute'])
             return user ;
         }
         var get_closest_user = function (user_ids) {
+            var pgm = 'UserService.get_closest_user: ' ;
+            console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             if (typeof users == 'undefined') return null ;
             if (users == null) return null ;
             if (users.length == 0) return null ;
@@ -1391,11 +1394,15 @@ angular.module('gifts', ['ngRoute'])
             var user ;
             for (var i=0 ; i<user_ids.length ; i++) {
                 user = get_user(user_ids[i]) ;
+                if (user) console.log(pgm + 'get_user(' + user_ids[i] + ').friend = ' + user.friend) ;
+                else console.log(pgm + 'user with id ' + user_ids[i] + ' was not found') ;
                 if (user && (user.friend < closest_user_friend_status)) {
                     closest_user = user ;
                     closest_user_friend_status = user.friend ;
                 }
             }
+            if (closest_user) console.log(pgm + 'found user with user id ' + closest_user.user_id) ;
+            else console.log(pgm + 'closest user was not found') ;
             return closest_user ;
         } // get_closest_user
         var get_userids_friend_status = function (user_ids) {
@@ -1573,6 +1580,7 @@ angular.module('gifts', ['ngRoute'])
         ] ;
         // load users from local storage or test users array
         // init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
+        console.log('UserService: getItem("users") = ' + Gofreerev.getItem('users')) ;
         if (Gofreerev.getItem('users')) init_users(JSON.parse(Gofreerev.getItem('users'))) ;
         else Gofreerev.setItem('users', JSON.stringify([])) ;
 
@@ -1751,7 +1759,7 @@ angular.module('gifts', ['ngRoute'])
                     // check users array
                     if (response.data.users) {
                         // fresh user info array was received from server
-                        console.log(pgm + 'login. users = ' + JSON.stringify(response.data.users)) ;
+                        console.log(pgm + 'ok response. users = ' + JSON.stringify(response.data.users)) ;
                         // insert relevant user info info js array
                         init_users(response.data.users) ;
                         // save in local storage
@@ -1768,25 +1776,6 @@ angular.module('gifts', ['ngRoute'])
 
         };
 
-        // less that 60 seconds between util/ping for client_userid
-        // there must be more than one browser tab open with identical client login
-        // sync changes in users array in local storage with js users array
-        var sync_users = function () {
-            var pgm = 'UserService.sync_users: ' ;
-            var old_length = users.length ;
-            var old_stat = provider_stat(users) ;
-            var new_users = JSON.parse(Gofreerev.getItem('users')) ;
-            update_users(new_users, true) ;
-            var new_length = users.length ;
-            var new_stat = provider_stat(users) ;
-            //console.log(
-            //    pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
-            //    'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
-            //    'there was ' + new_users.length + ' users in localstorage.') ;
-            //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
-            //console.log(pgm + 'old stat: ' + old_stat) ;
-            //console.log(pgm + 'new stat: ' + new_stat) ;
-        } // sync_users
 
         // update list of other devices (online and offline)
         // todo: update a list of gift listeners - one message buffer for each
@@ -1819,7 +1808,7 @@ angular.module('gifts', ['ngRoute'])
         // - removed mutual friend for online device - continue to buffer messages, but don't deliver in next  ping
         var update_devices = function (new_devices) {
             var pgm = 'UserService.update_devices: ' ;
-            console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
+            // console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
             // add index
             var i ;
             var new_devices_index = {} ;
@@ -1859,7 +1848,7 @@ angular.module('gifts', ['ngRoute'])
                 }
             }
             init_devices_index() ;
-            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            // console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
         } // update_devices
 
         // get/set pubkey for devices - used in client to client communication
@@ -2373,7 +2362,25 @@ angular.module('gifts', ['ngRoute'])
         self.userService = userService ;
         self.texts = textService.texts ;
 
-        // ping server once PING_INTERVAL miliseconds to maintain a list of online users/devices
+        // less that 60 seconds between util/ping for client_userid
+        // there must be more than one browser tab open with identical client login
+        // sync changes in users array in local storage with js users array
+        var sync_users = function () {
+            var pgm = 'NavCtrl.sync_users: ' ;
+            var old_length = users.length ;
+            var old_stat = provider_stat(users) ;
+            var new_users = JSON.parse(Gofreerev.getItem('users')) ;
+            userService.update_users(new_users, true) ;
+            var new_length = users.length ;
+            var new_stat = provider_stat(users) ;
+            //console.log(
+            //    pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
+            //    'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
+            //    'there was ' + new_users.length + ' users in localstorage.') ;
+            //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
+            //console.log(pgm + 'old stat: ' + old_stat) ;
+            //console.log(pgm + 'new stat: ' + new_stat) ;
+        } // sync_users
 
         // ping server once every minute - server maintains a list of online users / devices
         var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
@@ -2457,7 +2464,7 @@ angular.module('gifts', ['ngRoute'])
                         ', new timestamp = ' + new_client_timestamp +
                         ',interval = ' + interval);
                     // sync JS users array with any changes in local storage users string
-                    userService.sync_users() ;
+                    sync_users() ;
                     giftService.sync_gifts() ;
                 },
                 function (error) {
@@ -2491,8 +2498,10 @@ angular.module('gifts', ['ngRoute'])
         // post page task - execute some post-page / post-login ajax tasks and get fresh json data from server (oauth and users)
         var do_tasks = function () {
             var pgm = 'NavCtrl.do_tasks: ' ;
+            var userid = userService.client_userid() ;
+            if (userid == 0) return ; // only relevant for logged in users
             console.log(pgm + 'start');
-            var do_tasks_request = {client_userid: userService.client_userid(), timezone: get_js_timezone()} ;
+            var do_tasks_request = {client_userid: userid, timezone: get_js_timezone()} ;
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();
@@ -3385,6 +3394,8 @@ angular.module('gifts', ['ngRoute'])
     .filter('formatUserImgSrc', ['UserService', function (userService) {
         return function (user_ids) {
             // format scr in user <div><img> tags in gifts/index page etc (giver, receiver and user that has commented gifts)
+            var pgm = 'formatUserImgSrc: ' ;
+            console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return '/images/invisible-picture.gif' ;
             var user = userService.get_closest_user(user_ids);
             if (!user) {
@@ -3392,8 +3403,10 @@ angular.module('gifts', ['ngRoute'])
                 // could by a previous friend in a closed deal
                 // could be a comment from a previous friend
                 // could be a comment from a friend from a not logged in provider
+                console.log(pgm + 'closest user was not found') ;
                 return '/images/unknown-user.png';
             }
+            console.log(pgm + 'user with user id ' + user.user_id + ' was found. user.api_profile_picture_url = ' + user.api_profile_picture_url) ;
             return user.api_profile_picture_url;
         }
         // end formatUserImgSrc filter

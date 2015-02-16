@@ -444,6 +444,7 @@ var Gofreerev = (function() {
     // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
 
     var storage_rules = {
+        currency: {session: false, userid: true, compress: false, encrypt: false}, // currency code (ISO 4217)
         did: {session: false, userid: true, compress: false, encrypt: false}, // new unique device id
         gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
@@ -1219,8 +1220,6 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         console.log('UserService loaded') ;
 
-        console.log('locale.id = ' + $locale.id) ;
-
         // initialize list with providers. used in validations and in main/auth page
         var providers = [] ;
         (function () {
@@ -1259,7 +1258,7 @@ angular.module('gifts', ['ngRoute'])
         } // provider_stat
 
         var init_users = function (array) {
-            console.log('UserService.init_users: users = ' + JSON.stringify(array)) ;
+            // console.log('UserService.init_users: users = ' + JSON.stringify(array)) ;
             users = array ;
             users_index_by_user_id = {}
             for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
@@ -1384,7 +1383,7 @@ angular.module('gifts', ['ngRoute'])
         }
         var get_closest_user = function (user_ids) {
             var pgm = 'UserService.get_closest_user: ' ;
-            console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
+            // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             if (typeof users == 'undefined') return null ;
             if (users == null) return null ;
             if (users.length == 0) return null ;
@@ -1396,15 +1395,15 @@ angular.module('gifts', ['ngRoute'])
             var user ;
             for (var i=0 ; i<user_ids.length ; i++) {
                 user = get_user(user_ids[i]) ;
-                if (user) console.log(pgm + 'get_user(' + user_ids[i] + ').friend = ' + user.friend) ;
-                else console.log(pgm + 'user with id ' + user_ids[i] + ' was not found') ;
+                // if (user) console.log(pgm + 'get_user(' + user_ids[i] + ').friend = ' + user.friend) ;
+                // else console.log(pgm + 'user with id ' + user_ids[i] + ' was not found') ;
                 if (user && (user.friend < closest_user_friend_status)) {
                     closest_user = user ;
                     closest_user_friend_status = user.friend ;
                 }
             }
-            if (closest_user) console.log(pgm + 'found user with user id ' + closest_user.user_id) ;
-            else console.log(pgm + 'closest user was not found') ;
+            // if (closest_user) console.log(pgm + 'found user with user id ' + closest_user.user_id) ;
+            // else console.log(pgm + 'closest user was not found') ;
             return closest_user ;
         } // get_closest_user
         var get_userids_friend_status = function (user_ids) {
@@ -1442,11 +1441,24 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'userids.length = ' + userids.length) ;
             return userids ;
         }
-        var get_users_currency = function  () {
-            var user_ids = get_login_userids() ;
-            var user = get_user(user_ids[0]) ;
-            if (!user) return null ;
-            return user.currency || 'USD' ;
+        // get default currency from locale. use for new user accounts. for example en-us => usd
+        var get_default_currency = function () {
+            var pgm = 'UserService.get_default_currency: ' ;
+            var default_language = 'en' ;
+            var default_currency = 'usd' ;
+            var id = $locale.id ;
+            var language = id ? id.substr(0,2) : default_language ;
+            var currency = Gofreerev.rails['COUNTRY_TO_CURRENCY'][language] || default_currency ;
+            if (Gofreerev.rails['ACTIVE_CURRENCIES'].indexOf(currency) == -1) currency = default_currency ;
+            // console.log(pgm + '$locale.id = ' + id + ', language = ' + language + ', currency = ' + currency) ;
+            return currency ;
+        }
+        var get_currency = function  () {
+            var currency = Gofreerev.getItem('currency') ;
+            if (currency) return currency ;
+            var currency = get_default_currency() ;
+            Gofreerev.setItem('currency', currency) ;
+            return currency ;
         }
         var find_giver = function (gift) {
             var giver, user, i ;
@@ -1582,7 +1594,7 @@ angular.module('gifts', ['ngRoute'])
         ] ;
         // load users from local storage or test users array
         // init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
-        console.log('UserService: getItem("users") = ' + Gofreerev.getItem('users')) ;
+        // console.log('UserService: getItem("users") = ' + Gofreerev.getItem('users')) ;
         if (Gofreerev.getItem('users')) init_users(JSON.parse(Gofreerev.getItem('users'))) ;
         else Gofreerev.setItem('users', JSON.stringify([])) ;
 
@@ -1926,7 +1938,7 @@ angular.module('gifts', ['ngRoute'])
             get_login_users: get_login_users,
             get_login_userids: get_login_userids,
             get_user: get_user,
-            get_users_currency: get_users_currency,
+            get_currency: get_currency,
             get_closest_user: get_closest_user,
             get_userids_friend_status: get_userids_friend_status,
             find_giver: find_giver,
@@ -2298,7 +2310,7 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'GiftService.new_gifts_response: ' ;
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
-            if (response.hasOwnProperty('no_errors')) console.log(pgm + response.no_errors + ' gifts was not created') ;
+            if (response.hasOwnProperty('no_errors') && (response.no_errors>0)) console.log(pgm + response.no_errors + ' gifts was not created') ;
             if (!response.hasOwnProperty('data')) return ;
             var new_gifts = response.data ;
             var new_gift, gid, index, gift, created_at_server ;
@@ -3057,13 +3069,13 @@ angular.module('gifts', ['ngRoute'])
         function init_new_gift () {
             self.new_gift = {
                 direction: 'giver',
-                currency: userService.get_users_currency(),
+                currency: userService.get_currency(),
                 file_upload_title: function () {
                     if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: appname}) ;
                     else return I18n.t('js.new_gift.file_title_false', {appname: appname}) ;
                 },
                 show: function () {
-                    var currency = userService.get_users_currency() ;
+                    var currency = userService.get_currency() ;
                     // console.log('currency = ' + JSON.stringify(currency)) ;
                     return (currency != null) ; // logged in with one or more login providers?
                 }
@@ -3397,7 +3409,7 @@ angular.module('gifts', ['ngRoute'])
         return function (user_ids) {
             // format scr in user <div><img> tags in gifts/index page etc (giver, receiver and user that has commented gifts)
             var pgm = 'formatUserImgSrc: ' ;
-            console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
+            // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return '/images/invisible-picture.gif' ;
             var user = userService.get_closest_user(user_ids);
             if (!user) {
@@ -3405,10 +3417,10 @@ angular.module('gifts', ['ngRoute'])
                 // could by a previous friend in a closed deal
                 // could be a comment from a previous friend
                 // could be a comment from a friend from a not logged in provider
-                console.log(pgm + 'closest user was not found') ;
+                // console.log(pgm + 'closest user was not found') ;
                 return '/images/unknown-user.png';
             }
-            console.log(pgm + 'user with user id ' + user.user_id + ' was found. user.api_profile_picture_url = ' + user.api_profile_picture_url) ;
+            // console.log(pgm + 'user with user id ' + user.user_id + ' was found. user.api_profile_picture_url = ' + user.api_profile_picture_url) ;
             return user.api_profile_picture_url;
         }
         // end formatUserImgSrc filter

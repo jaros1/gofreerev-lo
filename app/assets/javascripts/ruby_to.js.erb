@@ -11,3 +11,25 @@ Gofreerev.rails['API_URL'] = JSON.parse('<%= API_URL.to_json %>') ;
 Gofreerev.rails['PING_INTERVAL'] = <%= Sequence.get_server_ping_cycle.value %> ;
 Gofreerev.rails['JSON_SCHEMA'] = JSON.parse('<%= JSON_SCHEMA.to_json %>') ;
 Gofreerev.rails['COUNTRY_TO_CURRENCY'] = JSON.parse('<%= COUNTRY_TO_CURRENCY.to_json %>') ;
+<%=
+  # find active and valid currencies.
+  # - must be in COUNTRY_TO_CURRENCY
+  # - must be an active currency from default money bank. see ExchangeRate.fetch_exchange_rates
+  # - currency name should be defined in  locale>.js.currency.* translations
+  valid_currencies = COUNTRY_TO_CURRENCY.collect { |country,currency| currency }.uniq
+  today = Sequence.get_last_exchange_rate_date
+  if !today
+    active_currencies = ['usd']
+  else
+    date = 1.week.ago(Date.parse(today)).to_yyyymmdd
+    ers = ['usd'] + ExchangeRate.where("date >= ?", date).collect { |er| er.to_currency.downcase }.uniq
+    if ers.size > 1
+      active_currencies = ers & valid_currencies
+    else
+      date = 1.month.ago(Date.parse(today)).to_yyyymmdd
+      ers = ['usd'] + ExchangeRate.where("date >= ?", date).collect { |er| er.to_currency.downcase }.uniq
+      active_currencies = ers & valid_currencies
+    end
+  end
+  "Gofreerev.rails['ACTIVE_CURRENCIES'] = JSON.parse('#{active_currencies.to_json}')"
+%> ;

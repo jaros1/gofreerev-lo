@@ -1215,9 +1215,11 @@ angular.module('gifts', ['ngRoute'])
         }
         // end TextService
     }])
-    .factory('UserService', ['$window', '$http', '$q', function($window, $http, $q) {
+    .factory('UserService', ['$window', '$http', '$q', '$locale', function($window, $http, $q, $locale) {
         var self = this ;
         console.log('UserService loaded') ;
+
+        console.log('locale.id = ' + $locale.id) ;
 
         // initialize list with providers. used in validations and in main/auth page
         var providers = [] ;

@@ -38,6 +38,7 @@ module ActionControllerExtensions
   # some session data are stored in different sections for each client_userid
   # some session data are stored encrypted in database (4kb limit for cookies)
   # keys:
+  #   :client_secret - js client secret - used as secret element in device.sha256 signature - secure client to client communication
   #   :client_timestamp - js client unix timestamp - used by client to detect multiple sessions with identical uid/client_userid (sync users and gifts from localStorage)
   #   :client_userid - 0, 1, 2 etc. From client local storage login - sent to rails all client get/post requests
   #   :created - show cookie note in page header for new sessions - hidden after 30 seconds
@@ -48,6 +49,7 @@ module ActionControllerExtensions
   #   :last_row_at - old show-more-rows functionality - see get_last_row_at/set_last_row_at
   #   :last_row_id - old show-more-rows functionality - see get_last_row_id/set_last_row_id
   #   :refresh_tokens - API refresh tokens - only used for Google+
+  #   :sha256 - sha256 signature - generated from client_secret + user_ids - used in client to client communication
   #   :state - random string :state in oauth API requests. set before calling API and check after returning from API
   #   :timezone - timezone from JS or oauth login
   #   :tokens - API access tokens

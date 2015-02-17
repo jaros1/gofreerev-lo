@@ -426,7 +426,6 @@ var Gofreerev = (function() {
         // add2log('timezone = ' + timezone.value) ;
     })
 
-
     // local or session storage functions ==>
 
     // values in sessionStorage:
@@ -452,6 +451,7 @@ var Gofreerev = (function() {
         oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
         pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
+        secret: {session: false, userid: true, compress: true, encrypt: false}, // client secret - used in device.sha256 signature
         sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
         users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
@@ -626,6 +626,7 @@ var Gofreerev = (function() {
     // get/set item
     function getItem (key) {
         var pgm = 'Gofreerev.getItem: ' ;
+        // if (key == 'password') console.log(pgm + 'caller: ' + arguments.callee.caller.toString()) ;
         var rename_uid = (key == 'did') ; // possible rename uid to did (unique device id)
         var rule = get_local_storage_rule(key) ;
         // userid prefix?
@@ -1335,6 +1336,15 @@ angular.module('gifts', ['ngRoute'])
             userid = parseInt(userid) ;
             return userid ;
         }
+        var client_secret = function() {
+            if (client_userid() == 0) return null ;
+            var secret = Gofreerev.getItem('secret') ;
+            if (!secret) {
+                secret = (Math.random() + 1).toString(10).substring(2,12) ;
+                Gofreerev.setItem('secret', secret) ;
+            }
+            return secret ;
+        }
         var is_logged_in_with_device = function () {
             var user_id = client_userid() ;
             // console.log('is_logged_in_with_device: user_id = ' + user_id) ;
@@ -1752,6 +1762,7 @@ angular.module('gifts', ['ngRoute'])
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
             var login_request = {
                 client_userid: userid,
+                client_secret: client_secret(),
                 client_timestamp: (new Date).getTime(),
                 oauths: oauth_hash_to_array(oauth),
                 did: Gofreerev.getItem('did'),
@@ -1792,6 +1803,8 @@ angular.module('gifts', ['ngRoute'])
 
 
         // update list of other devices (online and offline)
+        // key = did+sha256 is used as device index.
+        // should ensure that messages are buffered for device with unchanged api login
         // todo: update a list of gift listeners - one message buffer for each
         var devices = [] ; // list with online and offline devices
         var devices_index = {} ;
@@ -1803,7 +1816,7 @@ angular.module('gifts', ['ngRoute'])
             var device, i, j, mutual_friend_userid ;
             for (i=0 ; i<devices.length ; i++) {
                 device = devices[i] ;
-                devices_index[device.did] = i ;
+                devices_index[device.key] = i ;
                 // list with relevant devices for mutual friend
                 for (j=0 ; j<device.mutual_friends.length ; j++) {
                     mutual_friend_userid = device.mutual_friends[j] ;
@@ -1825,15 +1838,19 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
             // add index
             var i ;
-            var new_devices_index = {} ;
-            for (i=0 ; i<new_devices.length ; i++) new_devices_index[new_devices[i].did] = i ;
+            var new_devices_index = {}, new_device ;
+            for (i=0 ; i<new_devices.length ; i++) {
+                new_device = new_devices[i] ;
+                new_device.key = new_device.did + new_device.sha256 ; // unique device index
+                new_devices_index[new_device.key] = i ;
+            }
             // update old devices
             var j, new_mutual_friends ;
             for (i=0 ; i<devices.length ; i++) {
                 device = devices[i] ;
-                device.online = new_devices_index.hasOwnProperty(device.did) ;
+                device.online = new_devices_index.hasOwnProperty(device.key) ;
                 if (device.online) {
-                    j = new_devices_index[device.did] ;
+                    j = new_devices_index[device.key] ;
                     new_mutual_friends = $(new_devices[j].mutual_friends).not(device.mutual_friends).get() ;
                     device.mutual_friends = new_devices[j].mutual_friends ;
                     if (new_mutual_friends.length > 0) {
@@ -1850,7 +1867,7 @@ angular.module('gifts', ['ngRoute'])
             for (i=0 ; i<new_devices.length ; i++) {
                 device = new_devices[i] ;
                 device.online = true ;
-                if (!devices_index.hasOwnProperty(device.did)) {
+                if (!devices_index.hasOwnProperty(device.key)) {
                     // new device
                     device.outbox = [] ;
                     // start sync. - step 1 - compare sha256 values for gifts for mutual friends
@@ -1862,7 +1879,7 @@ angular.module('gifts', ['ngRoute'])
                 }
             }
             init_devices_index() ;
-            // console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
         } // update_devices
 
         // get/set pubkey for devices - used in client to client communication
@@ -1945,6 +1962,7 @@ angular.module('gifts', ['ngRoute'])
             find_receiver: find_receiver,
             logout: logout,
             client_userid: client_userid,
+            client_secret: client_secret,
             update_users: update_users,
             oauth_array_to_hash: oauth_array_to_hash,
             add_oauth: add_oauth,
@@ -2515,7 +2533,8 @@ angular.module('gifts', ['ngRoute'])
             var userid = userService.client_userid() ;
             if (userid == 0) return ; // only relevant for logged in users
             console.log(pgm + 'start');
-            var do_tasks_request = {client_userid: userid, timezone: get_js_timezone()} ;
+            var secret = userService.client_secret() ;
+            var do_tasks_request = {client_userid: userid, client_secret: secret, timezone: get_js_timezone()} ;
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();

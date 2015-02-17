@@ -284,6 +284,27 @@ class Session < ActiveRecord::Base
     encrypt_remove_pre_and_postfix(temp_client_timestamp, 'client_timestamp', 12).to_i
   end # client_timestamp_was
 
+  # 15) client_secret - String in model - encrypted text in db - used as secret element in device.sha256 signature
+  def client_secret
+    return nil unless (extended_client_secret = read_attribute(:client_secret))
+    encrypt_remove_pre_and_postfix(extended_client_secret, 'client_secret', 13)
+  end # client_secret
+  def client_secret=(new_client_secret)
+    if new_client_secret
+      # logger.debug2  "new_client_secret = #{new_client_secret} (#{new_client_secret.class.name})"
+      check_type('client_secret', new_client_secret, 'String')
+      write_attribute :client_secret, encrypt_add_pre_and_postfix(new_client_secret, 'client_secret', 13)
+    else
+      write_attribute :client_secret, nil
+    end
+  end # client_secret=
+  alias_method :client_secret_before_type_cast, :client_secret
+  def client_secret_was
+    return client_secret unless client_secret_changed?
+    return nil unless (extended_client_secret = attribute_was(:client_secret))
+    encrypt_remove_pre_and_postfix(extended_client_secret, 'client_secret', 13)
+  end # client_secret_was
+
   # 15) created_at
 
   # 16) updated_at
@@ -295,6 +316,7 @@ class Session < ActiveRecord::Base
   def set_column_value (key, value)
     key = key.to_sym
     case key
+      when :client_secret then self.client_secret = value
       when :client_timestamp then self.client_timestamp = value
       when :created then self.created = value
       when :did then self.did = value
@@ -306,7 +328,15 @@ class Session < ActiveRecord::Base
       when :refresh_tokens then self.refresh_tokens = value
       when :state then self.state = value
       when :tokens then self.tokens = value
-      when :user_ids then self.user_ids = value
+      when :user_ids
+        self.user_ids = value
+        # update sha256 signature - used in ping - used in client to client communication
+        if value.class == Array
+          sha256_input = ([self.client_secret]+value.sort).join(',')
+          self.sha256 = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        else
+          self.sha256 = nil
+        end
       else raise "unknown key #{key}"
     end # case
   end

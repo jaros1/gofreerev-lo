@@ -280,6 +280,9 @@ class UtilController < ApplicationController
   def do_tasks
     begin
 
+      # remember client secret - used in data sync. between devices
+      set_session_value :client_secret, params[:client_secret]
+
       # todo: debug why IE is not setting state before redirecting to facebook in facebook/autologin
       logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
       # save timezone received from javascript
@@ -947,8 +950,9 @@ class UtilController < ApplicationController
   def login
     begin
 
-      # remember unique device uid - used when sync. data between user devices
+      # remember unique device uid and client secret - used in sync. data between devices
       set_session_value :did, params[:did]
+      set_session_value :client_secret, params[:client_secret]
 
       # save new public keys - used in client to client communication
       # private key is saved password encrypted in client localStorage and is only known by client
@@ -1150,6 +1154,8 @@ class UtilController < ApplicationController
         @json[:error] = 'Authorization was not found on server. Please use device log out + log in to refresh server authorization' unless @json[:error]
         login_user_ids = []
       end
+      # copy sha256 signature from sessions to pings table (stored encrypted in session but unencrypted in pings)
+      ping.sha256 = get_session_value(:sha256)
 
       # debug info
       logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
@@ -1218,7 +1224,7 @@ class UtilController < ApplicationController
           end
         end.collect do |p|
           {:did => p.did,
-           # :user_ids => p.internal_user_ids,
+           :sha256 => p.sha256,
            :mutual_friends => p.mutual_friends}
         end
         # logger.debug2 "pings.size (after) = #{pings.size}"

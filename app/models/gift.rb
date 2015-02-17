@@ -257,7 +257,7 @@ class Gift < ActiveRecord::Base
           if g.sha256 == sha256_server
             data << { :gid => gid, :created_at_server => g.created_at.to_i }
           else
-            data << { :gid => gid, :error => "#{msg}Gift already exists but sha256 signature was invalid." }
+            data << { :gid => gid, :error => "#{msg}Gift exists but sha256 signature is invalid." }
             no_errors += 1
           end
           next

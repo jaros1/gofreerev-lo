@@ -189,7 +189,24 @@ JSON_SCHEMA = {
                           :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
                       },
                       :required => %w(gid sha256),
-                      :additionalProperties => %w(giver_user_ids receiver_user_ids)}},
+                      :additionalProperties => false}
+              },
+              # new_comments - optional array with minimal meta-information for new comments (cid, sha256 and user ids)
+              :new_comments => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :cid => {:type => 'string', :pattern => uid_pattern},
+                          # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price and currency)
+                          :sha256 => {:type => 'string', :maxLength => 32},
+                          # internal user ids for creator of comment (=login users) - todo: change to uid/provider format to support cross server replication?
+                          :user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                      },
+                      :required => %w(cid sha256 user_ids),
+                      :additionalProperties => false}
+              },
               # pubkeys - optional array with did (unique device id) - request public key for other client before starting client to client communication
               :pubkeys => {:type => 'array',
                            :items => {:type => 'string', :pattern => uid_pattern}},
@@ -252,6 +269,34 @@ JSON_SCHEMA = {
                                   :created_at_server => {:type => 'integer', :minimum => Time.zone.now.to_i, :maximum => 1.year.from_now.to_i}
                               },
                               :required => %w(gid),
+                              :additionalProperties => false
+                          }
+                      },
+                      # optional number of errors returned in data array
+                      :no_errors => {:type => 'integer'}
+                  },
+                  :additionalProperties => false
+              },
+              # object and array with created_at_server timestamps (or error messages) response for new_comments request
+              :new_comments => {
+                  :type => 'object',
+                  :properties => {
+                      # any generic error message when processing of new_comments request. see also error property in data array
+                      :error => {:type => 'string'},
+                      # array with created_at_server timestamps or error messages for each cid in new_comments request
+                      :data => {
+                          :type => 'array',
+                          :items => {
+                              :type => 'object',
+                              :properties => {
+                                  # required unique comment id from new_comments request
+                                  :cid => {:type => 'string', :pattern => uid_pattern},
+                                  # error message if signature for comment could not be saved on server
+                                  :error => {:type => 'string'},
+                                  # ok - created at server unix timestamp - 10 decimals - comment signature was saved on server
+                                  :created_at_server => {:type => 'integer', :minimum => Time.zone.now.to_i, :maximum => 1.year.from_now.to_i}
+                              },
+                              :required => %w(cid),
                               :additionalProperties => false
                           }
                       },

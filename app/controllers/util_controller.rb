@@ -48,175 +48,6 @@ class UtilController < ApplicationController
   end # check_gift_action
 
 
-  #
-  # comment link ajax methods
-  #
-
-  # helper for cancel_new_deal, reject_new_deal and accept_new_deal
-  # input: params[:comment_id] and action in %w(cancel reject accept)
-  # returns array [comment, key, options] - key and options are used for error messages
-  private
-  def check_new_deal_action (action)
-    comment = key = options = nil
-    actions = %w(cancel reject accept)
-    if !actions.index(action)
-      logger.error2 "Invalid call. action #{action}. allowed actions are #{actions.join(', ')}"
-      return [comment, '.invalid_action', {:raise => I18n::MissingTranslationData} ]
-    end
-    comment_id = params[:comment_id]
-    comment = Comment.find_by_id(comment_id)
-    if !comment
-      logger.warn2 "Comment with id #{comment_id} was not found. Possible error as deleted comments are ajax removed from gifts/index page within 5 minutes"
-      return [comment, '.comment_not_found', {:raise => I18n::MissingTranslationData}]
-    end
-    return [comment, '.not_logged_in', {:raise => I18n::MissingTranslationData}] unless logged_in?
-    gift = comment.gift
-    return [comment, '.gift_deleted', {:raise => I18n::MissingTranslationData}] if gift.deleted_at
-    if !gift.visible_for?(@users)
-      if action == 'cancel'
-        # cancel proposal - changed friend relation
-        logger.debug2 "Login users are no longer allowed to see gift id #{gift_id}. Could be removed friend. Could be system error"
-      else
-        # rejected or accept proposal
-        logger.error2 "System error. Login users are not allowed to see gift id #{gift_id}"
-      end
-      return [comment, '.not_authorized', {:raise => I18n::MissingTranslationData}]
-    end
-    @users.remove_deleted_users
-    if !gift.visible_for?(@users)
-      logger.debug2 "Found one or more deleted accounts. Remaining users #{User.debug_info(@users)} is/are not allowed to see gift id #{gift_id}"
-      return [comment, '.deleted_user', {:raise => I18n::MissingTranslationData}]
-    end
-    return [comment, gift, '.comment_deleted', {:raise => I18n::MissingTranslationData}] if comment.deleted_at
-    method_name = "show_#{action}_new_deal_link?".to_sym
-    show_action = comment.send(method_name, @users)
-    if !show_action
-      logger.debug2  "#{action} link no longer active for comment with id #{comment_id}"
-      return [comment, '.not_allowed', {:raise => I18n::MissingTranslationData}]
-    end
-    # ok
-    comment
-  end # check_new_deal_action
-
-  # Parameters: {"comment_id"=>"478"}
-  public
-  def cancel_new_deal
-    @link_id = nil
-    table = 'tasks_errors' # tasks errors table in top of page
-    params[:action] = 'cancel_reject_new_deal' # render this js.erb view
-    begin
-      # validate new deal reject action
-      comment, key, options = check_new_deal_action('cancel')
-      table = "gift-#{comment.gift.id}-comment-#{comment.id}-errors" if comment # ajax error table under comment row
-      return format_response_key key, options.merge(:table => table) if key
-      gift = comment.gift
-      # cancel agreement proposal
-      comment.new_deal_yn = nil
-      comment.updated_by = login_user_ids.join(',')
-      comment.save!
-      # hide link
-      @link_id = "gift-#{gift.id}-comment-#{comment.id}-cancel-link"
-      format_response_key 'cancel_reject_new_deal', :table => table
-    rescue => e
-      logger.error2 "Exception: #{e.message.to_s}"
-      logger.error2 "Backtrace: " + e.backtrace.join("\n")
-      @link_id = nil
-      format_response_key '.exception', :error => e.message.to_s, :raise => I18n::MissingTranslationData, :table => table
-      logger.error2 "@errors = #{@errors}"
-    end
-  end # cancel_new_deal
-
-  # todo: moved to angularJS GiftsCtrl.reject_new_deal
-  def reject_new_deal
-    @link_id = nil
-    table = 'tasks_errors' # tasks errors table in top of page
-    params[:action] = 'cancel_reject_new_deal' # render this js.erb view
-    begin
-      # validate new deal reject action
-      comment, key, options = check_new_deal_action('reject')
-      table = "gift-#{comment.gift.id}-comment-#{comment.id}-errors" if comment # ajax error table under comment row
-      return format_response_key key, options.merge(:table => table) if key
-      gift = comment.gift
-      # reject agreement proposal
-      comment.accepted_yn = 'N'
-      comment.updated_by = login_user_ids.join(',')
-      comment.save!
-      # hide links
-      # todo: other comment changes? Maybe an other layout, style, color for accepted gift/comments
-      # todo: change gift and comment for other users after reject (new messages count ajax)?
-      @link_id = "gift-#{gift.id}-comment-#{comment.id}-reject-link"
-      format_response_key '.ok', :table => table
-    rescue => e
-      logger.error2 "Exception: #{e.message.to_s}"
-      logger.error2 "Backtrace: " + e.backtrace.join("\n")
-      @link_id = nil
-      format_response_key '.exception', :error => e.message.to_s, :raise => I18n::MissingTranslationData, :table => table
-      logger.error2 "@errors = #{@errors}"
-    end
-  end # reject_new_deal
-
-  # todo: moved to angularJS GiftsCtrl.accept_new_deal
-  def accept_new_deal
-    @api_gifts = nil
-    table = 'tasks_errors' # tasks errors table in top of page
-    begin
-      # validate new deal action
-      comment, key, options = check_new_deal_action('accept')
-      table = "gift-#{comment.gift.id}-comment-#{comment.id}-errors" if comment # ajax error table under comment row
-      return format_response_key key, options.merge(:table => table) if key
-      # accept agreement proposal - mark proposal as accepted - callbacks sent notifications and updates gift
-      # logger.debug2  "comment.currency = #{comment.currency}"
-      # find correct updated_by users
-      # 1) user_id must be in api_gifts
-      # 2) user_id must be in @users
-      # 3) provider must be in api comments
-      api_comment_providers = comment.api_comments.collect { |ac| ac.provider }
-      updated_by = []
-      gift = comment.gift
-      api_gift = nil
-      gift.api_gifts.each do |ag|
-        user_id = ag.user_id_giver || ag.user_id_receiver
-        if !login_user_ids.index(user_id)
-          # logger.debug2 "ignoring user_id #{user_id} - not logged in"
-          nil # ignore api gift row not created by login users
-        elsif !api_comment_providers.index(ag.provider)
-          # logger.debug2 "ingoring user_id #{user_id} - no new proposal for this provider"
-          nil # ignore api gift rows without new proposal from other user
-        else
-          # ok - match between gift creator, current logged in user and new deal proposal provider
-          # logger.debug2 "found valid updated_by user_id #{user_id}"
-          updated_by << user_id
-          api_gift = ag
-        end
-      end
-      if updated_by.size == 0
-        # system error - should have been rejected in check_new_deal_action('accept')
-        logger.error2 "Could not find valid updated_by user ids. gift id #{gift.id}, comment id #{comment.id}"
-        logger.error2 "gift created by " + gift.api_gifts.collect { |ag| ag.user_id_giver || ag.user_id_receiver }.join(', ')
-        logger.error2 "logged in users " + @users.collect { |u| u.user_id }.join(', ')
-        logger.error2 "new deal providers " + api_comment_providers.join(', ')
-        return format_response_key '.invalid_updated_by', :table => table
-      end
-      comment.accepted_yn = 'Y'
-      comment.updated_by = updated_by.join(',')
-      comment.save!
-
-      # use a discount version af new_messages_count to ajax replace accepted deal in gifts/index page for current user
-      # that is without @new_messages_count, @comments, only with this accepted gift
-      # only client insert_update_gifts JS function is called
-      # next new_mesage_count request will ajax replace this gift once more, but that is a minor problem
-      api_gift.reload
-      @api_gifts = [api_gift]
-      format_response_key '.ok', :table => table
-    rescue => e
-      logger.error2 "Exception: #{e.message.to_s}"
-      logger.error2 "Backtrace: " + e.backtrace.join("\n")
-      format_response_key '.exception', :error => e.message.to_s, :raise => I18n::MissingTranslationData, :table => table
-      logger.error2 "@errors = #{@errors}"
-      @api_gifts = nil
-    end
-  end # accept_new_deal
-
   # before action filter. validate json request against json schema definition
   # used in do_tasks, login, logout and ping
   private
@@ -369,25 +200,7 @@ class UtilController < ApplicationController
     [login_user, api_client, key, options]
   end # get_login_user_and_api_client
 
-
-  ## ajax inject error message to gifts/index page if post_login_<provider> task was not found
-  ## there must be one post_login_<provider> task for each login provider to download friend list
-  #private
-  #def post_login_not_found(provider)
-  #  begin
-  #
-  #    # no post_login_<provider> task was found (app. controller.login)
-  #    # write error message to developer with instructions how to fix this problem
-  #    logger.error2 "util.post_login_#{provider} method was not found. please create a post login task to download friend list from login provider"
-  #    [ '.post_login_task_not_found', {:provider => provider}]
-  #
-  #  rescue => e
-  #    logger.debug2  "Exception: #{e.message.to_s}"
-  #    logger.debug2  "Backtrace: " + e.backtrace.join("\n")
-  #    raise
-  #  end
-  #end
-
+  
   # returns [login_user, api_client, friends_hash, new_user, key, options] array
   # key + options are used as input to translate after errors
   private
@@ -1242,7 +1055,13 @@ class UtilController < ApplicationController
         new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids)
         @json[:new_gifts] = new_gifts_response if new_gifts_response
 
-        # 2) public keys. used in client to client communication (public/private key encryption)
+        # 2) new comments. create comments (cid and sha256 signature) and return created_at_server timestamps to client
+        # sha256 signature should ensure that comment information is not unauthorized updated
+        # logger.debug2 "new_comments = #{params[:new_comments]} (#{params[:new_comments].class})"
+        new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids)
+        @json[:new_comments] = new_comments_response if new_comments_response
+
+        # 3) public keys. used in client to client communication (public/private key encryption)
         pubkeys_response = Ping.pubkeys params[:pubkeys]
         @json[:pubkeys] = pubkeys_response if pubkeys_response
 

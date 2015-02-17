@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150217081131) do
+ActiveRecord::Schema.define(version: 20150217161924) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -70,23 +70,13 @@ ActiveRecord::Schema.define(version: 20150217081131) do
   add_index "api_gifts", ["user_id_receiver"], name: "index_api_gifts_on_receiver", using: :btree
 
   create_table "comments", force: true do |t|
-    t.string   "comment_id",       limit: 20, null: false
-    t.text     "comment",                     null: false
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "gid",                         null: false
-    t.text     "currency"
-    t.text     "price"
-    t.string   "new_deal_yn",      limit: 1
-    t.string   "accepted_yn",      limit: 1
-    t.integer  "status_update_at",            null: false
-    t.datetime "deleted_at"
-    t.string   "updated_by"
+    t.string   "cid",                   null: false
+    t.string   "sha256",     limit: 45, null: false
   end
 
-  add_index "comments", ["comment_id"], name: "index_comments_on_comment_id", unique: true, using: :btree
-  add_index "comments", ["deleted_at"], name: "index_comments_on_deleted_at", using: :btree
-  add_index "comments", ["gid"], name: "index_comments_on_gid", using: :btree
+  add_index "comments", ["cid"], name: "index_comments_on_cid", unique: true, using: :btree
 
   create_table "exchange_rates", force: true do |t|
     t.string   "from_currency", limit: 3,                          null: false

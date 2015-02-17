@@ -1808,7 +1808,9 @@ angular.module('gifts', ['ngRoute'])
         // todo: update a list of gift listeners - one message buffer for each
         var devices = [] ; // list with online and offline devices
         var devices_index = {} ;
+        var pubkeys = {} ; // hash with public key for each unique device (did)
         var user_devices = {} ; // list with online devices for each user id (mutual friend)
+
         var init_devices_index = function () {
             var pgm = 'UserService.init_devices_index: ' ;
             devices_index = {} ; // one index for each device
@@ -1824,7 +1826,7 @@ angular.module('gifts', ['ngRoute'])
                     user_devices[mutual_friend_userid].push(i) ; // index to devices array
                 } // for j
             } // for j
-            console.log(pgm + 'user_devices = ' + JSON.stringify(user_devices)) ;
+            // console.log(pgm + 'user_devices = ' + JSON.stringify(user_devices)) ;
         }
         init_devices_index() ;
         // device actions:
@@ -1879,7 +1881,8 @@ angular.module('gifts', ['ngRoute'])
                 }
             }
             init_devices_index() ;
-            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            // console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            // console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
         } // update_devices
 
         // get/set pubkey for devices - used in client to client communication
@@ -1888,26 +1891,18 @@ angular.module('gifts', ['ngRoute'])
             var device ;
             for (var i=0 ; i<devices.length ; i++) {
                 device = devices[i] ;
-                if (!device.hasOwnProperty('pubkey')) request.push(device.did) ;
+                if ((!pubkeys[device.did]) && (request.indexOf(device.did)==-1)) request.push(device.did) ;
             }
             return request.length == 0 ? null : request ;
         }
-        var pubkeys_response = function (pubkeys) {
+        var pubkeys_response = function (response) {
             var pgm = 'UserService.pubkeys_response: ' ;
-            console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
-            var did, index, device ;
-            for (var i=0 ; i<pubkeys.length ; i++) {
-                if (pubkeys[i].hasOwnProperty('did')) {
-                    did = pubkeys[i].did ;
-                    if (devices_index.hasOwnProperty(did)) {
-                        index = devices_index[did] ;
-                        device = devices[index] ;
-                        if (device.hasOwnProperty('pubkey')) console.log(pgm + 'invalid pubkeys response from ping. pubkey for did has already been received from server') ;
-                        else device.pubkey = pubkeys[i].pubkey ;
-                    }
-                    else console.log(pgm + 'invalid pubkeys response from ping. Unknown did') ;
-                }
-                else console.log(pgm + 'invalid pubkeys response from ping. did property was not found.') ;
+            console.log(pgm + 'pubkeys = ' + JSON.stringify(response)) ;
+            var did, device ;
+            for (var i=0 ; i<response.length ; i++) {
+                did = response[i].did ;
+                if (pubkeys[did]) console.log(pgm + 'invalid pubkeys response from ping. pubkey for did ' + did + ' has already been received from server') ;
+                else pubkeys[did] = response[i].pubkey ;
             } // for
         } // pubkeys_response
 
@@ -2083,6 +2078,7 @@ angular.module('gifts', ['ngRoute'])
                     comment_index = comments_index[cid] ;
                     if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids ;
                     if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price ;
+                    if (comments[comment_index].currency != new_comments[i].currency) comments[comment_index].currency = new_comments[i].currency ;
                     if (comments[comment_index].comment != new_comments[i].comment) comments[comment_index].comment = new_comments[i].comment ;
                     if (comments[comment_index].created_at_client != new_comments[i].created_at_client) comments[comment_index].created_at_client = new_comments[i].created_at_client ;
                     if (comments[comment_index].new_deal != new_comments[i].new_deal) comments[comment_index].new_deal = new_comments[i].new_deal ;
@@ -2154,6 +2150,7 @@ angular.module('gifts', ['ngRoute'])
             // refresh comment
             if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids ;
             if (comment.price != comments[index].price) comment.price = comments[index].price ;
+            if (comment.currency != comments[index].currency) comment.currency = comments[index].currency ;
             if (comment.comment != comments[index].comment) comment.comment = comments[index].comment ;
             if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client ;
             if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal ;
@@ -2374,6 +2371,33 @@ angular.module('gifts', ['ngRoute'])
             if (save) save_gifts() ;
         }; // new_gifts_response
 
+        // send meta-data for newly created comments to server and get comment.created_at_server unix timestamps from server.
+        // called from UserService.ping
+        // todo: not implemented
+        var new_comments_request = function () {
+            var pgm = 'GiftService.new_comments_request: ' ;
+            var request = [];
+            var gift, comment, hash, sha256_client ;
+            for (var i = 0; i < gifts.length; i++) {
+                if (!gifts[i].comments) continue ;
+                gift = gifts[i] ;
+                comments = gifts[i].comments ;
+                for (var j=0 ; j<comments.length ; j++) {
+                    if (comments[j].created_at_server) continue ;
+                    comment = comments[j] ;
+                    // send meta-data for new comment to server and generate a sha256 signature for comment on server
+                    sha256_client = Gofreerev.sha256(gift.gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency) ;
+                    hash = {cid: comment.cid, user_ids: comment.user_ids, sha256: sha256_client} ;
+                    request.push(hash) ;
+                } // for j
+            } // for i
+            return (request.length == 0 ? null : request) ;
+        }; // new_comments_request
+        var new_comments_response = function (response) {
+            var pgm = 'GiftService.new_comments_response: ' ;
+            console.log(pgm + 'not implemented. response = ' + JSON.stringify(response)) ;
+        }; // new_comments_response
+
         return {
             gifts: gifts,
             load_gifts: load_gifts,
@@ -2383,7 +2407,9 @@ angular.module('gifts', ['ngRoute'])
             sync_gifts: sync_gifts,
             unshift_gift: unshift_gift,
             new_gifts_request: new_gifts_request,
-            new_gifts_response: new_gifts_response
+            new_gifts_response: new_gifts_response,
+            new_comments_request: new_comments_request,
+            new_comments_response: new_comments_response
         };
 
         // end GiftService
@@ -2443,6 +2469,7 @@ angular.module('gifts', ['ngRoute'])
                 sid: sid,
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
+                new_comments: giftService.new_comments_request(),
                 pubkeys: userService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request
             };
@@ -2479,6 +2506,8 @@ angular.module('gifts', ['ngRoute'])
                     if (response.data.pubkeys) userService.pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
                     if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
+                    // get timestamps for newly created comments from server
+                    if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
                     // check expired access token (server side check)
                     if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens) ;
                     // check for new oauth authorization (google+ only)
@@ -3259,6 +3288,8 @@ angular.module('gifts', ['ngRoute'])
                 cid: Gofreerev.get_new_uid(),
                 user_ids: userService.get_login_userids(),
                 comment: gift.new_comment.comment,
+                price: gift.new_comment.price,
+                currency: userService.get_currency(),
                 created_at_client: Gofreerev.unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
@@ -3267,6 +3298,7 @@ angular.module('gifts', ['ngRoute'])
             resize_textarea(new_comment.comment) ;
             // console.log(pgm + 'created_at_client = ' + new_comment.created_at_client) ;
             gift.new_comment.comment = null ;
+            gift.new_comment.price = null ;
             gift.new_comment.new_deal = false ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;

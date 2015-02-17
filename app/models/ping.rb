@@ -42,10 +42,11 @@ class Ping < ActiveRecord::Base
   public
   def self.pubkeys (pubkeys_request)
     return nil unless pubkeys_request.class == Array and pubkeys_request.size > 0
+    pubkeys_request.uniq!
     pubkeys_response = Pubkey.where(:did => pubkeys_request).collect { |p| {:did => p.did, :pubkey => p.pubkey} }
     if pubkeys_request.size != pubkeys_response.size
       # client request with invalid pid! add null response
-      (pubkeys_request - pubkeys_response.collect { |p| p.did }).each do |did|
+      (pubkeys_request - pubkeys_response.collect { |p| p[:did] }).each do |did|
         pubkeys_response.push({:did => did, :pubkey => null})
       end
     end

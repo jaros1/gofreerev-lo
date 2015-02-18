@@ -1858,7 +1858,7 @@ angular.module('gifts', ['ngRoute'])
                     if (new_mutual_friends.length > 0) {
                         // start sync. - step 1 - compare sha256 values for gifts for new mutual friends
                         device.outbox.push({
-                            msgtype: 'gifts-sha256',
+                            msgtype: 'users-sha256',
                             mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
                         }) ;
                     } ;
@@ -1874,14 +1874,14 @@ angular.module('gifts', ['ngRoute'])
                     device.outbox = [] ;
                     // start sync. - step 1 - compare sha256 values for gifts for mutual friends
                     device.outbox.push({
-                        msgtype: 'gifts-sha256',
+                        msgtype: 'users-sha256',
                         mutual_friends: JSON.parse(JSON.stringify(device.mutual_friends))
                     }) ;
                     devices.push(device) ;
                 }
             }
             init_devices_index() ;
-            // console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
             // console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
         } // update_devices
 
@@ -1977,12 +1977,118 @@ angular.module('gifts', ['ngRoute'])
         var self = this ;
         console.log('GiftService loaded') ;
 
+        // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
+        // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
+        // - created_at_client - used in client path of server side sha256 signature - not included in comment sha256 calculation
+        // - comment           - used in client path of server side sha256 signature - not included in comment sha256 calculation
+        // - price             - used in client path of server side sha256 signature - not included in comment sha256 calculation
+        // - currency          - used in client path of server side sha256 signature - not included in comment sha256 calculation
+        // - user_ids          - used in server side sha256 signature - not included in comment sha256 calculation
+        // - created_at_server - returned from new comments request and not included in comment sha256 calculation
+        // - new_deal          - boolean: null or true. null: comment. true: new deal proposal - include in comment sha256 calculation
+        // - deleted_at        - deleted at client timestamp - - include in comment sha256 calculation
+        // - accepted          - accepted boolean - true if accepted by creator of gift - false if rejected by creator of gift - include in comment sha256 calculation
+        // - updated_by        - user id list for users that have accepted or rejected proposal - must be a subset of creators of gift - include in comment sha256 calculation
+        var calc_sha256_for_comment = function (comment) {
+            if ((typeof comment.created_at_server == 'undefined') || (comment.created_at_server == null)) return null ; // no server side sha256 signature
+            var updated_by_internal_ids ;
+            if ((typeof comment.updated_by == 'undefined') || (comment.updated_by == null)) updated_by_internal_ids = [] ;
+            else updated_by_internal_ids = comment.updated_by ;
+            var updated_by_external_ids = [];
+            var user ;
+            for (var i=0 ; i<updated_by_internal_ids.length ; i++) {
+                user = userService.get_user(updated_by_internal_ids[i]) ;
+                if (!user) {
+                    console.log(pgm + 'Cannot calculate sha256 for comment ' + comment.cid + '. Unknown internal user id ' + updated_by_internal_ids[i]) ;
+                    return null ;
+                } ;
+                updated_by_external_ids.push(user.uid + '/' + user.provider) ;
+            }
+            updated_by_external_ids = updated_by_external_ids.sort() ;
+            updated_by_external_ids.unshift(updated_by_external_ids.length.toString()) ;
+            var updated_by_str = updated_by_external_ids.join(',') ;
+            return Gofreerev.sha256(comment.new_deal, comment.deleted_at, comment.accepted, updated_by_str) ;
+        } // calc_sha256_for_comment
+
+        // calculate sha256 value for gift. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
+        // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for gift
+        //   created_at_client, description, open_graph_url, open_graph_title, open_graph_description and open_graph_image,
+        //   direction, giver_user_ids and receiver_user_ids
+        //   direction=giver: giver_user_ids can not be changed, receiver_user_ids are added later, use receiver_user_ids in sha256 value
+        //   direction=receiver: receiver_user_ids can not be changed, giver_uds_ids are added latter, use receiver user ids in sha256 value
+        // - created_at_server timestamp is readonly and is returned from ping/new_gifts response - not included in sha256 value
+        // - price and currency - should not change, but include in sha256 value
+        // - likes - change to array or object and keep last like/unlike for each user - include in sha256 value
+        // - follow - change to array and keep last follow/unfollow for each logged in users - not included in sha256 value
+        //   find some other way to replicate follow/unfollow between logged in users - not shared with friends
+        // - show - device only field or logged in user only field - replicate hide to other devices with identical logged in users? - not included in sha256 value
+        // - deleted_at - included in sha256 value
+        // - comments - array with comments - included comments sha256_values in gift sha256 value
+        var calc_sha256_for_gift = function (gift) {
+            var pgm = 'GiftService.sha256_gift: ' ;
+            if ((typeof gift.created_at_server == 'undefined') || (gift.created_at_server == null)) return null ; // no server side sha256 signature
+            // other participant in gift. null until closed/given/received
+            var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids ;
+            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids == [] ;
+            var other_participant_external_ids = [];
+            var user ;
+            for (var i=0 ; i<other_participant_internal_ids.length ; i++) {
+                user = userService.get_user(other_participant_internal_ids[i]) ;
+                if (!user) {
+                    console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]) ;
+                    return null ;
+                } ;
+                other_participant_external_ids.push(user.uid + '/' + user.provider) ;
+            }
+            other_participant_external_ids = other_participant_external_ids.sort() ;
+            other_participant_external_ids.unshift(other_participant_external_ids.length.toString()) ;
+            var other_participant_str = other_participant_external_ids.join(',') ;
+            // price and currency
+            // likes - todo: change like from boolean to an array of like and unlike with user id and timestamp
+            var likes_str = '' ;
+            // deleted_at
+            // comments. string with sha256 value for each comment
+            var comments, comment_sha256_temp ;
+            if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [] ;
+            else comments = gift.comments ;
+            var comments_sha256 = [], s ;
+            for (i=0 ; i<comments.length ; i++) {
+                s = calc_sha256_for_comment(comments[i]) ;
+                if (!s) return null ; // error in sha256 calc. error has been written to log
+                comments_sha256.push(s) ;
+            } ;
+            comments_sha256.unshift(comments.length.toString()) ;
+            var comments_str = comments_sha256.join(',') ;
+            return Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at, comments_str) ;
+        } // sha256_gift
+
         var gifts = [];
         var gifts_index = {} ;
         var init_gifts_index = function () {
             gifts_index = {} ;
             for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gid] = j ;
         }
+
+        // save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
+        var save_gifts = function() {
+            // remove some session specific attributes before save
+            // also remove sha256 calculation - no reason to keep sha256 calculations in localStorage
+            var gifts_clone = JSON.parse(JSON.stringify(gifts)) ;
+            var gift, comments ;
+            for (var i=0 ; i<gifts_clone.length ; i++) {
+                gift = gifts_clone[i] ;
+                if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments ;
+                if (gift.hasOwnProperty('new_comment')) delete gift.new_comment ;
+                if (gift.hasOwnProperty('sha256')) delete gift.sha256 ;
+                if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
+                comments = gift.comments ;
+                for (var j=0 ; j<comments.length ; j++) {
+                    if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256 ;
+                }
+            }
+            // save
+            Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
+        } // save_gifts
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
@@ -2029,10 +2135,13 @@ angular.module('gifts', ['ngRoute'])
                         }
                     }
                 }
+                // calc sha256 signatures from gift and comments
+                gift.sha256 = calc_sha256_for_gift(gift) ;
+                if (!gift.sha256) console.log(pgm + ' could not calculate sha256 for gift ' + gift.gid) ;
                 gifts_index[gift.gid] = gifts.length ;
-                gifts.push(new_gifts[i]) ;
+                gifts.push(gift) ;
             }
-            if (migration) Gofreerev.setItem('gifts', JSON.stringify(gifts)) ;
+            if (migration) save_gifts() ;
             console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
         }
         load_gifts() ;
@@ -2158,79 +2267,6 @@ angular.module('gifts', ['ngRoute'])
             if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted ;
             if (comment.updated_by != comments[index].updated_by) comment.updated_by = comments[index].updated_by ;
         }
-
-        // todo: save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
-        //       calling function should refresh old gift from local storage before making change
-        //       one or more (other) attributes can have been changed in an other browser tabs
-        //       one testcase could be like+follow. like in session 1 and follow in session 2. the result should be like+follow in both browser tabs.
-        var save_gifts = function() {
-            // remove some session specific attributes before save
-            var gifts_clone = JSON.parse(JSON.stringify(gifts)) ;
-            for (var i=0 ; i<gifts_clone.length ; i++) {
-                if (gifts_clone[i].hasOwnProperty('show_no_comments')) delete gifts_clone[i]['show_no_comments'] ;
-                if (gifts_clone[i].hasOwnProperty('new_comment')) delete gifts_clone[i]['new_comment'] ;
-                if (!gifts_clone[i].hasOwnProperty('comments')) gifts_clone[i].comments = [] ;
-            }
-            // save
-            Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
-        }
-
-        // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
-        //
-        var calc_sha256_for_comment = function (comment) {
-            return '' ;
-        }
-
-        // calculate sha256 value for gift. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
-        // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 value:
-        //   created_at_client, description, open_graph_url, open_graph_title, open_graph_description and open_graph_image,
-        //   direction, giver_user_ids and receiver_user_ids
-        //   direction=giver: giver_user_ids can not be changed, receiver_user_ids are added later, use receiver_user_ids in sha256 value
-        //   direction=receiver: receiver_user_ids can not be changed, giver_uds_ids are added latter, use receiver user ids in sha256 value
-        // - created_at_server timestamp is readonly and is returned from ping/new_gifts response - not included in sha256 value
-        // - price and currency - should not change, but include in sha256 value
-        // - likes - change to array or object and keep last like/unlike for each user - include in sha256 value
-        // - follow - change to array and keep last follow/unfollow for each logged in users - not included in sha256 value
-        //   find some other way to replicate follow/unfollow between logged in users - not shared with friends
-        // - show - device only field or logged in user only field - replicate hide to other devices with identical logged in users? - not included in sha256 value
-        // - deleted_at - included in sha256 value
-        // - comments - array with comments - included comments sha256_values in gift sha256 value
-        var calc_sha256_for_gift = function (gift) {
-            var pgm = 'GiftService.sha256_gift: ' ;
-            // other participant in gift. null until closed/given/received
-            var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids ;
-            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids == [] ;
-            var other_participant_external_ids = [];
-            var user ;
-            for (var i=0 ; i<other_participant_internal_ids.length ; i++) {
-                user = userService.get_user(other_participant_internal_ids[i]) ;
-                if (!user) {
-                    console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]) ;
-                    return null ;
-                } ;
-                other_participant_external_ids.push(user.uid + '/' + user.provider) ;
-            }
-            other_participant_external_ids = other_participant_external_ids.sort ;
-            other_participant_external_ids.unshift(other_participant_external_ids.length.toString()) ;
-            var other_participant_str = other_participant_external_ids.join(',') ;
-            // price and currency
-            // likes - todo: change like from boolean to an array of like and unlike with user id and timestamp
-            var likes_str = '' ;
-            // deleted_at
-            // comments. string with sha256 value for each comment
-            var comments, comment_sha256_temp ;
-            if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [] ;
-            else comments = gift.comments ;
-            var comments_sha256 = [], s ;
-            for (i=0 ; i<comments.length ; i++) {
-                s = calc_sha256_for_comment(comments[i]) ;
-                if (!s) return null ; // error in sha256 calc. error has been written to log
-                comments_sha256.push(s) ;
-            } ;
-            comments_sha256.unshift(comments.length.toString()) ;
-            var comments_str = comments_sha256.join(',') ;
-            return Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at,comments_str) ;
-        } // sha256_gift
 
         // less that <ping_interval> milliseconds (see ping) between util/ping for client_userid
         // there must be more than one browser tab open with identical client login

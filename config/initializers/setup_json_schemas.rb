@@ -88,7 +88,7 @@ JSON_SCHEMA = {
             # client unix timestamp (10) with milliseconds (3) - total 13 decimals
             :client_timestamp => client_timestamp_type,
             # client secret - string with 10 decimals - used in device.sha256 signature
-            :client_secret => { :type => 'string'},
+            :client_secret => {:type => 'string'},
             # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :did => {:type => 'string', :pattern => uid_pattern},
             # pubkey key for unique device - used in encrypted client to client information replication
@@ -142,9 +142,9 @@ JSON_SCHEMA = {
             # client userid normally = 1. Old client userid at device logout (provider=null). Allow up to 100 user accounts in localStorage
             :client_userid => client_userid_type,
             # Timezone offset in hours. todo: remove - all dates should be formatted with javascript, not rails
-            :timezone => { :type => 'number', :minimum => -12, :maximum => 14},
+            :timezone => {:type => 'number', :minimum => -12, :maximum => 14},
             # client secret - string with 10 decimals - used in device.sha256 signature
-            :client_secret => { :type => 'string'}
+            :client_secret => {:type => 'string'}
         },
         :required => %w(client_userid timezone client_secret),
         :additionalProperties => false
@@ -220,7 +220,27 @@ JSON_SCHEMA = {
                           :access_token => {:type => 'string'}
                       }
                   }
-              }},
+              },
+              # array with encrypted messages for other devices (users_sha256, todo: gifts_sha256, gifts etc)
+              # temporary buffer on server until message is delivered or message is expired/too old
+              :messages => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :receiver_did => {:type => 'string', :pattern => uid_pattern},
+                          # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
+                          :receiver_sha256 => {:type => 'string'},
+                          # message for receiver device encrypted with device public key
+                          :message => {:type => 'string'}
+                      },
+                      :required => %w(receiver_did receiver_sha256 message),
+                      :additionalProperties => false
+                  }
+
+              }
+             },
          :required => %w(client_userid client_timestamp sid),
          :additionalProperties => false
         },
@@ -338,7 +358,7 @@ JSON_SCHEMA = {
             # client unix timestamp (10) with milliseconds (3) - total 13 decimals
             :client_timestamp => client_timestamp_type,
             # lookup url
-            :url => { :type => 'string'}
+            :url => {:type => 'string'}
         },
         :required => %w(client_userid client_timestamp url),
         :additionalProperties => false
@@ -347,12 +367,12 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # open graph meta-tags - blank if url does not exist
-            :url => { :type => 'string' },
-            :title => { :type => 'string' },
-            :description => { :type => 'string' },
-            :image => { :type => 'string' },
+            :url => {:type => 'string'},
+            :title => {:type => 'string'},
+            :description => {:type => 'string'},
+            :image => {:type => 'string'},
             # optional error message (server errors)
-            :error => { :type => 'string' }
+            :error => {:type => 'string'}
         },
         :additionalProperties => false
     }

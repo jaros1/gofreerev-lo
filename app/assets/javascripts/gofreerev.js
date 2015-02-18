@@ -1801,111 +1801,6 @@ angular.module('gifts', ['ngRoute'])
 
         };
 
-
-        // update list of other devices (online and offline)
-        // key = did+sha256 is used as device index.
-        // should ensure that messages are buffered for device with unchanged api login
-        // todo: update a list of gift listeners - one message buffer for each
-        var devices = [] ; // list with online and offline devices
-        var devices_index = {} ;
-        var pubkeys = {} ; // hash with public key for each unique device (did)
-        var user_devices = {} ; // list with online devices for each user id (mutual friend)
-
-        var init_devices_index = function () {
-            var pgm = 'UserService.init_devices_index: ' ;
-            devices_index = {} ; // one index for each device
-            user_devices = {} ; // one index for each userid
-            var device, i, j, mutual_friend_userid ;
-            for (i=0 ; i<devices.length ; i++) {
-                device = devices[i] ;
-                devices_index[device.key] = i ;
-                // list with relevant devices for mutual friend
-                for (j=0 ; j<device.mutual_friends.length ; j++) {
-                    mutual_friend_userid = device.mutual_friends[j] ;
-                    if (!user_devices[mutual_friend_userid]) user_devices[mutual_friend_userid] = [] ;
-                    user_devices[mutual_friend_userid].push(i) ; // index to devices array
-                } // for j
-            } // for j
-            // console.log(pgm + 'user_devices = ' + JSON.stringify(user_devices)) ;
-        }
-        init_devices_index() ;
-        // device actions:
-        // - online => offline - continue to buffer messages
-        // - old offline => online - deliver old messages in next ping
-        // - new device online - request gift info for mutual friends
-        // - new mutual friend for online device - request gift info for new mutual friend
-        // - removed mutual friend for online device - continue to buffer messages, but don't deliver in next  ping
-        var update_devices = function (new_devices) {
-            var pgm = 'UserService.update_devices: ' ;
-            // console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
-            // add index
-            var i ;
-            var new_devices_index = {}, new_device ;
-            for (i=0 ; i<new_devices.length ; i++) {
-                new_device = new_devices[i] ;
-                new_device.key = new_device.did + new_device.sha256 ; // unique device index
-                new_devices_index[new_device.key] = i ;
-            }
-            // update old devices
-            var j, new_mutual_friends ;
-            for (i=0 ; i<devices.length ; i++) {
-                device = devices[i] ;
-                device.online = new_devices_index.hasOwnProperty(device.key) ;
-                if (device.online) {
-                    j = new_devices_index[device.key] ;
-                    new_mutual_friends = $(new_devices[j].mutual_friends).not(device.mutual_friends).get() ;
-                    device.mutual_friends = new_devices[j].mutual_friends ;
-                    if (new_mutual_friends.length > 0) {
-                        // start sync. - step 1 - compare sha256 values for gifts for new mutual friends
-                        device.outbox.push({
-                            msgtype: 'users-sha256',
-                            mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
-                        }) ;
-                    } ;
-                }
-            }
-            // add new devices
-            var device ;
-            for (i=0 ; i<new_devices.length ; i++) {
-                device = new_devices[i] ;
-                device.online = true ;
-                if (!devices_index.hasOwnProperty(device.key)) {
-                    // new device
-                    device.outbox = [] ;
-                    // start sync. - step 1 - compare sha256 values for gifts for mutual friends
-                    device.outbox.push({
-                        msgtype: 'users-sha256',
-                        mutual_friends: JSON.parse(JSON.stringify(device.mutual_friends))
-                    }) ;
-                    devices.push(device) ;
-                }
-            }
-            init_devices_index() ;
-            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
-            // console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
-        } // update_devices
-
-        // get/set pubkey for devices - used in client to client communication
-        var pubkeys_request = function () {
-            var request = [] ;
-            var device ;
-            for (var i=0 ; i<devices.length ; i++) {
-                device = devices[i] ;
-                if ((!pubkeys[device.did]) && (request.indexOf(device.did)==-1)) request.push(device.did) ;
-            }
-            return request.length == 0 ? null : request ;
-        }
-        var pubkeys_response = function (response) {
-            var pgm = 'UserService.pubkeys_response: ' ;
-            console.log(pgm + 'pubkeys = ' + JSON.stringify(response)) ;
-            var did, device ;
-            for (var i=0 ; i<response.length ; i++) {
-                did = response[i].did ;
-                if (pubkeys[did]) console.log(pgm + 'invalid pubkeys response from ping. pubkey for did ' + did + ' has already been received from server') ;
-                else pubkeys[did] = response[i].pubkey ;
-            } // for
-        } // pubkeys_response
-
         var check_logged_in_providers = function (now) {
             var logged_in_provider = false; // true if one not expired api login
             var expired_providers = []; // array with any expired login providers
@@ -1965,9 +1860,6 @@ angular.module('gifts', ['ngRoute'])
             send_oauth: send_oauth,
             cache_oauth_info: cache_oauth_info,
             check_logged_in_providers: check_logged_in_providers,
-            pubkeys_request: pubkeys_request,
-            pubkeys_response: pubkeys_response,
-            update_devices: update_devices,
             expired_tokens_response: expired_tokens_response,
             oauths_response: oauths_response
         }
@@ -1975,7 +1867,9 @@ angular.module('gifts', ['ngRoute'])
     }])
     .factory('GiftService', ['UserService', function(userService) {
         var self = this ;
-        console.log('GiftService loaded') ;
+        var service = 'GiftService' ;
+        console.log(service + ' loaded') ;
+
 
         // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
         // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
@@ -1990,6 +1884,7 @@ angular.module('gifts', ['ngRoute'])
         // - accepted          - accepted boolean - true if accepted by creator of gift - false if rejected by creator of gift - include in comment sha256 calculation
         // - updated_by        - user id list for users that have accepted or rejected proposal - must be a subset of creators of gift - include in comment sha256 calculation
         var calc_sha256_for_comment = function (comment) {
+            var pgm = service + '.calc_sha256_for_comment: ' ;
             if ((typeof comment.created_at_server == 'undefined') || (comment.created_at_server == null)) return null ; // no server side sha256 signature
             var updated_by_internal_ids ;
             if ((typeof comment.updated_by == 'undefined') || (comment.updated_by == null)) updated_by_internal_ids = [] ;
@@ -2025,7 +1920,7 @@ angular.module('gifts', ['ngRoute'])
         // - deleted_at - included in sha256 value
         // - comments - array with comments - included comments sha256_values in gift sha256 value
         var calc_sha256_for_gift = function (gift) {
-            var pgm = 'GiftService.sha256_gift: ' ;
+            var pgm = service + '.sha256_gift: ' ;
             if ((typeof gift.created_at_server == 'undefined') || (gift.created_at_server == null)) return null ; // no server side sha256 signature
             // other participant in gift. null until closed/given/received
             var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids ;
@@ -2092,7 +1987,7 @@ angular.module('gifts', ['ngRoute'])
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
-            var pgm = 'GiftService.load_gifts: ' ;
+            var pgm = service + '.load_gifts: ' ;
             var new_gifts = [] ;
             if (Gofreerev.getItem('gifts')) new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             else Gofreerev.setItem('gifts', JSON.stringify([])) ;
@@ -2168,7 +2063,7 @@ angular.module('gifts', ['ngRoute'])
         // todo: ok always to add new comments to end of comments array?
         // refresh gift comments from localStorage before update (changed in an other browser tab)
         var refresh_comments = function (comments, new_comments) {
-            var pgm = 'GiftService.refresh_comments: ' ;
+            var pgm = service +  '.refresh_comments: ' ;
             // console.log(pgm + 'input: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
             // console.log(pgm + 'old comments: ' + comments_debug_info(comments)) ;
             // console.log(pgm + 'new comments: ' + comments_debug_info(new_comments)) ;
@@ -2209,7 +2104,7 @@ angular.module('gifts', ['ngRoute'])
         // refresh gift from localStorage before update (changed in an other browser tab)
         // called before adding change to js object in this browser tab
         var refresh_gift = function (gift) {
-            var pgm = 'GiftService.refresh_gift: ' ;
+            var pgm = service + '.refresh_gift: ' ;
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             var new_gift ;
             for (var i=0 ; (!new_gift && (i<new_gifts.length)) ; i++) {
@@ -2243,7 +2138,7 @@ angular.module('gifts', ['ngRoute'])
 
         // fresh gift and comment before update (changed in an other browser tab)
         var refresh_gift_and_comment = function (gift, comment) {
-            var pgm = 'GiftService.refresh_gift_and_comment: ' ;
+            var pgm = service + '.refresh_gift_and_comment: ' ;
             var cid = comment.cid ;
             var old_comments_length = (gift.comments || []).length ;
             refresh_gift(gift) ;
@@ -2273,7 +2168,7 @@ angular.module('gifts', ['ngRoute'])
         // js array gifts could be out of sync
         // sync changes in gifts array in local storage with js gifts array
         var sync_gifts = function () {
-            var pgm = 'GiftService. sync_gift: ' ;
+            var pgm = service + '. sync_gift: ' ;
             console.log(pgm + 'start') ;
             var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
             // todo: remove - index should normally always be up-to-date
@@ -2327,7 +2222,7 @@ angular.module('gifts', ['ngRoute'])
         }; // sync_gifts
 
         var unshift_gift = function (gift) {
-            var pgm = 'GiftService.unshift_gift: '
+            var pgm = service + '.unshift_gift: '
             if (gifts_index.hasOwnProperty(gift.gid)) {
                 console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array') ;
                 return ;
@@ -2358,7 +2253,7 @@ angular.module('gifts', ['ngRoute'])
             return (request.length == 0 ? null : request) ;
         }; // created_at_server_request
         var new_gifts_response = function (response) {
-            var pgm = 'GiftService.new_gifts_response: ' ;
+            var pgm = service + '.new_gifts_response: ' ;
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
             if (response.hasOwnProperty('no_errors') && (response.no_errors>0)) console.log(pgm + response.no_errors + ' gifts was not created') ;
@@ -2411,7 +2306,7 @@ angular.module('gifts', ['ngRoute'])
         // called from UserService.ping
         var new_comments_request_index = {} ; // from cid to comment - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
-            var pgm = 'GiftService.new_comments_request: ' ;
+            var pgm = service + '.new_comments_request: ' ;
             var request = [];
             new_comments_request_index = {} ;
             var gift, comment, hash, sha256_client, cid ;
@@ -2434,7 +2329,7 @@ angular.module('gifts', ['ngRoute'])
             return (request.length == 0 ? null : request) ;
         }; // new_comments_request
         var new_comments_response = function (response) {
-            var pgm = 'GiftService.new_comments_response: ' ;
+            var pgm = service + '.new_comments_response: ' ;
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
             if (response.hasOwnProperty('no_errors') && (response.no_errors>0)) console.log(pgm + response.no_errors + ' comments was not created') ;
@@ -2485,6 +2380,168 @@ angular.module('gifts', ['ngRoute'])
             new_comments_request_index = {} ;
         }; // new_comments_response
 
+        // update list of other devices (online and offline)
+        // key = did+sha256 is used as device index.
+        // should ensure that messages are buffered for device with unchanged api login
+        // todo: update a list of gift listeners - one message buffer for each
+        var devices = [] ; // list with online and offline devices
+        var devices_index = {} ;
+        var pubkeys = {} ; // hash with public key for each unique device (did)
+        var user_devices = {} ; // list with online devices for each user id (mutual friend)
+
+        var init_devices_index = function () {
+            var pgm = service + '.init_devices_index: ' ;
+            devices_index = {} ; // one index for each device
+            user_devices = {} ; // one index for each userid
+            var device, i, j, mutual_friend_userid ;
+            for (i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                devices_index[device.key] = i ;
+                // list with relevant devices for mutual friend
+                for (j=0 ; j<device.mutual_friends.length ; j++) {
+                    mutual_friend_userid = device.mutual_friends[j] ;
+                    if (!user_devices[mutual_friend_userid]) user_devices[mutual_friend_userid] = [] ;
+                    user_devices[mutual_friend_userid].push(i) ; // index to devices array
+                } // for j
+            } // for j
+            // console.log(pgm + 'user_devices = ' + JSON.stringify(user_devices)) ;
+        }
+        init_devices_index() ;
+        // device actions:
+        // - online => offline - continue to buffer messages
+        // - old offline => online - deliver old messages in next ping
+        // - new device online - request gift info for mutual friends
+        // - new mutual friend for online device - request gift info for new mutual friend
+        // - removed mutual friend for online device - continue to buffer messages, but don't deliver in next  ping
+        var update_devices = function (new_devices) {
+            var pgm = service + '.update_devices: ' ;
+            // console.log(pgm + 'new_devices = ' + JSON.stringify(new_devices)) ;
+            // add index
+            var i ;
+            var new_devices_index = {}, new_device ;
+            for (i=0 ; i<new_devices.length ; i++) {
+                new_device = new_devices[i] ;
+                new_device.key = new_device.did + new_device.sha256 ; // unique device index
+                new_devices_index[new_device.key] = i ;
+            }
+            // update old devices
+            var j, new_mutual_friends ;
+            for (i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                device.online = new_devices_index.hasOwnProperty(device.key) ;
+                if (device.online) {
+                    j = new_devices_index[device.key] ;
+                    new_mutual_friends = $(new_devices[j].mutual_friends).not(device.mutual_friends).get() ;
+                    device.mutual_friends = new_devices[j].mutual_friends ;
+                    if (new_mutual_friends.length > 0) {
+                        // start sync. - step 1 - compare sha256 values for gifts for new mutual friends
+                        device.outbox.push({
+                            msgtype: 'users_sha256',
+                            mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
+                        }) ;
+                    } ;
+                }
+            }
+            // add new devices
+            var device ;
+            for (i=0 ; i<new_devices.length ; i++) {
+                device = new_devices[i] ;
+                device.online = true ;
+                if (!devices_index.hasOwnProperty(device.key)) {
+                    // new device
+                    device.outbox = [] ;
+                    // start sync. - step 1 - compare sha256 values for gifts for mutual friends
+                    device.outbox.push({
+                        msgtype: 'users_sha256',
+                        mutual_friends: JSON.parse(JSON.stringify(device.mutual_friends))
+                    }) ;
+                    devices.push(device) ;
+                }
+            }
+            init_devices_index() ;
+            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            // console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
+        } // update_devices
+
+        // get/set pubkey for devices - used in client to client communication
+        var pubkeys_request = function () {
+            var request = [] ;
+            var device ;
+            for (var i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                if ((!pubkeys[device.did]) && (request.indexOf(device.did)==-1)) request.push(device.did) ;
+            }
+            return request.length == 0 ? null : request ;
+        }
+        var pubkeys_response = function (response) {
+            var pgm = service + '.pubkeys_response: ' ;
+            console.log(pgm + 'pubkeys = ' + JSON.stringify(response)) ;
+            var did, device ;
+            for (var i=0 ; i<response.length ; i++) {
+                did = response[i].did ;
+                if (pubkeys[did]) console.log(pgm + 'invalid pubkeys response from ping. pubkey for did ' + did + ' has already been received from server') ;
+                else pubkeys[did] = response[i].pubkey ;
+            } // for
+        } // pubkeys_response
+
+        // send "users_sha256" message to other device. one sha256 calc for each mutual friend
+        var send_message_users_sha256 = function (msg) {
+            var pgm = service + '.send_message_users_sha256: ' ;
+            console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
+        } // send_message_users_sha256
+
+        // send/receive messages to/from other devices
+        var send_messages = function () {
+            var pgm = service + '.send_messages: ' ;
+            var response = [] ;
+            var device, messages, msg, message, encrypt, encrypted_message ;
+            var encrypt = new JSEncrypt();
+            for (var i=0 ; i<devices.length ; i++) {
+                device = devices[i] ;
+                if (device.outbox.length == 0) continue ; // no new messages for this device
+                if (!pubkeys[device.did]) {
+                    console.log(pgm + 'Wait. No public key was found for device ' + device.did) ;
+                    continue ;
+                }
+                console.log(pgm + 'send messages to device ' + device.did + ' with key ' + device.key) ;
+                messages = [] ;
+                for (var j=0 ; j<device.outbox.length ; j++) {
+                    msg = device.outbox[j] ;
+                    console.log(pgm + 'outbox[' + j + '] = ' + JSON.stringify(msg)) ;
+                    // outbox[0] = {"msgtype":"users_sha256","mutual_friends":[1126,920]}"
+                    switch(msg.msgtype) {
+                        case 'users_sha256':
+                            messages.push(send_message_users_sha256(msg)) ;
+                            break ;
+                        default:
+                            console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(device)) ;
+                    } // end msgtype switch
+                } // for j (device.outbox)
+                // todo: add more header fields in message?
+                message = {
+                    created_at_client: (new Date).getTime(),
+                    messages: messages
+                };
+                // encrypt message for other device using public key
+                encrypt.setPublicKey(pubkeys[device.did]);
+                encrypted_message = {
+                    receiver_did: device.did,
+                    receiver_sha256: device.sha256,
+                    message: encrypt.encrypt(JSON.stringify(message))
+                };
+                // send encrypted message
+                response.push(encrypted_message);
+                console.log(pgm + 'encrypted message = ' + JSON.stringify(encrypted_message)) ;
+                // todo: empty device.outbox. reinsert if send messages fails (ping/error)
+            } // for i (devices)
+            return (response.length == 0 ? null : response) ;
+        } // send_messages
+
+        var receive_messages = function (response) {
+            var pgm = service + '.receive_messages: ' ;
+            console.log(pgm + 'receive ' + JSON.stringify(response)) ;
+        } // receive_messages
+
         return {
             gifts: gifts,
             load_gifts: load_gifts,
@@ -2496,7 +2553,12 @@ angular.module('gifts', ['ngRoute'])
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response,
             new_comments_request: new_comments_request,
-            new_comments_response: new_comments_response
+            new_comments_response: new_comments_response,
+            pubkeys_request: pubkeys_request,
+            pubkeys_response: pubkeys_response,
+            update_devices: update_devices,
+            send_messages: send_messages,
+            receive_messages: receive_messages
         };
 
         // end GiftService
@@ -2557,8 +2619,9 @@ angular.module('gifts', ['ngRoute'])
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
                 new_comments: giftService.new_comments_request(),
-                pubkeys: userService.pubkeys_request(),
-                refresh_tokens: result.refresh_tokens_request
+                pubkeys: giftService.pubkeys_request(),
+                refresh_tokens: result.refresh_tokens_request,
+                messages: giftService.send_messages()
             };
             for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
             // validate json request before sending ping to server
@@ -2575,22 +2638,15 @@ angular.module('gifts', ['ngRoute'])
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
 
                     // validate ping response received from server
-                    // todo: where to report ping error in UI.
+                    // todo: report ping errors to inbox.
                     if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
-                    //var valid_ping_response = tv4.validate(ok.data, Gofreerev.rails['JSON_SCHEMA'].ping_response) ;
-                    //if (!valid_ping_response) {
-                    //    var error = JSON.parse(JSON.stringify(tv4.error)) ;
-                    //    delete error.stack ;
-                    //    console.log(pgm + 'Error in JSON ping response from server.') ;
-                    //    console.log(pgm + 'response: ' + JSON.stringify(ok.data)) ;
-                    //    console.log(pgm + 'Errors : ' + JSON.stringify(error)) ;
-                    //    // todo: stop or continue?
-                    //}
+
+                    // process ping response
                     if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
                     // check online users/devices
-                    if (response.data.online) userService.update_devices(response.data.online) ;
+                    if (response.data.online) giftService.update_devices(response.data.online) ;
                     // check for new public keys for online users/devices
-                    if (response.data.pubkeys) userService.pubkeys_response(response.data.pubkeys) ;
+                    if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
                     if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
                     // get timestamps for newly created comments from server
@@ -2599,6 +2655,9 @@ angular.module('gifts', ['ngRoute'])
                     if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens) ;
                     // check for new oauth authorization (google+ only)
                     if (response.data.oauths) userService.oauths_response(response.data.oauths) ;
+                    // check for new messages from other devices
+                    if (response.data.messages) giftService.receive_messages(response.data.messages) ;
+
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
                     // console.log(pgm + 'ok. ok.data.old_client_timestamp = ' + ok.data.old_client_timestamp) ;

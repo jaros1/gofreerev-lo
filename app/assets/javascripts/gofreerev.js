@@ -2373,11 +2373,12 @@ angular.module('gifts', ['ngRoute'])
 
         // send meta-data for newly created comments to server and get comment.created_at_server unix timestamps from server.
         // called from UserService.ping
-        // todo: not implemented
+        var new_comments_request_index = {} ; // from cid to comment - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
             var pgm = 'GiftService.new_comments_request: ' ;
             var request = [];
-            var gift, comment, hash, sha256_client ;
+            new_comments_request_index = {} ;
+            var gift, comment, hash, sha256_client, cid ;
             for (var i = 0; i < gifts.length; i++) {
                 if (!gifts[i].comments) continue ;
                 gift = gifts[i] ;
@@ -2385,17 +2386,67 @@ angular.module('gifts', ['ngRoute'])
                 for (var j=0 ; j<comments.length ; j++) {
                     if (comments[j].created_at_server) continue ;
                     comment = comments[j] ;
+                    cid = comment.cid ;
                     // send meta-data for new comment to server and generate a sha256 signature for comment on server
                     sha256_client = Gofreerev.sha256(gift.gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency) ;
-                    hash = {cid: comment.cid, user_ids: comment.user_ids, sha256: sha256_client} ;
+                    hash = {cid: cid, user_ids: comment.user_ids, sha256: sha256_client} ;
                     request.push(hash) ;
+                    // cid to comment index - used in new_comments_response for quick comment lookup
+                    new_comments_request_index[cid] = comment ;
                 } // for j
             } // for i
             return (request.length == 0 ? null : request) ;
         }; // new_comments_request
         var new_comments_response = function (response) {
             var pgm = 'GiftService.new_comments_response: ' ;
-            console.log(pgm + 'not implemented. response = ' + JSON.stringify(response)) ;
+            // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+            if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
+            if (response.hasOwnProperty('no_errors') && (response.no_errors>0)) console.log(pgm + response.no_errors + ' comments was not created') ;
+            if (!response.hasOwnProperty('data')) return ;
+            var new_comments = response.data ;
+            var new_comment, cid, comment, created_at_server ;
+            var save = false ;
+            for (var i=0 ; i<new_comments.length ; i++) {
+                new_comment = new_comments[i] ;
+                // validate new_comment in response.data array
+                if (!new_comment.hasOwnProperty('cid')) {
+                    // invalid json response
+                    console.log(pgm + 'Invalid response. cid property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment)) ;
+                    continue ;
+                }
+                cid = new_comment.cid ;
+                if (new_comment.hasOwnProperty('error')) {
+                    // report error from server validation
+                    console.log(pgm + 'data[' + i + '].error = ' + new_comment.error) ;
+                    // todo: delete comment and display error message in page header or in inbox
+                    continue ;
+                }
+                if (!new_comments_request_index.hasOwnProperty(cid)) {
+                    console.log(pgm + 'Invalid response. Unknown cid in data[' + i + ' = ' + JSON.stringify(new_comment)) ;
+                    continue ;
+                }
+                if (!new_comment.hasOwnProperty('created_at_server')) {
+                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment)) ;
+                    continue ;
+                }
+                comment = new_comments_request_index[cid] ;
+                if (comment.hasOwnProperty('created_at_server')) {
+                    if (new_comment.created_at_server == comment.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.') ;
+                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for comment.');
+                    continue ;
+                }
+                // todo: add refresh_comment method
+                // refresh_comment(comment) ;
+                if (comment.hasOwnProperty('created_at_server')) {
+                    if (new_comment.created_at_server == comment.created_at_server) null ; // ok - received in an other browser session
+                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for comment.');
+                    continue ;
+                }
+                comment.created_at_server = new_comment.created_at_server ;
+                save = true ;
+            } // for i
+            if (save) save_gifts() ;
+            new_comments_request_index = {} ;
         }; // new_comments_response
 
         return {

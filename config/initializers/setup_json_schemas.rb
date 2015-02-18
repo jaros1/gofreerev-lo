@@ -266,7 +266,7 @@ JSON_SCHEMA = {
                                   # error message if signature for gift could not be saved on server
                                   :error => {:type => 'string'},
                                   # ok - created at server unix timestamp - 10 decimals - gift signature was saved on server
-                                  :created_at_server => {:type => 'integer', :minimum => Time.zone.now.to_i, :maximum => 1.year.from_now.to_i}
+                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
                               },
                               :required => %w(gid),
                               :additionalProperties => false
@@ -294,7 +294,7 @@ JSON_SCHEMA = {
                                   # error message if signature for comment could not be saved on server
                                   :error => {:type => 'string'},
                                   # ok - created at server unix timestamp - 10 decimals - comment signature was saved on server
-                                  :created_at_server => {:type => 'integer', :minimum => Time.zone.now.to_i, :maximum => 1.year.from_now.to_i}
+                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
                               },
                               :required => %w(cid),
                               :additionalProperties => false

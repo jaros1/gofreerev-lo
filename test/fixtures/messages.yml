@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  from_did: MyString
+  from_sha256: MyString
+  to_did: MyString
+  to_sha256: MyString
+  message: MyText
+
+two:
+  from_did: MyString
+  from_sha256: MyString
+  to_did: MyString
+  to_sha256: MyString
+  message: MyText

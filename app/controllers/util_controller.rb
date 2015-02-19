@@ -1065,6 +1065,13 @@ class UtilController < ApplicationController
         pubkeys_response = Ping.pubkeys params[:pubkeys]
         @json[:pubkeys] = pubkeys_response if pubkeys_response
 
+        # 4) client to client messages
+        # input: buffer messages from this client to other devices - return ok or error message for each input message
+        # output: return messages to this client from other devices - todo: client should respond with ok/error for received messages!
+        # return any messages from other devices to client
+        messages_response = Message.messages ping.did, ping.sha256, params[:messages]
+        @json[:messages] = messages_response if messages_response
+
       end
 
       validate_json_response

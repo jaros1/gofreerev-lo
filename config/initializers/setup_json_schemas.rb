@@ -221,7 +221,7 @@ JSON_SCHEMA = {
                       }
                   }
               },
-              # array with encrypted messages for other devices (users_sha256, todo: gifts_sha256, gifts etc)
+              # array with encrypted messages from client to other devices (users_sha256, todo: gifts_sha256, gifts etc)
               # temporary buffer on server until message is delivered or message is expired/too old
               :messages => {
                   :type => 'array',
@@ -343,7 +343,29 @@ JSON_SCHEMA = {
               # optional array with providers with expired oauth authorization
               :expired_tokens => expired_tokens_type,
               # optional array with new oauth authorization - for now only used for google+
-              :oauths => oauths_type
+              :oauths => oauths_type,
+              # array with encrypted messages to client from other devices (users_sha256, todo: gifts_sha256, gifts etc)
+              # temporary buffered on server until message was delivered or message was expired/too old
+              :messages => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :sender_did => {:type => 'string', :pattern => uid_pattern},
+                          # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
+                          :sender_sha256 => {:type => 'string'},
+                          # when was message received from other device - unix timestamp
+                          :created_at_server => { :type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i },
+                          # message for receiver device encrypted with device public key
+                          :message => {:type => 'string'}
+                      },
+                      :required => %w(sender_did sender_sha256 created_at_server message),
+                      :additionalProperties => false
+                  }
+
+              }
+
              },
          :required => %w(interval),
          :additionalProperties => false

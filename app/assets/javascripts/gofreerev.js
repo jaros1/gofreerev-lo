@@ -874,27 +874,12 @@ var Gofreerev = (function() {
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();
-            prvkey_aes = encrypt(prvkey, password);
             // ready to store new account information.
-            // check prvkey encryption. do not create new user account if encryption does not work
-            setItem('prvkey', prvkey_aes) ; // symmetric encrypted private key
-            var prvkey2, prvkey_aes2 ;
-            prvkey_aes2 = getItem('prvkey') ;
-            if (prvkey_aes != prvkey_aes2) {
-                add2log('client_login. create new user failed. prvkey_aes != prvkey_aes2') ;
-                removeItem('prvkey');
-                return -1 ;
-            }
-            prvkey2 = decrypt(prvkey_aes2, password);
-            if (prvkey != prvkey2) {
-                add2log('client_login. create new user failed. prvkey != prvkey2') ;
-                removeItem('prvkey');
-                return -2 ;
-            }
-            // save user
-            setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
+            // save new user account
             setItem('did', did) ; // unique device id
+            setItem('prvkey', prvkey) ;
             setItem('pubkey', pubkey) ; // public key
+            setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
             return userid ;
         }
         // invalid password (create_new_account=false)
@@ -2436,6 +2421,7 @@ angular.module('gifts', ['ngRoute'])
                     if (new_mutual_friends.length > 0) {
                         // start sync. - step 1 - compare sha256 values for gifts for new mutual friends
                         device.outbox.push({
+                            mid: Gofreerev.get_new_uid(),
                             msgtype: 'users_sha256',
                             mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
                         }) ;
@@ -2452,6 +2438,7 @@ angular.module('gifts', ['ngRoute'])
                     device.outbox = [] ;
                     // start sync. - step 1 - compare sha256 values for gifts for mutual friends
                     device.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
                         msgtype: 'users_sha256',
                         mutual_friends: JSON.parse(JSON.stringify(device.mutual_friends))
                     }) ;
@@ -2532,7 +2519,7 @@ angular.module('gifts', ['ngRoute'])
                 // send encrypted message
                 response.push(encrypted_message);
                 console.log(pgm + 'encrypted message = ' + JSON.stringify(encrypted_message)) ;
-                // todo: empty device.outbox. reinsert if send messages fails (ping/error)
+                // todo: empty device.outbox or move to device.sending. reinsert into outbox if send messages fails (ping/error)
             } // for i (devices)
             return (response.length == 0 ? null : response) ;
         } // send_messages
@@ -2540,6 +2527,33 @@ angular.module('gifts', ['ngRoute'])
         var receive_messages = function (response) {
             var pgm = service + '.receive_messages: ' ;
             console.log(pgm + 'receive ' + JSON.stringify(response)) ;
+            var encrypt = new JSEncrypt() ;
+            var prvkey = Gofreerev.getItem('prvkey') ;
+            encrypt.setPrivateKey(prvkey);
+            // var encrypt2, password2, prvkey2 ;
+            var message ;
+            // var prvkey_migration = 0 ;
+            for (var i=0 ; i<response.length ; i++) {
+                message = response[i] ;
+                message.decrypted_message = encrypt.decrypt(message.message);
+                //if (!message.decrypted_message) {
+                //    // possible double prvkey encryption
+                //    if (!encrypt2) {
+                //        encrypt2 = new JSEncrypt() ;
+                //        password2 = Gofreerev.getItem('password') ;
+                //        prvkey2 = Gofreerev.decrypt(prvkey, password2) ;
+                //        encrypt2.setPrivateKey(prvkey2);
+                //    }
+                //    message.decrypted_message = encrypt2.decrypt(message.message);
+                //    if (message.decrypted_message) prvkey_migration += 1 ;
+                //}
+                console.log(pgm + 'message[' + i + '] = ' + JSON.stringify(message)) ;
+            } ;
+            //console.log(pgm + 'prvkey_migration = ' + prvkey_migration) ;
+            //if ((response.length > 0) && (response.length == prvkey_migration)) {
+            //    console.log(pgm + 'run prvkey data migration') ;
+            //    Gofreerev.setItem('prvkey', prvkey2)
+            //}
         } // receive_messages
 
         return {

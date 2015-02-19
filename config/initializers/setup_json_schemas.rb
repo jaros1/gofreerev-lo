@@ -232,10 +232,12 @@ JSON_SCHEMA = {
                           :receiver_did => {:type => 'string', :pattern => uid_pattern},
                           # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
                           :receiver_sha256 => {:type => 'string'},
+                          # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
+                          :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
                           # message for receiver device encrypted with device public key
                           :message => {:type => 'string'}
                       },
-                      :required => %w(receiver_did receiver_sha256 message),
+                      :required => %w(receiver_did receiver_sha256 encryption message),
                       :additionalProperties => false
                   }
 
@@ -355,6 +357,8 @@ JSON_SCHEMA = {
                           :sender_did => {:type => 'string', :pattern => uid_pattern},
                           # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
                           :sender_sha256 => {:type => 'string'},
+                          # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
+                          :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
                           # when was message received from other device - unix timestamp
                           :created_at_server => { :type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i },
                           # message for receiver device encrypted with device public key

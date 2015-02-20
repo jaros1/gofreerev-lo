@@ -2384,7 +2384,7 @@ angular.module('gifts', ['ngRoute'])
         // key = did+sha256 is used as mailbox index.
         var mailboxes = [] ; // list with online and offline devices
         var key_mailbox_index = {} ; // from key (did+sha256) to index
-        var device_pubkey = {} ; // hash with public key for each unique device (did)
+        var devices = {} ; // hash with public key and symmetric password for each unique device (did)
         var user_mailboxes = {} ; // list with relevant mailboxes for each user id (mutual friend) - how to notify about changes in gifts
 
         var update_key_mailbox_index = function () {
@@ -2463,10 +2463,14 @@ angular.module('gifts', ['ngRoute'])
         // get/set pubkey for unique device - called in ping - used in client to client communication
         var pubkeys_request = function () {
             var request = [] ;
-            var mailbox ;
+            var mailbox, did ;
             for (var i=0 ; i<mailboxes.length ; i++) {
                 mailbox = mailboxes[i] ;
-                if ((!device_pubkey[mailbox.did]) && (request.indexOf(mailbox.did)==-1)) request.push(mailbox.did) ;
+                did = mailbox.did ;
+                if ((!devices.hasOwnProperty(did) || !devices[did].pubkey) && (request.indexOf(did)==-1)) {
+                    request.push(did);
+                    devices[did] = {} ;
+                }
             }
             return request.length == 0 ? null : request ;
         };
@@ -2476,8 +2480,8 @@ angular.module('gifts', ['ngRoute'])
             var did ;
             for (var i=0 ; i<response.length ; i++) {
                 did = response[i].did ;
-                if (device_pubkey[did]) console.log(pgm + 'invalid pubkeys response from ping. pubkey for device ' + did + ' has already been received from server') ;
-                else device_pubkey[did] = response[i].pubkey ;
+                if (devices[did] && devices[did].pubkey) console.log(pgm + 'invalid pubkeys response from ping. pubkey for device ' + did + ' has already been received from server') ;
+                else devices[did].pubkey = response[i].pubkey ;
             } // for
         }; // pubkeys_response
 
@@ -2508,15 +2512,16 @@ angular.module('gifts', ['ngRoute'])
         var send_messages = function () {
             var pgm = service + '.send_messages: ' ;
             var response = [] ;
-            var mailbox, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope ;
+            var mailbox, did, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope ;
             var encrypt = new JSEncrypt();
             var password ;
             for (var i=0 ; i<mailboxes.length ; i++) {
                 mailbox = mailboxes[i] ;
+                did = mailbox.did ;
                 if (!mailbox.password) {
                     // step 1 - setup password for symmetric encryption
-                    if (!device_pubkey[mailbox.did]) {
-                        console.log(pgm + 'Wait. Public key has not yet been received for device ' + mailbox.did) ;
+                    if (!devices.hasOwnProperty(did) || !devices[did].pubkey) {
+                        console.log(pgm + 'Wait. Public key has not yet been received for device ' + did) ;
                         continue ;
                     }
                     // send password1 to other device using public/private key encryption (rsa)
@@ -2530,7 +2535,8 @@ angular.module('gifts', ['ngRoute'])
                     if (mailbox.password_md5) message.pw.push(mailbox.password_md5) ; // verify complete password (password1+password2)
                     // message => json => rsa encrypt
                     message_json = JSON.stringify(message) ;
-                    encrypt.setPublicKey(device_pubkey[mailbox.did]);
+                    // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
+                    encrypt.setPublicKey(devices[did].pubkey);
                     message_json_rsa_enc = encrypt.encrypt(message_json) ;
                     // add envelope - used in rails message buffer - each message have sender, receiver, encryption and message
                     message_with_envelope = {
@@ -2617,9 +2623,7 @@ angular.module('gifts', ['ngRoute'])
         var receive_messages = function (response) {
             var pgm = service + '.receive_messages: ' ;
             // console.log(pgm + 'receive ' + JSON.stringify(response)) ;
-            var encrypt = new JSEncrypt() ;
-            var prvkey = Gofreerev.getItem('prvkey') ;
-            encrypt.setPrivateKey(prvkey);
+            var encrypt, prvkey ;
             var message_with_envelope, key, index, mailbox, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc ;
             for (var i=0 ; i<response.length ; i++) {
                 message_with_envelope = response[i] ;
@@ -2636,6 +2640,7 @@ angular.module('gifts', ['ngRoute'])
                 } ;
                 if (message_with_envelope.encryption == 'rsa') {
                     // public/private key decryption (rsa) - must be password setup for symmetric encryption
+                    console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                     if (!encrypt) {
                         encrypt = new JSEncrypt() ;
                         prvkey = Gofreerev.getItem('prvkey') ;
@@ -2644,8 +2649,9 @@ angular.module('gifts', ['ngRoute'])
                     // rsa => json
                     msg_json_rsa_enc = message_with_envelope.message ;
                     msg_json = encrypt.decrypt(msg_json_rsa_enc) ;
-                    // console.log(pgm + 'rsa: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
-                    // console.log(pgm + 'rsa: msg_json = ' + msg_json) ;
+                    // console.log(pgm + 'rsa decrypt: prvkey = ' + prvkey) ;
+                    console.log(pgm + 'rsa decrypt: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
+                    console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
                 }
                 else {
                     // symmetric key decryption
@@ -2655,8 +2661,8 @@ angular.module('gifts', ['ngRoute'])
                     }
                     msg_json_sym_enc = message_with_envelope.message ;
                     msg_json = Gofreerev.decrypt(msg_json_sym_enc, mailbox.password) ;
-                    console.log(pgm + 'sym: msg_json_sym_enc = ' + msg_json_sym_enc) ;
-                    console.log(pgm + 'sym: msg_json = ' + msg_json) ;
+                    console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
+                    console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
                 } ;
                 msg = JSON.parse(msg_json) ;
                 // console.log(pgm + 'msg = ' + msg) ;
@@ -2684,7 +2690,7 @@ angular.module('gifts', ['ngRoute'])
             new_comments_response: new_comments_response,
             pubkeys_request: pubkeys_request,
             pubkeys_response: pubkeys_response,
-            update_devices: update_mailboxes,
+            update_mailboxes: update_mailboxes,
             send_messages: send_messages,
             receive_messages: receive_messages
         };
@@ -2771,8 +2777,8 @@ angular.module('gifts', ['ngRoute'])
 
                     // process ping response
                     if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
-                    // check online users/devices
-                    if (response.data.online) giftService.update_devices(response.data.online) ;
+                    // check online users/devices - create a mail box for each online device
+                    if (response.data.online) giftService.update_mailboxes(response.data.online) ;
                     // check for new public keys for online users/devices
                     if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server

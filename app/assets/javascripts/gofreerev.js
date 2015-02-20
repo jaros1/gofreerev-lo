@@ -2407,6 +2407,25 @@ angular.module('gifts', ['ngRoute'])
         };
         update_key_mailbox_index() ;
 
+        var post_symmetric_password_setup = function () {
+            var pgm = service + '.post_symmetric_password_setup: ' ;
+            var now = (new Date).getTime() ;
+            var device, elapsed ;
+            for (var did in devices) {
+                device = devices[did] ;
+                if (!device.password_at) continue ;
+                elapsed = now - device.password_at ;
+                if (elapsed < 60000) continue ; // wait - less when 60 seconds since password setup was completed
+                delete device.password1 ;
+                delete device.password1_at ;
+                delete device.password2 ;
+                delete device.password2_at ;
+                delete device.password_md5 ;
+                delete device.password_at ;
+                // console.log(pgm + 'elapsed = ' + elapsed + ', device = ' + JSON.stringify(device)) ;
+            } // for did
+        } // post_symmetric_password_setup
+
         // mailbox actions:
         // - online => offline - continue to buffer messages in javascript arrays
         // - old offline => online - deliver old messages in next ping
@@ -2458,6 +2477,8 @@ angular.module('gifts', ['ngRoute'])
             update_key_mailbox_index() ;
             // console.log(pgm + 'mailboxes = ' + JSON.stringify(mailboxes)) ;
             // console.log(pgm + 'device_pubkey = ' + JSON.stringify(device_pubkey)) ;
+            // cleanup after symmetric password setup
+            post_symmetric_password_setup() ;
         }; // update_mailboxes
 
         // get/set pubkey for unique device - called in ping - used in client to client communication
@@ -2530,7 +2551,7 @@ angular.module('gifts', ['ngRoute'])
                     if (!mailbox.online) continue ; // wait - not online
                     // send password1 to other device using public/private key encryption (rsa)
                     if (!device.password1) {
-                        device.password1 = Gofreerev.generate_random_password(42) ; // 44 characters password to long for RSA
+                        device.password1 = Gofreerev.generate_random_password(40) ; // 42 characters password to long for RSA
                         device.password1_at = (new Date).getTime() ;
                     } ;
                     setup_device_password(device) ;

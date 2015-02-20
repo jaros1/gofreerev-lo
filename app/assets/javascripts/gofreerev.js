@@ -2486,10 +2486,11 @@ angular.module('gifts', ['ngRoute'])
         }; // pubkeys_response
 
         // setup password for symmetric communication. password1 from this device and password2 from other device
+        // password_md5 is used in control for identical symmetric password in communication between the two devices
         var setup_device_password = function (device) {
             var pgm = service + '.setup_device_password: ' ;
             if (!device.password1_at || !device.password2_at) {
-                delete device.password_sha256 ;
+                delete device.password_md5 ;
                 return ;
             }
             if (device.password1_at <= device.password2_at) {
@@ -2498,6 +2499,7 @@ angular.module('gifts', ['ngRoute'])
             else {
                 device.password = device.password2 + device.password1 ;
             }
+            device.password_at = (new Date).getTime() ;
             device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1) ;
         }; // setup_device_password
 
@@ -2512,27 +2514,28 @@ angular.module('gifts', ['ngRoute'])
         var send_messages = function () {
             var pgm = service + '.send_messages: ' ;
             var response = [] ;
-            var mailbox, did, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope ;
+            var mailbox, did, device, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope ;
             var encrypt = new JSEncrypt();
             var password ;
             for (var i=0 ; i<mailboxes.length ; i++) {
                 mailbox = mailboxes[i] ;
                 did = mailbox.did ;
-                if (!mailbox.password) {
+                device = devices[did] ;
+                if (!device || !device.pubkey) {
+                    console.log(pgm + 'Wait. Public key has not yet been received for device ' + did) ;
+                    continue ;
+                }
+                if (!device.password) {
                     // step 1 - setup password for symmetric encryption
-                    if (!devices.hasOwnProperty(did) || !devices[did].pubkey) {
-                        console.log(pgm + 'Wait. Public key has not yet been received for device ' + did) ;
-                        continue ;
-                    }
+                    if (!mailbox.online) continue ; // wait - not online
                     // send password1 to other device using public/private key encryption (rsa)
-                    if (!mailbox.online) continue ; // wait
-                    if (!mailbox.password1) {
-                        mailbox.password1 = Gofreerev.generate_random_password(42) ; // 44 characters password to long for RSA
-                        mailbox.password1_at = (new Date).getTime() ;
+                    if (!device.password1) {
+                        device.password1 = Gofreerev.generate_random_password(42) ; // 44 characters password to long for RSA
+                        device.password1_at = (new Date).getTime() ;
                     } ;
-                    setup_device_password(mailbox) ;
-                    message = { msgtype: 'pw', pw: [mailbox.password1, mailbox.password1_at]} ;
-                    if (mailbox.password_md5) message.pw.push(mailbox.password_md5) ; // verify complete password (password1+password2)
+                    setup_device_password(device) ;
+                    message = { msgtype: 'pw', pw: [device.password1, device.password1_at]} ;
+                    if (device.password_md5) message.pw.push(device.password_md5) ; // verify complete symmetric password (password1+password2) for device
                     // message => json => rsa encrypt
                     message_json = JSON.stringify(message) ;
                     // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
@@ -2624,7 +2627,7 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + '.receive_messages: ' ;
             // console.log(pgm + 'receive ' + JSON.stringify(response)) ;
             var encrypt, prvkey ;
-            var message_with_envelope, key, index, mailbox, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc ;
+            var message_with_envelope, key, index, mailbox, did, device, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc ;
             for (var i=0 ; i<response.length ; i++) {
                 message_with_envelope = response[i] ;
                 key = message_with_envelope.sender_did + message_with_envelope.sender_sha256 ;
@@ -2638,6 +2641,8 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'Error. Ignoring message from device '  + message_with_envelope.sender_did + 'with unknown index ' + index + '. message = ' + JSON.stringify(message_with_envelope)) ;
                     continue ;
                 } ;
+                did = mailbox.did ;
+                device = devices[did] ;
                 if (message_with_envelope.encryption == 'rsa') {
                     // public/private key decryption (rsa) - must be password setup for symmetric encryption
                     console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
@@ -2668,7 +2673,7 @@ angular.module('gifts', ['ngRoute'])
                 // console.log(pgm + 'msg = ' + msg) ;
                 switch(msg.msgtype) {
                     case 'pw':
-                        receive_message_pw(mailbox, msg) ;
+                        receive_message_pw(device, msg) ;
                         break ;
                     default:
                         console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in message ' + JSON.stringify(message_with_envelope) + '. msg = ' + JSON.stringify(msg)) ;

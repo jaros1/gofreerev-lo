@@ -505,6 +505,7 @@ var Gofreerev = (function() {
 
     // symmetric encrypt sensitive data in local storage.
     // password is saved in session storage and is deleted when user closes tab in browser
+    // also used for symmetric encryption in communication between clients
     function encrypt (text, password) {
         var output_wa ;
         output_wa = CryptoJS.AES.encrypt(text, password, { format: CryptoJS.format.OpenSSL }); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
@@ -1045,6 +1046,8 @@ var Gofreerev = (function() {
         removeItem: removeItem,
         compress1: compress1,
         decompress1: decompress1,
+        encrypt: encrypt,
+        decrypt: decrypt,
         // angular helpers
         set_fb_logged_in_account: set_fb_logged_in_account,
         get_new_uid: get_new_uid,
@@ -2416,6 +2419,7 @@ angular.module('gifts', ['ngRoute'])
                 if (!device.password_at) continue ;
                 elapsed = now - device.password_at ;
                 if (elapsed < 60000) continue ; // wait - less when 60 seconds since password setup was completed
+                // free some js variables
                 delete device.password1 ;
                 delete device.password1_at ;
                 delete device.password2 ;
@@ -2450,16 +2454,11 @@ angular.module('gifts', ['ngRoute'])
                 mailbox.online = new_mailboxes_index.hasOwnProperty(mailbox.key) ;
                 if (!mailbox.online) continue ;
                 j = new_mailboxes_index[mailbox.key] ;
-                if (!mailbox.password) {
-                    // symmetric communication has not yet been established
-                    mailbox.mutual_friends = new_mailboxes[j].mutual_friends ;
-                    continue  ;
-                }
-                // symmetric communication has been established - check for changes in mutual friends
+                // check for changes in mutual friends
                 new_mutual_friends = $(new_mailboxes[j].mutual_friends).not(mailbox.mutual_friends).get() ;
                 mailbox.mutual_friends = new_mailboxes[j].mutual_friends ;
                 if (new_mutual_friends.length > 0) {
-                    // step 2 - compare sha256 values for mutual friends
+                    // communication step 2 - compare sha256 checksum for mutual friends
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
                         msgtype: 'users_sha256',
@@ -2467,12 +2466,20 @@ angular.module('gifts', ['ngRoute'])
                     }) ;
                 }
             }
-            // add new mailboxes - symmetric password will be added in rsa handshake
+            // add new mailboxes
             for (i=0 ; i<new_mailboxes.length ; i++) {
                 mailbox = new_mailboxes[i] ;
                 mailbox.online = true ;
                 mailbox.outbox = [] ;
-                if (!key_mailbox_index.hasOwnProperty(mailbox.key)) mailboxes.push(mailbox) ;
+                if (!key_mailbox_index.hasOwnProperty(mailbox.key)) {
+                    // communication step 2 - compare sha256 checksum for mutual friends
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'users_sha256',
+                        mutual_friends: JSON.parse(JSON.stringify(mailbox.mutual_friends))
+                    }) ;
+                    mailboxes.push(mailbox) ;
+                }
             }
             update_key_mailbox_index() ;
             // console.log(pgm + 'mailboxes = ' + JSON.stringify(mailboxes)) ;
@@ -2547,7 +2554,7 @@ angular.module('gifts', ['ngRoute'])
                     continue ;
                 }
                 if (!device.password) {
-                    // step 1 - setup password for symmetric encryption
+                    // communication step 1 - setup password for symmetric encryption
                     if (!mailbox.online) continue ; // wait - not online
                     // send password1 to other device using public/private key encryption (rsa)
                     if (!device.password1) {
@@ -2585,6 +2592,7 @@ angular.module('gifts', ['ngRoute'])
 
                 // send continue with symmetric key communication
                 console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key) ;
+                // initialise an array with messages for device
                 messages = [] ;
                 for (var j=0 ; j<mailbox.outbox.length ; j++) {
                     msg = mailbox.outbox[j] ;
@@ -2600,12 +2608,12 @@ angular.module('gifts', ['ngRoute'])
                 } // for j (mailbox.outbox)
                 // todo: add more header fields in message?
                 message = {
-                    created_at_client: (new Date).getTime(),
+                    sent_at_client: (new Date).getTime(),
                     messages: messages // array with messages
                 };
                 console.log(pgm + 'unencrypted message = ' + JSON.stringify(message)) ;
                 // encrypt message in mailbox using symmetric encryption
-                password = mailbox.password ; //
+                password = device.password ;
                 message_with_envelope = {
                     receiver_did: mailbox.did,
                     receiver_sha256: mailbox.sha256,
@@ -2621,10 +2629,10 @@ angular.module('gifts', ['ngRoute'])
         }; // send_messages
 
         // receive symmetric password (part 2) from other device
-        var receive_message_pw = function (device, msg) {
-            var pgm = service + 'receive_message_pw: ' ;
+        var receive_message_password = function (device, msg) {
+            var pgm = service + 'receive_message_password: ' ;
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
-            // console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
+            console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
             // msg.pw is an array with password, password_at and optional md5 for complete password
             // password setup is complete when received md5 in msg and password md5 for device are identical
             device.password2 = msg.pw[0] ;
@@ -2634,72 +2642,95 @@ angular.module('gifts', ['ngRoute'])
             // check of the two devices agree about password
             if (device.password_md5 && msg.pw.length == 3 && (device.password_md5 == msg.pw[2])) {
                 console.log(pgm + 'symmetric password setup completed.') ;
+                return true ; // continue with ...
                 // console.log(pgm + 'symmetric password setup completed. device = ' + JSON.stringify(device)) ;
             }
             else {
                 console.log(pgm + 'symmetric password setup in progress.') ;
                 // console.log(pgm + 'symmetric password setup in progress. device = ' + JSON.stringify(device)) ;
                 delete device.password;
+                return false ;
             }
         }; // receive_message_password;
+
+        // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
+        var receive_message_users_sha256 = function (msg) {
+            var pgm = service + '.receive_message_users_sha256: ' ;
+            console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
+        }; // receive_message_users_sha256
 
         // receive messages from other devices
         var receive_messages = function (response) {
             var pgm = service + '.receive_messages: ' ;
             // console.log(pgm + 'receive ' + JSON.stringify(response)) ;
             var encrypt, prvkey ;
-            var message_with_envelope, key, index, mailbox, did, device, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc ;
+            var msg_server_envelope, key, index, mailbox, did, device, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc, msg_client_envelope ;
             for (var i=0 ; i<response.length ; i++) {
-                message_with_envelope = response[i] ;
-                key = message_with_envelope.sender_did + message_with_envelope.sender_sha256 ;
+                msg_server_envelope = response[i] ;
+                key = msg_server_envelope.sender_did + msg_server_envelope.sender_sha256 ;
                 if (!key_mailbox_index.hasOwnProperty(key)) {
-                    console.log(pgm + 'Error. Ignoring message from device ' + message_with_envelope.sender_did + ' with unknown key ' + key + '. message = ' + JSON.stringify(message_with_envelope)) ;
+                    console.log(pgm + 'Error. Ignoring message from device ' + msg_server_envelope.sender_did + ' with unknown key ' + key + '. message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
                 };
                 index = key_mailbox_index[key] ;
                 mailbox = mailboxes[key_mailbox_index[key]] ;
                 if (!mailbox) {
-                    console.log(pgm + 'Error. Ignoring message from device '  + message_with_envelope.sender_did + 'with unknown index ' + index + '. message = ' + JSON.stringify(message_with_envelope)) ;
+                    console.log(pgm + 'Error. Ignoring message from device '  + msg_server_envelope.sender_did + 'with unknown index ' + index + '. message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
                 } ;
                 did = mailbox.did ;
                 device = devices[did] ;
-                if (message_with_envelope.encryption == 'rsa') {
-                    // public/private key decryption (rsa) - must be password setup for symmetric encryption
-                    console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                console.log(pgm + 'did = ' + did  + ', device = ' + JSON.stringify(device)) ;
+                if (!device || !device.pubkey) {
+                    console.log(pgm + 'Error. Ignoring message from device '  + did + 'with key ' + key + '. Public key has not yet been received. Message = ' + JSON.stringify(msg_server_envelope)) ;
+                    continue ;
+                }
+                if (msg_server_envelope.encryption == 'rsa') {
+                    // public/private key decryption (rsa) - password setup for symmetric encryption
+                    console.log(pgm + 'message_with_envelope = ' + JSON.stringify(msg_server_envelope)) ;
                     if (!encrypt) {
                         encrypt = new JSEncrypt() ;
                         prvkey = Gofreerev.getItem('prvkey') ;
                         encrypt.setPrivateKey(prvkey);
                     } ;
                     // rsa => json
-                    msg_json_rsa_enc = message_with_envelope.message ;
+                    msg_json_rsa_enc = msg_server_envelope.message ;
                     msg_json = encrypt.decrypt(msg_json_rsa_enc) ;
+                    msg = JSON.parse(msg_json) ;
                     // console.log(pgm + 'rsa decrypt: prvkey = ' + prvkey) ;
                     console.log(pgm + 'rsa decrypt: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
                     console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
+                    console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
+                    receive_message_password(device, msg) ;
                 }
                 else {
-                    // symmetric key decryption
-                    if (!mailbox.password) {
-                        console.log(pgm + 'Error. Ignoring message from device '  + message_with_envelope.sender_did + 'with key ' + key + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(message_with_envelope)) ;
+                    // symmetric key decryption - all other messages
+                    if (!device || !device.password) {
+                        console.log(pgm + 'Error. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
                         continue ;
                     }
-                    msg_json_sym_enc = message_with_envelope.message ;
-                    msg_json = Gofreerev.decrypt(msg_json_sym_enc, mailbox.password) ;
+                    msg_json_sym_enc = msg_server_envelope.message ;
+                    msg_json = Gofreerev.decrypt(msg_json_sym_enc, device.password) ;
+                    msg_client_envelope = JSON.parse(msg_json) ;
                     console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
                     console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
-                } ;
-                msg = JSON.parse(msg_json) ;
-                // console.log(pgm + 'msg = ' + msg) ;
-                switch(msg.msgtype) {
-                    case 'pw':
-                        receive_message_pw(device, msg) ;
-                        break ;
-                    default:
-                        console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in message ' + JSON.stringify(message_with_envelope) + '. msg = ' + JSON.stringify(msg)) ;
-                } // end msgtype switch
-            } ;
+                    console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
+                    if (!msg_client_envelope.messages || !msg_client_envelope.messages.length) {
+                        console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
+                        continue ;
+                    }
+                    for (var j=0 ; j<msg_client_envelope.messages.length ; j++) {
+                        msg = msg_client_envelope.messages[j] ;
+                        switch(msg.msgtype) {
+                            case 'users_sha256':
+                                receive_message_users_sha256(msg) ;
+                                break ;
+                            default:
+                                console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in envelope ' + JSON.stringify(msg_server_envelope) + '. msg = ' + JSON.stringify(msg)) ;
+                        } // end msgtype switch
+                    } // for j
+                }
+            }
         }; // receive_messages
 
         return {

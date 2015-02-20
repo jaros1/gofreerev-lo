@@ -2448,15 +2448,16 @@ angular.module('gifts', ['ngRoute'])
                     }) ;
                 } ;
             }
-            // add new devices without password and outbox
+            // add new devices without symmetric password
             var device ;
             for (i=0 ; i<new_devices.length ; i++) {
                 device = new_devices[i] ;
                 device.online = true ;
+                device.outbox = [] ;
                 if (!devices_index.hasOwnProperty(device.key)) devices.push(device) ;
             }
             init_devices_index() ;
-            console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
+            // console.log(pgm + 'devices = ' + JSON.stringify(devices)) ;
             // console.log(pgm + 'pubkeys = ' + JSON.stringify(pubkeys)) ;
         } // update_devices
 
@@ -2508,7 +2509,7 @@ angular.module('gifts', ['ngRoute'])
         var send_messages = function () {
             var pgm = service + '.send_messages: ' ;
             var response = [] ;
-            var device, messages, msg, message, message_json, message_json_com, message_json_com_enc, encrypt, encrypted_message ;
+            var device, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, encrypt, message_with_envelope ;
             var encrypt = new JSEncrypt();
             var password ;
             for (var i=0 ; i<devices.length ; i++) {
@@ -2522,32 +2523,29 @@ angular.module('gifts', ['ngRoute'])
                     // send password (part 1) to other device using public/private key encryption (rsa)
                     if (!device.online) continue ; // wait
                     if (!device.password1) {
-                        device.password1 = Gofreerev.generate_random_password(48) ;
+                        device.password1 = Gofreerev.generate_random_password(44) ;
                         device.password1_at = (new Date).getTime() ;
-                        setup_device_password(device) ;
                     } ;
+                    setup_device_password(device) ;
                     message = { msgtype: 'pw', pw: [device.password1, device.password1_at]} ;
                     if (device.password_md5) message.pw.push(device.password_md5) ;
-                    // message => json => (compress =>) rsa encrypt
+                    // message => json => rsa encrypt
                     message_json = JSON.stringify(message) ;
-                    // message_json_com = Gofreerev.compress1(message_json) ;
                     encrypt.setPublicKey(pubkeys[device.did]);
-                    // message_json_com_enc = encrypt.encrypt(message_json_com) ;
-                    message_json_com_enc = encrypt.encrypt(message_json) ;
+                    message_json_rsa_enc = encrypt.encrypt(message_json) ;
                     // add envelope
-                    encrypted_message = {
+                    message_with_envelope = {
                         receiver_did: device.did,
                         receiver_sha256: device.sha256,
                         encryption: 'rsa',
-                        message: message_json_com_enc
+                        message: message_json_rsa_enc
                     } ;
-                    response.push(encrypted_message);
+                    response.push(message_with_envelope);
                     // debug
                     console.log(pgm + 'message_json = ' + message_json) ;
-                    console.log(pgm + 'message_json_com = ' + message_json_com) ;
-                    console.log(pgm + 'message_json_com_enc = ' + message_json_com_enc) ;
-                    console.log(pgm + 'encrypted_message = ' + JSON.stringify(encrypted_message)) ;
-                    if (device.password2) setup_device_password(device) ;
+                    console.log(pgm + 'message_json_rsa_enc = ' + message_json_rsa_enc) ;
+                    console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                    // wait with other messages until symmetric password setup is complete
                     continue ;
                 } ;
                 if (!device.hasOwnProperty('outbox')) {
@@ -2579,15 +2577,15 @@ angular.module('gifts', ['ngRoute'])
                 console.log(pgm + 'unencrypted message = ' + JSON.stringify(message)) ;
                 // encrypt message for other device using symmetric encryption
                 if (!password) password = Gofreerev.getItem('password') ;
-                encrypted_message = {
+                message_with_envelope = {
                     receiver_did: device.did,
                     receiver_sha256: device.sha256,
                     encryption: 'sym',
                     message: Gofreerev.encrypt(JSON.stringify(message), password)
                 };
                 // send encrypted message
-                response.push(encrypted_message);
-                console.log(pgm + 'encrypted message = ' + JSON.stringify(encrypted_message)) ;
+                response.push(message_with_envelope);
+                console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope)) ;
                 // todo: empty device.outbox or move to device.sending. reinsert into outbox if send messages fails (ping/error)
             } // for i (devices)
             return (response.length == 0 ? null : response) ;
@@ -2631,41 +2629,40 @@ angular.module('gifts', ['ngRoute'])
             var encrypt = new JSEncrypt() ;
             var prvkey = Gofreerev.getItem('prvkey') ;
             encrypt.setPrivateKey(prvkey);
-            var message, key, index, device, msg, msg_json_com_rsa_enc, msg_json_com, msg_json, msg_json_sym_enc ;
+            var message_with_envelope, key, index, device, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc ;
             for (var i=0 ; i<response.length ; i++) {
-                message = response[i] ;
-                key = message.sender_did + message.sender_sha256 ;
+                message_with_envelope = response[i] ;
+                key = message_with_envelope.sender_did + message_with_envelope.sender_sha256 ;
                 if (!devices_index.hasOwnProperty(key)) {
-                    console.log(pgm + 'Error. Ignoring message from device with unknown key ' + key + '. message = ' + JSON.stringify(message)) ;
+                    console.log(pgm + 'Error. Ignoring message from device with unknown key ' + key + '. message = ' + JSON.stringify(message_with_envelope)) ;
                     continue ;
                 };
                 index = devices_index[key] ;
                 device = devices[devices_index[key]] ;
                 if (!device) {
-                    console.log(pgm + 'Error. Ignoring message from device with unknown index ' + index + '. message = ' + JSON.stringify(message)) ;
+                    console.log(pgm + 'Error. Ignoring message from device with unknown index ' + index + '. message = ' + JSON.stringify(message_with_envelope)) ;
                     continue ;
                 } ;
-                if (message.encryption == 'rsa') {
+                if (message_with_envelope.encryption == 'rsa') {
                     // public/private key decryption (rsa) - must be password for symmetric encryption
                     if (!encrypt) {
                         encrypt = new JSEncrypt() ;
                         prvkey = Gofreerev.getItem('prvkey') ;
                         encrypt.setPrivateKey(prvkey);
                     } ;
-                    msg_json_com_rsa_enc = message.message ;
-                    msg_json = encrypt.decrypt(msg_json_com_rsa_enc) ;
-                    // msg_json = Gofreerev.decompress1(msg_json_com) ;
-                    console.log(pgm + 'rsa: msg_json_com_rsa_enc = ' + msg_json_com_rsa_enc) ;
-                    // console.log(pgm + 'rsa: msg_json_com = ' + msg_json_com) ;
+                    // rsa => json
+                    msg_json_rsa_enc = message_with_envelope.message ;
+                    msg_json = encrypt.decrypt(msg_json_rsa_enc) ;
+                    console.log(pgm + 'rsa: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
                     console.log(pgm + 'rsa: msg_json = ' + msg_json) ;
                 }
                 else {
                     // symmetric key decryption
                     if (!device.password) {
-                        console.log(pgm + 'Error. Ignoring message from device with key ' + key + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(message)) ;
+                        console.log(pgm + 'Error. Ignoring message from device with key ' + key + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(message_with_envelope)) ;
                         continue ;
                     }
-                    msg_json_sym_enc = message.message ;
+                    msg_json_sym_enc = message_with_envelope.message ;
                     msg_json = Gofreerev.decrypt(msg_json_sym_enc, device.password) ;
                     console.log(pgm + 'sym: msg_json_sym_enc = ' + msg_json_sym_enc) ;
                     console.log(pgm + 'sym: msg_json = ' + msg_json) ;
@@ -2677,7 +2674,7 @@ angular.module('gifts', ['ngRoute'])
                         receive_message_pw(device, msg) ;
                         break ;
                     default:
-                        console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in message ' + JSON.stringify(message) + '. msg = ' + JSON.stringify(msg)) ;
+                        console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in message ' + JSON.stringify(message_with_envelope) + '. msg = ' + JSON.stringify(msg)) ;
                 } // end msgtype switch
             } ;
         } // receive_messages

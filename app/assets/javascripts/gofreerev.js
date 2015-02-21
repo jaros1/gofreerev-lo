@@ -2499,6 +2499,7 @@ angular.module('gifts', ['ngRoute'])
                     // communication step 2 - compare sha256 checksum for mutual friends
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
+                        request_mid: null,
                         msgtype: 'users_sha256',
                         mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
                     }) ;
@@ -2508,11 +2509,15 @@ angular.module('gifts', ['ngRoute'])
             for (i=0 ; i<new_mailboxes.length ; i++) {
                 mailbox = new_mailboxes[i] ;
                 mailbox.online = true ;
-                mailbox.outbox = [] ;
+                mailbox.outbox = [] ; // message to send in next ping
+                mailbox.sending = [] ; // ping request in process
+                mailbox.sent = [] ; // messages sent - response not yet received
+                mailbox.done = [] ; // messages sent - response received
                 if (!key_mailbox_index.hasOwnProperty(mailbox.key)) {
                     // communication step 2 - compare sha256 checksum for mutual friends
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
+                        request_mid: null,
                         msgtype: 'users_sha256',
                         mutual_friends: JSON.parse(JSON.stringify(mailbox.mutual_friends))
                     }) ;
@@ -2633,6 +2638,37 @@ angular.module('gifts', ['ngRoute'])
             };
         }; // send_message_users_sha256
 
+        // communication step 3 - send list of gifts sha256 values to other device
+        var send_message_gifts_sha256 = function (msg) {
+            var pgm = service + '.send_message_gifts_sha256: ' ;
+            console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
+
+            // find sha256 values for relevant gifts / mutual friends
+            var gifts_sha256_hash = {}, user_id, i, j, gift ;
+            for (i=0 ; i<msg.mutual_friends.length ; i++) {
+                user_id = user_ids[i] ;
+                console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
+                for (j=0 ; j<user_id_gifts_index[user_id].length ; j++) {
+                    gift = user_id_gifts_index[user_id][j] ;
+                    if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
+                    // todo: add gift.updated_at_client property - apply oldest_gift_at filter
+                    if (!gifts_sha256_hash[gift.gid]) gifts_sha256_hash[gift.gid] = gift.sha256 ;
+                } // for j
+            } // for i
+            console.log(pgm + 'gifts_sha256_hash = ' + JSON.stringify(gifts_sha256_hash)) ;
+            //gifts_sha256_hash =
+            //    {"14239781692770120364":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M",
+            //     "14239781692770348983":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o",
+            //        ...
+            //     "14244941900636888171":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô"}
+
+            return {
+                msgtype: msg.msgtype,
+                mid: msg.mid,
+                mutual_friends: msg.mutual_friends} ;
+
+        }; // send_message_gifts_sha256
+
         // send/receive messages to/from other devices
         var send_messages = function () {
             var pgm = service + '.send_messages: ' ;
@@ -2679,28 +2715,34 @@ angular.module('gifts', ['ngRoute'])
                     // wait with any messages in outbox until symmetric password setup is complete
                     continue ;
                 }
-                if (!mailbox.hasOwnProperty('outbox')) {
-                    console.log(pgm + 'Error. Outbox was not found in mailbox. did = ' + mailbox.did) ;
-                    continue ;
-                }
                 if (mailbox.outbox.length == 0) continue ; // no new messages for this mailbox
 
                 // send continue with symmetric key communication
                 console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key) ;
                 // initialise an array with messages for device
                 messages = [] ;
+                if (mailbox.sending.length > 0) {
+                    console.log(pgm + 'found ' + mailbox.sending.length + ' old messages in sending for device ' + mailbox.did + ' with key ' + mailbox.key) ;
+                }
+                mailbox.sending.length = 0 ;
                 for (var j=0 ; j<mailbox.outbox.length ; j++) {
                     msg = mailbox.outbox[j] ;
                     console.log(pgm + 'mailbox.outbox[' + j + '] = ' + JSON.stringify(msg)) ;
                     // outbox[0] = {"msgtype":"users_sha256","mutual_friends":[1126,920]}"
                     switch(msg.msgtype) {
                         case 'users_sha256':
+                            // communication step 2 - send users sha256 signatures to other device
                             messages.push(send_message_users_sha256(msg)) ;
                             break ;
+                        case 'gifts_sha256':
+                            // communication step 3 - send gifts sha256 signatures to other device
+                            messages.push(msg) ;
                         default:
                             console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(mailbox)) ;
                     } // end msgtype switch
+                    mailbox.sending.push(msg) ;
                 } // for j (mailbox.outbox)
+                mailbox.outbox.length = 0 ; // messages was moved to mailbox.sending
                 // todo: add more header fields in message?
                 message = {
                     sent_at_client: (new Date).getTime(),
@@ -2723,7 +2765,30 @@ angular.module('gifts', ['ngRoute'])
             return (response.length == 0 ? null : response) ;
         }; // send_messages
 
-        // receive symmetric password (part 2) from other device
+        // ping ok response. move messages from mailbox.sending to mailbox.sent
+        var messages_sent = function () {
+            var mailbox ;
+            for (var i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                for (var j=0 ; j<mailbox.sending.length ; j++) {
+                    mailbox.sent.push(mailbox.sending[j]) ;
+                    if (mailbox.sent.length > 5) mailbox.sent.shift() ; // keep last 5 sent messages
+                } // for j
+                mailbox.sending.length = 0 ;
+            } // for i
+        } // messages_sent
+
+        // ping error response. move messages from mailbox.sending to mailbox.outbox
+        var messages_not_sent = function () {
+            var mailbox ;
+            for (var i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                for (var j=0 ; j<mailbox.sending.length ; j++) mailbox.outbox.push(mailbox.sending[j]) ;
+                mailbox.sending.length = 0 ;
+            } // for i
+        } // messages_sent
+
+        // communication step 1 - receive symmetric password (part 2) from other device
         var receive_message_password = function (device, msg) {
             var pgm = service + 'receive_message_password: ' ;
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
@@ -2748,24 +2813,12 @@ angular.module('gifts', ['ngRoute'])
             }
         }; // receive_message_password;
 
-        // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
+        // communication step 2 - receive "users_sha256" message from other device. one user.sha256 signature for each mutual friend
         var receive_message_users_sha256 = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_users_sha256: ' ;
             console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
-            //device  = {"pubkey":"-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCmFHTsaCCC7qFCBgcVf1/EXIpQ\nPrQehwmTmlxtEg3DLjXXSLRpftfI76/rpHM9FF/rct+SzP7KvrtauQhroflmO4ix\n5qf3UAa82lfb4b8BNGlbJfdnD5UgkXxTSP8v5E2yTlElp7lWqtvEdOZDT3azykVM\nVYoitIZ7A1EoODHpYQIDAQAB\n-----END PUBLIC KEY-----",
-            //    "password":"4gpJzr$ci&/hDy£B:KB?lmKB+ths@n gd-6N#T3E.+@VR=ZLs6(:xO25S7,HAx th8$bEd_G[K2+rkcr"}
-            //mailbox = {"did":"14225475967174557072",
-            //    "sha256":"5qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n",
-            //    "mutual_friends":[1126,920],
-            //    "key":"142254759671745570725qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n",
-            //    "online":true,
-            //    "outbox":[{"mid":"14245082122377763095","msgtype":"users_sha256","mutual_friends":[1126,920]}]}
-            //msg = {"msgtype":"users_sha256",
-            //    "mid":"14245082115596360447",
-            //    "mutual_friends":[{"user_id":1126,"sha256":null},
-            //        {"user_id":920,"sha256":"aÕÛPîÂ\t¬B!\u001cíÌÁ2\"ò®\u000fvEUO\u000fåuÙ"}]}
 
             // compare mailbox.mutual_friends and msg.mutual_friends. list with mutual friends should be identical
             var my_mutual_friends = mailbox.mutual_friends ;
@@ -2792,6 +2845,7 @@ angular.module('gifts', ['ngRoute'])
             var mutual_friends = my_mutual_friends ;
             console.log(pgm + 'mutual_friends = ' + mutual_friends.join(', ')) ;
 
+            // exclude some gifts from user sha256 calculation.
             var oldest_gift_at = 0 ; // todo: max oldest_gift_at on this device and msg.oldest_gift_at
             var ignore_invalid_gifts = []; // todo: merge msg.ignore_invalid_gifts and device.ignore_invalid_gifts gids
 
@@ -2813,9 +2867,122 @@ angular.module('gifts', ['ngRoute'])
             //               "920": {"my_sha256":"\u0011½ åìÊ~\u000b\u0007Y\u000bá\\>é\u0013ìÞOì\\ÏwÆJ+K\nª\n",
             //                       "msg_sha256":"aÕÛPîÂ\t¬B!\u001cíÌÁ2\"ò®\u000fvEUO\u000fåuÙ"}}
 
+            // find users with sha256 difference
+            var user_ids = [] ;
+            for (user_id in sha256_hash) {
+                if ((sha256_hash[user_id].my_sha256 == null) && (sha256_hash[user_id].msg_sha256 == null)) continue ;
+                if (sha256_hash[user_id].my_sha256 != sha256_hash[user_id].msg_sha256) user_ids.push(user_id) ;
+            }
+            if (user_ids.length == 0) {
+                console.log(pgm + 'mutual gifts for this device are up-to-date.') ;
+                return ;
+            }
+            user_ids.sort() ;
+            console.log(pgm + 'user_ids = ' + user_ids.join(', ')) ;
 
+            // abort if gifts_sha256 message already is in output
+            for (i=0 ; i<mailbox.outbox.length ; i++) {
+                if (mailbox.outbox[i].msgtype == 'gifts_sha256') {
+                    console.log(pgm + 'Wait. Old gifts_sha256 message is already in outbox.') ;
+                    return ;
+                }
+            } // for i
+            // abort if gifts_sha256 message already is in sent
+            for (i=0 ; i<mailbox.sent.length ; i++) {
+                if (mailbox.sent[i].msgtype == 'gifts_sha256') {
+                    console.log(pgm + 'Wait. Old gifts_sha256 message is already in sent.') ;
+                    return ;
+                }
+            } // for i
 
+            // find sha256 values for relevant gifts / mutual friends
+            var gifts_sha256_hash = {}, j, gift ;
+            for (i=0 ; i<user_ids.length ; i++) {
+                user_id = user_ids[i] ;
+                console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
+                for (j=0 ; j<user_id_gifts_index[user_id].length ; j++) {
+                    gift = user_id_gifts_index[user_id][j] ;
+                    if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
+                    // todo: add gift.updated_at_client property - apply oldest_gift_at filter
+                    if (!gifts_sha256_hash[gift.gid]) gifts_sha256_hash[gift.gid] = gift.sha256 ;
+                } // for j
+            } // for i
+            console.log(pgm + 'gifts_sha256_hash = ' + JSON.stringify(gifts_sha256_hash)) ;
+            //gifts_sha256_hash =
+            //    {"14239781692770120364":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M",
+            //     "14239781692770348983":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o",
+            //        ...
+            //     "14244941900636888171":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô"}
+
+            var gifts_sha256_array = [] ;
+            for (var gid in gifts_sha256_hash) {
+                gifts_sha256_array.push({gid: gid, sha256: gifts_sha256_hash[gid]}) ;
+            }
+
+            // communication step 3 - insert gifts_sha256 message in outbox. will be send in next ping request
+            mailbox.outbox.push({
+                mid: Gofreerev.get_new_uid(),
+                request_mid: msg.mid,
+                msgtype: 'gifts_sha256',
+                oldest_gift_at: oldest_gift_at,
+                ignore_invalid_gifts: ignore_invalid_gifts,
+                mutual_friends: user_ids,
+                mutual_gifts: gifts_sha256_array}) ;
         }; // receive_message_users_sha256
+
+        // communication step 3 - compare sha256 values for gifts (mutual friends)
+        var receive_message_gifts_sha256 = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_gifts_sha256: ' ;
+            console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
+            console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+            console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+
+            //mailbox =
+            //{"did":"14225475967174557072","sha256":"5qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n","mutual_friends":[1126,920],
+            //    "key":"142254759671745570725qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n","online":true,
+            //    "outbox":[],
+            //    "sending":[],
+            //    "sent":[{"mid":"14245361730422146791","request_mid":null,"msgtype":"users_sha256","mutual_friends":[1126,920]},
+            //        {"mid":"14245361838382183778","request_mid":"14245361728100578120","msgtype":"gifts_sha256","oldest_gift_at":0,"ignore_invalid_gifts":[],"mutual_friends":["920"],"mutual_gifts":[{"gid":"14239781692770120364","sha256":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M"},{"gid":"14239781692770348983","sha256":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o"},{"gid":"14239781692770427293","sha256":"\u0006Ã!\u001a%¬c^þÒ*Ì]¾«û¥e$µ`By\u001f\u0017ëÌ×¾Æ"},{"gid":"14239781692770522732","sha256":"S{F&ùúW]_¯M­LlBµ\u001dõ¤\u0012HTæÈAtS\u0015ù"},{"gid":"14239781692770775148","sha256":"yÙùBÎM-/úï¤¯ã¹\u000eË¨\u001e%íaX©«áäú·"},{"gid":"14239781692770876536","sha256":"\u0011î5E-ÙS´'è%Ù½©FäÆk9´Èl$ç6\u001a?Ü\nO"},{"gid":"14239781692771119206","sha256":"Þ±ºVí\u0001í·\rtMFû+ú\u0013R\rêJO®Wü\u0001á¸"},{"gid":"14239781692771120584","sha256":"ûu±Y|\"s\n@Ñ¨wú¢~¨«\u000eóH|bßê¨\u001fu/"},{"gid":"14239781692771483562","sha256":"\u0002q½¾\u001b¶_¢g$\u000er(\u0012Û°WD ?°\u0004Zsæ\u001d"},{"gid":"14239781692771530176","sha256":"\u0006ß»×äÈrÅ·;;ËgPø8{\u0011RÃoÁA±,ÌKH"},{"gid":"14239781692771703391","sha256":"jF¶tã#V8kMÅÊHÉA\u001eBã¬H\u0005\u0016ìÇt\u001e¨ä\u001b"},{"gid":"14239781692772499411","sha256":"¿_TÃ'^Wj¶\"f'SN~ç|ÃÚ¥wè\\A\u0014 \u0016g]"},{"gid":"14239781692772777453","sha256":"ËJ&}Qig!'æ¬v<$ÿ¼±gøØ\u0006'\u0003Ì;É¹"},{"gid":"14239781692773030964","sha256":"'HU\f«P¨nª NP7ÚöÛ\u000e\u0019\u0017}VmÜ¾\u0014\u0000Eû("},{"gid":"14239781692773321072","sha256":"DUu¢\u0001t6«nÇ!óØ\tçN@ÞS#3çßj1ã\u0006@"},{"gid":"14239781692774532744","sha256":"<åN³è¤zXHK>d­¸\u0002L#zs·.\u0005"},{"gid":"14239781692774974940","sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö"},{"gid":"14239781692775813294","sha256":"\u0000_\u0019\u001dÈJR\f@Ì>ÈØ!êq¬z\u001bã-½ÙOI§.éþ"},{"gid":"14239781692775882233","sha256":"íïö¸E7È×xã\u0019×\u0001}·÷l³ê{O1-Ô8+\u0016\""},{"gid":"14239781692776555896","sha256":"f\u001epB\u0001x8&\u0001\u0016\u001b°ö¨çM¤K\\_`\u0000\rúx\u001d"},{"gid":"14239781692776993269","sha256":"çkÄa{[zn+%SeùS$EÌ­Þ\"öë\u000f½ú?Ä"},{"gid":"14239781692777372502","sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö"},{"gid":"14239781692777574345","sha256":"8HãÃ\u0017\u000fû:5V1Åô%ûK]\u0005\u000f\u0010óQ©\u00026bûV"},{"gid":"14239781692778276592","sha256":"/ 4\u0006ýÆj-\u001e\u00032 &hÇ\u000f«>ÓEh»A\u001doÉ¹k½"},{"gid":"14239781692778309061","sha256":"\u0002\u0016ß¨I\bp»­\r¯Z(Ý\u001e\u0001×óR)en\u0014?\u0016)"},{"gid":"14239781692778518406","sha256":"\t\thÜ\u0001Ã¸2º³\u0010ÏÞî«8Ø¨¢2ge\u0007\u0003"},{"gid":"14239781692778583942","sha256":"U\u0017\u0015\u000e\u0007~»|h\u001a<ðÖ<\u001ae\u000bÀJ¼\"ÁNbs×"},{"gid":"14239781692779726598","sha256":"×?`EíQ\u000fkÞØN@-fÒ­\u0019³§qg©§zIG\u001b"},{"gid":"14244918825228386518","sha256":"Éó6a[·ázÀ\u000e6Á$îÐìÎRuxßöá@|ýÃÕ3¼O"},{"gid":"14244924316655606495","sha256":"qY)21\u0004òÊ\u0003¼E_G>*Ì\u001eðÂ\u001b}\u0019>ëÛÜRF"},{"gid":"14244941900636888171","sha256":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô"}]}],
+            //    "done":[]}
+            //msg     =
+            //{"mid":"14245361850012058813","request_mid":"14245361730422146791","msgtype":"gifts_sha256",
+            //    "oldest_gift_at":0,"ignore_invalid_gifts":[],"mutual_friends":["920"],
+            //    "mutual_gifts":[{"gid":"14239781115388288755","sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"},{"gid":"14239781115388735516","sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"}]
+            //}
+
+            // gifts_sha256 message (step 3) is a response for previous users_sha256 message (step 2)
+            // find and move users_sha256 message to mailbox.done
+            var request_mid = msg.request_mid ;
+            var index = -1 ;
+            for (var i=0 ; i<mailbox.sent.length ; i++) {
+                if ((mailbox.sent[i].mid == request_mid) && (mailbox.sent[i].msgtype == 'users_sha256')) index = i ;
+            }
+            var old_msg ;
+            if (index >= 0) {
+                console.log(pgm + 'Ok. Moving old users_sha256 message ' + request_mid + ' from sent to done.') ;
+                old_msg = mailbox.sent.splice(index, 1) ;
+                mailbox.done.push(old_msg[0]) ;
+            }
+            if (index == -1) {
+                // check if old message is in outbox - for example server ok response and ping timeout in js
+                for (var i=0 ; i<mailbox.outbox.length ; i++) {
+                    if ((mailbox.outbox[i].mid == request_mid) && (mailbox.outbox[i].msgtype == 'users_sha256')) index = i ;
+                }
+                if (index >= 0) {
+                    // error. old messages was found in outbox
+                    console.log(pgm + 'Error. Moving old users_sha256 message ' + request_mid + ' from outbox to done.') ;
+                    old_msg = mailbox.outbox.splice(index, 1) ;
+                    mailbox.done.push(old_msg[0]) ;
+                }
+            }
+            if (index == -1) {
+                console.log(pgm + 'Error. Old users_sha256 message with mid ' + request_mid + ' was not found.') ;
+                return ;
+            }
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+
+        }; // receive_message_gifts_sha256
 
         // receive messages from other devices
         var receive_messages = function (response) {
@@ -2881,7 +3048,12 @@ angular.module('gifts', ['ngRoute'])
                         msg = msg_client_envelope.messages[j] ;
                         switch(msg.msgtype) {
                             case 'users_sha256':
+                                // communication step 2 - compare sha256 values for users (mutual friends)
                                 receive_message_users_sha256(device, mailbox, msg) ;
+                                break ;
+                            case 'gifts_sha256':
+                                // communication step 3 - compare sha256 values for gifts (mutual friends)
+                                receive_message_gifts_sha256(device, mailbox, msg) ;
                                 break ;
                             default:
                                 console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in envelope ' + JSON.stringify(msg_server_envelope) + '. msg = ' + JSON.stringify(msg)) ;
@@ -2907,7 +3079,9 @@ angular.module('gifts', ['ngRoute'])
             pubkeys_response: pubkeys_response,
             update_mailboxes: update_mailboxes,
             send_messages: send_messages,
-            receive_messages: receive_messages
+            receive_messages: receive_messages,
+            messages_sent: messages_sent,
+            messages_not_sent: messages_not_sent
         };
 
         // end GiftService
@@ -2990,6 +3164,9 @@ angular.module('gifts', ['ngRoute'])
                     // todo: report ping errors to inbox.
                     if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
 
+                    // move messages from mailbox.sending to mailbox.sent
+                    giftService.messages_sent() ;
+
                     // process ping response
                     if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
                     // check online users/devices - create a mail box for each online device
@@ -3028,6 +3205,10 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval) ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
                     console.log(pgm + 'error = ' + JSON.stringify(error)) ;
+
+                    // move messages from mailbox.sending to mailbox.outbox - resend in next ping
+                    giftService.messages_not_sent() ;
+
                 })
         } // ping
         $timeout(function () { ping(ping_interval); }, ping_interval) ;

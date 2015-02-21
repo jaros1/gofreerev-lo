@@ -1958,14 +1958,51 @@ angular.module('gifts', ['ngRoute'])
             comments_sha256.unshift(comments.length.toString()) ;
             var comments_str = comments_sha256.join(',') ;
             return Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at, comments_str) ;
-        } // sha256_gift
+        }; // sha256_gift
+
+        var sort_by_gid = function (a, b) {
+            if (a.gid < b.gid) return -1;
+            if (a.gid > b.gid) return 1;
+            return 0;
+        }; // sort_by_gid
 
         var gifts = [];
         var gifts_index = {} ;
+        var user_id_gifts_index = {} ;
         var init_gifts_index = function () {
             gifts_index = {} ;
-            for (var j=0 ; j<gifts.length ; j++) gifts_index[gifts[j].gid] = j ;
-        }
+            user_id_gifts_index = {} ;
+            var user_ids, user_id, i, j, gift ;
+            for (i=0 ; i<gifts.length ; i++) {
+                gift = gifts[i] ;
+                gift.sha256 = calc_sha256_for_gift(gift) ;
+                // simple gid to index 
+                gifts_index[gift.gid] = i ;
+                // user_id to array of gifts
+                user_ids = [] ;
+                for (j=0 ; j<gift.giver_user_ids.length ; j++) {
+                    user_id = gift.giver_user_ids[j] ;
+                    if (user_ids.indexOf(user_id)==-1) {
+                        if (!user_id_gifts_index[user_id]) user_id_gifts_index[user_id] = [] ;
+                        user_id_gifts_index[user_id].push(gift) ;
+                        user_ids.push(user_id) ;
+                    }
+                } // for j
+                for (j=0 ; j<gift.receiver_user_ids.length ; j++) {
+                    user_id = gift.receiver_user_ids[j] ;
+                    if (user_ids.indexOf(user_id)==-1) {
+                        if (!user_id_gifts_index[user_id]) user_id_gifts_index[user_id] = [] ;
+                        user_id_gifts_index[user_id].push(gift) ;
+                        user_ids.push(user_id) ;
+                    }
+                } // for j
+            } // for i
+            // sort gift arrays in user_id_gifts_index for fast users sha256 calc
+            for (user_id in user_id_gifts_index) {
+                user_id_gifts_index[user_id].sort(sort_by_gid) ;
+            }
+            // console.log('user_id_gifts_index = ' + JSON.stringify(user_id_gifts_index)) ;
+        };
 
         // save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
         var save_gifts = function() {
@@ -1986,7 +2023,7 @@ angular.module('gifts', ['ngRoute'])
             }
             // save
             Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
-        } // save_gifts
+        }; // save_gifts
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
@@ -2001,61 +2038,62 @@ angular.module('gifts', ['ngRoute'])
             var j, comment ;
             for (var i=0 ; i<new_gifts.length ; i++) {
                 gift = new_gifts[i] ;
-                // data migration - rename date to created_at_client - todo: remove data migration
-                if (gift.hasOwnProperty('date')) {
-                    gift.created_at_client = gift.date ;
-                    delete gift.date ;
-                    migration = true ;
-                }
-                // error cleanup - remove doublets from gifts array - todo: remove data migration
-                if (gifts_index.hasOwnProperty(gift.gid)) {
-                    console.log(pgm + 'Error. removed gift doublet with gid ' + gift.gid) ;
-                    migration = true ;
-                    continue ;
-                }
-                // data migration. server side sha256 signature is invalid after 4 open graph fields have been added to client side part of signature - todo: remove data migration
-                if ((typeof gift.open_graph_url != 'undefined') && (gift.open_graph_url != null) && (gift.open_graph_url != '') && (gift.hasOwnProperty('created_at_server'))) {
-                    // gift with open graph attributes.
-                    var old_gid = gift.gid ;
-                    gift.gid = Gofreerev.get_new_uid() ;
-                    delete gift.created_at_server ;
-                    console.log(pgm + 'migration after sha256 signature change. old gid = ' + old_gid + ', new gid = ' + gift.gid) ;
-                    migration = true ;
-                }
-                // data migration. rename comment.created_at to created_at_client - todo: remove data migration
-                if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
-                    for (j=0 ; j<gift.comments.length ; j++) {
-                        comment = gift.comments[j] ;
-                        if (comment.hasOwnProperty('created_at')) {
-                            comment.created_at_client = comment.created_at ;
-                            delete comment.created_at ;
-                            migration = true ;
-                        }
-                    }
-                }
+                // data migration - rename date to created_at_client
+                //if (gift.hasOwnProperty('date')) {
+                //    gift.created_at_client = gift.date ;
+                //    delete gift.date ;
+                //    migration = true ;
+                //}
+                // error cleanup - remove doublets from gifts array
+                //if (gifts_index.hasOwnProperty(gift.gid)) {
+                //    console.log(pgm + 'Error. removed gift doublet with gid ' + gift.gid) ;
+                //    migration = true ;
+                //    continue ;
+                //}
+                // data migration. server side sha256 signature is invalid after 4 open graph fields have been added to client side part of signature
+                //if ((typeof gift.open_graph_url != 'undefined') && (gift.open_graph_url != null) && (gift.open_graph_url != '') && (gift.hasOwnProperty('created_at_server'))) {
+                //    // gift with open graph attributes.
+                //    var old_gid = gift.gid ;
+                //    gift.gid = Gofreerev.get_new_uid() ;
+                //    delete gift.created_at_server ;
+                //    console.log(pgm + 'migration after sha256 signature change. old gid = ' + old_gid + ', new gid = ' + gift.gid) ;
+                //    migration = true ;
+                //}
+                // data migration. rename comment.created_at to created_at_client
+                //if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
+                //    for (j=0 ; j<gift.comments.length ; j++) {
+                //        comment = gift.comments[j] ;
+                //        if (comment.hasOwnProperty('created_at')) {
+                //            comment.created_at_client = comment.created_at ;
+                //            delete comment.created_at ;
+                //            migration = true ;
+                //        }
+                //    }
+                //}
                 // calc sha256 signatures from gift and comments
-                gift.sha256 = calc_sha256_for_gift(gift) ;
-                if (!gift.sha256) console.log(pgm + ' could not calculate sha256 for gift ' + gift.gid) ;
-                gifts_index[gift.gid] = gifts.length ;
+                //gift.sha256 = calc_sha256_for_gift(gift) ;
+                //if (!gift.sha256) console.log(pgm + ' could not calculate sha256 for gift ' + gift.gid) ;
+                //gifts_index[gift.gid] = gifts.length ;
                 gifts.push(gift) ;
             }
             if (migration) save_gifts() ;
             console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
-        }
+            init_gifts_index() ;
+        };
         load_gifts() ;
 
-        // add missing gid (unique gift id) - todo: remove
-        for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) {
-            gifts[i].gid = Gofreerev.get_new_uid() ;
-            init_gifts_index() ;
-        }
-        // add missing cid (unique comment id) - todo: remove
-        for (i=0 ; i<gifts.length ; i++) {
-            if (gifts[i].hasOwnProperty('comments')) {
-                var comments = gifts[i].comments ;
-                for (var j=0 ; j<comments.length ; j++) if (!comments[j].cid) comments[j].cid = Gofreerev.get_new_uid() ;
-            }
-        }
+        // add missing gid (unique gift id)
+        //for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) {
+        //    gifts[i].gid = Gofreerev.get_new_uid() ;
+        //    init_gifts_index() ;
+        //}
+        // add missing cid (unique comment id)
+        //for (i=0 ; i<gifts.length ; i++) {
+        //    if (gifts[i].hasOwnProperty('comments')) {
+        //        var comments = gifts[i].comments ;
+        //        for (var j=0 ; j<comments.length ; j++) if (!comments[j].cid) comments[j].cid = Gofreerev.get_new_uid() ;
+        //    }
+        //}
 
         var comments_debug_info = function (comments) {
             var text = 'length = ' + comments.length ;
@@ -2531,11 +2569,39 @@ angular.module('gifts', ['ngRoute'])
             device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1) ;
         }; // setup_device_password
 
+        var calc_sha256_for_users = function (user_ids) {
+        }; // calc_sha256_for_users
+
+        // communication step 2 - send array with sha256 calculation for mutual users to other device
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
         var send_message_users_sha256 = function (msg) {
             var pgm = service + '.send_message_users_sha256: ' ;
             console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
-            return msg ;
+            // message = {"mid":"14244445758246778438","msgtype":"users_sha256","mutual_friends":[1126,920]}
+            var mutual_friends = [], sha256_input, user_id, gift, no_gifts, sha256 ;
+            for (var i=0 ; i<msg.mutual_friends.length ; i++) {
+                user_id = msg.mutual_friends[i] ;
+                sha256_input = [] ;
+                if (user_id_gifts_index[user_id]) {
+                    console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
+                    for (var j = 0; j < user_id_gifts_index[user_id].length; j++) {
+                        gift = user_id_gifts_index[user_id][j];
+                        if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
+                        sha256_input.push(gift.gid);
+                        sha256_input.push(gift.sha256);
+                    } // for j
+                } // if
+                sha256 = sha256_input.length > 0 ? sha256 = Gofreerev.sha256(sha256_input.join(',')) : null ;
+                mutual_friends.push({
+                    user_id: user_id,
+                    no_gifts: sha256_input.length/2,
+                    sha256: sha256}) ;
+            } // for i
+            return {
+                msgtype: msg.msgtype,
+                mid: msg.mid,
+                mutual_friends: mutual_friends
+            };
         }; // send_message_users_sha256
 
         // send/receive messages to/from other devices
@@ -2596,7 +2662,7 @@ angular.module('gifts', ['ngRoute'])
                 messages = [] ;
                 for (var j=0 ; j<mailbox.outbox.length ; j++) {
                     msg = mailbox.outbox[j] ;
-                    console.log(pgm + 'outbox[' + j + '] = ' + JSON.stringify(msg)) ;
+                    console.log(pgm + 'mailbox.outbox[' + j + '] = ' + JSON.stringify(msg)) ;
                     // outbox[0] = {"msgtype":"users_sha256","mutual_friends":[1126,920]}"
                     switch(msg.msgtype) {
                         case 'users_sha256':

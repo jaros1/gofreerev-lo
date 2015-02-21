@@ -2569,38 +2569,67 @@ angular.module('gifts', ['ngRoute'])
             device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1) ;
         }; // setup_device_password
 
-        var calc_sha256_for_users = function (user_ids) {
+        // sha256 calculation for a user
+        // params:
+        // - user_id - interval user id - required
+        // - oldest_gift_id - optional unix timestamp - ignore gifts created or updated before this unix timestamp - used in localStorage space management
+        // - ignore_invalid_gifts - optional array with gid's to ignore in user sha256 calculation - for example gift marked as spam or gift with invalid server sha256 signature
+        var calc_sha256_for_user = function (user_id, oldest_gift_at, ignore_invalid_gifts) {
+            var pgm = service + '.calc_sha256_for_user: ' ;
+            var sha256_input = [], i, gift ;
+            if (!oldest_gift_at) oldest_gift_at = 0 ;
+            if (!ignore_invalid_gifts) ignore_invalid_gifts = [] ;
+            if (!user_id_gifts_index[user_id]) {
+                console.log(pgm + 'No gifts was found for user_id ' + user_id) ;
+                return null ;
+            }
+            // console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
+            for (i=0 ; i<user_id_gifts_index[user_id].length ; i++) {
+                gift = user_id_gifts_index[user_id][i] ;
+                if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
+                // todo: add gift.updated_at_client property - apply oldest_gift_at filter
+                if (ignore_invalid_gifts.indexOf(gift.gid) != -1) {
+                    console.log(pgm + 'Ignoring gift ' + gift.gid + ' in sha256 calc for user_id ' + user_id) ;
+                    continue ;
+                }
+                sha256_input.push(gift.gid);
+                sha256_input.push(gift.sha256);
+            } // for i
+            // console.log(pgm + 'sha256_input.length = ' + sha256_input.length) ;
+            if (sha256_input.length == 0) return null ;
+            return Gofreerev.sha256(sha256_input.join(',')) ;
+        }; // calc_sha256_for_user
+
+        // calculate sha256 for a list of user ids - used in gift sync / users_sha256 message
+        // params:
+        // - user_ids - array with interval user id - required
+        // - oldest_gift_id - optional unix timestamp - ignore gifts created or updated before this unix timestamp - used in localStorage space management
+        // - ignore_invalid_gifts - optional array with gid's to ignore in user sha256 calculation - for example gift marked as spam or gift with invalid server sha256 signature
+        var calc_sha256_for_users = function (user_ids, oldest_gift_at, ignore_invalid_gifts) {
+            if (!oldest_gift_at) oldest_gift_at = 0 ;
+            if (!ignore_invalid_gifts) ignore_invalid_gifts = [] ;
+            var response = [], i ;
+            for (i=0 ; i<user_ids.length ; i++) {
+                response.push({
+                    user_id: user_ids[i],
+                    sha256: calc_sha256_for_user(user_ids[i], oldest_gift_at, ignore_invalid_gifts)
+                });
+            }
+            return response ;
         }; // calc_sha256_for_users
 
         // communication step 2 - send array with sha256 calculation for mutual users to other device
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
+        // DRY: move user sha256 calc to a method
         var send_message_users_sha256 = function (msg) {
             var pgm = service + '.send_message_users_sha256: ' ;
             console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
-            // message = {"mid":"14244445758246778438","msgtype":"users_sha256","mutual_friends":[1126,920]}
-            var mutual_friends = [], sha256_input, user_id, gift, no_gifts, sha256 ;
-            for (var i=0 ; i<msg.mutual_friends.length ; i++) {
-                user_id = msg.mutual_friends[i] ;
-                sha256_input = [] ;
-                if (user_id_gifts_index[user_id]) {
-                    console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
-                    for (var j = 0; j < user_id_gifts_index[user_id].length; j++) {
-                        gift = user_id_gifts_index[user_id][j];
-                        if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
-                        sha256_input.push(gift.gid);
-                        sha256_input.push(gift.sha256);
-                    } // for j
-                } // if
-                sha256 = sha256_input.length > 0 ? sha256 = Gofreerev.sha256(sha256_input.join(',')) : null ;
-                mutual_friends.push({
-                    user_id: user_id,
-                    no_gifts: sha256_input.length/2,
-                    sha256: sha256}) ;
-            } // for i
+            var oldest_gift_at = 0 ; // todo: set oldest_gift_at as max oldest_gift_at for this and other client
+            var ignore_invalid_gifts = [] ; // todo: add gid ignore lists. Glocal list and/or a list for each device
             return {
                 msgtype: msg.msgtype,
                 mid: msg.mid,
-                mutual_friends: mutual_friends
+                mutual_friends: calc_sha256_for_users(msg.mutual_friends, oldest_gift_at, ignore_invalid_gifts)
             };
         }; // send_message_users_sha256
 

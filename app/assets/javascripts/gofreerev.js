@@ -2657,8 +2657,8 @@ angular.module('gifts', ['ngRoute'])
                         device.password1_at = (new Date).getTime() ;
                     } ;
                     setup_device_password(device) ;
-                    message = { msgtype: 'pw', pw: [device.password1, device.password1_at]} ;
-                    if (device.password_md5) message.pw.push(device.password_md5) ; // verify complete symmetric password (password1+password2) for device
+                    message = [device.password1, device.password1_at] ;
+                    if (device.password_md5) message.push(device.password_md5) ; // verify complete symmetric password (password1+password2) for device
                     // message => json => rsa encrypt
                     message_json = JSON.stringify(message) ;
                     // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
@@ -2728,14 +2728,14 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + 'receive_message_password: ' ;
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
             console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
-            // msg.pw is an array with password, password_at and optional md5 for complete password
+            // msg is an array with password, password_at and optional md5 for complete password
             // password setup is complete when received md5 in msg and password md5 for device are identical
-            device.password2 = msg.pw[0] ;
-            device.password2_at = msg.pw[1] ;
+            device.password2 = msg[0] ;
+            device.password2_at = msg[1] ;
             // calc password_md5 if possible
             setup_device_password(device) ;
             // check of the two devices agree about password
-            if (device.password_md5 && msg.pw.length == 3 && (device.password_md5 == msg.pw[2])) {
+            if (device.password_md5 && msg.length == 3 && (device.password_md5 == msg[2])) {
                 console.log(pgm + 'symmetric password setup completed.') ;
                 return true ; // continue with ...
                 // console.log(pgm + 'symmetric password setup completed. device = ' + JSON.stringify(device)) ;
@@ -2749,8 +2749,10 @@ angular.module('gifts', ['ngRoute'])
         }; // receive_message_password;
 
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
-        var receive_message_users_sha256 = function (msg) {
+        var receive_message_users_sha256 = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_users_sha256: ' ;
+            console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
+            console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
         }; // receive_message_users_sha256
 
@@ -2818,7 +2820,7 @@ angular.module('gifts', ['ngRoute'])
                         msg = msg_client_envelope.messages[j] ;
                         switch(msg.msgtype) {
                             case 'users_sha256':
-                                receive_message_users_sha256(msg) ;
+                                receive_message_users_sha256(device, mailbox, msg) ;
                                 break ;
                             default:
                                 console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in envelope ' + JSON.stringify(msg_server_envelope) + '. msg = ' + JSON.stringify(msg)) ;

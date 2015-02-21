@@ -2753,7 +2753,68 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + '.receive_message_users_sha256: ' ;
             console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
-            console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
+            console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+            //device  = {"pubkey":"-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCmFHTsaCCC7qFCBgcVf1/EXIpQ\nPrQehwmTmlxtEg3DLjXXSLRpftfI76/rpHM9FF/rct+SzP7KvrtauQhroflmO4ix\n5qf3UAa82lfb4b8BNGlbJfdnD5UgkXxTSP8v5E2yTlElp7lWqtvEdOZDT3azykVM\nVYoitIZ7A1EoODHpYQIDAQAB\n-----END PUBLIC KEY-----",
+            //    "password":"4gpJzr$ci&/hDy£B:KB?lmKB+ths@n gd-6N#T3E.+@VR=ZLs6(:xO25S7,HAx th8$bEd_G[K2+rkcr"}
+            //mailbox = {"did":"14225475967174557072",
+            //    "sha256":"5qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n",
+            //    "mutual_friends":[1126,920],
+            //    "key":"142254759671745570725qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n",
+            //    "online":true,
+            //    "outbox":[{"mid":"14245082122377763095","msgtype":"users_sha256","mutual_friends":[1126,920]}]}
+            //msg = {"msgtype":"users_sha256",
+            //    "mid":"14245082115596360447",
+            //    "mutual_friends":[{"user_id":1126,"sha256":null},
+            //        {"user_id":920,"sha256":"aÕÛPîÂ\t¬B!\u001cíÌÁ2\"ò®\u000fvEUO\u000fåuÙ"}]}
+
+            // compare mailbox.mutual_friends and msg.mutual_friends. list with mutual friends should be identical
+            var my_mutual_friends = mailbox.mutual_friends ;
+            var msg_mutual_friends = [] ;
+            var i, user_id ;
+            for (i=0 ; i<msg.mutual_friends.length ; i++) {
+                user_id = msg.mutual_friends[i].user_id ;
+                msg_mutual_friends.push(user_id) ;
+            } // for i
+            var invalid_user_ids = $(msg_mutual_friends).not(my_mutual_friends).get() ;
+            if (invalid_user_ids.length > 0) {
+                console.log(pgm + 'Not mutual user id ' + invalid_user_ids.join(', ') + ' was received. ' +
+                            'Expected user ids ' + my_mutual_friends.join(', ') + '. Found userids ' + msg_mutual_friends.join(', ') + '.') ;
+                msg_mutual_friends = $(msg_mutual_friends).not(invalid_user_ids).get() ;
+                if (msg_mutual_friends.length == 0) return ;
+            }
+            var missing_user_ids = $(my_mutual_friends).not(msg_mutual_friends).get() ;
+            if (missing_user_ids.length > 0) {
+                console.log(pgm + 'User id ' + missing_user_ids.join(', ') + ' was missing in message. ' +
+                            'Expected user ids ' + mailbox.mutual_friends.join(', ') + '. Found user ids ' + msg_mutual_friends.join(', ') + '.') ;
+                my_mutual_friends = $(my_mutual_friends).not(missing_user_ids).get() ;
+                if (my_mutual_friends.length == 0) return ;
+            }
+            var mutual_friends = my_mutual_friends ;
+            console.log(pgm + 'mutual_friends = ' + mutual_friends.join(', ')) ;
+
+            var oldest_gift_at = 0 ; // todo: max oldest_gift_at on this device and msg.oldest_gift_at
+            var ignore_invalid_gifts = []; // todo: merge msg.ignore_invalid_gifts and device.ignore_invalid_gifts gids
+
+            // compare sha256 values for mutual friends - gift sync must continue until sha256 values are identical
+            var sha256_array = calc_sha256_for_users(mutual_friends, oldest_gift_at, ignore_invalid_gifts) ;
+            var sha256_hash = {} ;
+            for (i=0 ; i<sha256_array.length ; i++) {
+                user_id = sha256_array[i].user_id ;
+                sha256_hash[user_id] = { my_sha256: sha256_array[i].sha256 } ;
+            } // for i
+            for (i=0 ; i<msg.mutual_friends.length ; i++) {
+                user_id = msg.mutual_friends[i].user_id ;
+                if (mutual_friends.indexOf(user_id) == -1) continue ;
+                sha256_hash[user_id].msg_sha256 = msg.mutual_friends[i].sha256 ;
+            } // for i
+            console.log(pgm + 'sha256_hash = ' + JSON.stringify(sha256_hash)) ;
+            //sha256_hash = {"1126":{"my_sha256":null,
+            //                       "msg_sha256":null},
+            //               "920": {"my_sha256":"\u0011½ åìÊ~\u000b\u0007Y\u000bá\\>é\u0013ìÞOì\\ÏwÆJ+K\nª\n",
+            //                       "msg_sha256":"aÕÛPîÂ\t¬B!\u001cíÌÁ2\"ò®\u000fvEUO\u000fåuÙ"}}
+
+
+
         }; // receive_message_users_sha256
 
         // receive messages from other devices

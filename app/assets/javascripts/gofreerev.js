@@ -2581,6 +2581,7 @@ angular.module('gifts', ['ngRoute'])
             }
             device.password_at = (new Date).getTime() ;
             device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1) ;
+            device.ignore_invalid_gifts = [] ;
         }; // setup_device_password
 
         // sha256 calculation for a user
@@ -2793,7 +2794,7 @@ angular.module('gifts', ['ngRoute'])
                 } // for j
                 mailbox.sending.length = 0 ;
             } // for i
-        } // messages_sent
+        }; // messages_sent
 
         // ping error response. move messages from mailbox.sending to mailbox.outbox
         var messages_not_sent = function () {
@@ -2803,7 +2804,18 @@ angular.module('gifts', ['ngRoute'])
                 for (var j=0 ; j<mailbox.sending.length ; j++) mailbox.outbox.push(mailbox.sending[j]) ;
                 mailbox.sending.length = 0 ;
             } // for i
-        } // messages_sent
+        }; // messages_sent
+
+        // manage device.ignore_invalid_gifts list - filter messages with invalid gifts
+        var is_gift_on_ignore_list = function (device, gid) {
+            if (device.ignore_invalid_gifts.indexOf(gid) == -1) return false ;
+            console.log(pgm + 'Error. Gift ' + gid + ' is in ignore list. See previous error message in log.') ;
+            return true ;
+        };
+        var add_gift_to_ignore_list = function (device, gid) {
+            if (device.ignore_invalid_gifts.indexOf(gid) != -1) ;
+            device.ignore_invalid_gifts.push(gid) ;
+        };
 
         // communication step 1 - receive symmetric password (part 2) from other device
         var receive_message_password = function (device, msg) {
@@ -3378,11 +3390,158 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
 
             // copy sub messages (send_gifts, request_gifts and check_gifts) to messages array
-            if (msg.send_gifts) messages.push(msg.send_gifts) ;
-            if (msg.request_gifts) messages.push(msg.request_gifts) ;
-            if (msg.check_gifts) messages.push(msg.check_gifts) ;
+            // keep reference to previous gifts_sha256 message - now in mailbox.done array
+            if (msg.send_gifts) {
+                msg.send_gifts.request_mid = request_mid ;
+                messages.push(msg.send_gifts);
+            }
+            if (msg.request_gifts) {
+                msg.request_gifts.request_mid = request_mid ;
+                messages.push(msg.request_gifts) ;
+            }
+            if (msg.check_gifts) {
+                msg.check_gifts.request_mid = request_mid ;
+                messages.push(msg.check_gifts) ;
+            }
 
         } ; // receive_message_sync_gifts
+
+        // communication step 4 - sub message from receive_message_sync_gifts
+        // receive missing gifts from other device
+        var receive_message_send_gifts = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_send_gifts: ' ;
+            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+            console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
+
+            // check msg.gifts array with gift
+            var error ;
+            if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) {
+                // fatal error - abort processing
+                error = 'No gifts array or empty gifts array in send_gifts message.' ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            }
+
+            // two pass when receiving gifts from other device
+            // 1: check gift sha256 server signatures in next ping
+            // 2: process gifts in send_gifts message after server sha256 signature check
+
+            // loop for all gifts in send_gifts message
+            var i, j, new_gift, gid, index, old_gift, is_mutual_gift, user_id ;
+            var already_on_ignore_list = [] ;
+            var new_on_ignore_list = [] ;
+            var system_errors = 0, ok_gifts = 0 ;
+            for (i=0 ; i<msg.gifts.length ; i++) {
+                new_gift = msg.gifts[i] ;
+                gid = new_gift.gid ;
+
+                if (is_gift_on_ignore_list(device, gid)) {
+                    if (already_on_ignore_list.indexOf(gid) == -1) already_on_ignore_list.push(gid) ;
+                    continue ;
+                }
+
+                // should be a new gift
+                // sha256 value should match if gift exists
+                // gift giver/receiver must be a mutual friend
+                // gift signature on server must match
+                if (gifts_index.hasOwnProperty(gid)) {
+                    // gift exists (has already been received) - check sha256 value
+                    index = gifts_index[gid] ;
+                    if ((index < 0) || (index >= gifts.length)) {
+                        console.log(pgm + 'System error in gifts_index for gift ' + gid + '.') ;
+                        system_errors += 1 ;
+                        continue ;
+                    }
+                    old_gift = gifts[index] ;
+                    if (new_gift.sha256 == old_gift.sha256) {
+                        console.log(pgm + 'Ok. Gift ' + gid + ' already exists.') ;
+                        ok_gifts += 1 ;
+                        continue ;
+                    }
+                    // sha256 difference! OK if gift is received from two different devices with minor variations in gift (comments)
+                    // check server sha256 signature for received gift before merging information with old gift
+                    // todo: add js updated_at_client timestamp to gift
+                    console.log(pgm + 'Warning. Gift ' + gid + ' already exists with an other sha256 value.') ;
+                }
+                else {
+                    console.log(pgm + 'New gift ' + gid + '.') ;
+
+                    // check giver/receiver - must be a mutual friend
+                    is_mutual_gift = false ;
+                    for (j=0 ; j<new_gift.giver_user_ids.length ; j++) {
+                        user_id = new_gift.giver_user_ids[j];
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true ;
+                    }
+                    for (j=0 ; j<new_gift.receiver_user_ids.length ; j++) {
+                        user_id = new_gift.receiver_user_ids[j];
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true ;
+                    }
+                    if (!is_mutual_gift) {
+                        console.log(pgm + 'Error. Gift ' + gid + ' was rejected. No mutual friends.') ;
+                        add_gift_to_ignore_list(device, gid) ;
+                        new_on_ignore_list.push({gid: gid, error: 'No mutual friends'}) ;
+                        continue ;
+                    }
+
+
+
+                }
+
+
+                // new and gift - check server sha256 signature in next ping request
+
+
+
+            } // for j (gifts loop)
+
+            // summery
+            console.log(pgm + 'msg.gifts.length = ' + msg.gifts.length) ;
+            if (ok_gifts > 0) console.log(pgm + 'ok_gifts = ' + ok_gifts) ;
+            if (already_on_ignore_list.length > 0) console.log(pgm + 'already_on_ignore_list = ' + already_on_ignore_list.length) ;
+            if (system_errors > 0) console.log(pgm + 'system_errors = ' + system_errors) ;
+
+            if (already_on_ignore_list.length > 0) {
+                // todo: send as a separate message or include in send_gifts response (if any) ?
+                // resend list with ignored gifts to other device. error messages have been sent in a previous message
+                console.log(pgm + 'Warning. Received one or more gifts already in ignore list.') ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'ignored_gifts',
+                    request_mid: msg.mid,
+                    gifts: already_on_ignore_list
+                }) ;
+            }
+
+            console.log(pgm + 'Error. Not implemented') ;
+
+        } // receive_message_send_gifts
+
+        // communication step 4 - sub message from receive_message_sync_gifts
+        // missing gifts request from other device
+        var receive_message_request_gifts = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_request_gifts: ' ;
+            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+            console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
+            console.log(pgm + 'Error. Not implemented') ;
+        } // receive_message_request_gifts
+
+        // communication step 4 - sub message from receive_message_sync_gifts
+        // check gift sha256 sub values and return gift, comments or both to other device
+        var receive_message_check_gifts = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_check_gifts: ' ;
+            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+            console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
+            console.log(pgm + 'Error. Not implemented') ;
+        } // receive_message_check_gifts
 
         // receive messages from other devices
         var receive_messages = function (response) {
@@ -3460,6 +3619,18 @@ angular.module('gifts', ['ngRoute'])
                                 // verify that request_mid is correct and add sub messages to msg_client_envelope.messages array
                                 // the 1-3 sub messages will be processed in next steps in for j loop
                                 receive_message_sync_gifts(device, mailbox, msg_client_envelope.messages, j) ;
+                                break ;
+                            case 'send_gifts':
+                                // communication step 4 - sub message from sync_gifts - receive missing gifts from other device
+                                receive_message_send_gifts(device, mailbox, msg) ;
+                                break ;
+                            case 'request_gifts':
+                                // communication step 4 - sub message from sync_gifts - send missing gift to other device
+                                receive_message_request_gifts(device, mailbox, msg) ;
+                                break ;
+                            case 'check_gifts':
+                                // communication step 4 - sub message from sync_gifts - check gift sub sha256 values and return gift, comments or both
+                                receive_message_check_gifts(device, mailbox, msg) ;
                                 break ;
                             default:
                                 console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in envelope ' + JSON.stringify(msg_server_envelope) + '. msg = ' + JSON.stringify(msg)) ;

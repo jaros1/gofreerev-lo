@@ -236,13 +236,12 @@ class Gift < ActiveRecord::Base
         no_errors += 1
         next
       end
+
       # check authorization. login user ids from rails session and gift user ids from client must match.
       # can fail if social network logins has changed between time when gift was created at client and gifts upload to server (offline client)
       direction = giver_user_ids ? 'giver' : 'receiver'
       gift_user_ids = (giver_user_ids || receiver_user_ids).uniq
       # logger.debug2 "gid = #{gid}, direction = #{direction}, gift_user_ids = #{gift_user_ids}"
-
-      # Could not create gift signature on server. Invalid authorization. Expected 2 users. Found 1 users
       signature_users = login_users.find_all { |u| gift_user_ids.index(u.id)}
       if signature_users.size == gift_user_ids.size
         # authorization ok. create server side sha256 digest signature

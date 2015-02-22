@@ -2352,6 +2352,19 @@ angular.module('gifts', ['ngRoute'])
             if (save) save_gifts() ;
         }; // new_gifts_response
 
+        // send meta-data for gifts received from other devices before adding or merging gift on this device
+        // input is gifts in send_gifts message pass 1 (receive_message_send_gifts)
+        // output is used in send_gifts message pass 2 (receive_message_send_gifts)
+        // server verifies if gift sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        var verify_gifts_request = function () {
+            var pgm = service + '.verify_gifts_request: ' ;
+            console.log(pgm + 'Not implemented.') ;
+        };
+        var verify_gifts_response = function (response) {
+            var pgm = service + '.verify_gifts_response: ' ;
+            console.log(pgm + 'Not implemented.') ;
+        };
+
         // send meta-data for newly created comments to server and get comment.created_at_server unix timestamps from server.
         // called from UserService.ping
         var new_comments_request_index = {} ; // from cid to comment - used in new_comments_response for quick comment lookup
@@ -2518,11 +2531,17 @@ angular.module('gifts', ['ngRoute'])
             for (i=0 ; i<new_mailboxes.length ; i++) {
                 mailbox = new_mailboxes[i] ;
                 mailbox.online = true ;
-                mailbox.outbox = [] ; // message to send in next ping
-                mailbox.sending = [] ; // ping request in process
-                mailbox.sent = [] ; // messages sent - response not yet received
-                mailbox.done = [] ; // messages sent - response received
                 if (!key_mailbox_index.hasOwnProperty(mailbox.key)) {
+                    // setup new mailbox
+                    // folders used for ingoming messages
+                    mailbox.inbox = [] ; // new messages from server / other devices
+                    mailbox.read = [] ; // temporary parked new messages (send_gifts)
+                    // folders used for outgoing messages
+                    mailbox.outbox = [] ; // message to send in next ping
+                    mailbox.sending = [] ; // ping request in process
+                    mailbox.sent = [] ; // messages sent - response not yet received
+                    mailbox.done = [] ; // messages sent - response received (request_mid)
+                    // first outgoing message - sent when symmetric password is ready
                     // communication step 2 - compare sha256 checksum for mutual friends
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
@@ -3347,13 +3366,10 @@ angular.module('gifts', ['ngRoute'])
         // - device and mailbox - as usual
         // - messages - array with messages received from server
         // - index - index to current "sync_gift" message in messages array
-        var receive_message_sync_gifts = function (device, mailbox, messages, index) {
+        var receive_message_sync_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_sync_gifts: ' ;
-            var msg = messages[index] ;
             console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
-            console.log(pgm + 'messages = ' + JSON.stringify(messages)) ;
-            console.log(pgm + 'index    = ' + JSON.stringify(index)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
 
             // check request_mid - previous gifts_sha256 message should be in mailbox.sent (or in mailbox.outbox)
@@ -3389,19 +3405,20 @@ angular.module('gifts', ['ngRoute'])
             }
             // console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
 
-            // copy sub messages (send_gifts, request_gifts and check_gifts) to messages array
+            // add sub messages (send_gifts, request_gifts and check_gifts) to inbox
             // keep reference to previous gifts_sha256 message - now in mailbox.done array
             if (msg.send_gifts) {
                 msg.send_gifts.request_mid = request_mid ;
-                messages.push(msg.send_gifts);
+                msg.send_gifts.pass = 0 ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
+                mailbox.inbox.push(msg.send_gifts);
             }
             if (msg.request_gifts) {
                 msg.request_gifts.request_mid = request_mid ;
-                messages.push(msg.request_gifts) ;
+                mailbox.inbox.push(msg.request_gifts) ;
             }
             if (msg.check_gifts) {
                 msg.check_gifts.request_mid = request_mid ;
-                messages.push(msg.check_gifts) ;
+                mailbox.inbox.push(msg.check_gifts) ;
             }
 
         } ; // receive_message_sync_gifts
@@ -3603,8 +3620,19 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
                         continue ;
                     }
-                    for (var j=0 ; j<msg_client_envelope.messages.length ; j++) {
-                        msg = msg_client_envelope.messages[j] ;
+                    // move any messages temporary parked in inbox to new
+                    while (mailbox.read.length > 0) {
+                        msg = mailbox.read.shift() ;
+                        mailbox.inbox.push(msg) ;
+                    }
+                    // move new messages received from server to inbox
+                    while (msg_client_envelope.messages.length > 0) {
+                        msg = msg_client_envelope.messages.shift() ;
+                        mailbox.inbox.push(msg) ;
+                    }
+                    // process messages in inbox (old and new)
+                    while (mailbox.inbox.length > 0) {
+                        msg = mailbox.inbox.shift() ;
                         switch(msg.msgtype) {
                             case 'users_sha256':
                                 // communication step 2 - compare sha256 values for users (mutual friends)
@@ -3616,9 +3644,8 @@ angular.module('gifts', ['ngRoute'])
                                 break ;
                             case 'sync_gifts':
                                 // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
-                                // verify that request_mid is correct and add sub messages to msg_client_envelope.messages array
-                                // the 1-3 sub messages will be processed in next steps in for j loop
-                                receive_message_sync_gifts(device, mailbox, msg_client_envelope.messages, j) ;
+                                // verify that request_mid is correct and add sub messages to inbox
+                                receive_message_sync_gifts(device, mailbox, msg) ;
                                 break ;
                             case 'send_gifts':
                                 // communication step 4 - sub message from sync_gifts - receive missing gifts from other device
@@ -3633,11 +3660,11 @@ angular.module('gifts', ['ngRoute'])
                                 receive_message_check_gifts(device, mailbox, msg) ;
                                 break ;
                             default:
-                                console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in envelope ' + JSON.stringify(msg_server_envelope) + '. msg = ' + JSON.stringify(msg)) ;
+                                console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in inbox. msg = ' + JSON.stringify(msg)) ;
                         } // end msgtype switch
-                    } // for j
-                }
-            }
+                    } // while
+                } // if else (rsa or sym encryption)
+            } // for i (one message from each device)
         }; // receive_messages
 
         return {
@@ -3650,6 +3677,8 @@ angular.module('gifts', ['ngRoute'])
             unshift_gift: unshift_gift,
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response,
+            verify_gifts_request: verify_gifts_request,
+            verify_gifts_response: verify_gifts_response,
             new_comments_request: new_comments_request,
             new_comments_response: new_comments_response,
             pubkeys_request: pubkeys_request,
@@ -3718,6 +3747,7 @@ angular.module('gifts', ['ngRoute'])
                 sid: sid,
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
+                verify_gifts: giftService.verify_gifts_request(),
                 new_comments: giftService.new_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request,
@@ -3752,6 +3782,8 @@ angular.module('gifts', ['ngRoute'])
                     if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
                     if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
+                    // get result of gift verification (gifts received from other devices)
+                    if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
                     // get timestamps for newly created comments from server
                     if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
                     // check expired access token (server side check)

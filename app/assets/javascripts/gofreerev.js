@@ -1957,7 +1957,11 @@ angular.module('gifts', ['ngRoute'])
             } ;
             comments_sha256.unshift(comments.length.toString()) ;
             var comments_str = comments_sha256.join(',') ;
-            return Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at, comments_str) ;
+            // return an array with 3 sha256 values. sha256 is the real sha256 value for gift. sha256_gift and sha256_comments are sub sha256 values used in gifts sync between devices
+            var sha256 = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at, comments_str) ;
+            var sha256_gift = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at) ;
+            var sha256_comments = Gofreerev.sha256(comments_str) ;
+            return [sha256, sha256_gift, sha256_comments];
         }; // sha256_gift
 
         var sort_by_gid = function (a, b) {
@@ -1972,11 +1976,14 @@ angular.module('gifts', ['ngRoute'])
         var init_gifts_index = function () {
             gifts_index = {} ;
             user_id_gifts_index = {} ;
-            var user_ids, user_id, i, j, gift ;
+            var user_ids, user_id, i, j, gift, sha256_values ;
             for (i=0 ; i<gifts.length ; i++) {
                 gift = gifts[i] ;
-                gift.sha256 = calc_sha256_for_gift(gift) ;
-                // simple gid to index 
+                sha256_values = calc_sha256_for_gift(gift) ;
+                gift.sha256 = sha256_values[0] ;
+                gift.sha256_gift = sha256_values[1] ; // sub sha256 values used in gifts sync between devices
+                gift.sha256_comments = sha256_values[2] ; // sub sha256 values used in gifts sync between devices
+                // simple gid to index
                 gifts_index[gift.gid] = i ;
                 // user_id to array of gifts
                 user_ids = [] ;
@@ -2015,6 +2022,8 @@ angular.module('gifts', ['ngRoute'])
                 if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments ;
                 if (gift.hasOwnProperty('new_comment')) delete gift.new_comment ;
                 if (gift.hasOwnProperty('sha256')) delete gift.sha256 ;
+                if (gift.hasOwnProperty('sha256_gift')) delete gift.sha256_gift ;
+                if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments ;
                 if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
                 comments = gift.comments ;
                 for (var j=0 ; j<comments.length ; j++) {
@@ -2737,6 +2746,14 @@ angular.module('gifts', ['ngRoute'])
                         case 'gifts_sha256':
                             // communication step 3 - send gifts sha256 signatures to other device
                             messages.push(msg) ;
+                            break ;
+                        case 'sync_gifts':
+                            // communication step 4 - send 1-3 sub messages to other device (send_gifts, request_gifts and/or check_gifts)
+                            // send_gifts: send missing gifts to other device
+                            // request:gifts: request missing gifts from other device
+                            // check_gifts: send gifts sub sha256 signatures to other device (separate sha256 signatures for gift and comments)
+                            messages.push(msg) ;
+                            break ;
                         default:
                             console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(mailbox)) ;
                     } // end msgtype switch
@@ -3088,9 +3105,9 @@ angular.module('gifts', ['ngRoute'])
             // communication step 4:
             // - 1) send missing gifts to other device
             // - 2) request missing gifts from other device
-            // - 3) send sub sha256 values for changed gifts to other device
-            // one big message sync_gifts with 1-3 sub messages
-            var sync_gifts_messages =
+            // - 3) send gifts sub sha256 values for changed gifts to other device
+            // one message sync_gifts with 1-3 sub messages send_gifts, request_gifts and/or check_gifts
+            var sync_gifts_message =
             {
                 mid: Gofreerev.get_new_uid(), // envelope mid
                 request_mid: msg.mid,
@@ -3235,7 +3252,7 @@ angular.module('gifts', ['ngRoute'])
                     } // if comments
                     send_gifts_message.gifts.push(gift_clone) ;
                 } // for i (send_gids loop)
-                if (send_gifts_message.gifts.length > 0) sync_gifts_messages.send_gifts = send_gifts_message ;
+                if (send_gifts_message.gifts.length > 0) sync_gifts_message.send_gifts = send_gifts_message ;
                 else console.log(pgm + 'Error. No send_gifts sub message was added. See prevous error messages in log.') ;
             } // if send_gids.length > 0
 
@@ -3246,21 +3263,46 @@ angular.module('gifts', ['ngRoute'])
                     msgtype: 'request_gifts',
                     gifts: request_gids
                 };
-                sync_gifts_messages.request_gifts = request_gifts_message ;
+                sync_gifts_message.request_gifts = request_gifts_message ;
             } // request_gids.length > 0
 
             // - 3) send sub sha256 values for changed gifts to other device
+            //      other device will check sub sha256 values and return gift, comments or both for gifts with different sha256 values
             if (check_gids.length > 0) {
-                var comments_sha256_message = {
+                var check_gifts_message = {
                     mid: Gofreerev.get_new_uid(),
                     msgtype: 'check_gifts',
                     gifts: []
                 } ;
-                // todo: change gift sha256 calculation to support sub sha256 values for gift and comments
+                for (i=0 ; i<check_gids.length ; i++) {
+                    gid = send_gids[i];
+                    if (!gifts_index.hasOwnProperty(gid)) {
+                        console.log(pgm + 'Could not send gift ' + gid + ' sha256 values to other device. Index was not found.') ;
+                        continue ;
+                    }
+                    index = gifts_index[gid] ;
+                    if ((index < 0) || (index >= gifts.length)) {
+                        console.log(pgm + 'Could not send gift ' + gid + ' sha256 values to other device. Invalid gifts index (1).') ;
+                        continue ;
+                    }
+                    gift = gifts[index] ;
+                    if (gift.gid != gid) {
+                        console.log(pgm + 'Could not send gift ' + gid + ' sha256 values to other device. Invalid gifts index (2).') ;
+                        continue ;
+                    }
+                    check_gifts_message.gifts.push({
+                        gid: gift.gid,
+                        sha256: gift.sha256,
+                        sha256_gift: gift.sha256_gift,
+                        sha256_comments: gift.sha256_comments
+                    }) ;
 
+                } // for i (check_gids loop)
+                if (check_gifts_message.gifts.length > 0) sync_gifts_message.check_gifts = check_gifts_message ;
+                else console.log(pgm + 'Error. No check_gifts sub message was added. See prevous error messages in log.') ;
             } // if check_gids.length > 0
 
-            console.log(pgm + 'sync_gifts_messages = ' + JSON.stringify(sync_gifts_messages)) ;
+            console.log(pgm + 'sync_gifts_messages = ' + JSON.stringify(sync_gifts_message)) ;
             // sync_gifts_messages =
             //   {"mid":"14245918981101515509",
             //    "request_mid":"14245918952724622555",
@@ -3276,16 +3318,71 @@ angular.module('gifts', ['ngRoute'])
             //                     "msgtype":"request_gifts",
             //                     "gifts":["14239781115388288755","14239781115388735516"]},
             //    "check_gifts":null}
-            if ((sync_gifts_messages.send_gifts == null) &&
-                (sync_gifts_messages.request_gifts == null) &&
-                (sync_gifts_messages.check_gifts == null)) {
+            if ((sync_gifts_message.send_gifts == null) &&
+                (sync_gifts_message.request_gifts == null) &&
+                (sync_gifts_message.check_gifts == null)) {
                 console.log(pgm + 'Error. sync_gifts message was not sent. See previous errors in log.') ;
                 return ;
             }
 
-            // todo: ADD sync_gifts_messages to mailbox.outbox
-
+            mailbox.outbox.push(sync_gifts_message) ;
         }; // receive_message_gifts_sha256
+
+        // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
+        // verify that request_mid is correct and add sub messages to messages array
+        // the 1-3 sub messages will be processed in next steps in for j loop (see receive_messages)
+        // params:
+        // - device and mailbox - as usual
+        // - messages - array with messages received from server
+        // - index - index to current "sync_gift" message in messages array
+        var receive_message_sync_gifts = function (device, mailbox, messages, index) {
+            var pgm = service + '.receive_message_sync_gifts: ' ;
+            var msg = messages[index] ;
+            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+            console.log(pgm + 'messages = ' + JSON.stringify(messages)) ;
+            console.log(pgm + 'index    = ' + JSON.stringify(index)) ;
+            console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
+
+            // check request_mid - previous gifts_sha256 message should be in mailbox.sent (or in mailbox.outbox)
+            // check msg.request_mid
+            // this sync_gifts message (step 4) is a response to a previous gifts_sha256 message (step 3)
+            // find and move previous gifts_sha256 message to mailbox done folder
+            var request_mid = msg.request_mid ;
+            var index = -1 ;
+            for (var i=0 ; i<mailbox.sent.length ; i++) {
+                if ((mailbox.sent[i].mid == request_mid) && (mailbox.sent[i].msgtype == 'gifts_sha256')) index = i ;
+            }
+            var old_msg ;
+            if (index >= 0) {
+                console.log(pgm + 'Ok. Moving old gifts_sha256 message ' + request_mid + ' from sent to done.') ;
+                old_msg = mailbox.sent.splice(index, 1) ;
+                mailbox.done.push(old_msg[0]) ;
+            }
+            if (index == -1) {
+                // check if old message is in outbox - for example server ok response and ping timeout in js
+                for (var i=0 ; i<mailbox.outbox.length ; i++) {
+                    if ((mailbox.outbox[i].mid == request_mid) && (mailbox.outbox[i].msgtype == 'gifts_sha256')) index = i ;
+                }
+                if (index >= 0) {
+                    // error. old messages was found in outbox
+                    console.log(pgm + 'Error. Moving old gifts_sha256 message ' + request_mid + ' from outbox to done.') ;
+                    old_msg = mailbox.outbox.splice(index, 1) ;
+                    mailbox.done.push(old_msg[0]) ;
+                }
+            }
+            if (index == -1) {
+                console.log(pgm + 'Error. Old gifts_sha256 message with mid ' + request_mid + ' was not found.') ;
+                return ;
+            }
+            // console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+
+            // copy sub messages (send_gifts, request_gifts and check_gifts) to messages array
+            if (msg.send_gifts) messages.push(msg.send_gifts) ;
+            if (msg.request_gifts) messages.push(msg.request_gifts) ;
+            if (msg.check_gifts) messages.push(msg.check_gifts) ;
+
+        } ; // receive_message_sync_gifts
 
         // receive messages from other devices
         var receive_messages = function (response) {
@@ -3357,6 +3454,12 @@ angular.module('gifts', ['ngRoute'])
                             case 'gifts_sha256':
                                 // communication step 3 - compare sha256 values for gifts (mutual friends)
                                 receive_message_gifts_sha256(device, mailbox, msg) ;
+                                break ;
+                            case 'sync_gifts':
+                                // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
+                                // verify that request_mid is correct and add sub messages to msg_client_envelope.messages array
+                                // the 1-3 sub messages will be processed in next steps in for j loop
+                                receive_message_sync_gifts(device, mailbox, msg_client_envelope.messages, j) ;
                                 break ;
                             default:
                                 console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in envelope ' + JSON.stringify(msg_server_envelope) + '. msg = ' + JSON.stringify(msg)) ;

@@ -2946,13 +2946,14 @@ angular.module('gifts', ['ngRoute'])
             //        {"mid":"14245361838382183778","request_mid":"14245361728100578120","msgtype":"gifts_sha256","oldest_gift_at":0,"ignore_invalid_gifts":[],"mutual_friends":["920"],"mutual_gifts":[{"gid":"14239781692770120364","sha256":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M"},{"gid":"14239781692770348983","sha256":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o"},{"gid":"14239781692770427293","sha256":"\u0006Ã!\u001a%¬c^þÒ*Ì]¾«û¥e$µ`By\u001f\u0017ëÌ×¾Æ"},{"gid":"14239781692770522732","sha256":"S{F&ùúW]_¯M­LlBµ\u001dõ¤\u0012HTæÈAtS\u0015ù"},{"gid":"14239781692770775148","sha256":"yÙùBÎM-/úï¤¯ã¹\u000eË¨\u001e%íaX©«áäú·"},{"gid":"14239781692770876536","sha256":"\u0011î5E-ÙS´'è%Ù½©FäÆk9´Èl$ç6\u001a?Ü\nO"},{"gid":"14239781692771119206","sha256":"Þ±ºVí\u0001í·\rtMFû+ú\u0013R\rêJO®Wü\u0001á¸"},{"gid":"14239781692771120584","sha256":"ûu±Y|\"s\n@Ñ¨wú¢~¨«\u000eóH|bßê¨\u001fu/"},{"gid":"14239781692771483562","sha256":"\u0002q½¾\u001b¶_¢g$\u000er(\u0012Û°WD ?°\u0004Zsæ\u001d"},{"gid":"14239781692771530176","sha256":"\u0006ß»×äÈrÅ·;;ËgPø8{\u0011RÃoÁA±,ÌKH"},{"gid":"14239781692771703391","sha256":"jF¶tã#V8kMÅÊHÉA\u001eBã¬H\u0005\u0016ìÇt\u001e¨ä\u001b"},{"gid":"14239781692772499411","sha256":"¿_TÃ'^Wj¶\"f'SN~ç|ÃÚ¥wè\\A\u0014 \u0016g]"},{"gid":"14239781692772777453","sha256":"ËJ&}Qig!'æ¬v<$ÿ¼±gøØ\u0006'\u0003Ì;É¹"},{"gid":"14239781692773030964","sha256":"'HU\f«P¨nª NP7ÚöÛ\u000e\u0019\u0017}VmÜ¾\u0014\u0000Eû("},{"gid":"14239781692773321072","sha256":"DUu¢\u0001t6«nÇ!óØ\tçN@ÞS#3çßj1ã\u0006@"},{"gid":"14239781692774532744","sha256":"<åN³è¤zXHK>d­¸\u0002L#zs·.\u0005"},{"gid":"14239781692774974940","sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö"},{"gid":"14239781692775813294","sha256":"\u0000_\u0019\u001dÈJR\f@Ì>ÈØ!êq¬z\u001bã-½ÙOI§.éþ"},{"gid":"14239781692775882233","sha256":"íïö¸E7È×xã\u0019×\u0001}·÷l³ê{O1-Ô8+\u0016\""},{"gid":"14239781692776555896","sha256":"f\u001epB\u0001x8&\u0001\u0016\u001b°ö¨çM¤K\\_`\u0000\rúx\u001d"},{"gid":"14239781692776993269","sha256":"çkÄa{[zn+%SeùS$EÌ­Þ\"öë\u000f½ú?Ä"},{"gid":"14239781692777372502","sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö"},{"gid":"14239781692777574345","sha256":"8HãÃ\u0017\u000fû:5V1Åô%ûK]\u0005\u000f\u0010óQ©\u00026bûV"},{"gid":"14239781692778276592","sha256":"/ 4\u0006ýÆj-\u001e\u00032 &hÇ\u000f«>ÓEh»A\u001doÉ¹k½"},{"gid":"14239781692778309061","sha256":"\u0002\u0016ß¨I\bp»­\r¯Z(Ý\u001e\u0001×óR)en\u0014?\u0016)"},{"gid":"14239781692778518406","sha256":"\t\thÜ\u0001Ã¸2º³\u0010ÏÞî«8Ø¨¢2ge\u0007\u0003"},{"gid":"14239781692778583942","sha256":"U\u0017\u0015\u000e\u0007~»|h\u001a<ðÖ<\u001ae\u000bÀJ¼\"ÁNbs×"},{"gid":"14239781692779726598","sha256":"×?`EíQ\u000fkÞØN@-fÒ­\u0019³§qg©§zIG\u001b"},{"gid":"14244918825228386518","sha256":"Éó6a[·ázÀ\u000e6Á$îÐìÎRuxßöá@|ýÃÕ3¼O"},{"gid":"14244924316655606495","sha256":"qY)21\u0004òÊ\u0003¼E_G>*Ì\u001eðÂ\u001b}\u0019>ëÛÜRF"},{"gid":"14244941900636888171","sha256":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô"}]}],
             //    "done":[]}
             //msg     =
-            //{"mid":"14245361850012058813","request_mid":"14245361730422146791","msgtype":"gifts_sha256",
+            //   {"mid":"14245361850012058813","request_mid":"14245361730422146791","msgtype":"gifts_sha256",
             //    "oldest_gift_at":0,"ignore_invalid_gifts":[],"mutual_friends":["920"],
             //    "mutual_gifts":[{"gid":"14239781115388288755","sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"},{"gid":"14239781115388735516","sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"}]
             //}
 
-            // gifts_sha256 message (step 3) is a response for previous users_sha256 message (step 2)
-            // find and move users_sha256 message to mailbox.done
+            // check msg.msg.request_mid
+            // this gifts_sha256 message (step 3) is a response to a previous users_sha256 message (step 2)
+            // find and move previous users_sha256 message to mailbox done folder
             var request_mid = msg.request_mid ;
             var index = -1 ;
             for (var i=0 ; i<mailbox.sent.length ; i++) {
@@ -2981,6 +2982,308 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+
+            // find sha256 values for relevant gifts / mutual friends
+            var gifts_sha256_hash = {}, user_id, i, j, gift, gid ;
+            for (i=0 ; i<msg.mutual_friends.length ; i++) {
+                user_id = msg.mutual_friends[i] ;
+                console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
+                for (j=0 ; j<user_id_gifts_index[user_id].length ; j++) {
+                    gift = user_id_gifts_index[user_id][j] ;
+                    if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
+                    gid = gift.gid ;
+                    // todo: add gift.updated_at_client property - apply oldest_gift_at filter
+                    if (!gifts_sha256_hash[gid]) gifts_sha256_hash[gid] = { my_sha256: gift.sha256, msg_sha256: null } ;
+                } // for j
+            } // for i
+            // add sha256 values received from other device
+            for (i=0 ; i<msg.mutual_gifts.length ; i++) {
+                gid = msg.mutual_gifts[i].gid ;
+                if (gifts_sha256_hash[gid]) gifts_sha256_hash[gid].msg_sha256 = msg.mutual_gifts[i].sha256 ;
+                else gifts_sha256_hash[gid] = { my_sha256: null, msg_sha256: msg.mutual_gifts[i].sha256 } ;
+            }
+            // console.log(pgm + 'gifts_sha256_hash = ' + JSON.stringify(gifts_sha256_hash)) ;
+            //gifts_sha256_hash =
+            //{"14239781692770120364":{"my_sha256":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M","msg_sha256":null},
+            //    "14239781692770348983":{"my_sha256":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o","msg_sha256":null},
+            //    "14239781692770427293":{"my_sha256":"\u0006Ã!\u001a%¬c^þÒ*Ì]¾«û¥e$µ`By\u001f\u0017ëÌ×¾Æ","msg_sha256":null},
+            //    "14239781692770522732":{"my_sha256":"S{F&ùúW]_¯M­LlBµ\u001dõ¤\u0012HTæÈAtS\u0015ù","msg_sha256":null},
+            //    "14239781692770775148":{"my_sha256":"yÙùBÎM-/úï¤¯ã¹\u000eË¨\u001e%íaX©«áäú·","msg_sha256":null},
+            //    "14239781692770876536":{"my_sha256":"\u0011î5E-ÙS´'è%Ù½©FäÆk9´Èl$ç6\u001a?Ü\nO","msg_sha256":null},
+            //    "14239781692771119206":{"my_sha256":"Þ±ºVí\u0001í·\rtMFû+ú\u0013R\rêJO®Wü\u0001á¸","msg_sha256":null},
+            //    "14239781692771120584":{"my_sha256":"ûu±Y|\"s\n@Ñ¨wú¢~¨«\u000eóH|bßê¨\u001fu/","msg_sha256":null},
+            //    "14239781692771483562":{"my_sha256":"\u0002q½¾\u001b¶_¢g$\u000er(\u0012Û°WD ?°\u0004Zsæ\u001d","msg_sha256":null},
+            //    "14239781692771530176":{"my_sha256":"\u0006ß»×äÈrÅ·;;ËgPø8{\u0011RÃoÁA±,ÌKH","msg_sha256":null},
+            //    "14239781692771703391":{"my_sha256":"jF¶tã#V8kMÅÊHÉA\u001eBã¬H\u0005\u0016ìÇt\u001e¨ä\u001b","msg_sha256":null},
+            //    "14239781692772499411":{"my_sha256":"¿_TÃ'^Wj¶\"f'SN~ç|ÃÚ¥wè\\A\u0014 \u0016g]","msg_sha256":null},
+            //    "14239781692772777453":{"my_sha256":"ËJ&}Qig!'æ¬v<$ÿ¼±gøØ\u0006'\u0003Ì;É¹","msg_sha256":null},
+            //    "14239781692773030964":{"my_sha256":"'HU\f«P¨nª NP7ÚöÛ\u000e\u0019\u0017}VmÜ¾\u0014\u0000Eû(","msg_sha256":null},
+            //    "14239781692773321072":{"my_sha256":"DUu¢\u0001t6«nÇ!óØ\tçN@ÞS#3çßj1ã\u0006@","msg_sha256":null},
+            //    "14239781692774532744":{"my_sha256":"<åN³è¤zXHK>d­¸\u0002L#zs·.\u0005","msg_sha256":null},
+            //    "14239781692774974940":{"my_sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö","msg_sha256":null},
+            //    "14239781692775813294":{"my_sha256":"\u0000_\u0019\u001dÈJR\f@Ì>ÈØ!êq¬z\u001bã-½ÙOI§.éþ","msg_sha256":null},
+            //    "14239781692775882233":{"my_sha256":"íïö¸E7È×xã\u0019×\u0001}·÷l³ê{O1-Ô8+\u0016\"","msg_sha256":null},
+            //    "14239781692776555896":{"my_sha256":"f\u001epB\u0001x8&\u0001\u0016\u001b°ö¨çM¤K\\_`\u0000\rúx\u001d","msg_sha256":null},
+            //    "14239781692776993269":{"my_sha256":"çkÄa{[zn+%SeùS$EÌ­Þ\"öë\u000f½ú?Ä","msg_sha256":null},
+            //    "14239781692777372502":{"my_sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö","msg_sha256":null},
+            //    "14239781692777574345":{"my_sha256":"8HãÃ\u0017\u000fû:5V1Åô%ûK]\u0005\u000f\u0010óQ©\u00026bûV","msg_sha256":null},
+            //    "14239781692778276592":{"my_sha256":"/ 4\u0006ýÆj-\u001e\u00032 &hÇ\u000f«>ÓEh»A\u001doÉ¹k½","msg_sha256":null},
+            //    "14239781692778309061":{"my_sha256":"\u0002\u0016ß¨I\bp»­\r¯Z(Ý\u001e\u0001×óR)en\u0014?\u0016)","msg_sha256":null},
+            //    "14239781692778518406":{"my_sha256":"\t\thÜ\u0001Ã¸2º³\u0010ÏÞî«8Ø¨¢2ge\u0007\u0003","msg_sha256":null},
+            //    "14239781692778583942":{"my_sha256":"U\u0017\u0015\u000e\u0007~»|h\u001a<ðÖ<\u001ae\u000bÀJ¼\"ÁNbs×","msg_sha256":null},
+            //    "14239781692779726598":{"my_sha256":"×?`EíQ\u000fkÞØN@-fÒ­\u0019³§qg©§zIG\u001b","msg_sha256":null},
+            //    "14244918825228386518":{"my_sha256":"Éó6a[·ázÀ\u000e6Á$îÐìÎRuxßöá@|ýÃÕ3¼O","msg_sha256":null},
+            //    "14244924316655606495":{"my_sha256":"qY)21\u0004òÊ\u0003¼E_G>*Ì\u001eðÂ\u001b}\u0019>ëÛÜRF","msg_sha256":null},
+            //    "14244941900636888171":{"my_sha256":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô","msg_sha256":null},
+            //    "14239781115388288755":{"my_sha256":null,"msg_sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"},
+            //    "14239781115388735516":{"my_sha256":null,"msg_sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"}
+            //}
+
+            // compare gift sha256 values. split gid's in 5 arrays
+            var request_gids = [], send_gids = [], check_gids = [], ok_gids = [], error_gids = [] ;
+            var sha256_values, compare ;
+            for (gid in gifts_sha256_hash) {
+                sha256_values = gifts_sha256_hash[gid] ;
+                compare = (sha256_values.my_sha256 ? '1' : '0') + (sha256_values.msg_sha256 ? '1' : '0') ;
+                switch(compare) {
+                    case '00':
+                        error_gids.push(gid) ;
+                        break ;
+                    case '01':
+                        // request gift from other device
+                        request_gids.push(gid) ;
+                        break ;
+                    case '10':
+                        // send new gift to other device
+                        send_gids.push(gid) ;
+                        break ;
+                    case '11':
+                        // check gift sha256 value
+                        // send sub sha256 values to other device if difference in gift sha256 value
+                        // the difference can be in gift and/or in comments
+                        if (compare.my_sha256 == compare.msg_sha256) ok_gids.push(gid) ;
+                        else check_gids.push(gid) ;
+                        break ;
+                } // end compare switch
+            } // for gid
+
+            // resume
+            console.log('request_gids = ' + request_gids.join(', ')) ;
+            console.log('send_gids = ' + send_gids.join(', ')) ;
+            console.log('check_gids = ' + check_gids.join(', ')) ;
+            console.log('ok_gids = ' + ok_gids.join(', ')) ;
+            console.log('error_gids = ' + error_gids.join(', ')) ;
+            // request_gids = 14239781115388288755, 14239781115388735516
+            // send_gids = 14239781692770120364, 14239781692770348983, 14239781692770427293, 14239781692770522732, 14239781692770775148, 14239781692770876536, 14239781692771119206, 14239781692771120584, 14239781692771483562, 14239781692771530176, 14239781692771703391, 14239781692772499411, 14239781692772777453, 14239781692773030964, 14239781692773321072, 14239781692774532744, 14239781692774974940, 14239781692775813294, 14239781692775882233, 14239781692776555896, 14239781692776993269, 14239781692777372502, 14239781692777574345, 14239781692778276592, 14239781692778309061, 14239781692778518406, 14239781692778583942, 14239781692779726598, 14244918825228386518, 14244924316655606495, 14244941900636888171
+            if (ok_gids.length == msg.mutual_gifts.length) {
+                console.log(pgm + 'Gift replication finished. ' + ok_gids.length + ' identical gifts were found.') ;
+                return ;
+            }
+            if (ok_gids.length + error_gids.length == msg.mutual_gifts.length) {
+                console.log(pgm + 'Gift replication finished. ' + error_gids.length + ' errors and ' + ok_gids.length + ' identical gifts were found.') ;
+                console.log(pgm + 'Gifts with null sha256 values: ' + error_gids.join(', ')) ;
+                return ;
+            }
+
+            // communication step 4:
+            // - 1) send missing gifts to other device
+            // - 2) request missing gifts from other device
+            // - 3) send sub sha256 values for changed gifts to other device
+            // one big message sync_gifts with 1-3 sub messages
+            var sync_gifts_messages =
+            {
+                mid: Gofreerev.get_new_uid(), // envelope mid
+                request_mid: msg.mid,
+                msgtype: 'sync_gifts',
+                mutual_friends: msg.mutual_friends,
+                send_gifts: null, // optional sub message 1)
+                request_gifts: null, // optional sub message 2)
+                check_gifts: null // optional sub message 3)
+            };
+
+            // - 1) send missing gifts to other device
+            if (send_gids.length > 0) {
+                var send_gifts_message = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'send_gifts',
+                    gifts: []
+                };
+                var gift_clone ;
+                for (i=0 ; i<send_gids.length ; i++) {
+                    gid = send_gids[i];
+                    if (!gifts_index.hasOwnProperty(gid)) {
+                        console.log(pgm + 'Could not send gift ' + gid + ' to other device. Index was not found.') ;
+                        continue ;
+                    }
+                    index = gifts_index[gid] ;
+                    if ((index < 0) || (index >= gifts.length)) {
+                        console.log(pgm + 'Could not send gift ' + gid + ' to other device. Invalid gifts index (1).') ;
+                        continue ;
+                    }
+                    gift = gifts[index] ;
+                    if (gift.gid != gid) {
+                        console.log(pgm + 'Could not send gift ' + gid + ' to other device. Invalid gifts index (2).') ;
+                        continue ;
+                    }
+
+                    // gift attributes from refresh_gift:
+                    //if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
+                    //if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids ;
+                    //if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client ;
+                    //if (gift.created_at_server != new_gift.created_at_server) gift.created_at_server = new_gift.created_at_server ;
+                    //if (gift.price != new_gift.price) gift.price = new_gift.price ;
+                    //if (gift.currency != new_gift.currency) gift.currency = new_gift.currency ;
+                    //if (gift.direction != new_gift.direction) gift.direction = new_gift.direction ;
+                    //if (gift.description != new_gift.description) gift.description = new_gift.description ;
+                    //if (gift.open_graph_url != new_gift.open_graph_url) gift.open_graph_url = new_gift.open_graph_url ;
+                    //if (gift.open_graph_title != new_gift.open_graph_title) gift.open_graph_title = new_gift.open_graph_title ;
+                    //if (gift.open_graph_description != new_gift.open_graph_description) gift.open_graph_description = new_gift.open_graph_description ;
+                    //if (gift.open_graph_image != new_gift.open_graph_image) gift.open_graph_image = new_gift.open_graph_image ;
+                    //if (gift.like != new_gift.like) gift.like = new_gift.like ;
+                    //if (gift.follow != new_gift.follow) gift.follow = new_gift.follow ;
+                    //if (gift.show != new_gift.show) gift.show = new_gift.show ;
+                    //if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at ;
+                    //// todo: should merge comments and keep sequence - not overwrite arrays
+                    //if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
+                    //if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [] ;
+                    //if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments) ;
+
+                    // gift attributes dropped in save gifts:
+                    //if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments ;
+                    //if (gift.hasOwnProperty('new_comment')) delete gift.new_comment ;
+                    //if (gift.hasOwnProperty('sha256')) delete gift.sha256 ;
+                    //if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
+                    //comments = gift.comments ;
+                    //for (var j=0 ; j<comments.length ; j++) {
+                    //    if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256 ;
+                    //}
+
+                    // clone gift - some interval properties are not replicated to other devices
+                    // todo: 1 - change like from boolean to an array  with user ids and like/unlike timestamps for merge operation
+                    // todo: 2 - add server side deleted_at timestamp or flag. Server could validate delete and know that gift has been deleted
+                    // todo: 3 - check gift.sha256 value when receiving gift on other device
+                    // todo: 4 - check server sha256 signature & created_at_server timestamp when receiving gift on other device
+                    gift_clone =
+                    {
+                        gid: gift.gid,
+                        giver_user_ids: gift.giver_user_ids,
+                        receiver_user_ids: gift.receiver_user_ids,
+                        created_at_client: gift.created_at_client,
+                        created_at_server: gift.created_at_server,
+                        price: gift.price,
+                        currency: gift.currency,
+                        direction: gift.direction,
+                        description: gift.description,
+                        open_graph_url: gift.open_graph_url,
+                        open_graph_title: gift.open_graph_title,
+                        open_graph_description: gift.open_graph_description,
+                        open_graph_image: gift.open_graph_image,
+                        like: gift.like,
+                        deleted_at: gift.deleted_at,
+                        sha256: gift.sha256
+                    };
+                    var comment ;
+                    if (gift.comments && (gift.comments.length > 0)) {
+                        gift_clone.comments = [] ;
+                        for (j=0 ; j<gift.comments.length ; j++) {
+                            comment = gift.comments[j] ;
+
+                            // comments attributes from refresh_gift_and_comment:
+                            // todo: where is created_at_server timestamp?
+                            //if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids ;
+                            //if (comment.price != comments[index].price) comment.price = comments[index].price ;
+                            //if (comment.currency != comments[index].currency) comment.currency = comments[index].currency ;
+                            //if (comment.comment != comments[index].comment) comment.comment = comments[index].comment ;
+                            //if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client ;
+                            //if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal ;
+                            //if (comment.deleted_at != comments[index].deleted_at) comment.deleted_at = comments[index].deleted_at ;
+                            //if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted ;
+                            //if (comment.updated_by != comments[index].updated_by) comment.updated_by = comments[index].updated_by ;
+
+                            // comments attributes from comment sha256 calc:
+                            // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
+                            // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
+                            // - created_at_client - used in client path of server side sha256 signature - not included in comment sha256 calculation
+                            // - comment           - used in client path of server side sha256 signature - not included in comment sha256 calculation
+                            // - price             - used in client path of server side sha256 signature - not included in comment sha256 calculation
+                            // - currency          - used in client path of server side sha256 signature - not included in comment sha256 calculation
+                            // - user_ids          - used in server side sha256 signature - not included in comment sha256 calculation
+                            // - created_at_server - returned from new comments request and not included in comment sha256 calculation
+                            // - new_deal          - boolean: null or true. null: comment. true: new deal proposal - include in comment sha256 calculation
+                            // - deleted_at        - deleted at client timestamp - - include in comment sha256 calculation
+                            // - accepted          - accepted boolean - true if accepted by creator of gift - false if rejected by creator of gift - include in comment sha256 calculation
+                            // - updated_by        - user id list for users that have accepted or rejected proposal - must be a subset of creators of gift - include in comment sha256 calculation
+
+                            // todo: 1 - add server side deleted_at boolean or timestamp. delete should be verified by server and server should know that comment has been deleted
+                            // todo: 2 - include sha256 for comments? gift should be rejected if gift.sha256 is invalid
+
+                            gift_clone.comments.push({
+                                cid: comment.cid,
+                                user_ids: comment.user_ids,
+                                price: comment.price,
+                                currency: comment.currency,
+                                comment: comment.comment,
+                                created_at_client: comment.created_at_client,
+                                created_at_server: comment.created_at_server,
+                                new_deal: comment.new_deal,
+                                deleted_at: comment.deleted_at,
+                                accepted: comment.accepted,
+                                updated_by: comment.updated_by
+                                // ,sha256: comment.sha256
+                            }) ;
+                        } // for j (comments loop)
+                    } // if comments
+                    send_gifts_message.gifts.push(gift_clone) ;
+                } // for i (send_gids loop)
+                if (send_gifts_message.gifts.length > 0) sync_gifts_messages.send_gifts = send_gifts_message ;
+                else console.log(pgm + 'Error. No send_gifts sub message was added. See prevous error messages in log.') ;
+            } // if send_gids.length > 0
+
+            // - 2) request missing gifts from other device
+            if (request_gids.length > 0) {
+                var request_gifts_message = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'request_gifts',
+                    gifts: request_gids
+                };
+                sync_gifts_messages.request_gifts = request_gifts_message ;
+            } // request_gids.length > 0
+
+            // - 3) send sub sha256 values for changed gifts to other device
+            if (check_gids.length > 0) {
+                var comments_sha256_message = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'check_gifts',
+                    gifts: []
+                } ;
+                // todo: change gift sha256 calculation to support sub sha256 values for gift and comments
+
+            } // if check_gids.length > 0
+
+            console.log(pgm + 'sync_gifts_messages = ' + JSON.stringify(sync_gifts_messages)) ;
+            // sync_gifts_messages =
+            //   {"mid":"14245918981101515509",
+            //    "request_mid":"14245918952724622555",
+            //    "msgtype":"sync_gifts",
+            //    "mutual_friends":["920"],
+            //    "send_gifts":{"mid":"14245918981106696483",
+            //                  "msgtype":"send_gifts",
+            //                  "gifts":[{"gid":"14239781692770120364","giver_user_ids":[920,790],"receiver_user_ids":[],"created_at_client":1423731130,"created_at_server":1423978171,"currency":"USD","direction":"giver","description":"x","deleted_at":1423903100168,"sha256":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M"},
+            //                           {"gid":"14239781692770348983","giver_user_ids":[920,790],"receiver_user_ids":[],"created_at_client":1423729517,"created_at_server":1423978171,"currency":"USD","direction":"giver","description":"x","deleted_at":1423903103507,"sha256":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o"},
+            //                            ....
+            //                           {"gid":"14244941900636888171","giver_user_ids":[920],"receiver_user_ids":[],"created_at_client":1415975141,"created_at_server":1424494193,"price":0,"currency":"SEK","direction":"giver","description":"Gofreerev share link","open_graph_url":"http://www.dr.dk/Nyheder/Kultur/Boeger/2014/11/09/151443.htm","open_graph_title":"Ingen kan slå denne mand: Alle vil foreviges med Jussi","open_graph_description":"Både den ægte vare og en papfigur af bestseller-forfatteren Jussi Adler-Olsen var populære blandt gæsterne på årets Bogforum.","open_graph_image":"http://www.dr.dk/NR/rdonlyres/20D580EF-8E8D-4E90-B537-B445ECC688CB/6035229/ccfa2f39e8be47fca7d011e1c1abd111_Jussiselfie.jpg","sha256":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô"}]},
+            //    "request_gifts":{"mid":"14245918981106107408",
+            //                     "msgtype":"request_gifts",
+            //                     "gifts":["14239781115388288755","14239781115388735516"]},
+            //    "check_gifts":null}
+            if ((sync_gifts_messages.send_gifts == null) &&
+                (sync_gifts_messages.request_gifts == null) &&
+                (sync_gifts_messages.check_gifts == null)) {
+                console.log(pgm + 'Error. sync_gifts message was not sent. See previous errors in log.') ;
+                return ;
+            }
+
+            // todo: ADD sync_gifts_messages to mailbox.outbox
 
         }; // receive_message_gifts_sha256
 

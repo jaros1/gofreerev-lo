@@ -827,6 +827,7 @@ var Gofreerev = (function() {
                 case 'undefined':
                     break ;
                 default:
+                    // null or an object
                     if (arguments[i] == null) break;
                     text += JSON.stringify(arguments[i]) ;
             } // switch
@@ -2352,16 +2353,33 @@ angular.module('gifts', ['ngRoute'])
             if (save) save_gifts() ;
         }; // new_gifts_response
 
-        // send meta-data for gifts received from other devices before adding or merging gift on this device
-        // input is gifts in send_gifts message pass 1 (receive_message_send_gifts)
+        // check sha256 server signature for gifts received from other devices before adding or merging gift on this device
+        // input is gifts from send_gifts message pass 1 (receive_message_send_gifts)
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
         // server verifies if gift sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        // todo: use gift.gift_sha256 as a hash key? for quick lookup of identical new gifts!
+        var verify_gifts = [] ;
         var verify_gifts_request = function () {
             var pgm = service + '.verify_gifts_request: ' ;
             console.log(pgm + 'Not implemented.') ;
         };
         var verify_gifts_response = function (response) {
             var pgm = service + '.verify_gifts_response: ' ;
+            console.log(pgm + 'Not implemented.') ;
+        };
+
+        // check sha256 server signature for comments received from other devices before adding comment on this device
+        // input is comments from send_gifts message pass 1 (receive_message_send_gifts)
+        // output is used in send_gifts message pass 2 (receive_message_send_gifts)
+        // server verifies if comment sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        var verify_comments = [] ;
+        // todo: use comment.sha256 as a hash key? for quick lookup of identical new comments!
+        var verify_comments_request = function () {
+            var pgm = service + '.verify_comments_request: ' ;
+            console.log(pgm + 'Not implemented.') ;
+        };
+        var verify_comments_response = function (response) {
+            var pgm = service + '.verify_comments_response: ' ;
             console.log(pgm + 'Not implemented.') ;
         };
 
@@ -3227,8 +3245,8 @@ angular.module('gifts', ['ngRoute'])
                         open_graph_description: gift.open_graph_description,
                         open_graph_image: gift.open_graph_image,
                         like: gift.like,
-                        deleted_at: gift.deleted_at,
-                        sha256: gift.sha256
+                        deleted_at: gift.deleted_at
+                        // ,sha256: gift.sha256 - // sha256 is not sent - receiver will make gift sha256 calculations
                     };
                     var comment ;
                     if (gift.comments && (gift.comments.length > 0)) {
@@ -3423,18 +3441,37 @@ angular.module('gifts', ['ngRoute'])
 
         } ; // receive_message_sync_gifts
 
+        // compare two values. undefined == null == blank string
+        var identical_values = function (a, b) {
+            var a_is_empty = ((typeof a == 'undefined') || (a == null) || (a == '')) ;
+            var b_is_empty = ((typeof b == 'undefined') || (b == null) || (b == '')) ;
+            if (a_is_empty && b_is_empty) return true ;
+            if (a_is_empty) return false ;
+            if (b_is_empty) return false ;
+            return (a == b);
+        } ;
+
+
         // communication step 4 - sub message from receive_message_sync_gifts
         // receive missing gifts from other device
+        // receive_message_send_gifts is called twice when receiving gifts from other device
+        // first pass (msg.pass=0, 1) - do some initial gift verification without checking server sha256 signature
+        // insert new gifts in ... array for server sha256 signature check in next ping
+        // between first and second pass - ping - verify server sha256 signature for new gifts
+        // second pass (msg.pass=2) - finish gift verification including server sha256 signature check
+        // return errors, create new gifts, merge changed gifts
         var receive_message_send_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_send_gifts: ' ;
             console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
 
-            // check msg.gifts array with gift
+            console.log(pgm + 'msg.pass = ' + msg.pass) ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done
+
+            // check for some fatal errors before processing send_gifts message - gid and cid must be unique
             var error ;
+            // check missing gifts array
             if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) {
-                // fatal error - abort processing
                 error = 'No gifts array or empty gifts array in send_gifts message.' ;
                 console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
                 mailbox.outbox.push({
@@ -3444,53 +3481,85 @@ angular.module('gifts', ['ngRoute'])
                     error: error
                 }) ;
                 return ;
-            }
-
-            // two pass when receiving gifts from other device
-            // 1: check gift sha256 server signatures in next ping
-            // 2: process gifts in send_gifts message after server sha256 signature check
-
-            // loop for all gifts in send_gifts message
-            var i, j, new_gift, gid, index, old_gift, is_mutual_gift, user_id ;
-            var already_on_ignore_list = [] ;
-            var new_on_ignore_list = [] ;
-            var system_errors = 0, ok_gifts = 0 ;
+            } // if missing gifts array
+            // check dublet gids
+            var new_gids = [], i, new_gift, doublet_gids = 0 ;
             for (i=0 ; i<msg.gifts.length ; i++) {
                 new_gift = msg.gifts[i] ;
-                gid = new_gift.gid ;
+                if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1 ;
+                else new_gids.push(new_gift.gid) ;
+            } // for i
+            if (doublet_gids > 0) {
+                error = 'Found ' + doublet_gids + ' doublet gifts in send_gifts message. gid must be unique.' ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            } // if doublet_gids
+            new_gids.length = 0 ;
+            // check doublet cids
+            var new_cids = [], doublet_cids = 0, j, new_comment ;
+            for (i=0 ; i<msg.gifts.length ; i++) {
+                new_gift = msg.gifts[i] ;
+                if (!new_gift.comments) continue ;
+                for (j=0 ; j<new_gift.comments.length ; j++) {
+                    new_comment = ew_gift.comments[j] ;
+                    if (new_cids.indexOf(new_comment.cid) != -1) doublet_cids += 1 ;
+                    else new_cids.push(new_comment.cid) ;
+                } // for j (comments)
+            } // for i (gifts)
+            if (doublet_cids > 0) {
+                error = 'Found ' + doublet_cids + ' doublet comments in send_gifts message. cid must be unique.' ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            } // if doublet_cids
+            new_cids.length = 0 ;
 
-                if (is_gift_on_ignore_list(device, gid)) {
-                    if (already_on_ignore_list.indexOf(gid) == -1) already_on_ignore_list.push(gid) ;
-                    continue ;
-                }
+            // pass 1 - check for new gifts where server sha256 signature should be verified
+            if (msg.pass == 0) msg.pass = 1 ;
 
-                // should be a new gift
-                // sha256 value should match if gift exists
-                // gift giver/receiver must be a mutual friend
-                // gift signature on server must match
-                if (gifts_index.hasOwnProperty(gid)) {
-                    // gift exists (has already been received) - check sha256 value
-                    index = gifts_index[gid] ;
-                    if ((index < 0) || (index >= gifts.length)) {
-                        console.log(pgm + 'System error in gifts_index for gift ' + gid + '.') ;
-                        system_errors += 1 ;
+            if (msg.pass == 1) {
+                // pass 1 - find new gifts where server sha256 signature must be validated before continuing with pass 2
+                // - and find new comments where server sha256 signature must be validated before continuing with pass 2
+                var validate_gifts_on_server = 0 ;
+                var validate_comments_on_server = 0 ;
+                var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, old_cids ;
+                for (i=0 ; i < msg.gifts.length ; i++) {
+                    new_gift = msg.gifts[i] ;
+                    gid = new_gift.gid ;
+                    if (is_gift_on_ignore_list(device, gid)) continue ; // skip gift
+                    if (gifts_index.hasOwnProperty(gid)) {
+                        // found old gift
+                        // check for new comments in old gift that must be server validated before continuing with pass 2
+                        index = gifts_index[gid] ;
+                        if (!index || (index < 0) || (index >= gifts.length)) continue ; // any system errors are reported in pass 2
+                        old_gift = gifts[index] ;
+                        if (!old_gift || (old_gift.gid != gid)) continue ; // any system errors are reported in pass 2
+                        old_cids = [] ;
+                        if (old_gift.comments) for (j=0 ; j<old_gift.comments.length ; j++) old_cids.push(old_gift.comments[j].cid) ;
+                        if (new_gift.comments) for (j=0 ; j<new_gift.comments.length ; j++) {
+                            new_comment = new_gift.comments[j] ;
+                            // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
+                            if (old_cids.indexOf(new_comment.cid) == -1) {
+                                if (new_comment.hasOwnProperty('verified_by_server')) delete comment.verified_by_server;
+                                validate_comments_on_server += 1;
+                                verify_comments.push({gid: gid, comment: new_comment});
+                            }
+                        }
                         continue ;
-                    }
-                    old_gift = gifts[index] ;
-                    if (new_gift.sha256 == old_gift.sha256) {
-                        console.log(pgm + 'Ok. Gift ' + gid + ' already exists.') ;
-                        ok_gifts += 1 ;
-                        continue ;
-                    }
-                    // sha256 difference! OK if gift is received from two different devices with minor variations in gift (comments)
-                    // check server sha256 signature for received gift before merging information with old gift
-                    // todo: add js updated_at_client timestamp to gift
-                    console.log(pgm + 'Warning. Gift ' + gid + ' already exists with an other sha256 value.') ;
-                }
-                else {
-                    console.log(pgm + 'New gift ' + gid + '.') ;
 
-                    // check giver/receiver - must be a mutual friend
+                    }
+                    // new gift - must be a gift from a mutual friend
                     is_mutual_gift = false ;
                     for (j=0 ; j<new_gift.giver_user_ids.length ; j++) {
                         user_id = new_gift.giver_user_ids[j];
@@ -3500,29 +3569,150 @@ angular.module('gifts', ['ngRoute'])
                         user_id = new_gift.receiver_user_ids[j];
                         if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true ;
                     }
-                    if (!is_mutual_gift) {
-                        console.log(pgm + 'Error. Gift ' + gid + ' was rejected. No mutual friends.') ;
-                        add_gift_to_ignore_list(device, gid) ;
-                        new_on_ignore_list.push({gid: gid, error: 'No mutual friends'}) ;
+                    if (!is_mutual_gift) continue ; // errors are reported after pass 2
+                    // new gift from a mutual friend.
+                    // server sha256 signature must be verified before continuing with pass 2
+                    validate_gifts_on_server += 1 ;
+                    if (new_gift.hasOwnProperty('verified_by_server')) delete gift.verified_by_server ;
+                    verify_gifts.push(new_gift) ;
+                    if (new_gift.comments) {
+                        // server validate new comments
+                        for (j = 0; j < new_gift.comments.length; j++) {
+                            new_comment = new_gift.comments[j];
+                            // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
+                            if (new_comment.hasOwnProperty('verified_by_server')) delete comment.verified_by_server;
+                            validate_comments_on_server += 1;
+                            verify_comments.push({gid: gid, comment: new_comment});
+                        } // for j (comments)
+                    } // if
+                } // for i (gifts loop)
+
+                msg.pass = 2 ;
+                if (validate_gifts_on_server + validate_comments_on_server > 0) {
+                    // wait. continue with pass 2 after next ping
+                    console.log(pgm + 'Waiting for ' + validate_gifts_on_server + ' new gifts and ' + validate_comments_on_server + ' new comments to be server validated.') ;
+                    mailbox.read.push(msg) ;
+
+                    // debug
+                    console.log(pgm + 'verify_gifts = ' + JSON.stringify(verify_gifts)) ;
+                    console.log(pgm + 'verify_comments = ' + JSON.stringify(verify_comments)) ;
+                    return ;
+                }
+            } // if pass 1
+
+            if (msg.pass != 2) {
+                console.log(pgm + 'System error. Expected pass 2. Found pass ' + msg.pass + '.') ;
+                return ;
+            }
+
+            if (verify_gifts.length + verify_comments.length > 0) {
+                // wait for next ping
+                console.log(pgm + 'Waiting for new gifts and new comments to be server validated.');
+                mailbox.read.push(msg);
+                return;
+            }
+
+            // pass 2 - full validation
+            var already_on_ignore_list = [] ;
+            var index_errors = [] ;
+            var identical_gift_and_comments = [] ;
+            var merge_comments = [] ;
+            var invalid_signature = [] ;
+            var sha256_values ;
+
+            // todo: change to a while length > 0 shift loop to free memory (see mailbox.read loop in receive_messages)
+            for (i=0 ; i<msg.gifts.length ; i++) {
+                new_gift = msg.gifts[i] ;
+                gid = new_gift.gid ;
+                if (is_gift_on_ignore_list(device, gid)) {
+                    already_on_ignore_list.push(gid) ;
+                    continue ;
+                }
+                if (gifts_index.hasOwnProperty(gid)) {
+                    // existing gift
+                    index = gifts_index[gid] ;
+                    if (!index || (index < 0) || (index >= gifts.length)) {
+                        index_errors.push(gid) ;
                         continue ;
                     }
+                    old_gift = gifts[index] ;
+                    if (!old_gift || (old_gift.gid != gid)) {
+                        index_errors.push(gid) ;
+                        continue ;
+                    }
+                    // check client sha256 value
+                    sha256_values = calc_sha256_for_gift(new_gift) ;
+                    if (old_gift.sha256 == sha256_values[0]) {
+                        // gift and comments are identical
+                        identical_gift_and_comments.push(gid) ;
+                        continue ;
+                    }
+                    if (old_gift.sha256_gift == sha256_values[1]) {
+                        // gift identical but different comments
+                        merge_comments.push(new_gift) ;
+                        continue ;
+                    }
+                    // gifts are not identical.
+                    // check that fields used in server sha256 signature are not changed
+                    if (!identical_values(old_gift.created_at_client, new_gift.created_at_client) ||
+                        !identical_values(old_gift.direction, new_gift.direction) ||
+                        !identical_values(old_gift.description, new_gift.description) ||
+                        !identical_values(old_gift.open_graph_url, new_gift.open_graph_url) ||
+                        !identical_values(old_gift.open_graph_title, new_gift.open_graph_title) ||
+                        !identical_values(old_gift.open_graph_description, new_gift.open_graph_description) ||
+                        !identical_values(old_gift.open_graph_image, new_gift.open_graph_image) ||
+                        !identical_values(old_gift.created_at_server, new_gift.created_at_server)) {
+                        invalid_signature.push(gid) ;
+                        continue ;
+                    } ;
+                    if (old_gift.direction == 'giver') {
+                        old_gift_creators = old_gift.giver_user_ids.sort.join(',') ;
+                        new_gift_creators = new_gift.giver_user_ids.sort.join(',') ;
+                    }
+                    else {
+                        old_gift_creators = old_gift.receiver_user_ids.sort.join(',') ;
+                        new_gift_creators = new_gift.receiver_user_ids.sort.join(',') ;
+                    }
+                    if (!identical_values(old_gift_creators, new_gift_creators)) {
+                        invalid_signature.push(gid) ;
+                        continue ;
+                    }
+                    // Ok. only minor gift changes
+
 
 
 
                 }
+                else {
+                    // new gift
+
+                }
+
+            } // for i (gifts loop)
 
 
-                // new and gift - check server sha256 signature in next ping request
 
 
 
-            } // for j (gifts loop)
+
 
             // summery
             console.log(pgm + 'msg.gifts.length = ' + msg.gifts.length) ;
             if (ok_gifts > 0) console.log(pgm + 'ok_gifts = ' + ok_gifts) ;
             if (already_on_ignore_list.length > 0) console.log(pgm + 'already_on_ignore_list = ' + already_on_ignore_list.length) ;
-            if (system_errors > 0) console.log(pgm + 'system_errors = ' + system_errors) ;
+            if (system_errors > 0) {
+                console.log(pgm + 'system_errors = ' + system_errors);
+                // fatal error - abort processing
+                error = system_errors + ' system errors found when processing send_gifts message.' ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            }
 
             if (already_on_ignore_list.length > 0) {
                 // todo: send as a separate message or include in send_gifts response (if any) ?
@@ -3620,7 +3810,7 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
                         continue ;
                     }
-                    // move any messages temporary parked in inbox to new
+                    // move any messages temporary parked in inbox to new (send_gifts)
                     while (mailbox.read.length > 0) {
                         msg = mailbox.read.shift() ;
                         mailbox.inbox.push(msg) ;
@@ -3681,6 +3871,8 @@ angular.module('gifts', ['ngRoute'])
             verify_gifts_response: verify_gifts_response,
             new_comments_request: new_comments_request,
             new_comments_response: new_comments_response,
+            verify_comments_request: verify_comments_request,
+            verify_comments_response: verify_comments_response,
             pubkeys_request: pubkeys_request,
             pubkeys_response: pubkeys_response,
             update_mailboxes: update_mailboxes,
@@ -3749,6 +3941,7 @@ angular.module('gifts', ['ngRoute'])
                 new_gifts: giftService.new_gifts_request(),
                 verify_gifts: giftService.verify_gifts_request(),
                 new_comments: giftService.new_comments_request(),
+                verify_comments: giftService.verify_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request,
                 messages: giftService.send_messages()
@@ -3786,6 +3979,8 @@ angular.module('gifts', ['ngRoute'])
                     if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
                     // get timestamps for newly created comments from server
                     if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
+                    // get result of comment verification (comments received from other devices)
+                    if (response.data.verify_comments) giftService.verify_comments_response(response.data.verify_comments) ;
                     // check expired access token (server side check)
                     if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens) ;
                     // check for new oauth authorization (google+ only)

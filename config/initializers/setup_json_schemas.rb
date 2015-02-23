@@ -174,7 +174,8 @@ JSON_SCHEMA = {
               :client_timestamp => client_timestamp_type,
               # sid - unique session id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
               :sid => {:type => 'string', :pattern => uid_pattern},
-              # new_gifts - optional array with minimal meta-information for new gifts (gid, sha256 and user ids)
+              # new_gifts - optional array with minimal meta-information for new gifts (gid, sha256 and user ids) -
+              # login users and creators of gifts must be identical - gift is always created on this server
               :new_gifts => {
                   :type => 'array',
                   :items => {
@@ -182,7 +183,7 @@ JSON_SCHEMA = {
                       :properties => {
                           # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :gid => {:type => 'string', :pattern => uid_pattern},
-                          # sha256 digest of client side gift information (created at client unix timestamp + description)
+                          # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                           :sha256 => {:type => 'string', :maxLength => 32},
                           # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
                           :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
@@ -205,6 +206,42 @@ JSON_SCHEMA = {
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}}
                       },
                       :required => %w(cid sha256 user_ids),
+                      :additionalProperties => false}
+              },
+              # verify_gifts - optional array used when verifying gifts received from other device - check server sha256 signature created in a previous new_gifts request
+              # gift must be from a friend - gift can be from an other gofreerev server
+              :verify_gifts => {
+                  :type => 'array',
+                  :items => {
+                      # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
+                      :seq => {:type => 'integer'},
+                      # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                      :gid => {:type => 'string', :pattern => uid_pattern},
+                      # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                      :sha256 => {:type => 'string', :maxLength => 32},
+                      # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                      :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                      :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                  },
+                  :required => %w(seq gid sha256),
+                  :additionalProperties => false
+              },
+              # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request
+              :verify_comments => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # unique seq returned in response (cid is not guaranteed to be unique when receiving comments from other devices)
+                          :seq => {:type => 'integer'},
+                          # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :cid => {:type => 'string', :pattern => uid_pattern},
+                          # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price and currency)
+                          :sha256 => {:type => 'string', :maxLength => 32},
+                          # internal user ids for creator of comment (=login users) - todo: change to uid/provider format to support cross server replication?
+                          :user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                      },
+                      :required => %w(seq cid sha256 user_ids),
                       :additionalProperties => false}
               },
               # pubkeys - optional array with did (unique device id) - request public key for other client before starting client to client communication
@@ -271,7 +308,7 @@ JSON_SCHEMA = {
                   }},
               # optional - return fatal errors to client (invalid json request)
               :error => {:type => 'string'},
-              # object and array with created_at_server timestamps (or error messages) response for new_gifts request
+              # optional array with created_at_server timestamps (or error messages) response for new_gifts request
               :new_gifts => {
                   :type => 'object',
                   :properties => {
@@ -327,6 +364,54 @@ JSON_SCHEMA = {
                   },
                   :additionalProperties => false
               },
+              # optional array with created_at_server timestamps or null (error) response for verify_gifts request
+              :verify_gifts => {
+                  :type => 'object',
+                  :properties => {
+                      # array with created_at_server timestamps or null for row in verify_gifts request
+                      :data => {
+                          :type => 'array',
+                          :items => {
+                              :type => 'object',
+                              :properties => {
+                                  # unique seq from verify_gifts request (gid is not guaranteed to be unique when receiving gifts from other devices)
+                                  :seq => {:type => 'integer'},
+                                  # gid - unique gift id - from verify_gifts request
+                                  :gid => {:type => 'string', :pattern => uid_pattern},
+                                  # created_at_server unix timestamp or null (error)
+                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
+                              },
+                              :required => %w(seq gid),
+                              :additionalProperties => false
+                          }
+                      }
+                  },
+                  :additionalProperties => false
+              },
+              # optional array with created_at_server timestamps or null (error) response for verify_comments request
+              :verify_comments => {
+                  :type => 'object',
+                  :properties => {
+                      # array with created_at_server timestamps or null for row in verify_comments request
+                      :data => {
+                          :type => 'array',
+                          :items => {
+                              :type => 'object',
+                              :properties => {
+                                  # unique seq from verify_comments request (cid is not guaranteed to be unique when receiving comments from other devices)
+                                  :seq => {:type => 'integer'},
+                                  # cid - unique comment id - from verify_comments request
+                                  :cid => {:type => 'string', :pattern => uid_pattern},
+                                  # created_at_server unix timestamp or null (error)
+                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
+                              },
+                              :required => %w(seq cid),
+                              :additionalProperties => false
+                          }
+                      }
+                  },
+                  :additionalProperties => false
+              },
               # array with did and public keys response for pubkeys request
               :pubkeys => {
                   :type => 'array',
@@ -360,7 +445,7 @@ JSON_SCHEMA = {
                           # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
                           :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
                           # when was message received from other device - unix timestamp
-                          :created_at_server => { :type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i },
+                          :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i},
                           # message for receiver device encrypted with device public key
                           :message => {:type => 'string'}
                       },

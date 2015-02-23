@@ -2358,13 +2358,66 @@ angular.module('gifts', ['ngRoute'])
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
         // server verifies if gift sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
         // todo: use gift.gift_sha256 as a hash key? for quick lookup of identical new gifts!
-        var verify_gifts = [] ;
+        var verify_gifts = [] ; // array with gifts for next verify_gifts request - there can be doublets if same gift is received from multiple devices
+
+        var verify_gifts_keys = [] ; // helper: array with keys, key = gid+sha256+userids
+        var verify_gifts_key_to_seq = {} ; // helper: key to seq, key = gid+sha256+userids
+        var verify_gifts_seq_to_gifts = {} ; // helper: from seq to one or more gifts in verify_gifts array
+
         var verify_gifts_request = function () {
             var pgm = service + '.verify_gifts_request: ' ;
-            console.log(pgm + 'Not implemented.') ;
+            if (verify_gifts.length == 0) return null ;
+            // reset helpers
+            verify_gifts_keys.length = 0 ;
+            verify_gifts_key_to_seq = {} ;
+            verify_gifts_seq_to_gifts = {} ;
+            // loop for gifts in verify_gifts array
+            var request = [], new_gift, already_verified = 0, missing_server_timestamp = 0, sha256_client, user_ids, key, seq ;
+            for (var i=0 ; i<verify_gifts.length ; i++) {
+                new_gift = verify_gifts[i] ;
+                if (new_gift.hasOwnProperty('verified_by_server')) {
+                    already_verified += 1 ;
+                    continue ;
+                } // if
+                if (!new_gift.created_at_server) {
+                    missing_server_timestamp += 1 ;
+                    continue ;
+                }
+                // prepare request - same client sha256 as in new_gifts_request
+                sha256_client = Gofreerev.sha256(
+                    new_gift.created_at_client.toString(), new_gift.description, new_gift.open_graph_url,
+                    new_gift.open_graph_title, new_gift.open_graph_description, new_gift.open_graph_image) ;
+                user_ids = new_gift.direction == 'giver' ? new_gift.giver_user_ids : new_gift.receiver_user_ids ;
+                user_ids.sort ;
+                key = [new_gift.gid, sha256_client].concat(user_ids).join(',') ;
+                seq = verify_gifts_key_to_seq[key] ;
+                if (seq) {
+                    // already in request. add back reference from seq to gift in verify_gifts array
+                    verify_gifts_seq_to_gifts[seq].push(i) ;
+                }
+                else {
+                    // new request
+                    verify_gifts_keys.push(key) ;
+                    seq = verify_gifts_keys.length ;
+                    verify_gifts_key_to_seq[key] = seq ;
+                    verify_gifts_seq_to_gifts[seq] = [i] ;
+                    request.push({
+                        seq: seq,
+                        gid: new_gift.gid,
+                        sha256: sha256_client,
+                        user_ids: user_ids
+                    }) ;
+                }
+            } // for i (verify_gifts loop)
+            if (already_verified > 0) console.log('Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.') ;
+            if (missing_server_timestamp > 0) console.log('Error. Found ' + missing_server_timestamp + ' gifts without a created_at_server timestamp in verify_gifts buffer.')
+            return (request.length == 0 ? null : request) ;
         };
         var verify_gifts_response = function (response) {
             var pgm = service + '.verify_gifts_response: ' ;
+
+            // clear helper index before continuing
+            verify_gifts_index = {} ;
             console.log(pgm + 'Not implemented.') ;
         };
 
@@ -2372,7 +2425,7 @@ angular.module('gifts', ['ngRoute'])
         // input is comments from send_gifts message pass 1 (receive_message_send_gifts)
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
         // server verifies if comment sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
-        var verify_comments = [] ;
+        var verify_comments = [] ; // array with comments for next verify_gifts request - there can be doublets if same gift is received from multiple devices
         // todo: use comment.sha256 as a hash key? for quick lookup of identical new comments!
         var verify_comments_request = function () {
             var pgm = service + '.verify_comments_request: ' ;

@@ -219,11 +219,10 @@ JSON_SCHEMA = {
                       :gid => {:type => 'string', :pattern => uid_pattern},
                       # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                       :sha256 => {:type => 'string', :maxLength => 32},
-                      # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
-                      :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
-                      :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                      # internal user ids for creator of gift - giver or receiver - todo: change to uid/provider format to support cross server replication?
+                      :user_ids => {:type => 'array', :items => {:type => 'integer'}}
                   },
-                  :required => %w(seq gid sha256),
+                  :required => %w(seq gid sha256 user_ids),
                   :additionalProperties => false
               },
               # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request

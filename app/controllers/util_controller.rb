@@ -1049,23 +1049,31 @@ class UtilController < ApplicationController
 
         # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
 
-        # 1) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
+        # 1) public keys. used in client to client communication (public/private key encryption) for short messages (symmetric password exchange)
+        pubkeys_response = Ping.pubkeys params[:pubkeys]
+        @json[:pubkeys] = pubkeys_response if pubkeys_response
+
+        # 2) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
         # sha256 signature should ensure that gift information is not unauthorized updated
         # logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
         new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids)
         @json[:new_gifts] = new_gifts_response if new_gifts_response
 
-        # 2) new comments. create comments (cid and sha256 signature) and return created_at_server timestamps to client
+        # 3) new comments. create comments (cid and sha256 signature) and return created_at_server timestamps to client
         # sha256 signature should ensure that comment information is not unauthorized updated
         # logger.debug2 "new_comments = #{params[:new_comments]} (#{params[:new_comments].class})"
         new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids)
         @json[:new_comments] = new_comments_response if new_comments_response
 
-        # 3) public keys. used in client to client communication (public/private key encryption)
-        pubkeys_response = Ping.pubkeys params[:pubkeys]
-        @json[:pubkeys] = pubkeys_response if pubkeys_response
+        # 4) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client
+        # login user must be friend with giver or receiver of gift
+        # client must reject gift if created_at_server timestamp is null or does not match
+        # sha256 signature should ensure that gift information is not unauthorized updated
+        logger.debug2 "verify_gifts = #{params[:verify_gifts]} (#{params[:verify_gifts].class})"
+        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids)
+        @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
-        # 4) client to client messages
+        # 5) client to client messages
         # input: buffer messages from this client to other devices - return ok or error message for each input message
         # output: return messages to this client from other devices - todo: client should respond with ok/error for received messages!
         # return any messages from other devices to client

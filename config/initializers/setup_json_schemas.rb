@@ -219,8 +219,9 @@ JSON_SCHEMA = {
                       :gid => {:type => 'string', :pattern => uid_pattern},
                       # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                       :sha256 => {:type => 'string', :maxLength => 32},
-                      # internal user ids for creator of gift - giver or receiver - todo: change to uid/provider format to support cross server replication?
-                      :user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                      # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                      :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                      :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
                   },
                   :required => %w(seq gid sha256 user_ids),
                   :additionalProperties => false
@@ -368,7 +369,7 @@ JSON_SCHEMA = {
                   :type => 'object',
                   :properties => {
                       # array with created_at_server timestamps or null for row in verify_gifts request
-                      :data => {
+                      :gifts => {
                           :type => 'array',
                           :items => {
                               :type => 'object',
@@ -383,7 +384,9 @@ JSON_SCHEMA = {
                               :required => %w(seq gid),
                               :additionalProperties => false
                           }
-                      }
+                      },
+                      # any fatal errors
+                      :error => { :type => 'string'}
                   },
                   :additionalProperties => false
               },

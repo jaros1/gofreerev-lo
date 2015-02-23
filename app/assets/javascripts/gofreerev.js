@@ -2372,41 +2372,43 @@ angular.module('gifts', ['ngRoute'])
             verify_gifts_key_to_seq = {} ;
             verify_gifts_seq_to_gifts = {} ;
             // loop for gifts in verify_gifts array
-            var request = [], new_gift, already_verified = 0, missing_server_timestamp = 0, sha256_client, user_ids, key, seq ;
+            var request = [], new_gift, already_verified = 0, missing_server_timestamp = 0, sha256_client, key, seq, hash ;
             for (var i=0 ; i<verify_gifts.length ; i++) {
                 new_gift = verify_gifts[i] ;
                 if (new_gift.hasOwnProperty('verified_by_server')) {
-                    already_verified += 1 ;
-                    continue ;
+                    already_verified += 1;
+                    continue;
                 } // if
                 if (!new_gift.created_at_server) {
-                    missing_server_timestamp += 1 ;
-                    continue ;
+                    missing_server_timestamp += 1;
+                    continue;
                 }
-                // prepare request - same client sha256 as in new_gifts_request
+                // prepare request - same client sha256 calculation as in new_gifts_request
                 sha256_client = Gofreerev.sha256(
                     new_gift.created_at_client.toString(), new_gift.description, new_gift.open_graph_url,
-                    new_gift.open_graph_title, new_gift.open_graph_description, new_gift.open_graph_image) ;
-                user_ids = new_gift.direction == 'giver' ? new_gift.giver_user_ids : new_gift.receiver_user_ids ;
-                user_ids.sort ;
-                key = [new_gift.gid, sha256_client].concat(user_ids).join(',') ;
-                seq = verify_gifts_key_to_seq[key] ;
+                    new_gift.open_graph_title, new_gift.open_graph_description, new_gift.open_graph_image);
+                new_gift.giver_user_ids.sort;
+                new_gift.receiver_user_ids.sort;
+                hash = {
+                    gid: new_gift.gid,
+                    sha256: sha256_client,
+                    giver_user_ids: new_gift.giver_user_ids,
+                    receiver_user_ids: new_gift.receiver_user_ids
+                };
+                key = JSON.stringify(hash);
+                seq = verify_gifts_key_to_seq[key];
                 if (seq) {
-                    // already in request. add back reference from seq to gift in verify_gifts array
-                    verify_gifts_seq_to_gifts[seq].push(i) ;
+                    // already in request. add back reference from seq to gift in verify_gifts array. used in verify_gifts_response
+                    verify_gifts_seq_to_gifts[seq].push(i);
                 }
                 else {
                     // new request
-                    verify_gifts_keys.push(key) ;
-                    seq = verify_gifts_keys.length ;
-                    verify_gifts_key_to_seq[key] = seq ;
-                    verify_gifts_seq_to_gifts[seq] = [i] ;
-                    request.push({
-                        seq: seq,
-                        gid: new_gift.gid,
-                        sha256: sha256_client,
-                        user_ids: user_ids
-                    }) ;
+                    verify_gifts_keys.push(key);
+                    seq = verify_gifts_keys.length;
+                    verify_gifts_key_to_seq[key] = seq;
+                    verify_gifts_seq_to_gifts[seq] = [i];
+                    hash.seq = seq;
+                    request.push(hash);
                 }
             } // for i (verify_gifts loop)
             if (already_verified > 0) console.log('Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.') ;

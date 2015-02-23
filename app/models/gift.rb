@@ -17,6 +17,7 @@ class Gift < ActiveRecord::Base
   before_validation(on: :create) do
     self.gid = self.new_encrypt_pk unless self.gid
   end
+
   def gid=(new_gid)
     return self['gid'] if self['gid']
     self['gid'] = new_gid
@@ -29,7 +30,9 @@ class Gift < ActiveRecord::Base
     temp_received_at2 = YAML::load(temp_received_at1)
     temp_received_at2 = temp_received_at2.to_time if temp_received_at2.class.name == 'Date'
     temp_received_at2
-  end # received_at
+  end
+
+  # received_at
   def received_at=(new_received_at)
     if new_received_at
       check_type('received_at', new_received_at, 'Time')
@@ -37,8 +40,11 @@ class Gift < ActiveRecord::Base
     else
       write_attribute :received_at, nil
     end
-  end # received_at=
+  end
+
+  # received_at=
   alias_method :received_at_before_type_cast, :received_at
+
   def received_at_was
     return received_at unless received_at_changed?
     return nil unless (temp_extended_received_at = attribute_was('received_at'))
@@ -46,7 +52,9 @@ class Gift < ActiveRecord::Base
     temp_received_at2 = YAML::load(temp_received_at1)
     temp_received_at2 = temp_received_at2.to_time if temp_received_at2.class.name == 'Date'
     temp_received_at2
-  end # received_at_was
+  end
+
+  # received_at_was
 
   # 8) new_price_at - date - not encrypted - almost always = today
 
@@ -57,7 +65,6 @@ class Gift < ActiveRecord::Base
   # 26) created_at - timestamp - not encrypted
 
   # 27) updated_at - timestamp - not encrypted
-
 
 
   #
@@ -87,7 +94,9 @@ class Gift < ActiveRecord::Base
       end
     end
     false
-  end # visible_for
+  end
+
+  # visible_for
 
 
   # return last 4 comments for gifts/index page if first_comment_id is nil
@@ -101,10 +110,10 @@ class Gift < ActiveRecord::Base
     # 3) random sort
     logger.debug2 "get comments for gift id #{id}. sort"
     acs = api_comments
-    .includes(:user,:comment)
-    .where('comments.deleted_at is null')
-    .references(:comments)
-    .sort_by { |ac| [ ac.user.friend?(login_users), ac.comment.id, rand ]}
+              .includes(:user, :comment)
+              .where('comments.deleted_at is null')
+              .references(:comments)
+              .sort_by { |ac| [ac.user.friend?(login_users), ac.comment.id, rand] }
     # keep one api comment for each comment
     logger.debug2 "get comments for gift id #{id}. remove doubles"
     old_comment_id = '#' * 20
@@ -128,7 +137,9 @@ class Gift < ActiveRecord::Base
     # logger.debug2  "index = #{index}"
     return [] if index == nil or index == 0
     acs[0..(index-1)].last(10)
-  end # comments_with_filter
+  end
+
+  # comments_with_filter
 
 
   # display new deal check box?
@@ -147,7 +158,9 @@ class Gift < ActiveRecord::Base
     end # each
     raise "gift #{id} without api gifts for login user(s)" unless count > 0
     true
-  end # show_new_deal_checkbox?
+  end
+
+  # show_new_deal_checkbox?
 
   def show_delete_gift_link? (users)
     api_gifts.each do |api_gift|
@@ -156,11 +169,15 @@ class Gift < ActiveRecord::Base
       return true if [api_gift.user_id_giver, api_gift.user_id_receiver].index(user.user_id)
     end
     return false
-  end # show_delete_gift_link?
+  end
+
+  # show_delete_gift_link?
 
   def show_hide_gift_link? (users)
     !show_delete_gift_link?(users)
-  end # show_hide_gift_link?
+  end
+
+  # show_hide_gift_link?
 
 
   # psydo attributea
@@ -195,13 +212,13 @@ class Gift < ActiveRecord::Base
     return if !new_gifts or new_gifts.size == 0 # ignore empty new gifts request
     if login_user_ids.class != Array or login_user_ids.size == 0
       # system error - util/ping + Gift.new_gifts should only be called with logged in users.
-      return { :error => "#{msg}System error. Expected array with one or more login user ids."}
+      return {:error => "#{msg}System error. Expected array with one or more login user ids."}
     end
     # verify user ids. should never fail. user ids are from sessions table and should be valid
     # order by user id - order is used in sha256 server signature
     login_users = User.where(:user_id => login_user_ids).order('user_id')
     if login_users.size < login_user_ids.size
-      return { :error => "#{msg}System error. Invalid login. Expected #{login_user_ids.size} users. Found #{login_users.size} users."}
+      return {:error => "#{msg}System error. Invalid login. Expected #{login_user_ids.size} users. Found #{login_users.size} users."}
     end
     # logger.debug2 "login user ids = " + login_users.collect { |u| u.id }.join(', ')
     login_providers = login_users.collect { |u| u.provider }
@@ -227,12 +244,12 @@ class Gift < ActiveRecord::Base
         receiver_user_ids = nil
       end
       if !giver_user_ids and !receiver_user_ids
-        data << { :gid => gid, :error => "#{msg}giver_user_ids or receiver_user_ids property was missing" }
+        data << {:gid => gid, :error => "#{msg}giver_user_ids or receiver_user_ids property was missing"}
         no_errors += 1
         next
       end
       if giver_user_ids and receiver_user_ids
-        data << { :gid => gid, :error => "#{msg}both giver_user_ids and receiver_user_ids properties are not allowed for a new gift." }
+        data << {:gid => gid, :error => "#{msg}both giver_user_ids and receiver_user_ids properties are not allowed for a new gift."}
         no_errors += 1
         next
       end
@@ -242,7 +259,7 @@ class Gift < ActiveRecord::Base
       direction = giver_user_ids ? 'giver' : 'receiver'
       gift_user_ids = (giver_user_ids || receiver_user_ids).uniq
       # logger.debug2 "gid = #{gid}, direction = #{direction}, gift_user_ids = #{gift_user_ids}"
-      signature_users = login_users.find_all { |u| gift_user_ids.index(u.id)}
+      signature_users = login_users.find_all { |u| gift_user_ids.index(u.id) }
       if signature_users.size == gift_user_ids.size
         # authorization ok. create server side sha256 digest signature
         #       field should be readonly and gift signature check can verify that field is not updated by client
@@ -254,9 +271,9 @@ class Gift < ActiveRecord::Base
         if g
           # gift already exists - check signature
           if g.sha256 == sha256_server
-            data << { :gid => gid, :created_at_server => g.created_at.to_i }
+            data << {:gid => gid, :created_at_server => g.created_at.to_i}
           else
-            data << { :gid => gid, :error => "#{msg}Gift exists but sha256 signature is invalid." }
+            data << {:gid => gid, :error => "#{msg}Gift exists but sha256 signature is invalid."}
             no_errors += 1
           end
           next
@@ -265,7 +282,7 @@ class Gift < ActiveRecord::Base
         g.gid = gid
         g.sha256 = sha256_server
         g.save!
-        data << { :gid => gid, :created_at_server => g.created_at.to_i }
+        data << {:gid => gid, :created_at_server => g.created_at.to_i}
         next
       end
 
@@ -282,32 +299,160 @@ class Gift < ActiveRecord::Base
       # logger.debug2 "missing_login_providers = #{missing_login_providers.join('. ')}"
       # nice informative error message
       if (changed_login_providers.size > 0)
-        data << { :gid => gid, :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since gift was created. Please log in with old #{changed_login_providers.join('. ')} user."}
+        data << {:gid => gid, :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since gift was created. Please log in with old #{changed_login_providers.join('. ')} user."}
       else
-        data << { :gid => gid, :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
+        data << {:gid => gid, :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
       end
       no_errors += 1
 
     end
-    return { :data => data, :no_errors => no_errors }
+    return {:data => data, :no_errors => no_errors}
   end # self.new_gifts
+
+
+  # verify gifts request from client - used when receiving new gifts from other devices - check server side sha256 signature
+  # login user must be friend with giver or receiver of gift
+  def self.verify_gifts (new_gifts, login_user_ids)
+    logger.debug2 "new_gifts = #{new_gifts.to_json}"
+    logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
+    # new_gifts = [{"gid":"14239781115388288755","sha256":";¯\u000B6\"r\u0000\u00114»í?@A'b_O\u0017ra\u0007Á3ßx","giver_user_ids":[920],"receiver_user_ids":null,"seq":1},
+    #              {"gid":"14239781115388735516","sha256":"Zøl¦_µÿ|t\u0000#*Ï\u0017=Úö´VQ­À^Bõ@°Y","giver_user_ids":[920],"receiver_user_ids":null,"seq":2}]
+    # login_user_ids = ["78951805/foursquare","1092213433/instagram","1705481075/facebook"]
+
+    # empty or invalid call (request has already been json validated)
+    if !new_gifts or new_gifts.class != Array or new_gifts.size == 0
+      return { :error => 'Invalid call. Expected array with one or more new gifts for server side verification.'}
+    end
+
+    # cache friends for login users - giver and/or receiver for gifts must be friend of login user
+    login_users = User.where(:user_id => login_user_ids)
+    if login_users.size == 0 or login_users.size != login_user_ids.size
+      return { :error => 'System error. Expected array with login user ids for current logged in users'}
+    end
+    User.cache_friend_info(login_users)
+    friends = {}
+    login_users.each do |u|
+      friends.merge!(u.friends_hash)
+    end
+
+    # cache users (user_id's are used in server side sha256 signature)
+    # cache gifts (get previous server side sha256 signature and created_at timestamp)
+    users = {} # id => user_id
+    gifts = {} # gid => gift
+    gids = []
+    gifts_user_ids = []
+    seqs = {}
+    new_gifts.each do |new_gift|
+      seq = new_gift["seq"]
+      return { :error => 'Invalid verify gifts request. Seq in gifts array must be unique' } if seqs.has_key? seq
+      seqs[seq] = true
+      gids << new_gift["gid"]
+      gifts_user_ids += new_gift["giver_user_ids"] if new_gift["giver_user_ids"]
+      gifts_user_ids += new_gift["receiver_user_ids"] if new_gift["receiver_user_ids"]
+    end
+    Gift.where(:gid => gids.uniq).each { |g| gifts[g.gid] = g }
+    User.where(:id => gifts_user_ids.uniq).each { |u| users[u.id] = u.user_id }
+
+    response = []
+    new_gifts.each do |new_gift|
+      seq = new_gift["seq"]
+      sha256_client = new_gift["sha256"]
+
+      # check if gift exists
+      gid = new_gift["gid"]
+      gift = gifts[gid]
+      if !gift
+        # gift not found -
+        # todo: how to implement cross server gift sha256 signature validation?
+        logger.debug2 "gid #{gid} was not found"
+        response << { :seq => seq, :gid => gid }
+        next
+      end
+
+      # check mutual friends
+      mutual_friend = false
+      giver_user_ids = []
+      new_gift["giver_user_ids"].each do |user_id|
+        giver = users[user_id]
+        if giver
+          giver_user_ids << giver
+          friend = friends[giver]
+          mutual_friend = true if friend and friend <= 2
+        else
+          logger.warn2 "Gid #{gid} : Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
+          response << { :seq => seq, :gid => gid }
+          next
+        end
+      end if new_gift["giver_user_ids"]
+      giver_user_ids.sort!
+      receiver_user_ids = []
+      new_gift["receiver_user_ids"].each do |user_id|
+        receiver = users[user_id]
+        if receiver
+          receiver_user_ids << receiver
+          friend = friends[receiver]
+          mutual_friend = true if friend and friend <= 2
+        else
+          logger.warn2 "Gid #{gid} : Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
+          response << { :seq => seq, :gid => gid }
+          next
+        end
+      end if new_gift["receiver_user_ids"]
+      if !mutual_friend
+        logger.debug2 "gid #{gid} is not from a friend"
+        response << { :seq => seq, :gid => gid }
+        next
+      end
+      giver_user_ids.sort!
+      receiver_user_ids.sort!
+
+      # generate server side sha256 signature from new gift
+      if giver_user_ids.size > 0
+        sha256_server_text = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
+        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
+        if gift.sha256 == sha256_server
+          # gift ok - was created by giver
+          response << { :seq => seq, :gid => gid, :created_at_server => gift.created_at.to_i }
+          next
+        end
+      end
+      if receiver_user_ids.size > 0
+        sha256_server_text = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
+        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
+        if gift.sha256 == sha256_server
+          # gift ok - was created by receiver
+          response << { :seq => seq, :gid => gid, :created_at_server => gift.created_at.to_i }
+          next
+        end
+      end
+
+      # invalid signature. one or more fields in new gift is invalid / has been changed
+      response << { :seq => seq, :gid => gid }
+
+    end # each new_gift
+
+    logger.debug2 "response = #{response}"
+    { :gifts => response }
+  end # self.verify_gifts
 
 
   # https://github.com/jmazzi/crypt_keeper gem encrypts all attributes and all rows in db with the same key
   # this extension to use different encryption for each attribute and each row
   # overwrite non model specific methods defined in /config/initializers/active_record_extensions.rb
-    protected
-    def encrypt_pk
-      self.gid
+  protected
+  def encrypt_pk
+    self.gid
+  end
+
+  def encrypt_pk=(new_encrypt_pk_value)
+    self.gid = new_encrypt_pk_value
+  end
+
+  def new_encrypt_pk
+    loop do
+      temp_gid = String.generate_random_string(20)
+      return temp_gid unless Gift.find_by_gid(temp_gid)
     end
-    def encrypt_pk=(new_encrypt_pk_value)
-      self.gid = new_encrypt_pk_value
-    end
-    def new_encrypt_pk
-      loop do
-        temp_gid = String.generate_random_string(20)
-        return temp_gid unless Gift.find_by_gid(temp_gid)
-      end
-    end
+  end
 
 end # Gift

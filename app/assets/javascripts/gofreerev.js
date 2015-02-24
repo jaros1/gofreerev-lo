@@ -1006,7 +1006,7 @@ var Gofreerev = (function() {
         var json_error = JSON.parse(JSON.stringify(tv4.error));
         delete json_error.stack;
         var json_errors = JSON.stringify(json_error) ;
-        error = 'Error in JSON ' + json_schema + ' request. ' + json_schema + ' message was not sent to other client.' + msg ;
+        error = 'Error in JSON ' + json_schema + ' message. ' + json_schema + ' message was not sent to other client.' + msg ;
         console.log(pgm + error);
         console.log(pgm + 'request: ' + JSON.stringify(json_msg));
         console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
@@ -1916,9 +1916,9 @@ angular.module('gifts', ['ngRoute'])
         // end UserService
     }])
     .factory('GiftService', ['UserService', function(userService) {
-        var self = this ;
-        var service = 'GiftService' ;
-        console.log(service + ' loaded') ;
+        var self = this;
+        var service = 'GiftService';
+        console.log(service + ' loaded');
 
 
         // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
@@ -1934,25 +1934,26 @@ angular.module('gifts', ['ngRoute'])
         // - accepted          - accepted boolean - true if accepted by creator of gift - false if rejected by creator of gift - include in comment sha256 calculation
         // - updated_by        - user id list for users that have accepted or rejected proposal - must be a subset of creators of gift - include in comment sha256 calculation
         var calc_sha256_for_comment = function (comment) {
-            var pgm = service + '.calc_sha256_for_comment: ' ;
-            if ((typeof comment.created_at_server == 'undefined') || (comment.created_at_server == null)) return null ; // no server side sha256 signature
-            var updated_by_internal_ids ;
-            if ((typeof comment.updated_by == 'undefined') || (comment.updated_by == null)) updated_by_internal_ids = [] ;
-            else updated_by_internal_ids = comment.updated_by ;
+            var pgm = service + '.calc_sha256_for_comment: ';
+            if ((typeof comment.created_at_server == 'undefined') || (comment.created_at_server == null)) return null; // no server side sha256 signature
+            var updated_by_internal_ids;
+            if ((typeof comment.updated_by == 'undefined') || (comment.updated_by == null)) updated_by_internal_ids = [];
+            else updated_by_internal_ids = comment.updated_by;
             var updated_by_external_ids = [];
-            var user ;
-            for (var i=0 ; i<updated_by_internal_ids.length ; i++) {
-                user = userService.get_user(updated_by_internal_ids[i]) ;
+            var user;
+            for (var i = 0; i < updated_by_internal_ids.length; i++) {
+                user = userService.get_user(updated_by_internal_ids[i]);
                 if (!user) {
-                    console.log(pgm + 'Cannot calculate sha256 for comment ' + comment.cid + '. Unknown internal user id ' + updated_by_internal_ids[i]) ;
-                    return null ;
-                } ;
-                updated_by_external_ids.push(user.uid + '/' + user.provider) ;
+                    console.log(pgm + 'Cannot calculate sha256 for comment ' + comment.cid + '. Unknown internal user id ' + updated_by_internal_ids[i]);
+                    return null;
+                }
+                ;
+                updated_by_external_ids.push(user.uid + '/' + user.provider);
             }
-            updated_by_external_ids = updated_by_external_ids.sort() ;
-            updated_by_external_ids.unshift(updated_by_external_ids.length.toString()) ;
-            var updated_by_str = updated_by_external_ids.join(',') ;
-            return Gofreerev.sha256(comment.new_deal, comment.deleted_at, comment.accepted, updated_by_str) ;
+            updated_by_external_ids = updated_by_external_ids.sort();
+            updated_by_external_ids.unshift(updated_by_external_ids.length.toString());
+            var updated_by_str = updated_by_external_ids.join(',');
+            return Gofreerev.sha256(comment.new_deal, comment.deleted_at, comment.accepted, updated_by_str);
         } // calc_sha256_for_comment
 
         // calculate sha256 value for gift. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
@@ -1970,44 +1971,46 @@ angular.module('gifts', ['ngRoute'])
         // - deleted_at - included in sha256 value
         // - comments - array with comments - included comments sha256_values in gift sha256 value
         var calc_sha256_for_gift = function (gift) {
-            var pgm = service + '.sha256_gift: ' ;
-            if ((typeof gift.created_at_server == 'undefined') || (gift.created_at_server == null)) return null ; // no server side sha256 signature
+            var pgm = service + '.sha256_gift: ';
+            if ((typeof gift.created_at_server == 'undefined') || (gift.created_at_server == null)) return null; // no server side sha256 signature
             // other participant in gift. null until closed/given/received
-            var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids ;
-            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids == [] ;
+            var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids;
+            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids == [];
             var other_participant_external_ids = [];
-            var user ;
-            for (var i=0 ; i<other_participant_internal_ids.length ; i++) {
-                user = userService.get_user(other_participant_internal_ids[i]) ;
+            var user;
+            for (var i = 0; i < other_participant_internal_ids.length; i++) {
+                user = userService.get_user(other_participant_internal_ids[i]);
                 if (!user) {
-                    console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]) ;
-                    return null ;
-                } ;
-                other_participant_external_ids.push(user.uid + '/' + user.provider) ;
+                    console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]);
+                    return null;
+                }
+                ;
+                other_participant_external_ids.push(user.uid + '/' + user.provider);
             }
-            other_participant_external_ids = other_participant_external_ids.sort() ;
-            other_participant_external_ids.unshift(other_participant_external_ids.length.toString()) ;
-            var other_participant_str = other_participant_external_ids.join(',') ;
+            other_participant_external_ids = other_participant_external_ids.sort();
+            other_participant_external_ids.unshift(other_participant_external_ids.length.toString());
+            var other_participant_str = other_participant_external_ids.join(',');
             // price and currency
             // likes - todo: change like from boolean to an array of like and unlike with user id and timestamp
-            var likes_str = '' ;
+            var likes_str = '';
             // deleted_at
             // comments. string with sha256 value for each comment
-            var comments, comment_sha256_temp ;
-            if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [] ;
-            else comments = gift.comments ;
-            var comments_sha256 = [], s ;
-            for (i=0 ; i<comments.length ; i++) {
-                s = calc_sha256_for_comment(comments[i]) ;
-                if (!s) return null ; // error in sha256 calc. error has been written to log
-                comments_sha256.push(s) ;
-            } ;
-            comments_sha256.unshift(comments.length.toString()) ;
-            var comments_str = comments_sha256.join(',') ;
+            var comments, comment_sha256_temp;
+            if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [];
+            else comments = gift.comments;
+            var comments_sha256 = [], s;
+            for (i = 0; i < comments.length; i++) {
+                s = calc_sha256_for_comment(comments[i]);
+                if (!s) return null; // error in sha256 calc. error has been written to log
+                comments_sha256.push(s);
+            }
+            ;
+            comments_sha256.unshift(comments.length.toString());
+            var comments_str = comments_sha256.join(',');
             // return an array with 3 sha256 values. sha256 is the real sha256 value for gift. sha256_gift and sha256_comments are sub sha256 values used in gifts sync between devices
-            var sha256 = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at, comments_str) ;
-            var sha256_gift = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at) ;
-            var sha256_comments = Gofreerev.sha256(comments_str) ;
+            var sha256 = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at, comments_str);
+            var sha256_gift = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at);
+            var sha256_comments = Gofreerev.sha256(comments_str);
             return [sha256, sha256_gift, sha256_comments];
         }; // sha256_gift
 
@@ -2018,82 +2021,82 @@ angular.module('gifts', ['ngRoute'])
         }; // sort_by_gid
 
         var gifts = [];
-        var gifts_index = {} ;
-        var user_id_gifts_index = {} ;
+        var gifts_index = {};
+        var user_id_gifts_index = {};
         var init_gifts_index = function () {
-            gifts_index = {} ;
-            user_id_gifts_index = {} ;
-            var user_ids, user_id, i, j, gift, sha256_values ;
-            for (i=0 ; i<gifts.length ; i++) {
-                gift = gifts[i] ;
-                sha256_values = calc_sha256_for_gift(gift) ;
-                gift.sha256 = sha256_values[0] ;
-                gift.sha256_gift = sha256_values[1] ; // sub sha256 values used in gifts sync between devices
-                gift.sha256_comments = sha256_values[2] ; // sub sha256 values used in gifts sync between devices
+            gifts_index = {};
+            user_id_gifts_index = {};
+            var user_ids, user_id, i, j, gift, sha256_values;
+            for (i = 0; i < gifts.length; i++) {
+                gift = gifts[i];
+                sha256_values = calc_sha256_for_gift(gift);
+                gift.sha256 = sha256_values[0];
+                gift.sha256_gift = sha256_values[1]; // sub sha256 values used in gifts sync between devices
+                gift.sha256_comments = sha256_values[2]; // sub sha256 values used in gifts sync between devices
                 // simple gid to index
-                gifts_index[gift.gid] = i ;
+                gifts_index[gift.gid] = i;
                 // user_id to array of gifts
-                user_ids = [] ;
-                for (j=0 ; j<gift.giver_user_ids.length ; j++) {
-                    user_id = gift.giver_user_ids[j] ;
-                    if (user_ids.indexOf(user_id)==-1) {
-                        if (!user_id_gifts_index[user_id]) user_id_gifts_index[user_id] = [] ;
-                        user_id_gifts_index[user_id].push(gift) ;
-                        user_ids.push(user_id) ;
+                user_ids = [];
+                for (j = 0; j < gift.giver_user_ids.length; j++) {
+                    user_id = gift.giver_user_ids[j];
+                    if (user_ids.indexOf(user_id) == -1) {
+                        if (!user_id_gifts_index[user_id]) user_id_gifts_index[user_id] = [];
+                        user_id_gifts_index[user_id].push(gift);
+                        user_ids.push(user_id);
                     }
                 } // for j
-                for (j=0 ; j<gift.receiver_user_ids.length ; j++) {
-                    user_id = gift.receiver_user_ids[j] ;
-                    if (user_ids.indexOf(user_id)==-1) {
-                        if (!user_id_gifts_index[user_id]) user_id_gifts_index[user_id] = [] ;
-                        user_id_gifts_index[user_id].push(gift) ;
-                        user_ids.push(user_id) ;
+                for (j = 0; j < gift.receiver_user_ids.length; j++) {
+                    user_id = gift.receiver_user_ids[j];
+                    if (user_ids.indexOf(user_id) == -1) {
+                        if (!user_id_gifts_index[user_id]) user_id_gifts_index[user_id] = [];
+                        user_id_gifts_index[user_id].push(gift);
+                        user_ids.push(user_id);
                     }
                 } // for j
             } // for i
             // sort gift arrays in user_id_gifts_index for fast users sha256 calc
             for (user_id in user_id_gifts_index) {
-                user_id_gifts_index[user_id].sort(sort_by_gid) ;
+                user_id_gifts_index[user_id].sort(sort_by_gid);
             }
             // console.log('user_id_gifts_index = ' + JSON.stringify(user_id_gifts_index)) ;
         };
 
         // save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
-        var save_gifts = function() {
+        var save_gifts = function () {
             // remove some session specific attributes before save
             // also remove sha256 calculation - no reason to keep sha256 calculations in localStorage
-            var gifts_clone = JSON.parse(JSON.stringify(gifts)) ;
-            var gift, comments ;
-            for (var i=0 ; i<gifts_clone.length ; i++) {
-                gift = gifts_clone[i] ;
-                if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments ;
-                if (gift.hasOwnProperty('new_comment')) delete gift.new_comment ;
-                if (gift.hasOwnProperty('sha256')) delete gift.sha256 ;
-                if (gift.hasOwnProperty('sha256_gift')) delete gift.sha256_gift ;
-                if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments ;
-                if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
-                comments = gift.comments ;
-                for (var j=0 ; j<comments.length ; j++) {
-                    if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256 ;
+            var gifts_clone = JSON.parse(JSON.stringify(gifts));
+            var gift, comments;
+            for (var i = 0; i < gifts_clone.length; i++) {
+                gift = gifts_clone[i];
+                if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments;
+                if (gift.hasOwnProperty('new_comment')) delete gift.new_comment;
+                if (gift.hasOwnProperty('sha256')) delete gift.sha256;
+                if (gift.hasOwnProperty('sha256_gift')) delete gift.sha256_gift;
+                if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments;
+                if (!gift.hasOwnProperty('comments')) gift.comments = [];
+                comments = gift.comments;
+                for (var j = 0; j < comments.length; j++) {
+                    if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256;
                 }
             }
             // save
-            Gofreerev.setItem('gifts', JSON.stringify(gifts_clone)) ;
+            Gofreerev.setItem('gifts', JSON.stringify(gifts_clone));
         }; // save_gifts
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
-            var pgm = service + '.load_gifts: ' ;
-            var new_gifts = [] ;
-            if (Gofreerev.getItem('gifts')) new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
-            else Gofreerev.setItem('gifts', JSON.stringify([])) ;
-            gifts.length = 0 ;
-            gifts_index = {} ;
-            var gift ;
-            var migration = false ;
-            var j, comment ;
-            for (var i=0 ; i<new_gifts.length ; i++) {
-                gift = new_gifts[i] ;
+            var pgm = service + '.load_gifts: ';
+            var new_gifts = [];
+            if (Gofreerev.getItem('gifts')) new_gifts = JSON.parse(Gofreerev.getItem('gifts'));
+            else Gofreerev.setItem('gifts', JSON.stringify([]));
+            gifts.length = 0;
+            gifts_index = {};
+            var gift;
+            var migration = false;
+            var j, comment;
+            for (var i = 0; i < new_gifts.length; i++) {
+                gift = new_gifts[i];
                 // data migration - rename date to created_at_client
                 //if (gift.hasOwnProperty('date')) {
                 //    gift.created_at_client = gift.date ;
@@ -2130,13 +2133,21 @@ angular.module('gifts', ['ngRoute'])
                 //gift.sha256 = calc_sha256_for_gift(gift) ;
                 //if (!gift.sha256) console.log(pgm + ' could not calculate sha256 for gift ' + gift.gid) ;
                 //gifts_index[gift.gid] = gifts.length ;
-                gifts.push(gift) ;
+
+                // fix json error - js data migration. change gift deleted_at timestamp from milliseconds to seconds -- todo: remove
+                if (gift.deleted_at) {
+                    if (gift.deleted_at.toString().length == 13) {
+                        gift.deleted_at = Math.floor(gift.deleted_at / 1000) ;
+                        migration = true ;
+                    }
+                }
+                gifts.push(gift);
             }
-            if (migration) save_gifts() ;
-            console.log('GiftService.load_gifts: gifts.length = ' + gifts.length) ;
-            init_gifts_index() ;
+            if (migration) save_gifts();
+            console.log('GiftService.load_gifts: gifts.length = ' + gifts.length);
+            init_gifts_index();
         };
-        load_gifts() ;
+        load_gifts();
 
         // add missing gid (unique gift id)
         //for (i=0 ; i<gifts.length ; i++) if (!gifts[i].gid) {
@@ -2152,46 +2163,46 @@ angular.module('gifts', ['ngRoute'])
         //}
 
         var comments_debug_info = function (comments) {
-            var text = 'length = ' + comments.length ;
-            for (var i=0 ; i<comments.length ; i++) text += ', ' + comments[i].comment + ' (' + comments[i].cid + ')' ;
-            return text ;
+            var text = 'length = ' + comments.length;
+            for (var i = 0; i < comments.length; i++) text += ', ' + comments[i].comment + ' (' + comments[i].cid + ')';
+            return text;
         } // comments_debug_info
 
         // todo: ok always to add new comments to end of comments array?
         // refresh gift comments from localStorage before update (changed in an other browser tab)
         var refresh_comments = function (comments, new_comments) {
-            var pgm = service +  '.refresh_comments: ' ;
+            var pgm = service + '.refresh_comments: ';
             // console.log(pgm + 'input: comments.length = ' + comments.length + ', new_comments.length = ' + new_comments.length) ;
             // console.log(pgm + 'old comments: ' + comments_debug_info(comments)) ;
             // console.log(pgm + 'new comments: ' + comments_debug_info(new_comments)) ;
             // insert and update comments
-            var comments_index ;
+            var comments_index;
             var init_comments_index = function () {
-                comments_index = {} ;
-                for (var j=0 ; j<comments.length ; j++) comments_index[comments[j].cid] = j ;
+                comments_index = {};
+                for (var j = 0; j < comments.length; j++) comments_index[comments[j].cid] = j;
             }
-            init_comments_index() ;
-            var cid, comment_index ;
-            for (var i=0 ; i<new_comments.length ; i++) {
-                cid = new_comments[i].cid ;
+            init_comments_index();
+            var cid, comment_index;
+            for (var i = 0; i < new_comments.length; i++) {
+                cid = new_comments[i].cid;
                 if (comments_index.hasOwnProperty(cid)) {
                     // update comment
-                    comment_index = comments_index[cid] ;
-                    if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids ;
-                    if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price ;
-                    if (comments[comment_index].currency != new_comments[i].currency) comments[comment_index].currency = new_comments[i].currency ;
-                    if (comments[comment_index].comment != new_comments[i].comment) comments[comment_index].comment = new_comments[i].comment ;
-                    if (comments[comment_index].created_at_client != new_comments[i].created_at_client) comments[comment_index].created_at_client = new_comments[i].created_at_client ;
-                    if (comments[comment_index].new_deal != new_comments[i].new_deal) comments[comment_index].new_deal = new_comments[i].new_deal ;
-                    if (comments[comment_index].deleted_at != new_comments[i].deleted_at) comments[comment_index].deleted_at = new_comments[i].deleted_at ;
-                    if (comments[comment_index].accepted != new_comments[i].accepted) comments[comment_index].accepted = new_comments[i].accepted ;
-                    if (comments[comment_index].updated_by != new_comments[i].updated_by) comments[comment_index].updated_by = new_comments[i].updated_by ;
+                    comment_index = comments_index[cid];
+                    if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids;
+                    if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price;
+                    if (comments[comment_index].currency != new_comments[i].currency) comments[comment_index].currency = new_comments[i].currency;
+                    if (comments[comment_index].comment != new_comments[i].comment) comments[comment_index].comment = new_comments[i].comment;
+                    if (comments[comment_index].created_at_client != new_comments[i].created_at_client) comments[comment_index].created_at_client = new_comments[i].created_at_client;
+                    if (comments[comment_index].new_deal != new_comments[i].new_deal) comments[comment_index].new_deal = new_comments[i].new_deal;
+                    if (comments[comment_index].deleted_at != new_comments[i].deleted_at) comments[comment_index].deleted_at = new_comments[i].deleted_at;
+                    if (comments[comment_index].accepted != new_comments[i].accepted) comments[comment_index].accepted = new_comments[i].accepted;
+                    if (comments[comment_index].updated_by != new_comments[i].updated_by) comments[comment_index].updated_by = new_comments[i].updated_by;
                 }
                 else {
                     // insert comment.
                     // console.log(pgm + 'insert new comment ' + new_comments[i].comment) ;
-                    comments.push(new_comments[i]) ;
-                    init_comments_index() ;
+                    comments.push(new_comments[i]);
+                    init_comments_index();
                 }
             } // for i
             // delete comments - todo: not implemented
@@ -2201,63 +2212,63 @@ angular.module('gifts', ['ngRoute'])
         // refresh gift from localStorage before update (changed in an other browser tab)
         // called before adding change to js object in this browser tab
         var refresh_gift = function (gift) {
-            var pgm = service + '.refresh_gift: ' ;
-            var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
-            var new_gift ;
-            for (var i=0 ; (!new_gift && (i<new_gifts.length)) ; i++) {
-                if (gift.gid == new_gifts[i].gid) new_gift = new_gifts[i] ;
+            var pgm = service + '.refresh_gift: ';
+            var new_gifts = JSON.parse(Gofreerev.getItem('gifts'));
+            var new_gift;
+            for (var i = 0; (!new_gift && (i < new_gifts.length)); i++) {
+                if (gift.gid == new_gifts[i].gid) new_gift = new_gifts[i];
             }
             if (!new_gift) {
-                console.log(pgm + 'error. refresh failed. gift with gid ' + gift.gid + ' was not found in localStorage') ;
-                return ;
+                console.log(pgm + 'error. refresh failed. gift with gid ' + gift.gid + ' was not found in localStorage');
+                return;
             }
-            if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
-            if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids ;
-            if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client ;
-            if (gift.created_at_server != new_gift.created_at_server) gift.created_at_server = new_gift.created_at_server ;
-            if (gift.price != new_gift.price) gift.price = new_gift.price ;
-            if (gift.currency != new_gift.currency) gift.currency = new_gift.currency ;
-            if (gift.direction != new_gift.direction) gift.direction = new_gift.direction ;
-            if (gift.description != new_gift.description) gift.description = new_gift.description ;
-            if (gift.open_graph_url != new_gift.open_graph_url) gift.open_graph_url = new_gift.open_graph_url ;
-            if (gift.open_graph_title != new_gift.open_graph_title) gift.open_graph_title = new_gift.open_graph_title ;
-            if (gift.open_graph_description != new_gift.open_graph_description) gift.open_graph_description = new_gift.open_graph_description ;
-            if (gift.open_graph_image != new_gift.open_graph_image) gift.open_graph_image = new_gift.open_graph_image ;
-            if (gift.like != new_gift.like) gift.like = new_gift.like ;
-            if (gift.follow != new_gift.follow) gift.follow = new_gift.follow ;
-            if (gift.show != new_gift.show) gift.show = new_gift.show ;
-            if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at ;
+            if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids;
+            if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids;
+            if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client;
+            if (gift.created_at_server != new_gift.created_at_server) gift.created_at_server = new_gift.created_at_server;
+            if (gift.price != new_gift.price) gift.price = new_gift.price;
+            if (gift.currency != new_gift.currency) gift.currency = new_gift.currency;
+            if (gift.direction != new_gift.direction) gift.direction = new_gift.direction;
+            if (gift.description != new_gift.description) gift.description = new_gift.description;
+            if (gift.open_graph_url != new_gift.open_graph_url) gift.open_graph_url = new_gift.open_graph_url;
+            if (gift.open_graph_title != new_gift.open_graph_title) gift.open_graph_title = new_gift.open_graph_title;
+            if (gift.open_graph_description != new_gift.open_graph_description) gift.open_graph_description = new_gift.open_graph_description;
+            if (gift.open_graph_image != new_gift.open_graph_image) gift.open_graph_image = new_gift.open_graph_image;
+            if (gift.like != new_gift.like) gift.like = new_gift.like;
+            if (gift.follow != new_gift.follow) gift.follow = new_gift.follow;
+            if (gift.show != new_gift.show) gift.show = new_gift.show;
+            if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at;
             // todo: should merge comments and keep sequence - not overwrite arrays
-            if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
-            if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [] ;
-            if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments) ;
+            if (!gift.hasOwnProperty('comments')) gift.comments = [];
+            if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [];
+            if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments);
         } // refresh_gift
 
         // fresh gift and comment before update (changed in an other browser tab)
         var refresh_gift_and_comment = function (gift, comment) {
-            var pgm = service + '.refresh_gift_and_comment: ' ;
-            var cid = comment.cid ;
-            var old_comments_length = (gift.comments || []).length ;
-            refresh_gift(gift) ;
-            var comments = gift.comments || [] ;
-            var new_comments_length = comments.length ;
-            var index = -1 ;
-            for (var i=0 ; i<comments.length ; i++) if (cid == comments[i].cid) index = i ;
+            var pgm = service + '.refresh_gift_and_comment: ';
+            var cid = comment.cid;
+            var old_comments_length = (gift.comments || []).length;
+            refresh_gift(gift);
+            var comments = gift.comments || [];
+            var new_comments_length = comments.length;
+            var index = -1;
+            for (var i = 0; i < comments.length; i++) if (cid == comments[i].cid) index = i;
             if (index == -1) {
                 // comment has been physically deleted - return empty comment {}
-                for (var key in comment) if (comment.hasOwnProperty(key)) delete comment[key] ;
-                return ;
+                for (var key in comment) if (comment.hasOwnProperty(key)) delete comment[key];
+                return;
             }
             // refresh comment
-            if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids ;
-            if (comment.price != comments[index].price) comment.price = comments[index].price ;
-            if (comment.currency != comments[index].currency) comment.currency = comments[index].currency ;
-            if (comment.comment != comments[index].comment) comment.comment = comments[index].comment ;
-            if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client ;
-            if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal ;
-            if (comment.deleted_at != comments[index].deleted_at) comment.deleted_at = comments[index].deleted_at ;
-            if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted ;
-            if (comment.updated_by != comments[index].updated_by) comment.updated_by = comments[index].updated_by ;
+            if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids;
+            if (comment.price != comments[index].price) comment.price = comments[index].price;
+            if (comment.currency != comments[index].currency) comment.currency = comments[index].currency;
+            if (comment.comment != comments[index].comment) comment.comment = comments[index].comment;
+            if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client;
+            if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal;
+            if (comment.deleted_at != comments[index].deleted_at) comment.deleted_at = comments[index].deleted_at;
+            if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted;
+            if (comment.updated_by != comments[index].updated_by) comment.updated_by = comments[index].updated_by;
         }
 
         // less that <ping_interval> milliseconds (see ping) between util/ping for client_userid
@@ -2265,67 +2276,67 @@ angular.module('gifts', ['ngRoute'])
         // js array gifts could be out of sync
         // sync changes in gifts array in local storage with js gifts array
         var sync_gifts = function () {
-            var pgm = service + '. sync_gift: ' ;
-            console.log(pgm + 'start') ;
-            var new_gifts = JSON.parse(Gofreerev.getItem('gifts')) ;
+            var pgm = service + '. sync_gift: ';
+            console.log(pgm + 'start');
+            var new_gifts = JSON.parse(Gofreerev.getItem('gifts'));
             // todo: remove - index should normally always be up-to-date
-            init_gifts_index() ;
+            init_gifts_index();
             // insert and update gifts (keep sequence)
-            var gid ;
-            var insert_point = new_gifts.length ;
-            for (var i=new_gifts.length-1 ; i>=0 ; i--) {
-                gid = new_gifts[i].gid ;
+            var gid;
+            var insert_point = new_gifts.length;
+            for (var i = new_gifts.length - 1; i >= 0; i--) {
+                gid = new_gifts[i].gid;
                 if (gifts_index.hasOwnProperty(gid)) {
                     // update gift
                     // match between gift id in localStorage and gift in js array gifts. insert new gift before this gift
-                    insert_point = gifts_index[gid] ;
+                    insert_point = gifts_index[gid];
                     // copy any changed values from new_gifts into gifts
-                    if (gifts[insert_point].giver_user_ids != new_gifts[i].giver_user_ids) gifts[insert_point].giver_user_ids = new_gifts[i].giver_user_ids ;
-                    if (gifts[insert_point].receiver_user_ids != new_gifts[i].receiver_user_ids) gifts[insert_point].receiver_user_ids = new_gifts[i].receiver_user_ids ;
-                    if (gifts[insert_point].created_at_client != new_gifts[i].created_at_client) gifts[insert_point].created_at_client = new_gifts[i].created_at_client ;
-                    if (gifts[insert_point].created_at_server != new_gifts[i].created_at_server) gifts[insert_point].created_at_server = new_gifts[i].created_at_server ;
-                    if (gifts[insert_point].price != new_gifts[i].price) gifts[insert_point].price = new_gifts[i].price ;
-                    if (gifts[insert_point].currency != new_gifts[i].currency) gifts[insert_point].currency = new_gifts[i].currency ;
-                    if (gifts[insert_point].direction != new_gifts[i].direction) gifts[insert_point].direction = new_gifts[i].direction ;
-                    if (gifts[insert_point].description != new_gifts[i].description) gifts[insert_point].description = new_gifts[i].description ;
-                    if (gifts[insert_point].open_graph_url != new_gifts[i].open_graph_url) gifts[insert_point].open_graph_url = new_gifts[i].open_graph_url ;
-                    if (gifts[insert_point].open_graph_title != new_gifts[i].open_graph_title) gifts[insert_point].open_graph_title = new_gifts[i].open_graph_title ;
-                    if (gifts[insert_point].open_graph_description != new_gifts[i].open_graph_description) gifts[insert_point].open_graph_description = new_gifts[i].open_graph_description ;
-                    if (gifts[insert_point].open_graph_image != new_gifts[i].open_graph_image) gifts[insert_point].open_graph_image = new_gifts[i].open_graph_image ;
-                    if (gifts[insert_point].like != new_gifts[i].like) gifts[insert_point].like = new_gifts[i].like ;
-                    if (gifts[insert_point].follow != new_gifts[i].follow) gifts[insert_point].follow = new_gifts[i].follow ;
-                    if (gifts[insert_point].show != new_gifts[i].show) gifts[insert_point].show = new_gifts[i].show ;
-                    if (gifts[insert_point].deleted_at != new_gifts[i].deleted_at) gifts[insert_point].deleted_at = new_gifts[i].deleted_at ;
-                    if (!gifts[insert_point].hasOwnProperty('comments')) gifts[insert_point].comments = [] ;
-                    if (!new_gifts[i].hasOwnProperty('comments')) new_gifts[i].comments = [] ;
-                    if (gifts[insert_point].comments != new_gifts[i].comments) refresh_comments(gifts[insert_point].comments, new_gifts[i].comments) ;
+                    if (gifts[insert_point].giver_user_ids != new_gifts[i].giver_user_ids) gifts[insert_point].giver_user_ids = new_gifts[i].giver_user_ids;
+                    if (gifts[insert_point].receiver_user_ids != new_gifts[i].receiver_user_ids) gifts[insert_point].receiver_user_ids = new_gifts[i].receiver_user_ids;
+                    if (gifts[insert_point].created_at_client != new_gifts[i].created_at_client) gifts[insert_point].created_at_client = new_gifts[i].created_at_client;
+                    if (gifts[insert_point].created_at_server != new_gifts[i].created_at_server) gifts[insert_point].created_at_server = new_gifts[i].created_at_server;
+                    if (gifts[insert_point].price != new_gifts[i].price) gifts[insert_point].price = new_gifts[i].price;
+                    if (gifts[insert_point].currency != new_gifts[i].currency) gifts[insert_point].currency = new_gifts[i].currency;
+                    if (gifts[insert_point].direction != new_gifts[i].direction) gifts[insert_point].direction = new_gifts[i].direction;
+                    if (gifts[insert_point].description != new_gifts[i].description) gifts[insert_point].description = new_gifts[i].description;
+                    if (gifts[insert_point].open_graph_url != new_gifts[i].open_graph_url) gifts[insert_point].open_graph_url = new_gifts[i].open_graph_url;
+                    if (gifts[insert_point].open_graph_title != new_gifts[i].open_graph_title) gifts[insert_point].open_graph_title = new_gifts[i].open_graph_title;
+                    if (gifts[insert_point].open_graph_description != new_gifts[i].open_graph_description) gifts[insert_point].open_graph_description = new_gifts[i].open_graph_description;
+                    if (gifts[insert_point].open_graph_image != new_gifts[i].open_graph_image) gifts[insert_point].open_graph_image = new_gifts[i].open_graph_image;
+                    if (gifts[insert_point].like != new_gifts[i].like) gifts[insert_point].like = new_gifts[i].like;
+                    if (gifts[insert_point].follow != new_gifts[i].follow) gifts[insert_point].follow = new_gifts[i].follow;
+                    if (gifts[insert_point].show != new_gifts[i].show) gifts[insert_point].show = new_gifts[i].show;
+                    if (gifts[insert_point].deleted_at != new_gifts[i].deleted_at) gifts[insert_point].deleted_at = new_gifts[i].deleted_at;
+                    if (!gifts[insert_point].hasOwnProperty('comments')) gifts[insert_point].comments = [];
+                    if (!new_gifts[i].hasOwnProperty('comments')) new_gifts[i].comments = [];
+                    if (gifts[insert_point].comments != new_gifts[i].comments) refresh_comments(gifts[insert_point].comments, new_gifts[i].comments);
                 }
                 else {
                     // insert gift
-                    console.log(pgm + 'insert gid ' + gid + ' from localStorage into js gifts array at index ' + insert_point) ;
-                    if (new_gifts[i].hasOwnProperty('gift.show_no_comments')) delete new_gifts[i]['gift.show_no_comments'] ;
-                    new_gifts[i].new_comment = {comment: ""} ;
+                    console.log(pgm + 'insert gid ' + gid + ' from localStorage into js gifts array at index ' + insert_point);
+                    if (new_gifts[i].hasOwnProperty('gift.show_no_comments')) delete new_gifts[i]['gift.show_no_comments'];
+                    new_gifts[i].new_comment = {comment: ""};
                     gifts.splice(insert_point, 0, new_gifts[i]);
-                    init_gifts_index() ;
+                    init_gifts_index();
                 }
             }
             // remove deleted gifts
-            var new_gifts_index = {} ;
-            for (i=0 ; i<new_gifts.length ; i++) new_gifts_index[new_gifts[i].gid] = i ;
-            for (i=gifts.length-1 ; i>= 0 ; i--) {
+            var new_gifts_index = {};
+            for (i = 0; i < new_gifts.length; i++) new_gifts_index[new_gifts[i].gid] = i;
+            for (i = gifts.length - 1; i >= 0; i--) {
                 gid = gifts[i].gid
-                if (!new_gifts_index.hasOwnProperty(gid)) gifts.splice(i, 1) ;
+                if (!new_gifts_index.hasOwnProperty(gid)) gifts.splice(i, 1);
             }
         }; // sync_gifts
 
         var unshift_gift = function (gift) {
             var pgm = service + '.unshift_gift: '
             if (gifts_index.hasOwnProperty(gift.gid)) {
-                console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array') ;
-                return ;
+                console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array');
+                return;
             }
-            gifts.unshift(gift) ;
-            init_gifts_index() ;
+            gifts.unshift(gift);
+            init_gifts_index();
         } // unshift_gift
 
         // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps from server.
@@ -2333,70 +2344,70 @@ angular.module('gifts', ['ngRoute'])
         // gift timestamps: created_at_client (set by client) and created_at_server (returned from server)
         var new_gifts_request = function () {
             var request = [];
-            var gift, hash, text_client, sha256_client ;
+            var gift, hash, text_client, sha256_client;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
                 if (!gift.created_at_server) {
                     // send meta-data for new gift to server and generate a sha256 signature for gift on server
                     sha256_client = Gofreerev.sha256(
                         gift.created_at_client.toString(), gift.description, gift.open_graph_url,
-                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image) ;
-                    hash = {gid: gift.gid, sha256: sha256_client} ;
-                    if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids ;
-                    if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids ;
-                    request.push(hash) ;
+                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image);
+                    hash = {gid: gift.gid, sha256: sha256_client};
+                    if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids;
+                    if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids;
+                    request.push(hash);
                 } // if
             } // for i
-            return (request.length == 0 ? null : request) ;
+            return (request.length == 0 ? null : request);
         }; // created_at_server_request
         var new_gifts_response = function (response) {
-            var pgm = service + '.new_gifts_response: ' ;
+            var pgm = service + '.new_gifts_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-            if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
-            if (response.hasOwnProperty('no_errors') && (response.no_errors>0)) console.log(pgm + response.no_errors + ' gifts was not created') ;
-            if (!response.hasOwnProperty('data')) return ;
-            var new_gifts = response.data ;
-            var new_gift, gid, index, gift, created_at_server ;
-            var save = false ;
-            for (var i=0 ; i<new_gifts.length ; i++) {
-                new_gift = new_gifts[i] ;
+            if (response.hasOwnProperty('error')) console.log(pgm + response.error);
+            if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' gifts was not created');
+            if (!response.hasOwnProperty('data')) return;
+            var new_gifts = response.data;
+            var new_gift, gid, index, gift, created_at_server;
+            var save = false;
+            for (var i = 0; i < new_gifts.length; i++) {
+                new_gift = new_gifts[i];
                 // validate new_gift in response.data array
                 if (!new_gift.hasOwnProperty('gid')) {
                     // invalid json response
-                    console.log(pgm + 'Invalid response. gid property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift)) ;
-                    continue ;
+                    console.log(pgm + 'Invalid response. gid property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift));
+                    continue;
                 }
-                gid = new_gift.gid ;
+                gid = new_gift.gid;
                 if (new_gift.hasOwnProperty('error')) {
                     // report error from server validation
-                    console.log(pgm + 'data[' + i + '].error = ' + new_gift.error) ;
+                    console.log(pgm + 'data[' + i + '].error = ' + new_gift.error);
                     // todo: delete gift and display error message in page header
-                    continue ;
+                    continue;
                 }
                 if (!gifts_index.hasOwnProperty(gid)) {
-                    console.log(pgm + 'Invalid response. Unknown gid in data[' + i + ' = ' + JSON.stringify(new_gift)) ;
-                    continue ;
+                    console.log(pgm + 'Invalid response. Unknown gid in data[' + i + ' = ' + JSON.stringify(new_gift));
+                    continue;
                 }
-                index = gifts_index[gid] ;
-                gift = gifts[index] ;
+                index = gifts_index[gid];
+                gift = gifts[index];
                 if (!new_gift.hasOwnProperty('created_at_server')) {
-                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift)) ;
+                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift));
                 }
                 if (gift.hasOwnProperty('created_at_server')) {
-                    if (new_gift.created_at_server == gift.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.') ;
+                    if (new_gift.created_at_server == gift.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.');
                     else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for gift.');
-                    continue ;
+                    continue;
                 }
-                refresh_gift(gift) ;
+                refresh_gift(gift);
                 if (gift.hasOwnProperty('created_at_server')) {
-                    if (new_gift.created_at_server == gift.created_at_server) null ; // ok - received in an other browser session
+                    if (new_gift.created_at_server == gift.created_at_server) null; // ok - received in an other browser session
                     else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for gift.');
-                    continue ;
+                    continue;
                 }
-                gift.created_at_server = new_gift.created_at_server ;
-                save = true ;
+                gift.created_at_server = new_gift.created_at_server;
+                save = true;
             } // for i
-            if (save) save_gifts() ;
+            if (save) save_gifts();
         }; // new_gifts_response
 
         // check sha256 server signature for gifts received from other devices before adding or merging gift on this device
@@ -2407,23 +2418,23 @@ angular.module('gifts', ['ngRoute'])
         // positive seq is used for local gifts where response in immediate
         // negative seq from sequence is used for remote gifts where response will come in a later verify_gifts_response
         // todo: use gift.gift_sha256 as a hash key? for quick lookup of identical new gifts!
-        var verify_gifts = [] ; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple devices
+        var verify_gifts = []; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple devices
 
-        var verify_gifts_keys = [] ; // helper: array with keys, key = gid+sha256+userids
-        var verify_gifts_key_to_seq = {} ; // helper: key to seq, key = gid+sha256+userids
-        var verify_gifts_seq_to_gifts = {} ; // helper: from seq to one or more gifts in verify_gifts array
+        var verify_gifts_keys = []; // helper: array with keys, key = gid+sha256+userids
+        var verify_gifts_key_to_seq = {}; // helper: key to seq, key = gid+sha256+userids
+        var verify_gifts_seq_to_gifts = {}; // helper: from seq to one or more gifts in verify_gifts array
 
         var verify_gifts_request = function () {
-            var pgm = service + '.verify_gifts_request: ' ;
-            if (verify_gifts.length == 0) return null ;
+            var pgm = service + '.verify_gifts_request: ';
+            if (verify_gifts.length == 0) return null;
             // reset helpers
-            verify_gifts_keys.length = 0 ;
-            verify_gifts_key_to_seq = {} ;
-            verify_gifts_seq_to_gifts = {} ;
+            verify_gifts_keys.length = 0;
+            verify_gifts_key_to_seq = {};
+            verify_gifts_seq_to_gifts = {};
             // loop for gifts in verify_gifts array
-            var request = [], new_gift, already_verified = 0, waiting_for_verification = 0, missing_server_timestamp = 0, sha256_client, key, seq, hash ;
-            for (var i=0 ; i<verify_gifts.length ; i++) {
-                new_gift = verify_gifts[i] ;
+            var request = [], new_gift, already_verified = 0, waiting_for_verification = 0, missing_server_timestamp = 0, sha256_client, key, seq, hash;
+            for (var i = 0; i < verify_gifts.length; i++) {
+                new_gift = verify_gifts[i];
                 if (new_gift.hasOwnProperty('verified_by_server')) {
                     // warning. should by now have been processed and removed from verify_gifts buffer
                     already_verified += 1;
@@ -2467,155 +2478,155 @@ angular.module('gifts', ['ngRoute'])
                     request.push(hash);
                 }
             } // for i (verify_gifts loop)
-            if (already_verified > 0) console.log('Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.') ;
-            if (waiting_for_verification > 0) console.log('Warning. Found ' + waiting_for_verification + ' gifts waiting for verification in verify_gifts buffer.') ;
+            if (already_verified > 0) console.log('Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.');
+            if (waiting_for_verification > 0) console.log('Warning. Found ' + waiting_for_verification + ' gifts waiting for verification in verify_gifts buffer.');
             if (missing_server_timestamp > 0) console.log('Error. Found ' + missing_server_timestamp + ' gifts without a created_at_server timestamp in verify_gifts buffer.')
-            return (request.length == 0 ? null : request) ;
+            return (request.length == 0 ? null : request);
         };
         var verify_gifts_response = function (response) {
-            var pgm = service + '.verify_gifts_response: ' ;
+            var pgm = service + '.verify_gifts_response: ';
 
             // clear helper index before continuing
-            verify_gifts_index = {} ;
-            console.log(pgm + 'Not implemented.') ;
+            verify_gifts_index = {};
+            console.log(pgm + 'Not implemented.');
         };
 
         // check sha256 server signature for comments received from other devices before adding comment on this device
         // input is comments from send_gifts message pass 1 (receive_message_send_gifts)
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
         // server verifies if comment sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
-        var verify_comments = [] ; // array with comments for next verify_gifts request - there can be doublets if same gift is received from multiple devices
+        var verify_comments = []; // array with comments for next verify_gifts request - there can be doublets if same gift is received from multiple devices
         // todo: use comment.sha256 as a hash key? for quick lookup of identical new comments!
         var verify_comments_request = function () {
-            var pgm = service + '.verify_comments_request: ' ;
-            console.log(pgm + 'Not implemented.') ;
+            var pgm = service + '.verify_comments_request: ';
+            console.log(pgm + 'Not implemented.');
         };
         var verify_comments_response = function (response) {
-            var pgm = service + '.verify_comments_response: ' ;
-            console.log(pgm + 'Not implemented.') ;
+            var pgm = service + '.verify_comments_response: ';
+            console.log(pgm + 'Not implemented.');
         };
 
         // send meta-data for newly created comments to server and get comment.created_at_server unix timestamps from server.
         // called from UserService.ping
-        var new_comments_request_index = {} ; // from cid to comment - used in new_comments_response for quick comment lookup
+        var new_comments_request_index = {}; // from cid to comment - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
-            var pgm = service + '.new_comments_request: ' ;
+            var pgm = service + '.new_comments_request: ';
             var request = [];
-            new_comments_request_index = {} ;
-            var gift, comment, hash, sha256_client, cid ;
+            new_comments_request_index = {};
+            var gift, comment, hash, sha256_client, cid;
             for (var i = 0; i < gifts.length; i++) {
-                if (!gifts[i].comments) continue ;
-                gift = gifts[i] ;
-                comments = gifts[i].comments ;
-                for (var j=0 ; j<comments.length ; j++) {
-                    if (comments[j].created_at_server) continue ;
-                    comment = comments[j] ;
-                    cid = comment.cid ;
+                if (!gifts[i].comments) continue;
+                gift = gifts[i];
+                comments = gifts[i].comments;
+                for (var j = 0; j < comments.length; j++) {
+                    if (comments[j].created_at_server) continue;
+                    comment = comments[j];
+                    cid = comment.cid;
                     // send meta-data for new comment to server and generate a sha256 signature for comment on server
-                    sha256_client = Gofreerev.sha256(gift.gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency) ;
-                    hash = {cid: cid, user_ids: comment.user_ids, sha256: sha256_client} ;
-                    request.push(hash) ;
+                    sha256_client = Gofreerev.sha256(gift.gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency);
+                    hash = {cid: cid, user_ids: comment.user_ids, sha256: sha256_client};
+                    request.push(hash);
                     // cid to comment index - used in new_comments_response for quick comment lookup
-                    new_comments_request_index[cid] = comment ;
+                    new_comments_request_index[cid] = comment;
                 } // for j
             } // for i
-            return (request.length == 0 ? null : request) ;
+            return (request.length == 0 ? null : request);
         }; // new_comments_request
         var new_comments_response = function (response) {
-            var pgm = service + '.new_comments_response: ' ;
+            var pgm = service + '.new_comments_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-            if (response.hasOwnProperty('error')) console.log(pgm + response.error) ;
-            if (response.hasOwnProperty('no_errors') && (response.no_errors>0)) console.log(pgm + response.no_errors + ' comments was not created') ;
-            if (!response.hasOwnProperty('data')) return ;
-            var new_comments = response.data ;
-            var new_comment, cid, comment, created_at_server ;
-            var save = false ;
-            for (var i=0 ; i<new_comments.length ; i++) {
-                new_comment = new_comments[i] ;
+            if (response.hasOwnProperty('error')) console.log(pgm + response.error);
+            if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' comments was not created');
+            if (!response.hasOwnProperty('data')) return;
+            var new_comments = response.data;
+            var new_comment, cid, comment, created_at_server;
+            var save = false;
+            for (var i = 0; i < new_comments.length; i++) {
+                new_comment = new_comments[i];
                 // validate new_comment in response.data array
                 if (!new_comment.hasOwnProperty('cid')) {
                     // invalid json response
-                    console.log(pgm + 'Invalid response. cid property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment)) ;
-                    continue ;
+                    console.log(pgm + 'Invalid response. cid property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment));
+                    continue;
                 }
-                cid = new_comment.cid ;
+                cid = new_comment.cid;
                 if (new_comment.hasOwnProperty('error')) {
                     // report error from server validation
-                    console.log(pgm + 'data[' + i + '].error = ' + new_comment.error) ;
+                    console.log(pgm + 'data[' + i + '].error = ' + new_comment.error);
                     // todo: delete comment and display error message in page header or in inbox
-                    continue ;
+                    continue;
                 }
                 if (!new_comments_request_index.hasOwnProperty(cid)) {
-                    console.log(pgm + 'Invalid response. Unknown cid in data[' + i + ' = ' + JSON.stringify(new_comment)) ;
-                    continue ;
+                    console.log(pgm + 'Invalid response. Unknown cid in data[' + i + ' = ' + JSON.stringify(new_comment));
+                    continue;
                 }
                 if (!new_comment.hasOwnProperty('created_at_server')) {
-                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment)) ;
-                    continue ;
+                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment));
+                    continue;
                 }
-                comment = new_comments_request_index[cid] ;
+                comment = new_comments_request_index[cid];
                 if (comment.hasOwnProperty('created_at_server')) {
-                    if (new_comment.created_at_server == comment.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.') ;
+                    if (new_comment.created_at_server == comment.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.');
                     else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for comment.');
-                    continue ;
+                    continue;
                 }
                 // todo: add refresh_comment method
                 // refresh_comment(comment) ;
                 if (comment.hasOwnProperty('created_at_server')) {
-                    if (new_comment.created_at_server == comment.created_at_server) null ; // ok - received in an other browser session
+                    if (new_comment.created_at_server == comment.created_at_server) null; // ok - received in an other browser session
                     else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for comment.');
-                    continue ;
+                    continue;
                 }
-                comment.created_at_server = new_comment.created_at_server ;
-                save = true ;
+                comment.created_at_server = new_comment.created_at_server;
+                save = true;
             } // for i
-            if (save) save_gifts() ;
-            new_comments_request_index = {} ;
+            if (save) save_gifts();
+            new_comments_request_index = {};
         }; // new_comments_response
 
         // list of mailboxes for other devices (online and offline)
         // key = did+sha256 is used as mailbox index.
-        var mailboxes = [] ; // list with online and offline devices
-        var key_mailbox_index = {} ; // from key (did+sha256) to index
-        var devices = {} ; // hash with public key and symmetric password for each unique device (did)
-        var user_mailboxes = {} ; // list with relevant mailboxes for each user id (mutual friend) - how to notify about changes in gifts
+        var mailboxes = []; // list with online and offline devices
+        var key_mailbox_index = {}; // from key (did+sha256) to index
+        var devices = {}; // hash with public key and symmetric password for each unique device (did)
+        var user_mailboxes = {}; // list with relevant mailboxes for each user id (mutual friend) - how to notify about changes in gifts
 
         var update_key_mailbox_index = function () {
-            var pgm = service + '.update_key_mailbox_index: ' ;
-            key_mailbox_index = {} ; // one index for each device
-            user_mailboxes = {} ; // one index for each userid
-            var mailbox, i, j, mutual_friend_userid ;
-            for (i=0 ; i<mailboxes.length ; i++) {
-                mailbox = mailboxes[i] ;
-                key_mailbox_index[mailbox.key] = i ;
+            var pgm = service + '.update_key_mailbox_index: ';
+            key_mailbox_index = {}; // one index for each device
+            user_mailboxes = {}; // one index for each userid
+            var mailbox, i, j, mutual_friend_userid;
+            for (i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                key_mailbox_index[mailbox.key] = i;
                 // list with relevant mailboxes for mutual friend
                 // a kind of listeners - mailbox (device) get notifications for relevant gift
-                for (j=0 ; j<mailbox.mutual_friends.length ; j++) {
-                    mutual_friend_userid = mailbox.mutual_friends[j] ;
-                    if (!user_mailboxes[mutual_friend_userid]) user_mailboxes[mutual_friend_userid] = [] ;
-                    user_mailboxes[mutual_friend_userid].push(i) ; // index to mailboxes array
+                for (j = 0; j < mailbox.mutual_friends.length; j++) {
+                    mutual_friend_userid = mailbox.mutual_friends[j];
+                    if (!user_mailboxes[mutual_friend_userid]) user_mailboxes[mutual_friend_userid] = [];
+                    user_mailboxes[mutual_friend_userid].push(i); // index to mailboxes array
                 } // for j
             } // for j
             // console.log(pgm + 'user_mailboxes = ' + JSON.stringify(user_mailboxes)) ;
         };
-        update_key_mailbox_index() ;
+        update_key_mailbox_index();
 
         var post_symmetric_password_setup = function () {
-            var pgm = service + '.post_symmetric_password_setup: ' ;
-            var now = (new Date).getTime() ;
-            var device, elapsed ;
+            var pgm = service + '.post_symmetric_password_setup: ';
+            var now = (new Date).getTime();
+            var device, elapsed;
             for (var did in devices) {
-                device = devices[did] ;
-                if (!device.password_at) continue ;
-                elapsed = now - device.password_at ;
-                if (elapsed < 60000) continue ; // wait - less when 60 seconds since password setup was completed
+                device = devices[did];
+                if (!device.password_at) continue;
+                elapsed = now - device.password_at;
+                if (elapsed < 60000) continue; // wait - less when 60 seconds since password setup was completed
                 // free some js variables
-                delete device.password1 ;
-                delete device.password1_at ;
-                delete device.password2 ;
-                delete device.password2_at ;
-                delete device.password_md5 ;
-                delete device.password_at ;
+                delete device.password1;
+                delete device.password1_at;
+                delete device.password2;
+                delete device.password2_at;
+                delete device.password_md5;
+                delete device.password_at;
                 // console.log(pgm + 'elapsed = ' + elapsed + ', device = ' + JSON.stringify(device)) ;
             } // for did
         } // post_symmetric_password_setup
@@ -2627,110 +2638,109 @@ angular.module('gifts', ['ngRoute'])
         // - new mutual friend for online device - request gift info for new mutual friend
         // - removed mutual friend for online device - continue to buffer messages, but don't deliver in next  ping
         var update_mailboxes = function (new_mailboxes) {
-            var pgm = service + '.update_mailboxes: ' ;
+            var pgm = service + '.update_mailboxes: ';
             // console.log(pgm + 'new_mailboxes = ' + JSON.stringify(new_mailboxes)) ;
             // add index
-            var i ;
-            var new_mailboxes_index = {}, new_mailbox ;
-            for (i=0 ; i<new_mailboxes.length ; i++) {
-                new_mailbox = new_mailboxes[i] ;
-                new_mailbox.key = new_mailbox.did + new_mailbox.sha256 ; // unique mailbox index
-                new_mailboxes_index[new_mailbox.key] = i ;
+            var i;
+            var new_mailboxes_index = {}, new_mailbox;
+            for (i = 0; i < new_mailboxes.length; i++) {
+                new_mailbox = new_mailboxes[i];
+                new_mailbox.key = new_mailbox.did + new_mailbox.sha256; // unique mailbox index
+                new_mailboxes_index[new_mailbox.key] = i;
             }
             // update old mailboxes
-            var j, new_mutual_friends, mailbox ;
-            for (i=0 ; i<mailboxes.length ; i++) {
-                mailbox = mailboxes[i] ;
-                mailbox.online = new_mailboxes_index.hasOwnProperty(mailbox.key) ;
-                if (!mailbox.online) continue ;
-                j = new_mailboxes_index[mailbox.key] ;
+            var j, new_mutual_friends, mailbox;
+            for (i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                mailbox.online = new_mailboxes_index.hasOwnProperty(mailbox.key);
+                if (!mailbox.online) continue;
+                j = new_mailboxes_index[mailbox.key];
                 // check for changes in mutual friends
-                new_mutual_friends = $(new_mailboxes[j].mutual_friends).not(mailbox.mutual_friends).get() ;
-                mailbox.mutual_friends = new_mailboxes[j].mutual_friends ;
+                new_mutual_friends = $(new_mailboxes[j].mutual_friends).not(mailbox.mutual_friends).get();
+                mailbox.mutual_friends = new_mailboxes[j].mutual_friends;
                 if (new_mutual_friends.length > 0) {
                     // communication step 2 - compare sha256 checksum for mutual friends
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
-                        request_mid: null,
                         msgtype: 'users_sha256',
                         mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
-                    }) ;
+                    });
                 }
             }
             // add new mailboxes
-            for (i=0 ; i<new_mailboxes.length ; i++) {
-                mailbox = new_mailboxes[i] ;
-                mailbox.online = true ;
+            for (i = 0; i < new_mailboxes.length; i++) {
+                mailbox = new_mailboxes[i];
+                mailbox.online = true;
                 if (!key_mailbox_index.hasOwnProperty(mailbox.key)) {
                     // setup new mailbox
                     // folders used for ingoming messages
-                    mailbox.inbox = [] ; // new messages from server / other devices
-                    mailbox.read = [] ; // temporary parked new messages (send_gifts)
+                    mailbox.inbox = []; // new messages from server / other devices
+                    mailbox.read = []; // temporary parked new messages (send_gifts)
                     // folders used for outgoing messages
-                    mailbox.outbox = [] ; // message to send in next ping
-                    mailbox.sending = [] ; // ping request in process
-                    mailbox.sent = [] ; // messages sent - response not yet received
-                    mailbox.done = [] ; // messages sent - response received (request_mid)
+                    mailbox.outbox = []; // message to send in next ping
+                    mailbox.sending = []; // ping request in process
+                    mailbox.sent = []; // messages sent - response not yet received
+                    mailbox.done = []; // messages sent - response ok received (request_mid)
+                    mailbox.error = []; // messages sent - response error  received (request_mid)
                     // first outgoing message - sent when symmetric password is ready
                     // communication step 2 - compare sha256 checksum for mutual friends
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
-                        request_mid: null,
                         msgtype: 'users_sha256',
                         mutual_friends: JSON.parse(JSON.stringify(mailbox.mutual_friends))
-                    }) ;
-                    mailboxes.push(mailbox) ;
+                    });
+                    mailboxes.push(mailbox);
                 }
             }
-            update_key_mailbox_index() ;
+            update_key_mailbox_index();
             // console.log(pgm + 'mailboxes = ' + JSON.stringify(mailboxes)) ;
             // console.log(pgm + 'device_pubkey = ' + JSON.stringify(device_pubkey)) ;
             // cleanup after symmetric password setup
-            post_symmetric_password_setup() ;
+            post_symmetric_password_setup();
         }; // update_mailboxes
 
         // get/set pubkey for unique device - called in ping - used in client to client communication
         var pubkeys_request = function () {
-            var request = [] ;
-            var mailbox, did ;
-            for (var i=0 ; i<mailboxes.length ; i++) {
-                mailbox = mailboxes[i] ;
-                did = mailbox.did ;
-                if ((!devices.hasOwnProperty(did) || !devices[did].pubkey) && (request.indexOf(did)==-1)) {
+            var request = [];
+            var mailbox, did;
+            for (var i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                did = mailbox.did;
+                if ((!devices.hasOwnProperty(did) || !devices[did].pubkey) && (request.indexOf(did) == -1)) {
                     request.push(did);
-                    devices[did] = {} ;
+                    devices[did] = {};
                 }
             }
-            return request.length == 0 ? null : request ;
+            return request.length == 0 ? null : request;
         };
         var pubkeys_response = function (response) {
-            var pgm = service + '.pubkeys_response: ' ;
-            console.log(pgm + 'pubkeys = ' + JSON.stringify(response)) ;
-            var did ;
-            for (var i=0 ; i<response.length ; i++) {
-                did = response[i].did ;
-                if (devices[did] && devices[did].pubkey) console.log(pgm + 'invalid pubkeys response from ping. pubkey for device ' + did + ' has already been received from server') ;
-                else devices[did].pubkey = response[i].pubkey ;
+            var pgm = service + '.pubkeys_response: ';
+            console.log(pgm + 'pubkeys = ' + JSON.stringify(response));
+            var did;
+            for (var i = 0; i < response.length; i++) {
+                did = response[i].did;
+                if (devices[did] && devices[did].pubkey) console.log(pgm + 'invalid pubkeys response from ping. pubkey for device ' + did + ' has already been received from server');
+                else devices[did].pubkey = response[i].pubkey;
             } // for
         }; // pubkeys_response
 
         // setup password for symmetric communication. password1 from this device and password2 from other device
         // password_md5 is used in control for identical symmetric password in communication between the two devices
         var setup_device_password = function (device) {
-            var pgm = service + '.setup_device_password: ' ;
+            var pgm = service + '.setup_device_password: ';
             if (!device.password1_at || !device.password2_at) {
-                delete device.password_md5 ;
-                return ;
+                delete device.password_md5;
+                return;
             }
             if (device.password1_at <= device.password2_at) {
-                device.password = device.password1 + device.password2 ;
+                device.password = device.password1 + device.password2;
             }
             else {
-                device.password = device.password2 + device.password1 ;
+                device.password = device.password2 + device.password1;
             }
-            device.password_at = (new Date).getTime() ;
-            device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1) ;
-            device.ignore_invalid_gifts = [] ;
+            device.password_at = (new Date).getTime();
+            device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1);
+            device.ignore_invalid_gifts = [];
         }; // setup_device_password
 
         // sha256 calculation for a user
@@ -2739,29 +2749,29 @@ angular.module('gifts', ['ngRoute'])
         // - oldest_gift_id - optional unix timestamp - ignore gifts created or updated before this unix timestamp - used in localStorage space management
         // - ignore_invalid_gifts - optional array with gid's to ignore in user sha256 calculation - for example gift marked as spam or gift with invalid server sha256 signature
         var calc_sha256_for_user = function (user_id, oldest_gift_at, ignore_invalid_gifts) {
-            var pgm = service + '.calc_sha256_for_user: ' ;
-            var sha256_input = [], i, gift ;
-            if (!oldest_gift_at) oldest_gift_at = 0 ;
-            if (!ignore_invalid_gifts) ignore_invalid_gifts = [] ;
+            var pgm = service + '.calc_sha256_for_user: ';
+            var sha256_input = [], i, gift;
+            if (!oldest_gift_at) oldest_gift_at = 0;
+            if (!ignore_invalid_gifts) ignore_invalid_gifts = [];
             if (!user_id_gifts_index[user_id]) {
-                console.log(pgm + 'No gifts was found for user_id ' + user_id) ;
-                return null ;
+                console.log(pgm + 'No gifts was found for user_id ' + user_id);
+                return null;
             }
             // console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
-            for (i=0 ; i<user_id_gifts_index[user_id].length ; i++) {
-                gift = user_id_gifts_index[user_id][i] ;
+            for (i = 0; i < user_id_gifts_index[user_id].length; i++) {
+                gift = user_id_gifts_index[user_id][i];
                 if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
                 // todo: add gift.updated_at_client property - apply oldest_gift_at filter
                 if (ignore_invalid_gifts.indexOf(gift.gid) != -1) {
-                    console.log(pgm + 'Ignoring gift ' + gift.gid + ' in sha256 calc for user_id ' + user_id) ;
-                    continue ;
+                    console.log(pgm + 'Ignoring gift ' + gift.gid + ' in sha256 calc for user_id ' + user_id);
+                    continue;
                 }
                 sha256_input.push(gift.gid);
                 sha256_input.push(gift.sha256);
             } // for i
             // console.log(pgm + 'sha256_input.length = ' + sha256_input.length) ;
-            if (sha256_input.length == 0) return null ;
-            return Gofreerev.sha256(sha256_input.join(',')) ;
+            if (sha256_input.length == 0) return null;
+            return Gofreerev.sha256(sha256_input.join(','));
         }; // calc_sha256_for_user
 
         // calculate sha256 for a list of user ids - used in gift sync / users_sha256 message
@@ -2770,51 +2780,59 @@ angular.module('gifts', ['ngRoute'])
         // - oldest_gift_id - optional unix timestamp - ignore gifts created or updated before this unix timestamp - used in localStorage space management
         // - ignore_invalid_gifts - optional array with gid's to ignore in user sha256 calculation - for example gift marked as spam or gift with invalid server sha256 signature
         var calc_sha256_for_users = function (user_ids, oldest_gift_at, ignore_invalid_gifts) {
-            if (!oldest_gift_at) oldest_gift_at = 0 ;
-            if (!ignore_invalid_gifts) ignore_invalid_gifts = [] ;
-            var response = [], i ;
-            for (i=0 ; i<user_ids.length ; i++) {
-                response.push({
-                    user_id: user_ids[i],
-                    sha256: calc_sha256_for_user(user_ids[i], oldest_gift_at, ignore_invalid_gifts)
-                });
+            if (!oldest_gift_at) oldest_gift_at = 0;
+            if (!ignore_invalid_gifts) ignore_invalid_gifts = [];
+            var response = [], i, hash, sha256;
+            for (i = 0; i < user_ids.length; i++) {
+                hash = {user_id: user_ids[i]} ;
+                sha256 = calc_sha256_for_user(user_ids[i], oldest_gift_at, ignore_invalid_gifts) ;
+                if (sha256) hash.sha256 = sha256 ;
+                response.push(hash) ;
             }
-            return response ;
+            return response;
         }; // calc_sha256_for_users
 
         // communication step 2 - send array with sha256 calculation for mutual users to other device
+        // input msg is a small user_sha256 message without sha256 calculation
+        // send_message_users_sha256 adds sha256 values for each mutual friend
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
-        // DRY: move user sha256 calc to a method
         var send_message_users_sha256 = function (msg) {
-            var pgm = service + '.send_message_users_sha256: ' ;
-            console.log(pgm + 'message = ' + JSON.stringify(msg)) ;
-            var oldest_gift_at = 0 ; // todo: set oldest_gift_at as max oldest_gift_at for this and other client
-            var ignore_invalid_gifts = [] ; // todo: add gid ignore lists. Glocal list and/or a list for each device
-            return {
+            var pgm = service + '.send_message_users_sha256: ';
+            console.log(pgm + 'message = ' + JSON.stringify(msg));
+            var oldest_gift_at = 0; // todo: set oldest_gift_at as max oldest_gift_at for this and other client
+            var ignore_invalid_gifts = []; // todo: add gid ignore lists. Glocal list and/or a list for each device
+            
+            // add sha256 calc for each mutual friend - see calc_sha256_for_users
+            var users_sha256_message = {
                 msgtype: msg.msgtype,
                 mid: msg.mid,
                 mutual_friends: calc_sha256_for_users(msg.mutual_friends, oldest_gift_at, ignore_invalid_gifts)
             };
+            
+            // validate users_sha256 message before sending to other device
+            if (Gofreerev.is_json_message_invalid(pgm,users_sha256_message,'users_sha256','')) return  ;
+
+            return users_sha256_message ;
         }; // send_message_users_sha256
 
         // communication step 3 - send list of gifts sha256 values to other device
         var send_message_gifts_sha256 = function (msg) {
-            var pgm = service + '.send_message_gifts_sha256: ' ;
-            console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
+            var pgm = service + '.send_message_gifts_sha256: ';
+            console.log(pgm + 'msg = ' + JSON.stringify(msg));
 
             // find sha256 values for relevant gifts / mutual friends
-            var gifts_sha256_hash = {}, user_id, i, j, gift ;
-            for (i=0 ; i<msg.mutual_friends.length ; i++) {
-                user_id = user_ids[i] ;
-                console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length) ;
-                for (j=0 ; j<user_id_gifts_index[user_id].length ; j++) {
-                    gift = user_id_gifts_index[user_id][j] ;
+            var gifts_sha256_hash = {}, user_id, i, j, gift;
+            for (i = 0; i < msg.mutual_friends.length; i++) {
+                user_id = user_ids[i];
+                console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_gifts_index[user_id].length);
+                for (j = 0; j < user_id_gifts_index[user_id].length; j++) {
+                    gift = user_id_gifts_index[user_id][j];
                     if (!gift.sha256) continue; // no server gift signature or sha256 gift calculation error
                     // todo: add gift.updated_at_client property - apply oldest_gift_at filter
-                    if (!gifts_sha256_hash[gift.gid]) gifts_sha256_hash[gift.gid] = gift.sha256 ;
+                    if (!gifts_sha256_hash[gift.gid]) gifts_sha256_hash[gift.gid] = gift.sha256;
                 } // for j
             } // for i
-            console.log(pgm + 'gifts_sha256_hash = ' + JSON.stringify(gifts_sha256_hash)) ;
+            console.log(pgm + 'gifts_sha256_hash = ' + JSON.stringify(gifts_sha256_hash));
             //gifts_sha256_hash =
             //    {"14239781692770120364":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M",
             //     "14239781692770348983":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o",
@@ -2824,104 +2842,108 @@ angular.module('gifts', ['ngRoute'])
             return {
                 msgtype: msg.msgtype,
                 mid: msg.mid,
-                mutual_friends: msg.mutual_friends} ;
+                mutual_friends: msg.mutual_friends
+            };
 
         }; // send_message_gifts_sha256
 
         // send/receive messages to/from other devices
         var send_messages = function () {
-            var pgm = service + '.send_messages: ' ;
-            var response = [] ;
-            var mailbox, did, device, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope ;
+            var pgm = service + '.send_messages: ';
+            var response = [];
+            var mailbox, did, device, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope;
             var encrypt = new JSEncrypt();
-            var password ;
-            for (var i=0 ; i<mailboxes.length ; i++) {
-                mailbox = mailboxes[i] ;
-                did = mailbox.did ;
-                device = devices[did] ;
+            var password;
+            var users_sha256_message ;
+            for (var i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                did = mailbox.did;
+                device = devices[did];
                 if (!device || !device.pubkey) {
-                    console.log(pgm + 'Wait. Public key has not yet been received for device ' + did) ;
-                    continue ;
+                    console.log(pgm + 'Wait. Public key has not yet been received for device ' + did);
+                    continue;
                 }
                 if (!device.password) {
                     // communication step 1 - setup password for symmetric encryption
-                    if (!mailbox.online) continue ; // wait - not online
+                    if (!mailbox.online) continue; // wait - not online
                     // send password1 to other device using public/private key encryption (rsa)
                     if (!device.password1) {
-                        device.password1 = Gofreerev.generate_random_password(40) ; // 42 characters password to long for RSA
-                        device.password1_at = (new Date).getTime() ;
-                    } ;
-                    setup_device_password(device) ;
-                    message = [device.password1, device.password1_at] ;
-                    if (device.password_md5) message.push(device.password_md5) ; // verify complete symmetric password (password1+password2) for device
+                        device.password1 = Gofreerev.generate_random_password(40); // 42 characters password to long for RSA
+                        device.password1_at = (new Date).getTime();
+                    }
+                    ;
+                    setup_device_password(device);
+                    message = [device.password1, device.password1_at];
+                    if (device.password_md5) message.push(device.password_md5); // verify complete symmetric password (password1+password2) for device
                     // message => json => rsa encrypt
-                    message_json = JSON.stringify(message) ;
+                    message_json = JSON.stringify(message);
                     // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
                     encrypt.setPublicKey(devices[did].pubkey);
-                    message_json_rsa_enc = encrypt.encrypt(message_json) ;
+                    message_json_rsa_enc = encrypt.encrypt(message_json);
                     // add envelope - used in rails message buffer - each message have sender, receiver, encryption and message
                     message_with_envelope = {
                         receiver_did: mailbox.did,
                         receiver_sha256: mailbox.sha256,
                         encryption: 'rsa',
                         message: message_json_rsa_enc
-                    } ;
+                    };
                     response.push(message_with_envelope);
                     // debug
                     // console.log(pgm + 'message_json = ' + message_json) ;
                     // console.log(pgm + 'message_json_rsa_enc = ' + message_json_rsa_enc) ;
                     // console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                     // wait with any messages in outbox until symmetric password setup is complete
-                    continue ;
+                    continue;
                 }
-                if (mailbox.outbox.length == 0) continue ; // no new messages for this mailbox
+                if (mailbox.outbox.length == 0) continue; // no new messages for this mailbox
 
                 // send continue with symmetric key communication
-                console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key) ;
+                console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key);
                 // initialise an array with messages for device
-                messages = [] ;
+                messages = [];
                 if (mailbox.sending.length > 0) {
-                    console.log(pgm + 'found ' + mailbox.sending.length + ' old messages in sending for device ' + mailbox.did + ' with key ' + mailbox.key) ;
+                    console.log(pgm + 'found ' + mailbox.sending.length + ' old messages in sending for device ' + mailbox.did + ' with key ' + mailbox.key);
                 }
-                mailbox.sending.length = 0 ;
-                for (var j=0 ; j<mailbox.outbox.length ; j++) {
-                    msg = mailbox.outbox[j] ;
-                    console.log(pgm + 'mailbox.outbox[' + j + '] = ' + JSON.stringify(msg)) ;
+                mailbox.sending.length = 0;
+                for (var j = 0; j < mailbox.outbox.length; j++) {
+                    msg = mailbox.outbox[j];
+                    console.log(pgm + 'mailbox.outbox[' + j + '] = ' + JSON.stringify(msg));
                     // outbox[0] = {"msgtype":"users_sha256","mutual_friends":[1126,920]}"
-                    switch(msg.msgtype) {
+                    switch (msg.msgtype) {
                         case 'users_sha256':
                             // communication step 2 - send users sha256 signatures to other device
-                            messages.push(send_message_users_sha256(msg)) ;
-                            break ;
+                            users_sha256_message = send_message_users_sha256(msg) ;
+                            if (users_sha256_message) messages.push(users_sha256_message);
+                            break;
                         case 'gifts_sha256':
                             // communication step 3 - send gifts sha256 signatures to other device
-                            messages.push(msg) ;
-                            break ;
+                            messages.push(msg);
+                            break;
                         case 'sync_gifts':
                             // communication step 4 - send 1-3 sub messages to other device (send_gifts, request_gifts and/or check_gifts)
                             // send_gifts: send missing gifts to other device
                             // request:gifts: request missing gifts from other device
                             // check_gifts: send gifts sub sha256 signatures to other device (separate sha256 signatures for gift and comments)
-                            messages.push(msg) ;
-                            break ;
+                            messages.push(msg);
+                            break;
                         case 'error':
                             // error notification to other device about errors in input message, processing errors or error in response
-                            messages.push(msg) ;
-                            break ;
+                            messages.push(msg);
+                            break;
                         default:
-                            console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(mailbox)) ;
+                            console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(mailbox));
                     } // end msgtype switch
-                    mailbox.sending.push(msg) ;
+                    mailbox.sending.push(msg);
                 } // for j (mailbox.outbox)
-                mailbox.outbox.length = 0 ; // messages was moved to mailbox.sending
+                mailbox.outbox.length = 0; // messages was moved to mailbox.sending
                 // todo: add more header fields in message?
                 message = {
                     sent_at_client: (new Date).getTime(),
                     messages: messages // array with messages
                 };
-                console.log(pgm + 'unencrypted message = ' + JSON.stringify(message)) ;
+                console.log(pgm + 'unencrypted message = ' + JSON.stringify(message));
                 // encrypt message in mailbox using symmetric encryption
-                password = device.password ;
+                password = device.password;
                 message_with_envelope = {
                     receiver_did: mailbox.did,
                     receiver_sha256: mailbox.sha256,
@@ -2930,77 +2952,125 @@ angular.module('gifts', ['ngRoute'])
                 };
                 // send encrypted message
                 response.push(message_with_envelope);
-                console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope)) ;
+                console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope));
                 // todo: empty mailbox.outbox or move to mailbox.sending while sending messages to server. reinsert into outbox if send messages fails (ping/error)
             } // for i (mailboxes)
-            return (response.length == 0 ? null : response) ;
+            return (response.length == 0 ? null : response);
         }; // send_messages
 
         // ping ok response. move messages from mailbox.sending to mailbox.sent
         var messages_sent = function () {
-            var mailbox ;
+            var mailbox;
             for (var i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
-                for (var j=0 ; j<mailbox.sending.length ; j++) {
-                    mailbox.sent.push(mailbox.sending[j]) ;
-                    if (mailbox.sent.length > 5) mailbox.sent.shift() ; // keep last 5 sent messages
+                for (var j = 0; j < mailbox.sending.length; j++) {
+                    mailbox.sent.push(mailbox.sending[j]);
+                    if (mailbox.sent.length > 5) mailbox.sent.shift(); // keep last 5 sent messages
                 } // for j
-                mailbox.sending.length = 0 ;
+                mailbox.sending.length = 0;
             } // for i
         }; // messages_sent
 
         // ping error response. move messages from mailbox.sending to mailbox.outbox
         var messages_not_sent = function () {
-            var mailbox ;
+            var mailbox;
             for (var i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
-                for (var j=0 ; j<mailbox.sending.length ; j++) mailbox.outbox.push(mailbox.sending[j]) ;
-                mailbox.sending.length = 0 ;
+                for (var j = 0; j < mailbox.sending.length; j++) mailbox.outbox.push(mailbox.sending[j]);
+                mailbox.sending.length = 0;
             } // for i
         }; // messages_sent
 
         // manage device.ignore_invalid_gifts list - filter messages with invalid gifts
         var is_gift_on_ignore_list = function (device, gid) {
-            if (device.ignore_invalid_gifts.indexOf(gid) == -1) return false ;
-            console.log(pgm + 'Error. Gift ' + gid + ' is in ignore list. See previous error message in log.') ;
-            return true ;
+            if (device.ignore_invalid_gifts.indexOf(gid) == -1) return false;
+            console.log(pgm + 'Error. Gift ' + gid + ' is in ignore list. See previous error message in log.');
+            return true;
         };
         var add_gift_to_ignore_list = function (device, gid) {
             if (device.ignore_invalid_gifts.indexOf(gid) != -1) ;
-            device.ignore_invalid_gifts.push(gid) ;
+            device.ignore_invalid_gifts.push(gid);
         };
 
         // communication step 1 - receive symmetric password (part 2) from other device
         var receive_message_password = function (device, msg) {
-            var pgm = service + 'receive_message_password: ' ;
+            var pgm = service + 'receive_message_password: ';
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
-            console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
+            console.log(pgm + 'msg = ' + JSON.stringify(msg));
             // msg is an array with password, password_at and optional md5 for complete password
             // password setup is complete when received md5 in msg and password md5 for device are identical
-            device.password2 = msg[0] ;
-            device.password2_at = msg[1] ;
+            device.password2 = msg[0];
+            device.password2_at = msg[1];
             // calc password_md5 if possible
-            setup_device_password(device) ;
+            setup_device_password(device);
             // check of the two devices agree about password
             if (device.password_md5 && msg.length == 3 && (device.password_md5 == msg[2])) {
-                console.log(pgm + 'symmetric password setup completed.') ;
-                return true ; // continue with ...
+                console.log(pgm + 'symmetric password setup completed.');
+                return true; // continue with ...
                 // console.log(pgm + 'symmetric password setup completed. device = ' + JSON.stringify(device)) ;
             }
             else {
-                console.log(pgm + 'symmetric password setup in progress.') ;
+                console.log(pgm + 'symmetric password setup in progress.');
                 // console.log(pgm + 'symmetric password setup in progress. device = ' + JSON.stringify(device)) ;
                 delete device.password;
-                return false ;
+                return false;
             }
         }; // receive_message_password;
+
+
+        // move previous message from sent to done or error
+        var move_previous_message = function (pgm, mailbox, request_mid, request_msgtype, done) {
+            if (!request_mid) return false ; // no previous message to move
+            if ((typeof done == 'undefined') || (done == null)) done = true ;
+            var folder = done ? mailbox.done : mailbox.error ;
+            var foldername = done ? 'done' : 'error' ;
+            var msg;
+            // check sent folder
+            for (var i = 0; i < mailbox.sent.length; i++) {
+                if ((mailbox.sent[i].mid == request_mid) && (mailbox.sent[i].msgtype == request_msgtype)) {
+                    console.log(pgm + 'Moving old ' + request_msgtype + ' message ' + request_mid + ' from sent to ' + foldername + '.');
+                    msg = mailbox.sent.splice(i, 1);
+                    folder.push(msg[0]);
+                    return true ;
+                }
+            }
+            // check outbox folder - normally not the case - sent messages should be in sent folder
+            for (var i = 0; i < mailbox.outbox.length; i++) {
+                if ((mailbox.outbox[i].mid == request_mid) && (mailbox.outbox[i].msgtype == request_msgtype)) {
+                    console.log(pgm + 'Warning. Moving old ' + request_msgtype + ' message ' + request_mid + ' from outbox to ' + foldername + '.');
+                    msg = mailbox.outbox.splice(i, 1);
+                    folder.push(msg[0]);
+                    return true ;
+                }
+            }
+            console.log(pgm + 'Error. Old ' + request_msgtype + ' message with mid ' + request_mid + ' was not found in mailbox.');
+            return false ;
+        } // move_previous_message
+
 
         // communication step 2 - receive "users_sha256" message from other device. one user.sha256 signature for each mutual friend
         var receive_message_users_sha256 = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_users_sha256: ' ;
-            console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+
+            // validate users_sha256 message before processing message
+            if (Gofreerev.is_json_message_invalid(pgm,msg,'users_sha256','')) {
+                // return JSON error to other device
+                var json_error = JSON.parse(JSON.stringify(tv4.error));
+                delete json_error.stack;
+                var json_errors = JSON.stringify(json_error) ;
+                var error = 'users_sha256 message rejected by receiver. JSON schema validation errors: ' + json_errors ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    request_mid: msg.mid,
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            }
 
             // compare mailbox.mutual_friends and msg.mutual_friends. list with mutual friends should be identical
             var my_mutual_friends = mailbox.mutual_friends ;
@@ -3053,7 +3123,7 @@ angular.module('gifts', ['ngRoute'])
             var user_ids = [] ;
             for (user_id in sha256_hash) {
                 if ((sha256_hash[user_id].my_sha256 == null) && (sha256_hash[user_id].msg_sha256 == null)) continue ;
-                if (sha256_hash[user_id].my_sha256 != sha256_hash[user_id].msg_sha256) user_ids.push(user_id) ;
+                if (sha256_hash[user_id].my_sha256 != sha256_hash[user_id].msg_sha256) user_ids.push(parseInt(user_id)) ;
             }
             if (user_ids.length == 0) {
                 console.log(pgm + 'mutual gifts for this device are up-to-date.') ;
@@ -3106,11 +3176,11 @@ angular.module('gifts', ['ngRoute'])
                 mid: Gofreerev.get_new_uid(),
                 request_mid: msg.mid,
                 msgtype: 'gifts_sha256',
-                oldest_gift_at: oldest_gift_at,
                 ignore_invalid_gifts: ignore_invalid_gifts,
                 mutual_friends: user_ids,
                 mutual_gifts: gifts_sha256_array
             };
+            if (oldest_gift_at > 0) gifts_sha256_message.oldest_gift_at = oldest_gift_at ;
 
             // validate gifts_sha256 message before adding to outbox
             if (Gofreerev.is_json_message_invalid(pgm,gifts_sha256_message,'gifts_sha256','')) {
@@ -3119,7 +3189,7 @@ angular.module('gifts', ['ngRoute'])
                 var json_error = JSON.parse(JSON.stringify(tv4.error));
                 delete json_error.stack;
                 var json_errors = JSON.stringify(json_error) ;
-                var error = 'Could not process users_sha256 message. JSON schema validation error in gifts_sha256 response: ' + json_errors ;
+                var error = 'Error when processing users_sha256 message. JSON schema validation error in following gifts_sha256 message. ' + json_errors ;
                 console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
                 mailbox.outbox.push({
                     mid: Gofreerev.get_new_uid(),
@@ -3139,14 +3209,14 @@ angular.module('gifts', ['ngRoute'])
         // communication step 3 - compare sha256 values for gifts (mutual friends)
         var receive_message_gifts_sha256 = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_gifts_sha256: ' ;
-            console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
 
             // validate gifts_sha256 message before processing message
             if (Gofreerev.is_json_message_invalid(pgm,msg,'gifts_sha256','')) {
-                // error message has already been written to log
-                // send error message to other device
+                // move previous users_sha256 message to error folder
+                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'users_sha256', false)) return ; // ignore - not found in mailbox
+                // return JSON error to other device
                 var json_error = JSON.parse(JSON.stringify(tv4.error));
                 delete json_error.stack;
                 var json_errors = JSON.stringify(json_error) ;
@@ -3161,52 +3231,8 @@ angular.module('gifts', ['ngRoute'])
                 }) ;
                 return ;
             }
-
-            //mailbox =
-            //{"did":"14225475967174557072","sha256":"5qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n","mutual_friends":[1126,920],
-            //    "key":"142254759671745570725qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n","online":true,
-            //    "outbox":[],
-            //    "sending":[],
-            //    "sent":[{"mid":"14245361730422146791","request_mid":null,"msgtype":"users_sha256","mutual_friends":[1126,920]},
-            //        {"mid":"14245361838382183778","request_mid":"14245361728100578120","msgtype":"gifts_sha256","oldest_gift_at":0,"ignore_invalid_gifts":[],"mutual_friends":["920"],"mutual_gifts":[{"gid":"14239781692770120364","sha256":"ä Ùh¿G×Ñâô9ÔÀ4ÀXèk\u0010N~,\nB]M"},{"gid":"14239781692770348983","sha256":",F¯Ø\"Lo\u0004ö5é_Ï%p\\T¡(j{ï³o"},{"gid":"14239781692770427293","sha256":"\u0006Ã!\u001a%¬c^þÒ*Ì]¾«û¥e$µ`By\u001f\u0017ëÌ×¾Æ"},{"gid":"14239781692770522732","sha256":"S{F&ùúW]_¯M­LlBµ\u001dõ¤\u0012HTæÈAtS\u0015ù"},{"gid":"14239781692770775148","sha256":"yÙùBÎM-/úï¤¯ã¹\u000eË¨\u001e%íaX©«áäú·"},{"gid":"14239781692770876536","sha256":"\u0011î5E-ÙS´'è%Ù½©FäÆk9´Èl$ç6\u001a?Ü\nO"},{"gid":"14239781692771119206","sha256":"Þ±ºVí\u0001í·\rtMFû+ú\u0013R\rêJO®Wü\u0001á¸"},{"gid":"14239781692771120584","sha256":"ûu±Y|\"s\n@Ñ¨wú¢~¨«\u000eóH|bßê¨\u001fu/"},{"gid":"14239781692771483562","sha256":"\u0002q½¾\u001b¶_¢g$\u000er(\u0012Û°WD ?°\u0004Zsæ\u001d"},{"gid":"14239781692771530176","sha256":"\u0006ß»×äÈrÅ·;;ËgPø8{\u0011RÃoÁA±,ÌKH"},{"gid":"14239781692771703391","sha256":"jF¶tã#V8kMÅÊHÉA\u001eBã¬H\u0005\u0016ìÇt\u001e¨ä\u001b"},{"gid":"14239781692772499411","sha256":"¿_TÃ'^Wj¶\"f'SN~ç|ÃÚ¥wè\\A\u0014 \u0016g]"},{"gid":"14239781692772777453","sha256":"ËJ&}Qig!'æ¬v<$ÿ¼±gøØ\u0006'\u0003Ì;É¹"},{"gid":"14239781692773030964","sha256":"'HU\f«P¨nª NP7ÚöÛ\u000e\u0019\u0017}VmÜ¾\u0014\u0000Eû("},{"gid":"14239781692773321072","sha256":"DUu¢\u0001t6«nÇ!óØ\tçN@ÞS#3çßj1ã\u0006@"},{"gid":"14239781692774532744","sha256":"<åN³è¤zXHK>d­¸\u0002L#zs·.\u0005"},{"gid":"14239781692774974940","sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö"},{"gid":"14239781692775813294","sha256":"\u0000_\u0019\u001dÈJR\f@Ì>ÈØ!êq¬z\u001bã-½ÙOI§.éþ"},{"gid":"14239781692775882233","sha256":"íïö¸E7È×xã\u0019×\u0001}·÷l³ê{O1-Ô8+\u0016\""},{"gid":"14239781692776555896","sha256":"f\u001epB\u0001x8&\u0001\u0016\u001b°ö¨çM¤K\\_`\u0000\rúx\u001d"},{"gid":"14239781692776993269","sha256":"çkÄa{[zn+%SeùS$EÌ­Þ\"öë\u000f½ú?Ä"},{"gid":"14239781692777372502","sha256":"¯\u001aÂZk·Xwc¢»\u0005i]ÞÁEjÚ\\?\bÐâm;ö"},{"gid":"14239781692777574345","sha256":"8HãÃ\u0017\u000fû:5V1Åô%ûK]\u0005\u000f\u0010óQ©\u00026bûV"},{"gid":"14239781692778276592","sha256":"/ 4\u0006ýÆj-\u001e\u00032 &hÇ\u000f«>ÓEh»A\u001doÉ¹k½"},{"gid":"14239781692778309061","sha256":"\u0002\u0016ß¨I\bp»­\r¯Z(Ý\u001e\u0001×óR)en\u0014?\u0016)"},{"gid":"14239781692778518406","sha256":"\t\thÜ\u0001Ã¸2º³\u0010ÏÞî«8Ø¨¢2ge\u0007\u0003"},{"gid":"14239781692778583942","sha256":"U\u0017\u0015\u000e\u0007~»|h\u001a<ðÖ<\u001ae\u000bÀJ¼\"ÁNbs×"},{"gid":"14239781692779726598","sha256":"×?`EíQ\u000fkÞØN@-fÒ­\u0019³§qg©§zIG\u001b"},{"gid":"14244918825228386518","sha256":"Éó6a[·ázÀ\u000e6Á$îÐìÎRuxßöá@|ýÃÕ3¼O"},{"gid":"14244924316655606495","sha256":"qY)21\u0004òÊ\u0003¼E_G>*Ì\u001eðÂ\u001b}\u0019>ëÛÜRF"},{"gid":"14244941900636888171","sha256":"¨Yr¤ï9ÉÀðn\u0000K JýôNèÅMêÛûCô"}]}],
-            //    "done":[]}
-            //msg     =
-            //   {"mid":"14245361850012058813","request_mid":"14245361730422146791","msgtype":"gifts_sha256",
-            //    "oldest_gift_at":0,"ignore_invalid_gifts":[],"mutual_friends":["920"],
-            //    "mutual_gifts":[{"gid":"14239781115388288755","sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"},{"gid":"14239781115388735516","sha256":"¿q\u0018\u000f#©Jzfb\u00172¢\\9º43\u0001±½d­¼å\u0004[á"}]
-            //}
-
-            // check msg.msg.request_mid
-            // this gifts_sha256 message (step 3) is a response to a previous users_sha256 message (step 2)
-            // find and move previous users_sha256 message to mailbox done folder
-            var request_mid = msg.request_mid ;
-            var index = -1 ;
-            for (var i=0 ; i<mailbox.sent.length ; i++) {
-                if ((mailbox.sent[i].mid == request_mid) && (mailbox.sent[i].msgtype == 'users_sha256')) index = i ;
-            }
-            var old_msg ;
-            if (index >= 0) {
-                console.log(pgm + 'Ok. Moving old users_sha256 message ' + request_mid + ' from sent to done.') ;
-                old_msg = mailbox.sent.splice(index, 1) ;
-                mailbox.done.push(old_msg[0]) ;
-            }
-            if (index == -1) {
-                // check if old message is in outbox - for example server ok response and ping timeout in js
-                for (var i=0 ; i<mailbox.outbox.length ; i++) {
-                    if ((mailbox.outbox[i].mid == request_mid) && (mailbox.outbox[i].msgtype == 'users_sha256')) index = i ;
-                }
-                if (index >= 0) {
-                    // error. old messages was found in outbox
-                    console.log(pgm + 'Error. Moving old users_sha256 message ' + request_mid + ' from outbox to done.') ;
-                    old_msg = mailbox.outbox.splice(index, 1) ;
-                    mailbox.done.push(old_msg[0]) ;
-                }
-            }
-            if (index == -1) {
-                console.log(pgm + 'Error. Old users_sha256 message with mid ' + request_mid + ' was not found.') ;
-                return ;
-            }
-            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+            // move previous users_sha256 message to done folder
+            if (!move_previous_message(pgm, mailbox, msg.request_mid, 'users_sha256', true)) return ; // ignore - not found in mailbox
 
             // find sha256 values for relevant gifts / mutual friends
             var gifts_sha256_hash = {}, user_id, i, j, gift, gid ;
@@ -3553,8 +3579,11 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
 
+            // send sync_gifts message
             mailbox.outbox.push(sync_gifts_message) ;
+
         }; // receive_message_gifts_sha256
+
 
         // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
         // verify that request_mid is correct and add sub messages to messages array
@@ -3569,52 +3598,41 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
 
-            // check request_mid - previous gifts_sha256 message should be in mailbox.sent (or in mailbox.outbox)
-            // check msg.request_mid
-            // this sync_gifts message (step 4) is a response to a previous gifts_sha256 message (step 3)
-            // find and move previous gifts_sha256 message to mailbox done folder
-            var request_mid = msg.request_mid ;
-            var index = -1 ;
-            for (var i=0 ; i<mailbox.sent.length ; i++) {
-                if ((mailbox.sent[i].mid == request_mid) && (mailbox.sent[i].msgtype == 'gifts_sha256')) index = i ;
-            }
-            var old_msg ;
-            if (index >= 0) {
-                console.log(pgm + 'Ok. Moving old gifts_sha256 message ' + request_mid + ' from sent to done.') ;
-                old_msg = mailbox.sent.splice(index, 1) ;
-                mailbox.done.push(old_msg[0]) ;
-            }
-            if (index == -1) {
-                // check if old message is in outbox - for example server ok response and ping timeout in js
-                for (var i=0 ; i<mailbox.outbox.length ; i++) {
-                    if ((mailbox.outbox[i].mid == request_mid) && (mailbox.outbox[i].msgtype == 'gifts_sha256')) index = i ;
-                }
-                if (index >= 0) {
-                    // error. old messages was found in outbox
-                    console.log(pgm + 'Error. Moving old gifts_sha256 message ' + request_mid + ' from outbox to done.') ;
-                    old_msg = mailbox.outbox.splice(index, 1) ;
-                    mailbox.done.push(old_msg[0]) ;
-                }
-            }
-            if (index == -1) {
-                console.log(pgm + 'Error. Old gifts_sha256 message with mid ' + request_mid + ' was not found.') ;
+            // validate sync_gifts message before processing message
+            if (Gofreerev.is_json_message_invalid(pgm,msg,'sync_gifts','')) {
+                // move previous gifts_sha256 message to error folder
+                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', false)) return ; // ignore - not found in mailbox
+                // send error message to other device
+                var json_error = JSON.parse(JSON.stringify(tv4.error));
+                delete json_error.stack;
+                var json_errors = JSON.stringify(json_error) ;
+                var error = 'Receiver rejected gifts_sha256 message. JSON schema validation errors: ' + json_errors ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    request_mid: msg.mid,
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
                 return ;
             }
-            // console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
+            // move previous gifts_sha256 message to done folder
+            if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', true)) return ; // ignore - not found in mailbox
 
             // add sub messages (send_gifts, request_gifts and check_gifts) to inbox
             // keep reference to previous gifts_sha256 message - now in mailbox.done array
             if (msg.send_gifts) {
-                msg.send_gifts.request_mid = request_mid ;
+                msg.send_gifts.request_mid = msg.request_mid ;
                 msg.send_gifts.pass = 0 ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
                 mailbox.inbox.push(msg.send_gifts);
             }
             if (msg.request_gifts) {
-                msg.request_gifts.request_mid = request_mid ;
+                msg.request_gifts.request_mid = msg.request_mid ;
                 mailbox.inbox.push(msg.request_gifts) ;
             }
             if (msg.check_gifts) {
-                msg.check_gifts.request_mid = request_mid ;
+                msg.check_gifts.request_mid = msg.request_mid ;
                 mailbox.inbox.push(msg.check_gifts) ;
             }
 
@@ -3632,6 +3650,7 @@ angular.module('gifts', ['ngRoute'])
 
 
         // communication step 4 - sub message from receive_message_sync_gifts
+        // has already been json validated in receive_message_sync_gifts
         // receive missing gifts from other device
         // receive_message_send_gifts is called twice when receiving gifts from other device
         // first pass (msg.pass=0, 1) - do some initial gift verification without checking server sha256 signature
@@ -3918,6 +3937,36 @@ angular.module('gifts', ['ngRoute'])
 
         } // receive_message_send_gifts
 
+
+        // error in client to client communication
+        // other client could not process a previous sent messge
+        // print error in log and move previous message to error folder
+        var receive_message_error = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_error: ' ;
+
+            console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+            console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+            console.log(pgm + 'error = ' + msg.error) ;
+
+            if (!msg.request_mid) return ; // no previous message
+
+            // find previous message
+            var request_msgtype = null ;
+            for (var i=0 ; i<mailbox.sent.length ; i++) {
+                if (mailbox.sent[i].mid == msg.request_mid) request_msgtype = mailbox.sent[i].msgtype ;
+            }
+            if (!request_msgtype) {
+                for (var i=0 ; i<mailbox.outbox.length ; i++) {
+                    if (mailbox.outbox[i].mid == msg.request_mid) request_msgtype = mailbox.outbox.msgtype ;
+                }
+            }
+            if (!request_msgtype) return ; // no previous message
+
+            // move previous message to error folder in mailbox
+            move_previous_message(pgm, mailbox, msg.request_mid, request_msgtype, false) ; // xxx
+        }; // receive_message_error
+
+
         // communication step 4 - sub message from receive_message_sync_gifts
         // missing gifts request from other device
         var receive_message_request_gifts = function (device, mailbox, msg) {
@@ -3926,7 +3975,8 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
             console.log(pgm + 'Error. Not implemented') ;
-        } // receive_message_request_gifts
+        }; // receive_message_request_gifts
+
 
         // communication step 4 - sub message from receive_message_sync_gifts
         // check gift sha256 sub values and return gift, comments or both to other device
@@ -3936,7 +3986,8 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
             console.log(pgm + 'Error. Not implemented') ;
-        } // receive_message_check_gifts
+        }; // receive_message_check_gifts
+
 
         // receive messages from other devices
         var receive_messages = function (response) {
@@ -3956,10 +4007,10 @@ angular.module('gifts', ['ngRoute'])
                 if (!mailbox) {
                     console.log(pgm + 'Error. Ignoring message from device '  + msg_server_envelope.sender_did + 'with unknown index ' + index + '. message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
-                } ;
+                }
                 did = mailbox.did ;
                 device = devices[did] ;
-                console.log(pgm + 'did = ' + did  + ', device = ' + JSON.stringify(device)) ;
+                // console.log(pgm + 'did = ' + did  + ', device = ' + JSON.stringify(device)) ;
                 if (!device || !device.pubkey) {
                     console.log(pgm + 'Error. Ignoring message from device '  + did + 'with key ' + key + '. Public key has not yet been received. Message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
@@ -3971,15 +4022,15 @@ angular.module('gifts', ['ngRoute'])
                         encrypt = new JSEncrypt() ;
                         prvkey = Gofreerev.getItem('prvkey') ;
                         encrypt.setPrivateKey(prvkey);
-                    } ;
+                    }
                     // rsa => json
                     msg_json_rsa_enc = msg_server_envelope.message ;
                     msg_json = encrypt.decrypt(msg_json_rsa_enc) ;
                     msg = JSON.parse(msg_json) ;
                     // console.log(pgm + 'rsa decrypt: prvkey = ' + prvkey) ;
-                    console.log(pgm + 'rsa decrypt: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
-                    console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
-                    console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
+                    // console.log(pgm + 'rsa decrypt: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
+                    // console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
+                    // console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
                     receive_message_password(device, msg) ;
                 }
                 else {
@@ -3991,9 +4042,9 @@ angular.module('gifts', ['ngRoute'])
                     msg_json_sym_enc = msg_server_envelope.message ;
                     msg_json = Gofreerev.decrypt(msg_json_sym_enc, device.password) ;
                     msg_client_envelope = JSON.parse(msg_json) ;
-                    console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
-                    console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
-                    console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
+                    // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
+                    // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
+                    // console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
                     if (!msg_client_envelope.messages || !msg_client_envelope.messages.length) {
                         console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
                         continue ;
@@ -4036,6 +4087,10 @@ angular.module('gifts', ['ngRoute'])
                             case 'check_gifts':
                                 // communication step 4 - sub message from sync_gifts - check gift sub sha256 values and return gift, comments or both
                                 receive_message_check_gifts(device, mailbox, msg) ;
+                                break ;
+                            case 'error':
+                                // error in client to client communication - print error in log and move previous message to error folder
+                                receive_message_error(device, mailbox, msg) ;
                                 break ;
                             default:
                                 console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in inbox. msg = ' + JSON.stringify(msg)) ;
@@ -4632,7 +4687,7 @@ angular.module('gifts', ['ngRoute'])
             var confirm_key = "js.gifts.confirm_delete_gift_" + keyno ;
             var confirm_text = I18n.t(confirm_key, confirm_options) ;
             if (!confirm(confirm_text)) return ;
-            gift.deleted_at = (new Date).getTime() ;
+            gift.deleted_at = Gofreerev.unix_timestamp() ;
             giftService.save_gifts() ;
         } // delete_gift
 

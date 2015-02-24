@@ -2,8 +2,8 @@
 # server side: https://github.com/ruby-json-schema/json-schema
 # client side: https://github.com/geraintluff/tv4
 
-# helper expression for gid, sid, cid etc (20 decimal string). To big to be a JS integer. From 2015-01-01 and one year forward in time
-uid_from = (Time.zone.parse '2015-01-01').to_i
+# helper expression for gid, sid, cid etc (20 decimal string). To big to be a JS integer. From 2014-01-01 and one year forward in time
+uid_from = (Time.zone.parse '2014-01-01').to_i
 uid_to = 1.year.from_now.to_i
 uid_short_pattern = `rgxg range -Z #{uid_from} #{uid_to}`.strip # 10 decimals
 uid_pattern = "^#{uid_short_pattern}[0-9]{10}$" # 20 decimals
@@ -190,7 +190,9 @@ JSON_SCHEMA = {
                           :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
                       },
                       :required => %w(gid sha256),
-                      :additionalProperties => false}
+                      :additionalProperties => false
+                  },
+                  :minItems => 1
               },
               # new_comments - optional array with minimal meta-information for new comments (cid, sha256 and user ids)
               :new_comments => {
@@ -206,25 +208,31 @@ JSON_SCHEMA = {
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}}
                       },
                       :required => %w(cid sha256 user_ids),
-                      :additionalProperties => false}
+                      :additionalProperties => false
+                  },
+                  :minItems => 1
               },
               # verify_gifts - optional array used when verifying gifts received from other device - check server sha256 signature created in a previous new_gifts request
               # gift must be from a friend - gift can be from an other gofreerev server
               :verify_gifts => {
                   :type => 'array',
                   :items => {
-                      # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
-                      :seq => {:type => 'integer'},
-                      # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-                      :gid => {:type => 'string', :pattern => uid_pattern},
-                      # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
-                      :sha256 => {:type => 'string', :maxLength => 32},
-                      # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
-                      :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
-                      :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                      :type => 'object',
+                      :properties => {
+                          # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
+                          :seq => {:type => 'integer'},
+                          # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :gid => {:type => 'string', :pattern => uid_pattern},
+                          # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                          :sha256 => {:type => 'string', :maxLength => 32},
+                          # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                          :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                          :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
+                      },
+                      :required => %w(seq gid sha256),
+                      :additionalProperties => false
                   },
-                  :required => %w(seq gid sha256 user_ids),
-                  :additionalProperties => false
+                  :minItems => 1
               },
               # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request
               :verify_comments => {
@@ -242,11 +250,16 @@ JSON_SCHEMA = {
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}}
                       },
                       :required => %w(seq cid sha256 user_ids),
-                      :additionalProperties => false}
+                      :additionalProperties => false
+                  },
+                  :minItems => 1
               },
               # pubkeys - optional array with did (unique device id) - request public key for other client before starting client to client communication
-              :pubkeys => {:type => 'array',
-                           :items => {:type => 'string', :pattern => uid_pattern}},
+              :pubkeys => {
+                  :type => 'array',
+                  :items => {:type => 'string', :pattern => uid_pattern},
+                  :minItems => 1
+              },
               # refresh_tokens - google+ only - optional array with refresh tokens to be used when refreshing expired access token
               :refresh_tokens => {
                   :type => 'array',
@@ -255,10 +268,14 @@ JSON_SCHEMA = {
                       :properties => {
                           :provider => {:type => 'string', :pattern => providers_pattern},
                           :access_token => {:type => 'string'}
-                      }
-                  }
+                      },
+                      :required => %w(provider access_token),
+                      :additionalProperties => false
+                  },
+                  :minItems => 1,
+                  :maxItems => 1
               },
-              # array with encrypted messages from client to other devices (users_sha256, todo: gifts_sha256, gifts etc)
+              # optional array with encrypted messages from client to other devices (users_sha256, todo: gifts_sha256, gifts etc)
               # temporary buffer on server until message is delivered or message is expired/too old
               :messages => {
                   :type => 'array',
@@ -276,8 +293,8 @@ JSON_SCHEMA = {
                       },
                       :required => %w(receiver_did receiver_sha256 encryption message),
                       :additionalProperties => false
-                  }
-
+                  },
+                  :minItems => 1
               }
              },
          :required => %w(client_userid client_timestamp sid),
@@ -305,7 +322,9 @@ JSON_SCHEMA = {
                       },
                       :required => %w(did sha256 mutual_friends),
                       :additionalProperties => false
-                  }},
+                  },
+                  :minItems => 1
+              },
               # optional - return fatal errors to client (invalid json request)
               :error => {:type => 'string'},
               # optional array with created_at_server timestamps (or error messages) response for new_gifts request
@@ -315,6 +334,7 @@ JSON_SCHEMA = {
                       # any generic error message when processing of new_gifts request. see also error property in data array
                       :error => {:type => 'string'},
                       # array with created_at_server timestamps or error messages for each gid in new_gifts request
+                      # todo: rename to gifts
                       :data => {
                           :type => 'array',
                           :items => {
@@ -329,7 +349,8 @@ JSON_SCHEMA = {
                               },
                               :required => %w(gid),
                               :additionalProperties => false
-                          }
+                          },
+                          :minItems => 1
                       },
                       # optional number of errors returned in data array
                       :no_errors => {:type => 'integer'}
@@ -343,6 +364,7 @@ JSON_SCHEMA = {
                       # any generic error message when processing of new_comments request. see also error property in data array
                       :error => {:type => 'string'},
                       # array with created_at_server timestamps or error messages for each cid in new_comments request
+                      # todo: rename to comments
                       :data => {
                           :type => 'array',
                           :items => {
@@ -357,7 +379,8 @@ JSON_SCHEMA = {
                               },
                               :required => %w(cid),
                               :additionalProperties => false
-                          }
+                          },
+                          :minItems => 1
                       },
                       # optional number of errors returned in data array
                       :no_errors => {:type => 'integer'}
@@ -383,10 +406,11 @@ JSON_SCHEMA = {
                               },
                               :required => %w(seq gid),
                               :additionalProperties => false
-                          }
+                          },
+                          :minItems => 1
                       },
                       # any fatal errors
-                      :error => { :type => 'string'}
+                      :error => {:type => 'string'}
                   },
                   :additionalProperties => false
               },
@@ -409,7 +433,8 @@ JSON_SCHEMA = {
                               },
                               :required => %w(seq cid),
                               :additionalProperties => false
-                          }
+                          },
+                          :minItems => 1
                       }
                   },
                   :additionalProperties => false
@@ -427,7 +452,8 @@ JSON_SCHEMA = {
                       },
                       :required => %w(did),
                       :additionalProperties => false
-                  }
+                  },
+                  :minItems => 1
               },
               # optional array with providers with expired oauth authorization
               :expired_tokens => expired_tokens_type,
@@ -453,10 +479,9 @@ JSON_SCHEMA = {
                       },
                       :required => %w(sender_did sender_sha256 created_at_server message),
                       :additionalProperties => false
-                  }
-
+                  },
+                  :minItems => 1
               }
-
              },
          :required => %w(interval),
          :additionalProperties => false
@@ -494,6 +519,36 @@ JSON_SCHEMA = {
 
     # device to device communication (client spec)
 
+    # client to client communication step 2
+    # send a list of users sha256 values to other client for a list of mutual friends from ping (online devices)
+    :users_sha256 => {
+        :type => 'object',
+        :properties => {
+            # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            :mid => {:type => 'string', :pattern => uid_pattern},
+            # msgtype = users_sha256
+            :msgtype => {:type => 'string', :pattern => '^users_sha256$'},
+            # array with internal user id and sha256 calculation for mutual friends (from gifts)
+            :mutual_friends => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        # internal user id
+                        :user_id => { :type => 'integer'},
+                        # sha256 calc for user gifts
+                        :sha256 => { :type => 'string', :maxLength => 32}
+                    },
+                    :required => %w(user_id),
+                    :additionalProperties => false
+                },
+                :minItems => 1
+            }
+        },
+        :required => %w(mid msgtype mutual_friends),
+        :additionalProperties => false
+    },
+
     # client to client communication step 3
     # send list with gifts sha256 values to other client after having compared sha256 values for mutual friends:
     :gifts_sha256 => {
@@ -510,21 +565,29 @@ JSON_SCHEMA = {
             # optional array with gifts to be ignored in sha256 compare - for example gifts rejected due to invalid server sha256 signature
             :ignore_invalid_gifts => {
                 :type => 'array',
-                :items => { :type => 'string', :pattern => uid_pattern }
+                :items => {:type => 'string', :pattern => uid_pattern}
             },
             # array with internal user id for mutual friends
-            :mutual_friends => {:type => 'array', :items => {:type => 'integer'}},
+            :mutual_friends => {
+                :type => 'array',
+                :items => {:type => 'integer'},
+                :minItems => 1
+            },
             # array with sha256 values for gifts for mutual friends
             :mutual_gifts => {
                 :type => 'array',
-                :properties => {
-                    # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-                    :gid => {:type => 'string', :pattern => uid_pattern},
-                    # sha256 calculation for gift
-                    :sha256 => {:type => 'string', :maxLength => 32}
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                        :gid => {:type => 'string', :pattern => uid_pattern},
+                        # sha256 calculation for gift
+                        :sha256 => {:type => 'string', :maxLength => 32}
+                    },
+                    :required => %w(gid sha256),
+                    :additionalProperties => false
                 },
-                :required => %w(gid sha256),
-                :additionalProperties => false
+                :minItems => 1
             }
         },
         :required => %w(mid request_mid msgtype mutual_friends mutual_gifts),
@@ -546,7 +609,7 @@ JSON_SCHEMA = {
             # msgtype = sync_gifts
             :msgtype => {:type => 'string', :pattern => '^sync_gifts$'},
             # array with internal user id for mutual friends
-            :mutual_friends => {:type => 'array', :items => {:type => 'integer'}},
+            :mutual_friends => {:type => 'array', :items => {:type => 'integer'}, :minItems => 1},
             # optional sub message 1 - send_gifts - send missing gifts to other client
             :send_gifts => {
                 :type => 'object',
@@ -571,7 +634,7 @@ JSON_SCHEMA = {
                                 # created at server unix timestamp - 10 decimals - timestamp when gift signature was saved on server
                                 :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
                                 # optional price - set when gift is created or when gift is accepted by a friend
-                                :price => {:type => 'number', :minimum => 0, :multipleOf => 0.01},
+                                :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
                                 # optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
                                 :currency => {:type => 'string', :pattern => '^[a-zA-Z]{3}$'},
                                 # direction. giver: was created by giver_user_ids as an offer. receiver: was created by receiver_user_ids as seeks
@@ -579,15 +642,15 @@ JSON_SCHEMA = {
                                 # description of gift
                                 :description => {:type => 'string'},
                                 # 4 optional open graph attributes if gift was created with an open graph link
-                                :open_graph_url => {:type => 'string'},
-                                :open_graph_title => {:type => 'string'},
-                                :open_graph_description => {:type => 'string'},
-                                :open_graph_image => {:type => 'string'},
+                                :open_graph_url => {:type => %w(undefined string) },
+                                :open_graph_title => {:type => %w(undefined string) },
+                                :open_graph_description => {:type => %w(undefined string) },
+                                :open_graph_image => {:type => %w(undefined string) },
                                 # todo: add optional image url (file upload has not been implemented yet)
                                 # like - now a boolean - todo: must be changed to an array with user ids and like/unlike timestamps
-                                :like => {:type => 'boolean'},
+                                :like => {:type => %w(undefined boolean)},
                                 # optional deleted at timestamp if gift has been deleted by giver or receiver
-                                :deleted_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                :deleted_at => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                 # optional array with gift comments
                                 :comments => {
                                     :type => 'array',
@@ -599,9 +662,9 @@ JSON_SCHEMA = {
                                             # internal user ids for creator of comment - todo: change to uid/provider format to support cross server replication?
                                             :user_ids => {:type => 'array', :items => {:type => 'integer'}},
                                             # optional price - can be set when creation a proposal (special comment) for gift/offer
-                                            :price => {:type => 'number', :minimum => 0, :multipleOf => 0.01},
+                                            :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01},
                                             # optional currency - can be set when creation a proposal (special comment) for gift/offer - iso4217 with restrictions
-                                            :currency => {:type => 'string', :pattern => '^[a-zA-Z]{3}$'},
+                                            :currency => {:type => %w(undefined string), :pattern => '^[a-zA-Z]{3}$'},
                                             # comment
                                             :comment => {:type => 'string'},
                                             # created at client unix timestamp - 10 decimals - used in comment signature on server
@@ -609,22 +672,24 @@ JSON_SCHEMA = {
                                             # created at server unix timestamp - 10 decimals - timestamp when comment signature was saved on server
                                             :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
                                             # optional new_deal boolean - true if new deal proposal - false if cancelled new deal proposal
-                                            :new_deal => {:type => 'boolean'},
+                                            :new_deal => {:type => %w(undefined boolean) },
                                             # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter
-                                            :deleted_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                            :deleted_at => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                             # optional accepted boolean - true if new proposal has been accepted by creator of gift/offer, false if new proposal has been rejected by creator of gift/offer
-                                            :accepted => {:type => 'boolean'},
+                                            :accepted => {:type => %w(undefined boolean) },
                                             # updated_by - list with internal user id - users that have accepted or rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
-                                            :updated_by => {:type => 'array', :items => {:type => 'integer'}}
+                                            :updated_by => {:type => %w(undefined array), :items => {:type => 'integer'}}
                                         },
                                         :required => %w(cid user_ids comment created_at_client created_at_server),
                                         :additionalProperties => false
-                                    }
+                                    },
+                                    :minItems => 1
                                 }
                             },
                             :required => %w(gid giver_user_ids receiver_user_ids created_at_client created_at_server direction description),
                             :additionalProperties => false
-                        }
+                        },
+                        :minItems => 1
                     }
                 },
                 :required => %w(mid msgtype gifts),
@@ -641,7 +706,8 @@ JSON_SCHEMA = {
                     # array with gid's for missing gifts
                     :gifts => {
                         :type => 'array',
-                        :items => {:type => 'string', :pattern => uid_pattern }
+                        :items => {:type => 'string', :pattern => uid_pattern},
+                        :minItems => 1
                     },
                     :required => %w(mid msgtype gifts),
                     :additionalProperties => false
@@ -672,7 +738,8 @@ JSON_SCHEMA = {
                             },
                             :required => %w(gid sha256 sha256_gift sha256_comments),
                             :additionalProperties => false
-                        }
+                        },
+                        :minItems => 1
                     },
                     :required => %w(mid msgtype gifts),
                     :additionalProperties => false

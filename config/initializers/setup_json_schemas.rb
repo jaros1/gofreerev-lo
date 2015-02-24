@@ -494,6 +494,43 @@ JSON_SCHEMA = {
 
     # device to device communication (client spec)
 
+    # client to client communication step 3
+    # send list with gifts sha256 values to other client after having compared sha256 values for mutual friends:
+    :gifts_sha256 => {
+        :type => 'object',
+        :properties => {
+            # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            :mid => {:type => 'string', :pattern => uid_pattern},
+            # request_mid - unique message id - reference to previous users_sha256 message - see client to client communication step 2
+            :request_mid => {:type => 'string', :pattern => uid_pattern},
+            # msgtype = gifts_sha256
+            :msgtype => {:type => 'string', :pattern => '^gifts_sha256$'},
+            # optional timestamp for oldest gift in sha256 compare - ignore gifts before this timestamp - todo: replace 0 with null
+            :oldest_gift_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+            # optional array with gifts to be ignored in sha256 compare - for example gifts rejected due to invalid server sha256 signature
+            :ignore_invalid_gifts => {
+                :type => 'array',
+                :items => { :type => 'string', :pattern => uid_pattern }
+            },
+            # array with internal user id for mutual friends
+            :mutual_friends => {:type => 'array', :items => {:type => 'integer'}},
+            # array with sha256 values for gifts for mutual friends
+            :mutual_gifts => {
+                :type => 'array',
+                :properties => {
+                    # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                    :gid => {:type => 'string', :pattern => uid_pattern},
+                    # sha256 calculation for gift
+                    :sha256 => {:type => 'string', :maxLength => 32}
+                },
+                :required => %w(gid sha256),
+                :additionalProperties => false
+            }
+        },
+        :required => %w(mid request_mid msgtype mutual_friends mutual_gifts),
+        :additionalProperties => false
+    },
+
     # client to client communication step 4
     # send 3 sub messages to other client after having compared sha256 values for gifts for mutual friends
     # 1) send_gifts: send missing gifts to other client

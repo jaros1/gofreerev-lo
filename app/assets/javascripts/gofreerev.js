@@ -986,6 +986,35 @@ var Gofreerev = (function() {
         return error + '. ' + json_errors ;
     } // is_json_request_invalid
 
+    // check if json request is invalid. used in do_tasks, login, logout and ping
+    // returns null (ok) or an error message
+    function is_json_message_invalid (pgm, json_msg, json_schema, msg) {
+        if (!msg) msg = '' ;
+        // remove null keys before checking json
+        for (var key in json_msg) if (json_msg[key] == null) delete json_msg[key];
+        // check if schema definition exists
+        var error ;
+        if (!Gofreerev.rails['JSON_SCHEMA'].hasOwnProperty(json_schema)) {
+            console.log(pgm + 'Error. JSON schema defintion for ' + json_schema + ' was not found. ' + json_schema + ' message was not sent to other client.');
+            error = 'JSON schema definition ' + json_schema + ' was not found. ' + json_schema + ' message was not sent to other client. ' + msg ;
+            console.log(pgm + error);
+            return error;
+        }
+        // validate json message before sending message to server and to other client
+        if (tv4.validate(json_msg, Gofreerev.rails['JSON_SCHEMA'][json_schema])) return null;
+        // report error
+        var json_error = JSON.parse(JSON.stringify(tv4.error));
+        delete json_error.stack;
+        var json_errors = JSON.stringify(json_error) ;
+        error = 'Error in JSON ' + json_schema + ' request. ' + json_schema + ' message was not sent to other client.' + msg ;
+        console.log(pgm + error);
+        console.log(pgm + 'request: ' + JSON.stringify(json_msg));
+        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
+        console.log(pgm + 'errors : ' + json_errors);
+        return error + '. ' + json_errors ;
+    } // is_json_request_invalid
+
+
     // check if json response is invalid. used in do_tasks, login, logout and ping
     // returns null (ok) or an error message
     function is_json_response_invalid (pgm, json_response, action, msg) {
@@ -1074,6 +1103,7 @@ var Gofreerev = (function() {
         unix_timestamp: unix_timestamp,
         is_json_request_invalid: is_json_request_invalid,
         is_json_response_invalid: is_json_response_invalid,
+        is_json_message_invalid: is_json_message_invalid,
         generate_random_password: generate_random_password,
         get_next_seq: get_next_seq
     };
@@ -2874,6 +2904,10 @@ angular.module('gifts', ['ngRoute'])
                             // check_gifts: send gifts sub sha256 signatures to other device (separate sha256 signatures for gift and comments)
                             messages.push(msg) ;
                             break ;
+                        case 'error':
+                            // error notification to other device about errors in input message, processing errors or error in response
+                            messages.push(msg) ;
+                            break ;
                         default:
                             console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(mailbox)) ;
                     } // end msgtype switch
@@ -3068,14 +3102,38 @@ angular.module('gifts', ['ngRoute'])
             }
 
             // communication step 3 - insert gifts_sha256 message in outbox. will be send in next ping request
-            mailbox.outbox.push({
+            var gifts_sha256_message = {
                 mid: Gofreerev.get_new_uid(),
                 request_mid: msg.mid,
                 msgtype: 'gifts_sha256',
                 oldest_gift_at: oldest_gift_at,
                 ignore_invalid_gifts: ignore_invalid_gifts,
                 mutual_friends: user_ids,
-                mutual_gifts: gifts_sha256_array}) ;
+                mutual_gifts: gifts_sha256_array
+            };
+
+            // validate gifts_sha256 message before adding to outbox
+            if (Gofreerev.is_json_message_invalid(pgm,gifts_sha256_message,'gifts_sha256','')) {
+                // error message has already been written to log
+                // send error message to other device
+                var json_error = JSON.parse(JSON.stringify(tv4.error));
+                delete json_error.stack;
+                var json_errors = JSON.stringify(json_error) ;
+                var error = 'Could not process users_sha256 message. JSON schema validation error in gifts_sha256 response: ' + json_errors ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    request_mid: msg.mid,
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            }
+
+            mailbox.outbox.push(gifts_sha256_message) ;
+
+
         }; // receive_message_users_sha256
 
         // communication step 3 - compare sha256 values for gifts (mutual friends)
@@ -3084,6 +3142,25 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'device  = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+
+            // validate gifts_sha256 message before processing message
+            if (Gofreerev.is_json_message_invalid(pgm,msg,'gifts_sha256','')) {
+                // error message has already been written to log
+                // send error message to other device
+                var json_error = JSON.parse(JSON.stringify(tv4.error));
+                delete json_error.stack;
+                var json_errors = JSON.stringify(json_error) ;
+                var error = 'Receiver rejected gifts_sha256 message. JSON schema validation errors: ' + json_errors ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    request_mid: msg.mid,
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
+                return ;
+            }
 
             //mailbox =
             //{"did":"14225475967174557072","sha256":"5qe/jae1m7Vr9i242UAOJ+iQBkmkN65ftrvrGhaTDRE=\n","mutual_friends":[1126,920],
@@ -3454,6 +3531,25 @@ angular.module('gifts', ['ngRoute'])
                 (sync_gifts_message.request_gifts == null) &&
                 (sync_gifts_message.check_gifts == null)) {
                 console.log(pgm + 'Error. sync_gifts message was not sent. See previous errors in log.') ;
+                return ;
+            }
+
+            // validate sync_gifts message before placing message in outbox
+            if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {
+                // error message has already been written to log
+                // send error message to other device
+                var json_error = JSON.parse(JSON.stringify(tv4.error));
+                delete json_error.stack;
+                var json_errors = JSON.stringify(json_error) ;
+                var error = 'Could not process gifts_sha256 message. JSON schema validation error in sync_gifts response: ' + json_errors ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    request_mid: msg.mid,
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                }) ;
                 return ;
             }
 

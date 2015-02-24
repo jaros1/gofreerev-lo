@@ -5,8 +5,8 @@
 # helper expression for gid, sid, cid etc (20 decimal string). To big to be a JS integer. From 2015-01-01 and one year forward in time
 uid_from = (Time.zone.parse '2015-01-01').to_i
 uid_to = 1.year.from_now.to_i
-uid_short_pattern = `rgxg range -Z #{uid_from} #{uid_to}`.strip
-uid_pattern = "^#{uid_short_pattern}[0-9]{10}$"
+uid_short_pattern = `rgxg range -Z #{uid_from} #{uid_to}`.strip # 10 decimals
+uid_pattern = "^#{uid_short_pattern}[0-9]{10}$" # 20 decimals
 
 # pattern with valid providers
 providers_pattern = '^(' + API_ID.keys.join('|') + ')$'
@@ -488,9 +488,162 @@ JSON_SCHEMA = {
             :error => {:type => 'string'}
         },
         :additionalProperties => false
-    }
+    },
 
     # device to device communication (server spec)
 
     # device to device communication (client spec)
+
+    # client to client communication step 4
+    # send 3 sub messages to other client after having compared sha256 values for gifts for mutual friends
+    # 1) send_gifts: send missing gifts to other client
+    # 2) request_gifts: request missing gifts from other client
+    # 3) check_gifts: send sub sha256 values (seperate sha256 for gift and comments) for changed gifts to other client
+    :sync_gifts => {
+        :type => 'object',
+        :properties => {
+            # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            :mid => {:type => 'string', :pattern => uid_pattern},
+            # request_mid - unique message id - reference to previous gifts_sha256 message - see client to client communication step 3
+            :request_mid => {:type => 'string', :pattern => uid_pattern},
+            # msgtype = sync_gifts
+            :msgtype => {:type => 'string', :pattern => '^sync_gifts$'},
+            # array with internal user id for mutual friends
+            :mutual_friends => {:type => 'array', :items => {:type => 'integer'}},
+            # optional sub message 1 - send_gifts - send missing gifts to other client
+            :send_gifts => {
+                :type => 'object',
+                :properties => {
+                    # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                    :mid => {:type => 'string', :pattern => uid_pattern},
+                    # msgtype = send_gifts
+                    :msgtype => {:type => 'string', :pattern => '^send_gifts$'},
+                    # array with missing gifts for other client
+                    :gifts => {
+                        :type => 'array',
+                        :items => {
+                            :type => 'object',
+                            :properties => {
+                                # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                :gid => {:type => 'string', :pattern => uid_pattern},
+                                # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                                :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                                :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                                # created at client unix timestamp - 10 decimals - used in gift signature on server
+                                :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                # created at server unix timestamp - 10 decimals - timestamp when gift signature was saved on server
+                                :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                # optional price - set when gift is created or when gift is accepted by a friend
+                                :price => {:type => 'number', :minimum => 0, :multipleOf => 0.01},
+                                # optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
+                                :currency => {:type => 'string', :pattern => '^[a-zA-Z]{3}$'},
+                                # direction. giver: was created by giver_user_ids as an offer. receiver: was created by receiver_user_ids as seeks
+                                :direction => {:type => 'string', :pattern => '^(giver|receiver)$'},
+                                # description of gift
+                                :description => {:type => 'string'},
+                                # 4 optional open graph attributes if gift was created with an open graph link
+                                :open_graph_url => {:type => 'string'},
+                                :open_graph_title => {:type => 'string'},
+                                :open_graph_description => {:type => 'string'},
+                                :open_graph_image => {:type => 'string'},
+                                # todo: add optional image url (file upload has not been implemented yet)
+                                # like - now a boolean - todo: must be changed to an array with user ids and like/unlike timestamps
+                                :like => {:type => 'boolean'},
+                                # optional deleted at timestamp if gift has been deleted by giver or receiver
+                                :deleted_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                # optional array with gift comments
+                                :comments => {
+                                    :type => 'array',
+                                    :items => {
+                                        :type => 'object',
+                                        :properties => {
+                                            # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                            :cid => {:type => 'string', :pattern => uid_pattern},
+                                            # internal user ids for creator of comment - todo: change to uid/provider format to support cross server replication?
+                                            :user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                                            # optional price - can be set when creation a proposal (special comment) for gift/offer
+                                            :price => {:type => 'number', :minimum => 0, :multipleOf => 0.01},
+                                            # optional currency - can be set when creation a proposal (special comment) for gift/offer - iso4217 with restrictions
+                                            :currency => {:type => 'string', :pattern => '^[a-zA-Z]{3}$'},
+                                            # comment
+                                            :comment => {:type => 'string'},
+                                            # created at client unix timestamp - 10 decimals - used in comment signature on server
+                                            :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                            # created at server unix timestamp - 10 decimals - timestamp when comment signature was saved on server
+                                            :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                            # optional new_deal boolean - true if new deal proposal - false if cancelled new deal proposal
+                                            :new_deal => {:type => 'boolean'},
+                                            # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter
+                                            :deleted_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                            # optional accepted boolean - true if new proposal has been accepted by creator of gift/offer, false if new proposal has been rejected by creator of gift/offer
+                                            :accepted => {:type => 'boolean'},
+                                            # updated_by - list with internal user id - users that have accepted or rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
+                                            :updated_by => {:type => 'array', :items => {:type => 'integer'}}
+                                        },
+                                        :required => %w(cid user_ids comment created_at_client created_at_server),
+                                        :additionalProperties => false
+                                    }
+                                }
+                            },
+                            :required => %w(gid giver_user_ids receiver_user_ids created_at_client created_at_server direction description),
+                            :additionalProperties => false
+                        }
+                    }
+                },
+                :required => %w(mid msgtype gifts),
+                :additionalProperties => false
+            },
+            # optional sub message 2 - request_gifts - request missing gifts from other client
+            :request_gifts => {
+                :type => 'object',
+                :properties => {
+                    # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                    :mid => {:type => 'string', :pattern => uid_pattern},
+                    # msgtype = request_gifts
+                    :msgtype => {:type => 'string', :pattern => '^request_gifts$'},
+                    # array with gid's for missing gifts
+                    :gifts => {
+                        :type => 'array',
+                        :items => {:type => 'string', :pattern => uid_pattern }
+                    },
+                    :required => %w(mid msgtype gifts),
+                    :additionalProperties => false
+                }
+            },
+            # optional sub message 3 - check_gifts - merge gifts - send array with gifts sub sha2546 values to other client
+            :check_gifts => {
+                :type => 'object',
+                :properties => {
+                    # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                    :mid => {:type => 'string', :pattern => uid_pattern},
+                    # msgtype = check_gifts
+                    :msgtype => {:type => 'string', :pattern => '^check_gifts$'},
+                    # array with sub sha256 values for gifts - one sha256 for gift and an other sha256 value for comments
+                    :gifts => {
+                        :type => 'array',
+                        :items => {
+                            :type => 'object',
+                            :properties => {
+                                # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                :gid => {:type => 'string', :pattern => uid_pattern},
+                                # sha256 calculation for gift and comments
+                                :sha256 => {:type => 'string', :maxLength => 32},
+                                # sha256 calculation for gift only
+                                :sha256_gift => {:type => 'string', :maxLength => 32},
+                                # sha256 calculation for comments only
+                                :sha256_comments => {:type => 'string', :maxLength => 32}
+                            },
+                            :required => %w(gid sha256 sha256_gift sha256_comments),
+                            :additionalProperties => false
+                        }
+                    },
+                    :required => %w(mid msgtype gifts),
+                    :additionalProperties => false
+                }
+            }
+        },
+        :required => %w(mid request_mid msgtype mutual_friends),
+        :additionalProperties => false
+    }
+
 }

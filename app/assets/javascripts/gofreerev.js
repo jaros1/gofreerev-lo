@@ -452,6 +452,7 @@ var Gofreerev = (function() {
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
         pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
         secret: {session: false, userid: true, compress: true, encrypt: false}, // client secret - used in device.sha256 signature
+        seq: {session: false, userid: true, compress: true, encrypt: false}, // sequence - for example used in verift_gifts request and response
         sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
         users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
@@ -881,6 +882,7 @@ var Gofreerev = (function() {
             setItem('did', did) ; // unique device id
             setItem('prvkey', prvkey) ;
             setItem('pubkey', pubkey) ; // public key
+            setItem('seq', '0') ; // sequence, for example used in verify gifts request/response
             setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
             return userid ;
         }
@@ -1023,6 +1025,19 @@ var Gofreerev = (function() {
         return password.join('') ;
     } // generate_random_password
 
+    // sequence - for example used in verify gifts request and response
+    function get_next_seq () {
+        if (!getItem('userid')) return null ; // error - not logged in
+        var seq = getItem('seq') ;
+        if (!seq) {
+            seq = '0' ;
+            setItem('seq', seq) ;
+        }
+        seq = parseInt(seq) + 1 ;
+        setItem('seq', seq.toString()) ;
+        return seq ;
+    } // get_next_seq
+
     // export public used methods (views)
     return {
         // constants from ruby on rails. see ruby_to.js.erb
@@ -1059,7 +1074,8 @@ var Gofreerev = (function() {
         unix_timestamp: unix_timestamp,
         is_json_request_invalid: is_json_request_invalid,
         is_json_response_invalid: is_json_response_invalid,
-        generate_random_password: generate_random_password
+        generate_random_password: generate_random_password,
+        get_next_seq: get_next_seq
     };
 })();
 // Gofreerev closure end
@@ -2356,9 +2372,12 @@ angular.module('gifts', ['ngRoute'])
         // check sha256 server signature for gifts received from other devices before adding or merging gift on this device
         // input is gifts from send_gifts message pass 1 (receive_message_send_gifts)
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
-        // server verifies if gift sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        // server verifies if gift sha256 server signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        // unique sequence seq is used in requests.
+        // positive seq is used for local gifts where response in immediate
+        // negative seq from sequence is used for remote gifts where response will come in a later verify_gifts_response
         // todo: use gift.gift_sha256 as a hash key? for quick lookup of identical new gifts!
-        var verify_gifts = [] ; // array with gifts for next verify_gifts request - there can be doublets if same gift is received from multiple devices
+        var verify_gifts = [] ; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple devices
 
         var verify_gifts_keys = [] ; // helper: array with keys, key = gid+sha256+userids
         var verify_gifts_key_to_seq = {} ; // helper: key to seq, key = gid+sha256+userids
@@ -2372,14 +2391,21 @@ angular.module('gifts', ['ngRoute'])
             verify_gifts_key_to_seq = {} ;
             verify_gifts_seq_to_gifts = {} ;
             // loop for gifts in verify_gifts array
-            var request = [], new_gift, already_verified = 0, missing_server_timestamp = 0, sha256_client, key, seq, hash ;
+            var request = [], new_gift, already_verified = 0, waiting_for_verification = 0, missing_server_timestamp = 0, sha256_client, key, seq, hash ;
             for (var i=0 ; i<verify_gifts.length ; i++) {
                 new_gift = verify_gifts[i] ;
                 if (new_gift.hasOwnProperty('verified_by_server')) {
+                    // warning. should by now have been processed and removed from verify_gifts buffer
                     already_verified += 1;
                     continue;
                 } // if
+                if (new_gift.hasOwnProperty('verify_seq')) {
+                    // should only be used for remote gifts where validation is done on an other gofreerev server
+                    waiting_for_verification += 1;
+                    continue;
+                } // if
                 if (!new_gift.created_at_server) {
+                    // error - never send gift without a created_at_server timestamp to other devices - never accept gifts from other devices without a created_at_server timestamp
                     missing_server_timestamp += 1;
                     continue;
                 }
@@ -2412,6 +2438,7 @@ angular.module('gifts', ['ngRoute'])
                 }
             } // for i (verify_gifts loop)
             if (already_verified > 0) console.log('Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.') ;
+            if (waiting_for_verification > 0) console.log('Warning. Found ' + waiting_for_verification + ' gifts waiting for verification in verify_gifts buffer.') ;
             if (missing_server_timestamp > 0) console.log('Error. Found ' + missing_server_timestamp + ' gifts without a created_at_server timestamp in verify_gifts buffer.')
             return (request.length == 0 ? null : request) ;
         };
@@ -3284,6 +3311,7 @@ angular.module('gifts', ['ngRoute'])
                     // todo: 2 - add server side deleted_at timestamp or flag. Server could validate delete and know that gift has been deleted
                     // todo: 3 - check gift.sha256 value when receiving gift on other device
                     // todo: 4 - check server sha256 signature & created_at_server timestamp when receiving gift on other device
+                    // todo: 5 - add url with optional file attachment (file upload has not been implemented yet)
                     gift_clone =
                     {
                         gid: gift.gid,
@@ -3523,65 +3551,68 @@ angular.module('gifts', ['ngRoute'])
 
             console.log(pgm + 'msg.pass = ' + msg.pass) ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done
 
-            // check for some fatal errors before processing send_gifts message - gid and cid must be unique
-            var error ;
-            // check missing gifts array
-            if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) {
-                error = 'No gifts array or empty gifts array in send_gifts message.' ;
-                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                mailbox.outbox.push({
-                    mid: Gofreerev.get_new_uid(),
-                    msgtype: 'error',
-                    request_mid: msg.mid,
-                    error: error
-                }) ;
-                return ;
-            } // if missing gifts array
-            // check dublet gids
-            var new_gids = [], i, new_gift, doublet_gids = 0 ;
-            for (i=0 ; i<msg.gifts.length ; i++) {
-                new_gift = msg.gifts[i] ;
-                if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1 ;
-                else new_gids.push(new_gift.gid) ;
-            } // for i
-            if (doublet_gids > 0) {
-                error = 'Found ' + doublet_gids + ' doublet gifts in send_gifts message. gid must be unique.' ;
-                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                mailbox.outbox.push({
-                    mid: Gofreerev.get_new_uid(),
-                    msgtype: 'error',
-                    request_mid: msg.mid,
-                    error: error
-                }) ;
-                return ;
-            } // if doublet_gids
-            new_gids.length = 0 ;
-            // check doublet cids
-            var new_cids = [], doublet_cids = 0, j, new_comment ;
-            for (i=0 ; i<msg.gifts.length ; i++) {
-                new_gift = msg.gifts[i] ;
-                if (!new_gift.comments) continue ;
-                for (j=0 ; j<new_gift.comments.length ; j++) {
-                    new_comment = ew_gift.comments[j] ;
-                    if (new_cids.indexOf(new_comment.cid) != -1) doublet_cids += 1 ;
-                    else new_cids.push(new_comment.cid) ;
-                } // for j (comments)
-            } // for i (gifts)
-            if (doublet_cids > 0) {
-                error = 'Found ' + doublet_cids + ' doublet comments in send_gifts message. cid must be unique.' ;
-                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                mailbox.outbox.push({
-                    mid: Gofreerev.get_new_uid(),
-                    msgtype: 'error',
-                    request_mid: msg.mid,
-                    error: error
-                }) ;
-                return ;
-            } // if doublet_cids
-            new_cids.length = 0 ;
+            if (msg.pass == 0) {
+                // startup - check for some fatal errors before processing send_gifts message - gid and cid must be unique
+                var error ;
+                // check missing gifts array
+                if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) {
+                    error = 'No gifts array or empty gifts array in send_gifts message.' ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    }) ;
+                    return ;
+                } // if missing gifts array
+                // check doublet gids
+                var new_gids = [], i, new_gift, doublet_gids = 0 ;
+                for (i=0 ; i<msg.gifts.length ; i++) {
+                    new_gift = msg.gifts[i] ;
+                    if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1 ;
+                    else new_gids.push(new_gift.gid) ;
+                } // for i
+                if (doublet_gids > 0) {
+                    error = 'Found ' + doublet_gids + ' doublet gifts in send_gifts message. gid must be unique.' ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    }) ;
+                    return ;
+                } // if doublet_gids
+                new_gids.length = 0 ;
+                // check doublet cids
+                var new_cids = [], doublet_cids = 0, j, new_comment ;
+                for (i=0 ; i<msg.gifts.length ; i++) {
+                    new_gift = msg.gifts[i] ;
+                    if (!new_gift.comments) continue ;
+                    for (j=0 ; j<new_gift.comments.length ; j++) {
+                        new_comment = ew_gift.comments[j] ;
+                        if (new_cids.indexOf(new_comment.cid) != -1) doublet_cids += 1 ;
+                        else new_cids.push(new_comment.cid) ;
+                    } // for j (comments)
+                } // for i (gifts)
+                if (doublet_cids > 0) {
+                    error = 'Found ' + doublet_cids + ' doublet comments in send_gifts message. cid must be unique.' ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    }) ;
+                    return ;
+                } // if doublet_cids
+                new_cids.length = 0 ;
 
-            // pass 1 - check for new gifts where server sha256 signature should be verified
-            if (msg.pass == 0) msg.pass = 1 ;
+                // pass 1 - check for new gifts where server sha256 signature should be verified
+                msg.pass = 1 ;
+            } // if pass 0
+
 
             if (msg.pass == 1) {
                 // pass 1 - find new gifts where server sha256 signature must be validated before continuing with pass 2
@@ -3591,6 +3622,7 @@ angular.module('gifts', ['ngRoute'])
                 var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, old_cids ;
                 for (i=0 ; i < msg.gifts.length ; i++) {
                     new_gift = msg.gifts[i] ;
+                    if (!new_gift.created_at_server) continue ; // error reported in pass 2 - todo: send_gifts message should be json validated
                     gid = new_gift.gid ;
                     if (is_gift_on_ignore_list(device, gid)) continue ; // skip gift
                     if (gifts_index.hasOwnProperty(gid)) {
@@ -3604,8 +3636,10 @@ angular.module('gifts', ['ngRoute'])
                         if (old_gift.comments) for (j=0 ; j<old_gift.comments.length ; j++) old_cids.push(old_gift.comments[j].cid) ;
                         if (new_gift.comments) for (j=0 ; j<new_gift.comments.length ; j++) {
                             new_comment = new_gift.comments[j] ;
+                            if (!new_comment.created_at_server) continue ; // error reported in pass 2
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
                             if (old_cids.indexOf(new_comment.cid) == -1) {
+                                if (new_comment.hasOwnProperty('verify_seq')) delete comment.verify_seq;
                                 if (new_comment.hasOwnProperty('verified_by_server')) delete comment.verified_by_server;
                                 validate_comments_on_server += 1;
                                 verify_comments.push({gid: gid, comment: new_comment});
@@ -3628,13 +3662,16 @@ angular.module('gifts', ['ngRoute'])
                     // new gift from a mutual friend.
                     // server sha256 signature must be verified before continuing with pass 2
                     validate_gifts_on_server += 1 ;
+                    if (new_gift.hasOwnProperty('verify_seq')) delete gift.verify_seq ;
                     if (new_gift.hasOwnProperty('verified_by_server')) delete gift.verified_by_server ;
                     verify_gifts.push(new_gift) ;
                     if (new_gift.comments) {
                         // server validate new comments
                         for (j = 0; j < new_gift.comments.length; j++) {
                             new_comment = new_gift.comments[j];
+                            if (!new_comment.created_at_server) continue ; // error reported in pass 2
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
+                            if (new_comment.hasOwnProperty('verify_seq')) delete comment.verify_seq;
                             if (new_comment.hasOwnProperty('verified_by_server')) delete comment.verified_by_server;
                             validate_comments_on_server += 1;
                             verify_comments.push({gid: gid, comment: new_comment});

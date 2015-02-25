@@ -2410,47 +2410,65 @@ angular.module('gifts', ['ngRoute'])
             if (save) save_gifts();
         }; // new_gifts_response
 
-        // check sha256 server signature for gifts received from other devices before adding or merging gift on this device
-        // input is gifts from send_gifts message pass 1 (receive_message_send_gifts)
-        // output is used in send_gifts message pass 2 (receive_message_send_gifts)
-        // server verifies if gift sha256 server signature is valid and returns a created_at_server timestamp if ok or null if not ok
-        // unique sequence seq is used in requests.
+        // check sha256 server signature for gifts received from other clients before adding or merging gift on this client
+        // input is gifts in verify_gifts from send_gifts message pass 1 (receive_message_send_gifts)
+        // gifts in verify_gifts array are moved to verify gifts buffer
+        // unique sequence seq is used in verify gifts requests.
         // positive seq is used for local gifts where response in immediate
-        // negative seq from sequence is used for remote gifts where response will come in a later verify_gifts_response
-        // todo: use gift.gift_sha256 as a hash key? for quick lookup of identical new gifts!
-        var verify_gifts = []; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple devices
-
-        var verify_gifts_keys = []; // helper: array with keys, key = gid+sha256+userids
-        var verify_gifts_key_to_seq = {}; // helper: key to seq, key = gid+sha256+userids
-        var verify_gifts_seq_to_gifts = {}; // helper: from seq to one or more gifts in verify_gifts array
+        // negative seq (from sequence) is used for remote gifts where response will come in a later verify_gifts_response
+        // server verifies if gift sha256 server signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        // output is created_at_server timestamp received in verify_gifts_response (added as gift.verified_at_server)
+        // output is used in send_gifts message pass 2 (receive_message_send_gifts)
+        var verify_gifts = []; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple clients
+        // verify gifts buffer - index by seq and key
+        var verify_gifts_key_to_seq = {} ; // helper: array with keys, key = gid+sha256+userids
+        var verify_gifts_seq_to_gifts = {} ; // helper: from seq to one or more gifts
+        var verify_gifts_online = true ; // todo: set to false if ping does not respond - set to true if ping respond
+        var verify_gifts_old_remote_seq = Gofreerev.getItem('seq') ; // ignore old remote gift verifications
 
         var verify_gifts_request = function () {
             var pgm = service + '.verify_gifts_request: ';
-            if (verify_gifts.length == 0) return null;
-            // reset helpers
-            verify_gifts_keys.length = 0;
-            verify_gifts_key_to_seq = {};
-            verify_gifts_seq_to_gifts = {};
-            // loop for gifts in verify_gifts array
-            var request = [], new_gift, already_verified = 0, waiting_for_verification = 0, missing_server_timestamp = 0, sha256_client, key, seq, hash;
-            for (var i = 0; i < verify_gifts.length; i++) {
-                new_gift = verify_gifts[i];
-                if (new_gift.hasOwnProperty('verified_by_server')) {
-                    // warning. should by now have been processed and removed from verify_gifts buffer
+            // check buffer for "old gifts". should normally be empty except for gifts with negative seq (remote gifts)
+            // local gifts are allowed if device is offline or if server does not respond
+            var local_seq = 0 ;
+            var seq, local_gifts = 0, remote_gifts = 0 ;
+            var request = [] ;
+            for (seq in verify_gifts_seq_to_gifts) {
+                // console.log(pgm + 'seq = ' + seq + '(' + typeof seq + ')') ;
+                if (parseInt(seq) >= 0) {
+                    // found "old" local new gift in buffer. should only be the case if device is offline or server is not responding
+                    local_gifts += 1;
+                    if (parseInt(seq) > local_seq) local_seq = parseInt(seq) ;
+                    request.push(verify_gifts_seq_to_gifts[seq].request) ; // resend old request
+                }
+                else remote_gifts += 1 ; // ok - remote verification can take some time
+            }
+            if (verify_gifts_online && (local_gifts + remote_gifts > 0)) {
+                console.log(pgm + 'Warning. Found ' + local_gifts + ' local and ' + remote_gifts + ' remote not yet verified gifts in buffer.') ;
+            }
+
+            if (verify_gifts.length == 0) return (request.length == 0 ? null : request) ; // no new gifts for verification
+
+            // loop for new gifts in verify_gifts array
+            var no_new_gifts = verify_gifts.length ;
+            var already_verified = 0 ;
+            var waiting_for_verification = 0 ;
+            var old_request = request.length ; // resend old requests
+            var new_request = 0 ;
+            var new_gift, sha256_client, hash, key ;
+            while (verify_gifts.length > 0) {
+                new_gift = verify_gifts.shift();
+                if (new_gift.hasOwnProperty('verfied_at_server')) {
+                    // ignore gift. gift has already been verified. can maybe happen if same gift object has been received from more than one client
                     already_verified += 1;
                     continue;
-                } // if
+                }
                 if (new_gift.hasOwnProperty('verify_seq')) {
-                    // should only be used for remote gifts where validation is done on an other gofreerev server
+                    // must be a remote gift waiting for validation on an other gofreerev server
                     waiting_for_verification += 1;
                     continue;
                 } // if
-                if (!new_gift.created_at_server) {
-                    // error - never send gift without a created_at_server timestamp to other devices - never accept gifts from other devices without a created_at_server timestamp
-                    missing_server_timestamp += 1;
-                    continue;
-                }
-                // prepare request - same client sha256 calculation as in new_gifts_request
+                // prepare request - using same client sha256 calculation as in new_gifts_request
                 sha256_client = Gofreerev.sha256(
                     new_gift.created_at_client.toString(), new_gift.description, new_gift.open_graph_url,
                     new_gift.open_graph_title, new_gift.open_graph_description, new_gift.open_graph_image);
@@ -2465,31 +2483,98 @@ angular.module('gifts', ['ngRoute'])
                 key = JSON.stringify(hash);
                 seq = verify_gifts_key_to_seq[key];
                 if (seq) {
-                    // already in request. add back reference from seq to gift in verify_gifts array. used in verify_gifts_response
-                    verify_gifts_seq_to_gifts[seq].push(i);
+                    // key already in verify gifts buffer.
+                    new_gift.verify_seq = seq ;
+                    verify_gifts_seq_to_gifts[seq].gifts.push(new_gift);
                 }
                 else {
-                    // new request
-                    verify_gifts_keys.push(key);
-                    seq = verify_gifts_keys.length;
-                    verify_gifts_key_to_seq[key] = seq;
-                    verify_gifts_seq_to_gifts[seq] = [i];
-                    hash.seq = seq;
+                    // new request. add to verify gifts buffer and request array
+                    local_seq += 1 ;
+                    hash.seq = local_seq ;
+                    new_gift.verify_seq = local_seq ;
+                    verify_gifts_key_to_seq[key] = local_seq ;
+                    verify_gifts_seq_to_gifts[local_seq] = {
+                        gid: new_gift.gid,
+                        key: key,
+                        gifts: [new_gift],
+                        request: hash
+                    }
                     request.push(hash);
+                    new_request += 1 ;
                 }
-            } // for i (verify_gifts loop)
-            if (already_verified > 0) console.log('Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.');
-            if (waiting_for_verification > 0) console.log('Warning. Found ' + waiting_for_verification + ' gifts waiting for verification in verify_gifts buffer.');
-            if (missing_server_timestamp > 0) console.log('Error. Found ' + missing_server_timestamp + ' gifts without a created_at_server timestamp in verify_gifts buffer.')
+            } // verify_gifts while loop
+
+            if (already_verified > 0) console.log(pgm + 'Warning. Found ' + already_verified + ' already verified gifts in verify_gifts buffer.');
+            if (waiting_for_verification > 0) console.log(pgm + 'Warning. Found ' + waiting_for_verification + ' gifts waiting for verification in verify_gifts buffer.');
+            if (old_request > 0) console.log(pgm + 'Warning. Found ' + old_request + ' old requests in verify gifts buffer.') ;
+            if (new_request > 0) console.log(pgm + new_request + ' new gift verification requests sent to server.');
             return (request.length == 0 ? null : request);
-        };
+        }; // verify_gifts_request
+
         var verify_gifts_response = function (response) {
             var pgm = service + '.verify_gifts_response: ';
 
-            // clear helper index before continuing
-            verify_gifts_index = {};
-            console.log(pgm + 'Not implemented.');
-        };
+            if (response.error) {
+                console.log(pgm + response.error) ;
+                return ;
+            }
+
+            // seq must be unique i response and all positive seq must be in verify gifts buffer
+            var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, new_gift  ;
+            for (i=0 ; i<response.gifts.length ; i++) {
+                new_gift = response.gifts[i] ;
+                seq = new_gift.seq
+                if (seqs.indexOf(seq) == -1) {
+                    seqs.push(seq) ;
+                    if (!verify_gifts_seq_to_gifts[seq]) {
+                        // unknown seq!
+                        if (seq >= 0) invalid_local_seq += 1 ;
+                        else {
+                            // ok if remote verification was started in a previous session / before page reload
+                            // todo: there is a problem with multiple client sessions with same client_userid. remote verification can be started by one client and response received by an other client!
+                            // todo: is there a mailbox per device or a mailbox per client?
+                            if (verify_gifts_old_remote_seq == null) verify_gifts_old_remote_seq = 0 ;
+                            else if (typeof verify_gifts_old_remote_seq == 'string') verify_gifts_old_remote_seq = parseInt(verify_gifts_old_remote_seq) ;
+                            if (-seq <= verify_gifts_old_remote_seq) old_remote_seq.push(seq) ; // ignore old remove verifications (js variables have been resetted)
+                            else invalid_remote_seq += 1 ;
+                        }
+                    }
+                    else if (verify_gifts_seq_to_gifts[seq].gid != new_gift.gid) invalid_gid += 1 ;
+                }
+                else not_unique_seq += 1 ;
+            }
+            seqs = null ;
+
+            // receipt - abort if errors in verify gifts response
+            if (not_unique_seq > 0) console.log(pgm + 'Error. ' + not_unique_seq + ' not unique seq in verify gifts response.') ;
+            if (invalid_local_seq > 0) console.log(pgm + 'Error. ' + invalid_local_seq + ' invalid local seq in verify gifts response.') ;
+            if (invalid_remote_seq > 0) console.log(pgm + 'Error. ' + invalid_remote_seq + ' invalid remote seq in verify gifts response.') ;
+            if (invalid_gid > 0) console.log(pgm + invalid_gid + ' invalid unique gift id (gid) in verify gifts response.') ;
+            if (old_remote_seq.length > 0) console.log(pgm + 'Warning. ' + old_remote_seq + ' old unknown remote seq in verify gifts response') ;
+            if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_gid > 0) return ;
+
+            // loop for each seq in response
+            var gift_verification, gid, new_gifts, key, no_verifications = 0, no_gifts = 0 ;
+            while (response.gifts.length > 0) {
+                gift_verification = response.gifts.shift();
+                seq = gift_verification.seq ;
+                if (old_remote_seq.indexOf(seq) != -1) continue ; // ignore old remote gift verification
+                no_verifications += 1 ;
+                new_gifts = verify_gifts_seq_to_gifts[seq].gifts
+                while (new_gifts.length > 0) {
+                    no_gifts += 1 ;
+                    new_gift = new_gifts.shift() ;
+                    new_gift.verfied_at_server = gift_verification.created_at_server ;
+                }
+                // remove from verify gifts buffer
+                key = verify_gifts_seq_to_gifts[seq].key ;
+                delete verify_gifts_seq_to_gifts[seq] ;
+                delete verify_gifts_key_to_seq[key] ;
+            } // while response.length > 0
+
+            console.log(pgm + 'received ' + no_verifications + ' verifications for ' + no_gifts + ' gifts.') ;
+
+        }; // verify_gifts_response
 
         // check sha256 server signature for comments received from other devices before adding comment on this device
         // input is comments from send_gifts message pass 1 (receive_message_send_gifts)
@@ -3377,44 +3462,10 @@ angular.module('gifts', ['ngRoute'])
                         continue ;
                     }
 
-                    // gift attributes from refresh_gift:
-                    //if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids ;
-                    //if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids ;
-                    //if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client ;
-                    //if (gift.created_at_server != new_gift.created_at_server) gift.created_at_server = new_gift.created_at_server ;
-                    //if (gift.price != new_gift.price) gift.price = new_gift.price ;
-                    //if (gift.currency != new_gift.currency) gift.currency = new_gift.currency ;
-                    //if (gift.direction != new_gift.direction) gift.direction = new_gift.direction ;
-                    //if (gift.description != new_gift.description) gift.description = new_gift.description ;
-                    //if (gift.open_graph_url != new_gift.open_graph_url) gift.open_graph_url = new_gift.open_graph_url ;
-                    //if (gift.open_graph_title != new_gift.open_graph_title) gift.open_graph_title = new_gift.open_graph_title ;
-                    //if (gift.open_graph_description != new_gift.open_graph_description) gift.open_graph_description = new_gift.open_graph_description ;
-                    //if (gift.open_graph_image != new_gift.open_graph_image) gift.open_graph_image = new_gift.open_graph_image ;
-                    //if (gift.like != new_gift.like) gift.like = new_gift.like ;
-                    //if (gift.follow != new_gift.follow) gift.follow = new_gift.follow ;
-                    //if (gift.show != new_gift.show) gift.show = new_gift.show ;
-                    //if (gift.deleted_at != new_gift.deleted_at) gift.deleted_at = new_gift.deleted_at ;
-                    //// todo: should merge comments and keep sequence - not overwrite arrays
-                    //if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
-                    //if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [] ;
-                    //if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments) ;
-
-                    // gift attributes dropped in save gifts:
-                    //if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments ;
-                    //if (gift.hasOwnProperty('new_comment')) delete gift.new_comment ;
-                    //if (gift.hasOwnProperty('sha256')) delete gift.sha256 ;
-                    //if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
-                    //comments = gift.comments ;
-                    //for (var j=0 ; j<comments.length ; j++) {
-                    //    if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256 ;
-                    //}
-
                     // clone gift - some interval properties are not replicated to other devices
                     // todo: 1 - change like from boolean to an array  with user ids and like/unlike timestamps for merge operation
-                    // todo: 2 - add server side deleted_at timestamp or flag. Server could validate delete and know that gift has been deleted
-                    // todo: 3 - check gift.sha256 value when receiving gift on other device
-                    // todo: 4 - check server sha256 signature & created_at_server timestamp when receiving gift on other device
-                    // todo: 5 - add url with optional file attachment (file upload has not been implemented yet)
+                    // todo: 2 - add server side deleted_at timestamp or flag to gift. Server could validate delete and know that gift has been deleted
+                    // todo: 3 - add url with optional file attachment (file upload has not been implemented yet)
                     gift_clone =
                     {
                         gid: gift.gid,
@@ -3440,34 +3491,7 @@ angular.module('gifts', ['ngRoute'])
                         for (j=0 ; j<gift.comments.length ; j++) {
                             comment = gift.comments[j] ;
 
-                            // comments attributes from refresh_gift_and_comment:
-                            // todo: where is created_at_server timestamp?
-                            //if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids ;
-                            //if (comment.price != comments[index].price) comment.price = comments[index].price ;
-                            //if (comment.currency != comments[index].currency) comment.currency = comments[index].currency ;
-                            //if (comment.comment != comments[index].comment) comment.comment = comments[index].comment ;
-                            //if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client ;
-                            //if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal ;
-                            //if (comment.deleted_at != comments[index].deleted_at) comment.deleted_at = comments[index].deleted_at ;
-                            //if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted ;
-                            //if (comment.updated_by != comments[index].updated_by) comment.updated_by = comments[index].updated_by ;
-
-                            // comments attributes from comment sha256 calc:
-                            // calculate sha256 value for comment. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
-                            // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
-                            // - created_at_client - used in client path of server side sha256 signature - not included in comment sha256 calculation
-                            // - comment           - used in client path of server side sha256 signature - not included in comment sha256 calculation
-                            // - price             - used in client path of server side sha256 signature - not included in comment sha256 calculation
-                            // - currency          - used in client path of server side sha256 signature - not included in comment sha256 calculation
-                            // - user_ids          - used in server side sha256 signature - not included in comment sha256 calculation
-                            // - created_at_server - returned from new comments request and not included in comment sha256 calculation
-                            // - new_deal          - boolean: null or true. null: comment. true: new deal proposal - include in comment sha256 calculation
-                            // - deleted_at        - deleted at client timestamp - - include in comment sha256 calculation
-                            // - accepted          - accepted boolean - true if accepted by creator of gift - false if rejected by creator of gift - include in comment sha256 calculation
-                            // - updated_by        - user id list for users that have accepted or rejected proposal - must be a subset of creators of gift - include in comment sha256 calculation
-
-                            // todo: 1 - add server side deleted_at boolean or timestamp. delete should be verified by server and server should know that comment has been deleted
-                            // todo: 2 - include sha256 for comments? gift should be rejected if gift.sha256 is invalid
+                            // todo: 1 - add server side deleted_at boolean or timestamp to comment. delete should be verified by server and server should know that comment has been deleted
 
                             gift_clone.comments.push({
                                 cid: comment.cid,
@@ -3724,44 +3748,39 @@ angular.module('gifts', ['ngRoute'])
                 } // if doublet_cids
                 new_cids.length = 0 ;
 
-                // pass 1 - check for new gifts where server sha256 signature should be verified
+                // pass 1 - check for new gifts and new comments where server sha256 signature must be verified
                 msg.pass = 1 ;
             } // if pass 0
 
 
             if (msg.pass == 1) {
-                // pass 1 - find new gifts where server sha256 signature must be validated before continuing with pass 2
-                // - and find new comments where server sha256 signature must be validated before continuing with pass 2
+                // pass 1 - find new gifts and new comments where server sha256 signature must be validated before continuing with pass 2
+                // gifts and comments signatures are validated in ping (verify_gifts and verify_comments)
                 var validate_gifts_on_server = 0 ;
                 var validate_comments_on_server = 0 ;
                 var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, old_cids ;
                 for (i=0 ; i < msg.gifts.length ; i++) {
                     new_gift = msg.gifts[i] ;
-                    if (!new_gift.created_at_server) continue ; // error reported in pass 2 - todo: send_gifts message should be json validated
                     gid = new_gift.gid ;
-                    if (is_gift_on_ignore_list(device, gid)) continue ; // skip gift
+                    if (is_gift_on_ignore_list(device, gid)) continue ; // skip gift (invalid signature in a previous message)
                     if (gifts_index.hasOwnProperty(gid)) {
                         // found old gift
                         // check for new comments in old gift that must be server validated before continuing with pass 2
                         index = gifts_index[gid] ;
-                        if (!index || (index < 0) || (index >= gifts.length)) continue ; // any system errors are reported in pass 2
+                        if (!index || (index < 0) || (index >= gifts.length)) continue ; // system errors are reported in pass 2
                         old_gift = gifts[index] ;
-                        if (!old_gift || (old_gift.gid != gid)) continue ; // any system errors are reported in pass 2
+                        if (!old_gift || (old_gift.gid != gid)) continue ; // system errors are reported in pass 2
                         old_cids = [] ;
                         if (old_gift.comments) for (j=0 ; j<old_gift.comments.length ; j++) old_cids.push(old_gift.comments[j].cid) ;
                         if (new_gift.comments) for (j=0 ; j<new_gift.comments.length ; j++) {
                             new_comment = new_gift.comments[j] ;
-                            if (!new_comment.created_at_server) continue ; // error reported in pass 2
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
                             if (old_cids.indexOf(new_comment.cid) == -1) {
-                                if (new_comment.hasOwnProperty('verify_seq')) delete comment.verify_seq;
-                                if (new_comment.hasOwnProperty('verified_by_server')) delete comment.verified_by_server;
                                 validate_comments_on_server += 1;
                                 verify_comments.push({gid: gid, comment: new_comment});
                             }
                         }
                         continue ;
-
                     }
                     // new gift - must be a gift from a mutual friend
                     is_mutual_gift = false ;
@@ -3777,23 +3796,19 @@ angular.module('gifts', ['ngRoute'])
                     // new gift from a mutual friend.
                     // server sha256 signature must be verified before continuing with pass 2
                     validate_gifts_on_server += 1 ;
-                    if (new_gift.hasOwnProperty('verify_seq')) delete gift.verify_seq ;
-                    if (new_gift.hasOwnProperty('verified_by_server')) delete gift.verified_by_server ;
                     verify_gifts.push(new_gift) ;
                     if (new_gift.comments) {
                         // server validate new comments
                         for (j = 0; j < new_gift.comments.length; j++) {
                             new_comment = new_gift.comments[j];
-                            if (!new_comment.created_at_server) continue ; // error reported in pass 2
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
-                            if (new_comment.hasOwnProperty('verify_seq')) delete comment.verify_seq;
-                            if (new_comment.hasOwnProperty('verified_by_server')) delete comment.verified_by_server;
                             validate_comments_on_server += 1;
                             verify_comments.push({gid: gid, comment: new_comment});
                         } // for j (comments)
                     } // if
                 } // for i (gifts loop)
 
+                // ready for pass 2 - but wait for any server validation for new gift and new comments
                 msg.pass = 2 ;
                 if (validate_gifts_on_server + validate_comments_on_server > 0) {
                     // wait. continue with pass 2 after next ping
@@ -3813,13 +3828,13 @@ angular.module('gifts', ['ngRoute'])
             }
 
             if (verify_gifts.length + verify_comments.length > 0) {
-                // wait for next ping
+                // wait for next ping - server validation for gift created on other gofreerev servers can take some time
                 console.log(pgm + 'Waiting for new gifts and new comments to be server validated.');
                 mailbox.read.push(msg);
                 return;
             }
 
-            // pass 2 - full validation
+            // pass 2 - ready for full validation
             var already_on_ignore_list = [] ;
             var index_errors = [] ;
             var identical_gift_and_comments = [] ;

@@ -622,7 +622,7 @@ JSON_SCHEMA = {
                     :gifts => {
                         :type => 'array',
                         :items => {
-                            :type => 'object',
+                            :type => 'object', # = gift
                             :properties => {
                                 # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                                 :gid => {:type => 'string', :pattern => uid_pattern},
@@ -655,7 +655,7 @@ JSON_SCHEMA = {
                                 :comments => {
                                     :type => 'array',
                                     :items => {
-                                        :type => 'object',
+                                        :type => 'object', # = comment
                                         :properties => {
                                             # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                                             :cid => {:type => 'string', :pattern => uid_pattern},
@@ -679,13 +679,13 @@ JSON_SCHEMA = {
                                             :accepted => {:type => %w(undefined boolean) },
                                             # updated_by - list with internal user id - users that have accepted or rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
                                             :updated_by => {:type => %w(undefined array), :items => {:type => 'integer'}}
-                                        },
+                                        }, # comment properties
                                         :required => %w(cid user_ids comment created_at_client created_at_server),
                                         :additionalProperties => false
                                     },
                                     :minItems => 1
                                 }
-                            },
+                            }, # gift properties
                             :required => %w(gid giver_user_ids receiver_user_ids created_at_client created_at_server direction description),
                             :additionalProperties => false
                         },

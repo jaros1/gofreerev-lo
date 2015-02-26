@@ -319,10 +319,7 @@ class Gift < ActiveRecord::Base
     #              {"gid":"14239781115388735516","sha256":"Zøl¦_µÿ|t\u0000#*Ï\u0017=Úö´VQ­À^Bõ@°Y","giver_user_ids":[920],"receiver_user_ids":null,"seq":2}]
     # login_user_ids = ["78951805/foursquare","1092213433/instagram","1705481075/facebook"]
 
-    # empty or invalid call (request has already been json validated)
-    if !new_gifts or new_gifts.class != Array or new_gifts.size == 0
-      return { :error => 'Invalid call. Expected array with one or more new gifts for server side verification.'}
-    end
+    return unless new_gifts
 
     # cache friends for login users - giver and/or receiver for gifts must be friend of login user
     login_users = User.where(:user_id => login_user_ids)

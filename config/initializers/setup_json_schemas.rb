@@ -650,7 +650,7 @@ JSON_SCHEMA = {
                                 # like - now a boolean - todo: must be changed to an array with user ids and like/unlike timestamps
                                 :like => {:type => %w(undefined boolean)},
                                 # optional deleted at timestamp if gift has been deleted by giver or receiver
-                                :deleted_at => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+                                :deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                 # optional array with gift comments
                                 :comments => {
                                     :type => 'array',
@@ -674,7 +674,7 @@ JSON_SCHEMA = {
                                             # optional new_deal boolean - true if new deal proposal - false if cancelled new deal proposal
                                             :new_deal => {:type => %w(undefined boolean) },
                                             # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter
-                                            :deleted_at => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+                                            :deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                             # optional accepted boolean - true if new proposal has been accepted by creator of gift/offer, false if new proposal has been rejected by creator of gift/offer
                                             :accepted => {:type => %w(undefined boolean) },
                                             # updated_by - list with internal user id - users that have accepted or rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?

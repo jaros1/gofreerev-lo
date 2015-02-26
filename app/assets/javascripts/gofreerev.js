@@ -2158,6 +2158,23 @@ angular.module('gifts', ['ngRoute'])
                         }
                     }
                 }
+                // gift data migration - change gift.created_at_server from a unix timestamp to an integer - server number - 1 for current server
+                if (gift.hasOwnProperty('created_at_server')) {
+                    if (gift.created_at_server.toString().length == 10) {
+                        gift.created_at_server = 1 ;
+                        migration = true ;
+                    }
+                }
+                // comment data migration - change comment.created_at_server from a unix timestamp to an integer - server number - 1 for current server
+                if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
+                    for (j=0 ; j<gift.comments.length ; j++) {
+                        comment = gift.comments[j] ;
+                        if (comment.created_at_server.toString().length == 10) {
+                            comment.created_at_server = 1 ;
+                            migration = true ;
+                        }
+                    }
+                }
 
                 gifts.push(gift);
             }
@@ -2363,9 +2380,8 @@ angular.module('gifts', ['ngRoute'])
             init_gifts_index();
         } // unshift_gift
 
-        // send meta-data for newly created gifts to server and get gift.created_at_server unix timestamps from server.
+        // send meta-data for newly created gifts to server and get gift.created_at_server response (boolean) from server.
         // called from UserService.ping
-        // gift timestamps: created_at_client (set by client) and created_at_server (returned from server)
         var new_gifts_request = function () {
             var request = [];
             var gift, hash, text_client, sha256_client;
@@ -2389,46 +2405,55 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
             if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' gifts was not created');
-            if (!response.hasOwnProperty('data')) return;
-            var new_gifts = response.data;
+            if (!response.hasOwnProperty('gifts')) return;
+            var new_gifts = response.gifts;
             var new_gift, gid, index, gift, created_at_server;
             var save = false;
             for (var i = 0; i < new_gifts.length; i++) {
                 new_gift = new_gifts[i];
-                // validate new_gift in response.data array
-                if (!new_gift.hasOwnProperty('gid')) {
-                    // invalid json response
-                    console.log(pgm + 'Invalid response. gid property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift));
-                    continue;
-                }
                 gid = new_gift.gid;
-                if (new_gift.hasOwnProperty('error')) {
-                    // report error from server validation
-                    console.log(pgm + 'data[' + i + '].error = ' + new_gift.error);
+                // check response. must be an ok response without error message or error response with an error message.
+                if (new_gift.hasOwnProperty('error') && new_gift.created_at_server) {
+                    console.log(pgm + 'System error. Invalid new gifts response. Gift ' + gid + ' signature created on server WITH an error message. error = ' + new_gift.error) ;
+                    continue ;
+                }
+                if (!new_gift.hasOwnProperty('error') && !new_gift.created_at_server) {
+                    console.log(pgm + 'System error. Invalid new gifts response. Gift ' + gid + ' signature was not created on server and no error message was returned.') ;
+                    continue ;
+                }
+                if (!new_gift.created_at_server) {
+                    // gift signature was not created
+                    console.log(pgm + 'gift + ' + gid + ' signature was not created on server. ' + new_gift.error);
                     // todo: delete gift and display error message in page header
                     continue;
                 }
+                // gift signature was created
                 if (!gifts_index.hasOwnProperty(gid)) {
-                    console.log(pgm + 'Invalid response. Unknown gid in data[' + i + ' = ' + JSON.stringify(new_gift));
+                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in new gifts response (1).');
                     continue;
                 }
                 index = gifts_index[gid];
+                if ((index < 0) || (index >= gifts.length)) {
+                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in new gifts response (2).');
+                    continue;
+                }
                 gift = gifts[index];
-                if (!new_gift.hasOwnProperty('created_at_server')) {
-                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_gift));
+                if (!gift) {
+                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in new gifts response (3).');
+                    continue;
                 }
                 if (gift.hasOwnProperty('created_at_server')) {
-                    if (new_gift.created_at_server == gift.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.');
-                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for gift.');
-                    continue;
+                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was setted between new gifts request and new gifts response.') ;
+                    continue ;
                 }
                 refresh_gift(gift);
                 if (gift.hasOwnProperty('created_at_server')) {
-                    if (new_gift.created_at_server == gift.created_at_server) null; // ok - received in an other browser session
-                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for gift.');
+                    // thats is ok if multiple browser sessions with identical login / identical client user id
+                    if (gift.created_at_server == 1) null; // ok - received in an other browser session
+                    else console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was setted to an invalid value between new gifts request and new gifts response. Expected created_at_server = 1. Found created_at_server = ' + gift.created_at_server + '.');
                     continue;
                 }
-                gift.created_at_server = new_gift.created_at_server;
+                gift.created_at_server = 1;
                 save = true;
             } // for i
             if (save) save_gifts();

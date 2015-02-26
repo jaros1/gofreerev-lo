@@ -2,6 +2,9 @@
 # server side: https://github.com/ruby-json-schema/json-schema
 # client side: https://github.com/geraintluff/tv4
 
+# max number of gofreerev servers
+max_server_no = 10000
+
 # helper expression for gid, sid, cid etc (20 decimal string). To big to be a JS integer. From 2014-01-01 and one year forward in time
 uid_from = (Time.zone.parse '2014-01-01').to_i
 uid_to = 1.year.from_now.to_i
@@ -327,27 +330,26 @@ JSON_SCHEMA = {
               },
               # optional - return fatal errors to client (invalid json request)
               :error => {:type => 'string'},
-              # optional array with created_at_server timestamps (or error messages) response for new_gifts request
+              # optional array with response for new_gifts request
               :new_gifts => {
                   :type => 'object',
                   :properties => {
                       # any generic error message when processing of new_gifts request. see also error property in data array
                       :error => {:type => 'string'},
-                      # array with created_at_server timestamps or error messages for each gid in new_gifts request
-                      # todo: rename to gifts
-                      :data => {
+                      # array with created_at_server = true or error messages for each gid in new_gifts request
+                      :gifts => {
                           :type => 'array',
                           :items => {
                               :type => 'object',
                               :properties => {
                                   # required unique gift id from new_gifts request
                                   :gid => {:type => 'string', :pattern => uid_pattern},
-                                  # error message if signature for gift could not be saved on server
-                                  :error => {:type => 'string'},
-                                  # ok - created at server unix timestamp - 10 decimals - gift signature was saved on server
-                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
+                                  # created_at_server - boolean here - integer in client (1=current gofreerev server)
+                                  :created_at_server => {:type => 'boolean'},
+                                  # error message if gift could not be created (created_at_server=false)
+                                  :error => {:type => 'string'}
                               },
-                              :required => %w(gid),
+                              :required => %w(gid created_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1
@@ -357,13 +359,13 @@ JSON_SCHEMA = {
                   },
                   :additionalProperties => false
               },
-              # object and array with created_at_server timestamps (or error messages) response for new_comments request
+              # object and array with created_at_server = true (or error messages) response for new_comments request
               :new_comments => {
                   :type => 'object',
                   :properties => {
                       # any generic error message when processing of new_comments request. see also error property in data array
                       :error => {:type => 'string'},
-                      # array with created_at_server timestamps or error messages for each cid in new_comments request
+                      # array with created_at_server = true or error messages for each cid in new_comments request
                       # todo: rename to comments
                       :data => {
                           :type => 'array',
@@ -372,12 +374,12 @@ JSON_SCHEMA = {
                               :properties => {
                                   # required unique comment id from new_comments request
                                   :cid => {:type => 'string', :pattern => uid_pattern},
-                                  # error message if signature for comment could not be saved on server
-                                  :error => {:type => 'string'},
-                                  # ok - created at server unix timestamp - 10 decimals - comment signature was saved on server
-                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
+                                  # created_at_server - boolean here - integer in client (1=current gofreerev server)
+                                  :created_at_server => {:type => 'boolean' },
+                                  # error message if signature for comment could not be created (created_at_server = false)
+                                  :error => {:type => 'string'}
                               },
-                              :required => %w(cid),
+                              :required => %w(cid created_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1
@@ -387,24 +389,24 @@ JSON_SCHEMA = {
                   },
                   :additionalProperties => false
               },
-              # optional array with created_at_server timestamps or null (error) response for verify_gifts request
+              # optional array with created_at_server (boolean) response for verify_gifts request
               :verify_gifts => {
                   :type => 'object',
                   :properties => {
-                      # array with created_at_server timestamps or null for row in verify_gifts request
+                      # array with created_at_server boolean for rows in verify_gifts request
                       :gifts => {
                           :type => 'array',
                           :items => {
                               :type => 'object',
                               :properties => {
-                                  # unique seq from verify_gifts request (gid is not guaranteed to be unique when receiving gifts from other devices)
+                                  # unique seq from verify_gifts request (gid is not guaranteed to be unique when receiving gifts from other clients)
                                   :seq => {:type => 'integer'},
                                   # gid - unique gift id - from verify_gifts request
                                   :gid => {:type => 'string', :pattern => uid_pattern},
-                                  # created_at_server unix timestamp or null (error)
-                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
+                                  # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
+                                  :created_at_server => {:type => 'boolean'}
                               },
-                              :required => %w(seq gid),
+                              :required => %w(seq gid created_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1
@@ -414,11 +416,11 @@ JSON_SCHEMA = {
                   },
                   :additionalProperties => false
               },
-              # optional array with created_at_server timestamps or null (error) response for verify_comments request
+              # optional array with created_at_server boolean response for verify_comments request
               :verify_comments => {
                   :type => 'object',
                   :properties => {
-                      # array with created_at_server timestamps or null for row in verify_comments request
+                      # array with created_at_server boolean for rows in verify_comments request
                       :data => {
                           :type => 'array',
                           :items => {
@@ -428,10 +430,10 @@ JSON_SCHEMA = {
                                   :seq => {:type => 'integer'},
                                   # cid - unique comment id - from verify_comments request
                                   :cid => {:type => 'string', :pattern => uid_pattern},
-                                  # created_at_server unix timestamp or null (error)
-                                  :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to}
+                                  # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
+                                  :created_at_server => {:type => 'boolean'}
                               },
-                              :required => %w(seq cid),
+                              :required => %w(seq cid created_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1
@@ -472,7 +474,7 @@ JSON_SCHEMA = {
                           :sender_sha256 => {:type => 'string'},
                           # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
                           :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
-                          # when was message received from other device - unix timestamp
+                          # when was message received from other device - unix timestamp - todo: rename to received_on_server
                           :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i},
                           # message for receiver device encrypted with device public key
                           :message => {:type => 'string'}
@@ -631,8 +633,8 @@ JSON_SCHEMA = {
                                 :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
                                 # created at client unix timestamp - 10 decimals - used in gift signature on server
                                 :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
-                                # created at server unix timestamp - 10 decimals - timestamp when gift signature was saved on server
-                                :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                # created at server - server number - 1 for this server - todo: must be translated when sending cross server messages
+                                :created_at_server => {:type => 'integer', :minimum => 1, :maximum => max_server_no},
                                 # optional price - set when gift is created or when gift is accepted by a friend
                                 :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
                                 # optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
@@ -669,8 +671,8 @@ JSON_SCHEMA = {
                                             :comment => {:type => 'string'},
                                             # created at client unix timestamp - 10 decimals - used in comment signature on server
                                             :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
-                                            # created at server unix timestamp - 10 decimals - timestamp when comment signature was saved on server
-                                            :created_at_server => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+                                            # created at server - server number - 1 for current server - todo: must be translated when sending cross server messages
+                                            :created_at_server => {:type => 'integer', :minimum => 1, :maximum => max_server_no},
                                             # optional new_deal boolean - true if new deal proposal - false if cancelled new deal proposal
                                             :new_deal => {:type => %w(undefined boolean) },
                                             # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter

@@ -199,11 +199,12 @@ class Gift < ActiveRecord::Base
   end
 
   # receive list with newly gifts from client,
-  # verify user ids, generate a sha256 digest, save gifts and return created_at_server timestamps to client
-  # sha256 digest can be used as a a control when replicating gifts between clients
-  # todo: use short internal user id (sequence) or use full user id (uid+provider) in client js gifts array?
-  #       the app should support replication gift from device a on app server 1 to device b on app server 2
-  #       but interval user ids can not be used across two different gofreerev-lo servers
+  # verify user ids, generate a sha256 digest, save gifts and return created_at_server = true/false to client
+  # note that created_at_server is an boolean in this response but is an integer (server number) on client. 1 = this server
+  # gift.sha256 digest is used as a control when replicating gifts between clients
+  # todo line 1: use short internal user id (sequence) or use full user id (uid+provider) in client js gifts array?
+  # todo line 2  the app should support replication gift from device a on app server 1 to device b on app server 2
+  # todo line 3  but internal user ids can not be used across two different gofreerev-lo servers
   def self.new_gifts (new_gifts, login_user_ids)
     # logger.debug2 "new_gifts = #{new_gifts}"
     # logger.debug2 "login_user_ids = #{login_user_ids}"
@@ -225,7 +226,7 @@ class Gift < ActiveRecord::Base
     # logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
     # check and create sha256 digest signature for the new gift(s)
     new_gifts.shuffle!
-    data = []
+    response = []
     no_errors = 0
     # new gifts array has already been json schema validated to some extend
     new_gifts.each do |new_gift|
@@ -244,12 +245,12 @@ class Gift < ActiveRecord::Base
         receiver_user_ids = nil
       end
       if !giver_user_ids and !receiver_user_ids
-        data << {:gid => gid, :error => "#{msg}giver_user_ids or receiver_user_ids property was missing"}
+        response << {:gid => gid, :created_at_server => false, :error => "#{msg}giver_user_ids or receiver_user_ids property was missing"}
         no_errors += 1
         next
       end
       if giver_user_ids and receiver_user_ids
-        data << {:gid => gid, :error => "#{msg}both giver_user_ids and receiver_user_ids properties are not allowed for a new gift."}
+        response << {:gid => gid, :created_at_server => false, :error => "#{msg}both giver_user_ids and receiver_user_ids properties are not allowed for a new gift."}
         no_errors += 1
         next
       end
@@ -271,9 +272,9 @@ class Gift < ActiveRecord::Base
         if g
           # gift already exists - check signature
           if g.sha256 == sha256_server
-            data << {:gid => gid, :created_at_server => g.created_at.to_i}
+            response << {:gid => gid, :created_at_server => true}
           else
-            data << {:gid => gid, :error => "#{msg}Gift exists but sha256 signature is invalid."}
+            response << {:gid => gid, :created_at_server => false, :error => "#{msg}Gift exists but sha256 signature is invalid."}
             no_errors += 1
           end
           next
@@ -282,7 +283,7 @@ class Gift < ActiveRecord::Base
         g.gid = gid
         g.sha256 = sha256_server
         g.save!
-        data << {:gid => gid, :created_at_server => g.created_at.to_i}
+        response << {:gid => gid, :created_at_server => true}
         next
       end
 
@@ -299,18 +300,20 @@ class Gift < ActiveRecord::Base
       # logger.debug2 "missing_login_providers = #{missing_login_providers.join('. ')}"
       # nice informative error message
       if (changed_login_providers.size > 0)
-        data << {:gid => gid, :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since gift was created. Please log in with old #{changed_login_providers.join('. ')} user."}
+        response << {:gid => gid, :created_at_server => false,
+                     :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since gift was created. Please log in with old #{changed_login_providers.join('. ')} user."}
       else
-        data << {:gid => gid, :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
+        response << {:gid => gid, :created_at_server => false,
+                     :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
       end
       no_errors += 1
 
     end
-    return {:data => data, :no_errors => no_errors}
+    return {:gifts => response, :no_errors => no_errors}
   end # self.new_gifts
 
 
-  # verify gifts request from client - used when receiving new gifts from other devices - check server side sha256 signature
+  # verify gifts request from client - used when receiving new gifts from other clients - check server side sha256 signature and return true or false
   # login user must be friend with giver or receiver of gift
   def self.verify_gifts (new_gifts, login_user_ids)
     logger.debug2 "new_gifts = #{new_gifts.to_json}"
@@ -362,7 +365,7 @@ class Gift < ActiveRecord::Base
         # gift not found -
         # todo: how to implement cross server gift sha256 signature validation?
         logger.debug2 "gid #{gid} was not found"
-        response << { :seq => seq, :gid => gid }
+        response << { :seq => seq, :gid => gid, :created_at_server => false }
         next
       end
 
@@ -377,7 +380,7 @@ class Gift < ActiveRecord::Base
           mutual_friend = true if friend and friend <= 2
         else
           logger.warn2 "Gid #{gid} : Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
-          response << { :seq => seq, :gid => gid }
+          response << { :seq => seq, :gid => gid, :created_at_server => false }
           next
         end
       end if new_gift["giver_user_ids"]
@@ -391,7 +394,7 @@ class Gift < ActiveRecord::Base
           mutual_friend = true if friend and friend <= 2
         else
           logger.warn2 "Gid #{gid} : Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
-          response << { :seq => seq, :gid => gid }
+          response << { :seq => seq, :gid => gid, :created_at_server => false }
           next
         end
       end if new_gift["receiver_user_ids"]
@@ -403,13 +406,13 @@ class Gift < ActiveRecord::Base
       giver_user_ids.sort!
       receiver_user_ids.sort!
 
-      # generate server side sha256 signature from new gift
+      # calculate and check server side sha256 signature for gift in verify gifts request
       if giver_user_ids.size > 0
         sha256_server_text = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
         if gift.sha256 == sha256_server
           # gift ok - was created by giver
-          response << { :seq => seq, :gid => gid, :created_at_server => gift.created_at.to_i }
+          response << { :seq => seq, :gid => gid, :created_at_server => true }
           next
         end
       end
@@ -418,13 +421,13 @@ class Gift < ActiveRecord::Base
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
         if gift.sha256 == sha256_server
           # gift ok - was created by receiver
-          response << { :seq => seq, :gid => gid, :created_at_server => gift.created_at.to_i }
+          response << { :seq => seq, :gid => gid, :created_at_server => true }
           next
         end
       end
 
-      # invalid signature. one or more fields in new gift is invalid / has been changed
-      response << { :seq => seq, :gid => gid }
+      # invalid signature. one or more fields in gift is invalid / has been changed by a client
+      response << { :seq => seq, :gid => gid, :created_at_server => false }
 
     end # each new_gift
 

@@ -367,7 +367,7 @@ JSON_SCHEMA = {
                       :error => {:type => 'string'},
                       # array with created_at_server = true or error messages for each cid in new_comments request
                       # todo: rename to comments
-                      :data => {
+                      :comments => {
                           :type => 'array',
                           :items => {
                               :type => 'object',

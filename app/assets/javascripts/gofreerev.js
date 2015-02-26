@@ -2169,11 +2169,12 @@ angular.module('gifts', ['ngRoute'])
                 if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
                     for (j=0 ; j<gift.comments.length ; j++) {
                         comment = gift.comments[j] ;
-                        if (comment.created_at_server.toString().length == 10) {
-                            comment.created_at_server = 1 ;
-                            migration = true ;
-                        }
-                    }
+                        if (comment.hasOwnProperty('created_at_server')) {
+                            if (comment.created_at_server.toString().length == 10) {
+                                comment.created_at_server = 1 ;
+                                migration = true ;
+                            }
+                        }                    }
                 }
 
                 gifts.push(gift);
@@ -2644,14 +2645,14 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'Not implemented.');
         };
 
-        // send meta-data for newly created comments to server and get comment.created_at_server unix timestamps from server.
+        // send meta-data for new comments to server and get comment.created_at_server boolean.
         // called from UserService.ping
         var new_comments_request_index = {}; // from cid to comment - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
             var pgm = service + '.new_comments_request: ';
             var request = [];
             new_comments_request_index = {};
-            var gift, comment, hash, sha256_client, cid;
+            var gift, comments, comment, hash, sha256_client, cid;
             for (var i = 0; i < gifts.length; i++) {
                 if (!gifts[i].comments) continue;
                 gift = gifts[i];
@@ -2675,48 +2676,52 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
             if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' comments was not created');
-            if (!response.hasOwnProperty('data')) return;
-            var new_comments = response.data;
+            if (!response.hasOwnProperty('comments')) return;
+            var new_comments = response.comments;
             var new_comment, cid, comment, created_at_server;
             var save = false;
             for (var i = 0; i < new_comments.length; i++) {
                 new_comment = new_comments[i];
-                // validate new_comment in response.data array
-                if (!new_comment.hasOwnProperty('cid')) {
-                    // invalid json response
-                    console.log(pgm + 'Invalid response. cid property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment));
-                    continue;
-                }
                 cid = new_comment.cid;
-                if (new_comment.hasOwnProperty('error')) {
-                    // report error from server validation
-                    console.log(pgm + 'data[' + i + '].error = ' + new_comment.error);
-                    // todo: delete comment and display error message in page header or in inbox
+                // check response. must be an ok response without error message or error response with an error message.
+                if (new_comment.hasOwnProperty('error') && new_comment.created_at_server) {
+                    console.log(pgm + 'System error. Invalid new comments response. Comment ' + cid + ' signature created on server WITH an error message. error = ' + new_comment.error) ;
+                    continue ;
+                }
+                if (!new_comment.hasOwnProperty('error') && !new_comment.created_at_server) {
+                    console.log(pgm + 'System error. Invalid new comments response. Comment ' + cid + ' signature was not created on server and no error message was returned.') ;
+                    continue ;
+                }
+                if (!new_comment.created_at_server) {
+                    // comment signature was not created
+                    console.log(pgm + 'Comment + ' + cid + ' signature was not created on server. ' + new_comment.error);
+                    // todo: delete comment and display error message in page header or insert as an user notification
                     continue;
                 }
+                // comment signature was created
                 if (!new_comments_request_index.hasOwnProperty(cid)) {
-                    console.log(pgm + 'Invalid response. Unknown cid in data[' + i + ' = ' + JSON.stringify(new_comment));
-                    continue;
-                }
-                if (!new_comment.hasOwnProperty('created_at_server')) {
-                    console.log(pgm + 'Invalid response. created_at_server property was missing error in data[' + i + '] = ' + JSON.stringify(new_comment));
+                    console.log(pgm + 'System error. Unknown comment ' + cid + ' in new comments response (1)');
                     continue;
                 }
                 comment = new_comments_request_index[cid];
-                if (comment.hasOwnProperty('created_at_server')) {
-                    if (new_comment.created_at_server == comment.created_at_server) console.log(pgm + 'Warning. Created_at_server property in data[' + i + '] has been received earlier.');
-                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for comment.');
+                if (!comment) {
+                    console.log(pgm + 'System error. Unknown comment ' + cid + ' in new comments response (2)');
                     continue;
+                }
+                if (comment.hasOwnProperty('created_at_server')) {
+                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property was setted between new comments request and new comments response.') ;
+                    continue ;
                 }
                 // todo: add refresh_comment method
                 // refresh_comment(comment) ;
                 if (comment.hasOwnProperty('created_at_server')) {
-                    if (new_comment.created_at_server == comment.created_at_server) null; // ok - received in an other browser session
-                    else console.log(pgm + 'Invalid response. Has already received an other created_at_server timestamp for comment.');
+                    // thats is ok if multiple browser sessions with identical login / identical client user id
+                    if (comment.created_at_server == 1) null; // ok - received in an other browser session
+                    else console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was setted to an invalid value between new comments request and new comments response. Expected created_at_server = 1. Found created_at_server = ' + comment.created_at_server + '.');
                     continue;
                 }
-                comment.created_at_server = new_comment.created_at_server;
-                save = true;
+                comment.created_at_server = 1;
+                save = true ;
             } // for i
             if (save) save_gifts();
             new_comments_request_index = {};

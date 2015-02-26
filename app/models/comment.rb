@@ -10,11 +10,11 @@ class Comment < ActiveRecord::Base
   # add_index "comments", ["cid"], name: "index_comments_on_cid", unique: true, using: :btree
 
   # receive list with new comments from client,
-  # verify user ids, generate a sha256 digests, save comments and return created_at_server timestamps to client
+  # verify user ids, generate a sha256 digests, save comments and return created_at_server boolean to client
   # sha256 digest is used as a control when replicating comments between clients
   # todo: use short internal user id (sequence) or use full user id (uid+provider) in client js comments array?
-  #       the app should support replication comment from device a on app server 1 to device b on app server 2
-  #       but interval user ids can not be used across two different gofreerev-lo servers
+  # todo  the app should support replication comment from device a on app server 1 to device b on app server 2
+  # todo  but interval user ids can not be used across two different gofreerev-lo servers
   def self.new_comments (new_comments, login_user_ids)
     # logger.debug2 "new_comments = #{new_comments}"
     # logger.debug2 "login_user_ids = #{login_user_ids}"
@@ -36,7 +36,7 @@ class Comment < ActiveRecord::Base
     # logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
     # check and create sha256 digest signature for the new comment(s)
     new_comments.shuffle!
-    data = []
+    response = []
     no_errors = 0
     # new comments array has already been json schema validated to some extend
     new_comments.each do |new_comment|
@@ -58,9 +58,9 @@ class Comment < ActiveRecord::Base
         if c
           # comment already exists - check signature
           if c.sha256 == sha256_server
-            data << { :cid => cid, :created_at_server => c.created_at.to_i }
+            response << { :cid => cid, :created_at_server => true }
           else
-            data << { :cid => cid, :error => "#{msg}Comment exists but sha256 signature is invalid." }
+            response << { :cid => cid, :created_at_server => false, :error => "#{msg}Comment exists but sha256 signature is invalid." }
             no_errors += 1
           end
           next
@@ -69,7 +69,7 @@ class Comment < ActiveRecord::Base
         c.cid = cid
         c.sha256 = sha256_server
         c.save!
-        data << { :cid => cid, :created_at_server => c.created_at.to_i }
+        response << { :cid => cid, :created_at_server => true }
         next
       end
 
@@ -86,14 +86,16 @@ class Comment < ActiveRecord::Base
       # logger.debug2 "missing_login_providers = #{missing_login_providers.join('. ')}"
       # nice informative error message
       if (changed_login_providers.size > 0)
-        data << { :cid => cid, :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since comment was created. Please log in with old #{changed_login_providers.join('. ')} user."}
+        response << { :cid => cid, :created_at_server => false,
+                      :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since comment was created. Please log in with old #{changed_login_providers.join('. ')} user."}
       else
-        data << { :cid => cid, :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since comment was created. Please log in for #{missing_login_providers.join('. ')}."}
+        response << { :cid => cid, :created_at_server => false,
+                      :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since comment was created. Please log in for #{missing_login_providers.join('. ')}."}
       end
       no_errors += 1
 
     end
-    return { :data => data, :no_errors => no_errors }
+    return { :comments => response, :no_errors => no_errors }
   end # self.new_comments
 
 

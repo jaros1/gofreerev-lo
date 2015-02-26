@@ -79,6 +79,7 @@ users_type = {
     }
 }
 
+
 JSON_SCHEMA = {
     # login request/response is used after local device login. oauth information is send to server, validated and updated api friend lists are returned to client
     # oauth information is stored encrypted in localStorage in browser and only temporary in server session doing log in
@@ -177,8 +178,9 @@ JSON_SCHEMA = {
               :client_timestamp => client_timestamp_type,
               # sid - unique session id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
               :sid => {:type => 'string', :pattern => uid_pattern},
-              # new_gifts - optional array with minimal meta-information for new gifts (gid, sha256 and user ids) -
-              # login users and creators of gifts must be identical - gift is always created on this server
+
+              # new_gifts - optional array with minimal meta-information for new gifts (gid, sha256 and user ids)
+              # login users and creators of gifts must be identical - gift is always created on this server with created_at_server = 1
               :new_gifts => {
                   :type => 'array',
                   :items => {
@@ -186,17 +188,71 @@ JSON_SCHEMA = {
                       :properties => {
                           # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :gid => {:type => 'string', :pattern => uid_pattern},
-                          # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                          # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                           :sha256 => {:type => 'string', :maxLength => 32},
                           # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
-                          :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
-                          :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                          :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                          :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
                       },
                       :required => %w(gid sha256),
                       :additionalProperties => false
                   },
                   :minItems => 1
               },
+
+              # verify_gifts - optional array used when verifying gifts received from other clients - check server sha256 signature created in a previous new_gifts request
+              # gift must be from a friend - gift can be from an other gofreerev server
+              :verify_gifts => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
+                          :seq => {:type => 'integer'},
+                          # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :gid => {:type => 'string', :pattern => uid_pattern},
+                          # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                          :sha256 => {:type => 'string', :maxLength => 32},
+                          # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # only used in accepted_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
+                          :sha256_accepted => {:type => 'string', :maxLength => 32},
+                          # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                          :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                          :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
+                      },
+                      :required => %w(seq gid sha256),
+                      :additionalProperties => false
+                  },
+                  :minItems => 1
+              },
+
+              # delete gifts request - optional array with deleted gifts. gift server sha256 signature is verified and server sha256_deleted signature is created
+              # at least one api logged in user must be giver or receiver of gift. sha256_deleted is required in request.
+              :delete_gifts => {
+                  :type => 'array',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :gid => {:type => 'string', :pattern => uid_pattern},
+                          # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                          :sha256 => {:type => 'string', :maxLength => 32},
+                          # required sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # optional sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
+                          # used as extra control if gift previously has been accepted
+                          :sha256_accepted => {:type => 'string', :maxLength => 32},
+                          # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                          :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                          :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
+                      },
+                      :required => %w(gid sha256 sha256_deleted),
+                      :additionalProperties => false
+                  },
+                  :minItems => 1
+              },
+
               # new_comments - optional array with minimal meta-information for new comments (cid, sha256 and user ids)
               :new_comments => {
                   :type => 'array',
@@ -215,28 +271,7 @@ JSON_SCHEMA = {
                   },
                   :minItems => 1
               },
-              # verify_gifts - optional array used when verifying gifts received from other device - check server sha256 signature created in a previous new_gifts request
-              # gift must be from a friend - gift can be from an other gofreerev server
-              :verify_gifts => {
-                  :type => 'array',
-                  :items => {
-                      :type => 'object',
-                      :properties => {
-                          # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
-                          :seq => {:type => 'integer'},
-                          # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-                          :gid => {:type => 'string', :pattern => uid_pattern},
-                          # sha256 digest of client side gift information (created at client + description + 4 open graph fields)
-                          :sha256 => {:type => 'string', :maxLength => 32},
-                          # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
-                          :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
-                          :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
-                      },
-                      :required => %w(seq gid sha256),
-                      :additionalProperties => false
-                  },
-                  :minItems => 1
-              },
+
               # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request
               :verify_comments => {
                   :type => 'array',
@@ -330,11 +365,12 @@ JSON_SCHEMA = {
               },
               # optional - return fatal errors to client (invalid json request)
               :error => {:type => 'string'},
+
               # optional array with response for new_gifts request
               :new_gifts => {
                   :type => 'object',
                   :properties => {
-                      # any generic error message when processing of new_gifts request. see also error property in data array
+                      # any generic error message when processing of new_gifts request. see also error property in gifts array
                       :error => {:type => 'string'},
                       # array with created_at_server = true or error messages for each gid in new_gifts request
                       :gifts => {
@@ -359,6 +395,65 @@ JSON_SCHEMA = {
                   },
                   :additionalProperties => false
               },
+
+              # optional array with created_at_server (boolean) response for verify_gifts request
+              :verify_gifts => {
+                  :type => 'object',
+                  :properties => {
+                      # any fatal errors
+                      :error => {:type => 'string'},
+                      # array with created_at_server boolean for rows in verify_gifts request
+                      :gifts => {
+                          :type => 'array',
+                          :items => {
+                              :type => 'object',
+                              :properties => {
+                                  # unique seq from verify_gifts request (gid is not guaranteed to be unique when receiving gifts from other clients)
+                                  :seq => {:type => 'integer'},
+                                  # gid - unique gift id - from verify_gifts request
+                                  :gid => {:type => 'string', :pattern => uid_pattern},
+                                  # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
+                                  :created_at_server => {:type => 'boolean'}
+                              },
+                              :required => %w(seq gid created_at_server),
+                              :additionalProperties => false
+                          },
+                          :minItems => 1
+                      }
+                  },
+                  :additionalProperties => false
+              },
+
+              # optional array with response for delete_gifts request
+              :delete_gifts => {
+                  :type => 'object',
+                  :properties => {
+                      # any fatal error when processing delete_gifts request. see also error in gifts array
+                      :error => {:type => 'string'},
+                      # array with deleted_at_server = true or error messages for each gid in delete_gifts request
+                      :gifts => {
+                          :type => 'array',
+                          :items => {
+                              :type => 'object',
+                              :properties => {
+                                  # required unique gift id from new_gifts request
+                                  :gid => {:type => 'string', :pattern => uid_pattern},
+                                  # deleted_at_server - boolean here - integer in client (1=current gofreerev server)
+                                  :deleted_at_server => {:type => 'boolean'},
+                                  # error message if gift could not be deleted (deleted_at_server=false)
+                                  :error => {:type => 'string'}
+                              },
+                              :required => %w(gid deleted_at_server),
+                              :additionalProperties => false
+                          },
+                          :minItems => 1
+                      },
+                      # optional number of errors returned in data array
+                      :no_errors => {:type => 'integer'}
+                  },
+                  :additionalProperties => false
+              },
+
               # object and array with created_at_server = true (or error messages) response for new_comments request
               :new_comments => {
                   :type => 'object',
@@ -386,33 +481,6 @@ JSON_SCHEMA = {
                       },
                       # optional number of errors returned in data array
                       :no_errors => {:type => 'integer'}
-                  },
-                  :additionalProperties => false
-              },
-              # optional array with created_at_server (boolean) response for verify_gifts request
-              :verify_gifts => {
-                  :type => 'object',
-                  :properties => {
-                      # array with created_at_server boolean for rows in verify_gifts request
-                      :gifts => {
-                          :type => 'array',
-                          :items => {
-                              :type => 'object',
-                              :properties => {
-                                  # unique seq from verify_gifts request (gid is not guaranteed to be unique when receiving gifts from other clients)
-                                  :seq => {:type => 'integer'},
-                                  # gid - unique gift id - from verify_gifts request
-                                  :gid => {:type => 'string', :pattern => uid_pattern},
-                                  # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
-                                  :created_at_server => {:type => 'boolean'}
-                              },
-                              :required => %w(seq gid created_at_server),
-                              :additionalProperties => false
-                          },
-                          :minItems => 1
-                      },
-                      # any fatal errors
-                      :error => {:type => 'string'}
                   },
                   :additionalProperties => false
               },

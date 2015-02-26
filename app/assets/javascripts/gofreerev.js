@@ -2381,6 +2381,8 @@ angular.module('gifts', ['ngRoute'])
             init_gifts_index();
         } // unshift_gift
 
+
+
         // send meta-data for newly created gifts to server and get gift.created_at_server response (boolean) from server.
         // called from UserService.ping
         var new_gifts_request = function () {
@@ -2401,6 +2403,7 @@ angular.module('gifts', ['ngRoute'])
             } // for i
             return (request.length == 0 ? null : request);
         }; // created_at_server_request
+        
         var new_gifts_response = function (response) {
             var pgm = service + '.new_gifts_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
@@ -2460,6 +2463,9 @@ angular.module('gifts', ['ngRoute'])
             if (save) save_gifts();
         }; // new_gifts_response
 
+        
+        
+        
         // check sha256 server signature for gifts received from other clients before adding or merging gift on this client
         // input is gifts in verify_gifts from send_gifts message pass 1 (receive_message_send_gifts)
         // gifts in verify_gifts array are moved to verify gifts buffer
@@ -2630,6 +2636,103 @@ angular.module('gifts', ['ngRoute'])
 
         }; // verify_gifts_response
 
+
+        // todo: remember delete request for remote gifts? this is gifts with created_at_server != 1. verification of remote gifts can take some time
+
+        // send meta-data for deleted gifts to server and get gift.deleted_at_server response (boolean) from server.
+        // called from UserService.ping
+        var delete_gifts_request = function () {
+            var request = [];
+            var gift, hash, text_client, sha256, sha256_deleted, sha256_accepted ;
+            for (var i = 0; i < gifts.length; i++) {
+                gift = gifts[i];
+                if (!gift.deleted_at_client) continue ;
+                if (!gift.deleted_at_server) {
+                    // send meta-data for deleted gift to server and generate a sha256_deleted signature for gift on server
+                    // client side sha256_accepted signature is only sent to server for accepted gifts (ekstra validation)
+                    sha256 = Gofreerev.sha256(
+                        gift.created_at_client.toString(), gift.description, gift.open_graph_url,
+                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image);
+                    sha256_deleted = Gofreerev.sha256(
+                        gift.created_at_client.toString(), gift.description, gift.open_graph_url,
+                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
+                        gift.deleted_at_client);
+                    if (gift.accepted_at_server) {
+                        sha256_accepted = Gofreerev.sha256(
+                            gift.created_at_client.toString(), gift.description, gift.open_graph_url,
+                            gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
+                            gift.accepted_at_client);
+                    }
+                    else sha256_accepted = null;
+                    hash = {gid: gift.gid, sha256: sha256, sha256_deleted: sha256_deleted};
+                    if (sha256_accepted) hash.sha256_accepted = sha256_accepted ;
+                    if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids;
+                    if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids;
+                    request.push(hash);
+                } // if
+            } // for i
+            return (request.length == 0 ? null : request);
+        }; // created_at_server_request
+
+        var delete_gifts_response = function (response) {
+            var pgm = service + '.delete_gifts_response: ';
+            // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+            if (response.hasOwnProperty('error')) console.log(pgm + response.error);
+            if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' gifts was not created');
+            if (!response.hasOwnProperty('gifts')) return;
+            var new_gifts = response.gifts;
+            var new_gift, gid, index, gift, created_at_server;
+            var save = false;
+            for (var i = 0; i < new_gifts.length; i++) {
+                new_gift = new_gifts[i];
+                gid = new_gift.gid;
+                // check response. must be an ok response without error message or error response with an error message.
+                if (new_gift.hasOwnProperty('error') && new_gift.deleted_at_server) {
+                    console.log(pgm + 'System error. Invalid deleted gifts response. Gift ' + gid + ' deleted signature created on server WITH an error message. error = ' + new_gift.error) ;
+                    continue ;
+                }
+                if (!new_gift.hasOwnProperty('error') && !new_gift.deleted_at_server) {
+                    console.log(pgm + 'System error. Invalid new gifts response. Gift ' + gid + ' deleted signature was not created on server and no error message was returned.') ;
+                    continue ;
+                }
+                if (!new_gift.deleted_at_server) {
+                    // gift deleted signature was not created
+                    console.log(pgm + 'gift + ' + gid + ' deleted signature was not created on server. ' + new_gift.error);
+                    // todo: undelete gift and display error message in page header or add user notification
+                    continue;
+                }
+                // gift delete signature was created
+                if (!gifts_index.hasOwnProperty(gid)) {
+                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (1).');
+                    continue;
+                }
+                index = gifts_index[gid];
+                if ((index < 0) || (index >= gifts.length)) {
+                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (2).');
+                    continue;
+                }
+                gift = gifts[index];
+                if (!gift) {
+                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (3).');
+                    continue;
+                }
+                if (gift.hasOwnProperty('deleted_at_server')) {
+                    console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property was setted between delete gifts request and delete gifts response.') ;
+                    continue ;
+                }
+                refresh_gift(gift);
+                if (gift.hasOwnProperty('deleted_at_server')) {
+                    // that is ok if multiple browser sessions with identical login / identical client user id
+                    if (gift.deleted_at_server == 1) null; // ok - response received in an other browser session
+                    else console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property for gift was setted to an invalid value between delete gifts request and delete gifts response. Expected deleted_at_server = 1. Found deleted_at_server = ' + gift.deleted_at_server + '.');
+                    continue;
+                }
+                gift.deleted_at_server = 1;
+                save = true;
+            } // for i
+            if (save) save_gifts();
+        }; // delete_gifts_response
+
         // check sha256 server signature for comments received from other devices before adding comment on this device
         // input is comments from send_gifts message pass 1 (receive_message_send_gifts)
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
@@ -2726,6 +2829,10 @@ angular.module('gifts', ['ngRoute'])
             if (save) save_gifts();
             new_comments_request_index = {};
         }; // new_comments_response
+        
+        
+        
+        
 
         // list of mailboxes for other devices (online and offline)
         // key = did+sha256 is used as mailbox index.
@@ -4362,6 +4469,8 @@ angular.module('gifts', ['ngRoute'])
             new_gifts_response: new_gifts_response,
             verify_gifts_request: verify_gifts_request,
             verify_gifts_response: verify_gifts_response,
+            delete_gifts_request: delete_gifts_request,
+            delete_gifts_response: delete_gifts_response,
             new_comments_request: new_comments_request,
             new_comments_response: new_comments_response,
             verify_comments_request: verify_comments_request,
@@ -4433,6 +4542,7 @@ angular.module('gifts', ['ngRoute'])
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
                 verify_gifts: giftService.verify_gifts_request(),
+                delete_gifts: giftService.delete_gifts_request(),
                 new_comments: giftService.new_comments_request(),
                 verify_comments: giftService.verify_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
@@ -4470,6 +4580,8 @@ angular.module('gifts', ['ngRoute'])
                     if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
                     // get result of gift verification (gifts received from other devices)
                     if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
+                    // get result of delete gifts request
+                    // if (response.data.delete_gifts) giftService.delete_gifts_response(response.data.delete_gifts) ;
                     // get timestamps for newly created comments from server
                     if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
                     // get result of comment verification (comments received from other devices)

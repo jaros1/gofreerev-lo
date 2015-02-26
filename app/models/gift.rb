@@ -1,70 +1,32 @@
 class Gift < ActiveRecord::Base
 
-  # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database
-  # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
-  # this is different encrypt for each attribute and each db row
-  # _before_type_cast methods are used by form helpers and are redefined
-  crypt_keeper :received_at, :encryptor => :aes, :key => ENCRYPT_KEYS[1]
+  # create_table "gifts", force: true do |t|
+  #   t.string "gid",             limit: 20, null: false
+  #   t.string "sha256",          limit: 45, null: false
+  #   t.string "sha256_deleted",  limit: 45
+  #   t.string "sha256_accepted", limit: 45
+  #   t.date   "last_request_at"
+  # end
+  # add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
+
 
   ##############
   # attributes #
   ##############
 
-  # 1) gid - required - not encrypted - readonly
+  # 1) gid - required - readonly
   validates_presence_of :gid
   validates_uniqueness_of :gid
   attr_readonly :gid
-  before_validation(on: :create) do
-    self.gid = self.new_encrypt_pk unless self.gid
-  end
 
-  def gid=(new_gid)
-    return self['gid'] if self['gid']
-    self['gid'] = new_gid
-  end
+  # 2) sha256 - required - readonly
 
-  # 7) received_at. Date in model - encrypted text in db - set once when the deal is closed together with user_id_receiver
-  def received_at
-    return nil unless (temp_extended_received_at = read_attribute(:received_at))
-    temp_received_at1 = encrypt_remove_pre_and_postfix(temp_extended_received_at, 'received_at', 5)
-    temp_received_at2 = YAML::load(temp_received_at1)
-    temp_received_at2 = temp_received_at2.to_time if temp_received_at2.class.name == 'Date'
-    temp_received_at2
-  end
+  # 3) sha256_deleted - added when gift is deleted - readonly
 
-  # received_at
-  def received_at=(new_received_at)
-    if new_received_at
-      check_type('received_at', new_received_at, 'Time')
-      write_attribute :received_at, encrypt_add_pre_and_postfix(new_received_at.to_yaml, 'received_at', 5)
-    else
-      write_attribute :received_at, nil
-    end
-  end
+  # 4) sha256_accepted - added when deal is accepted - readonly
 
-  # received_at=
-  alias_method :received_at_before_type_cast, :received_at
+  # 5) last_request_at - date stamp - cleanup not used gifts
 
-  def received_at_was
-    return received_at unless received_at_changed?
-    return nil unless (temp_extended_received_at = attribute_was('received_at'))
-    temp_received_at1 = encrypt_remove_pre_and_postfix(temp_extended_received_at, 'received_at', 5)
-    temp_received_at2 = YAML::load(temp_received_at1)
-    temp_received_at2 = temp_received_at2.to_time if temp_received_at2.class.name == 'Date'
-    temp_received_at2
-  end
-
-  # received_at_was
-
-  # 8) new_price_at - date - not encrypted - almost always = today
-
-  # 21) deleted_at_api. String Y/N.
-
-  # 22) status_change_at - integer - not encrypted - keep track of gifts changed after user has loaded gifts/index page
-
-  # 26) created_at - timestamp - not encrypted
-
-  # 27) updated_at - timestamp - not encrypted
 
 
   #
@@ -127,7 +89,7 @@ class Gift < ActiveRecord::Base
     end
     # sort by created at
     # acs = acs.sort { |a,b| a.created_at <=> b.created_at }
-    acs = acs.sort_by { |ac| ac.created_at }
+    # acs = acs.sort_by { |ac| ac.created_at }
     # remember number of older comments. For show older comments link
     (0..(acs.length-1)).each { |i| acs[i].no_older_comments = i }
     # start be returning up to 4 comments for each gift
@@ -211,11 +173,12 @@ class Gift < ActiveRecord::Base
     msg = "Could not create gift signature on server. "
     # check params
     return if !new_gifts or new_gifts.size == 0 # ignore empty new gifts request
+
+    # check logged in users - should never fail
     if login_user_ids.class != Array or login_user_ids.size == 0
       # system error - util/ping + Gift.new_gifts should only be called with logged in users.
       return {:error => "#{msg}System error. Expected array with one or more login user ids."}
     end
-    # verify user ids. should never fail. user ids are from sessions table and should be valid
     # order by user id - order is used in sha256 server signature
     login_users = User.where(:user_id => login_user_ids).order('user_id')
     if login_users.size < login_user_ids.size
@@ -224,7 +187,20 @@ class Gift < ActiveRecord::Base
     # logger.debug2 "login user ids = " + login_users.collect { |u| u.id }.join(', ')
     login_providers = login_users.collect { |u| u.provider }
     # logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
-    # check and create sha256 digest signature for the new gift(s)
+
+    # common gift array JSON schema structure in new_gifts, verify_gifts, accept_gifts and delete_gifts
+    # check that sha256_deleted and sha256_accepted is not in new_comments request
+    new_gifts.each do |new_gift|
+      if new_gift.has_key?("sha256_deleted")
+        return {:error => "#{msg}System error. sha256_deleted is not allowed in new_gifts request."}
+      end
+      if new_gift.has_key?("sha256_accepted")
+        return {:error => "#{msg}System error. sha256_accepted is not allowed in new_gifts request."}
+      end
+    end
+
+    # check and create sha256 digest signatures for new gifts
+    # returns created_at_server = true or an error message for each gid
     new_gifts.shuffle!
     response = []
     no_errors = 0
@@ -263,8 +239,6 @@ class Gift < ActiveRecord::Base
       signature_users = login_users.find_all { |u| gift_user_ids.index(u.id) }
       if signature_users.size == gift_user_ids.size
         # authorization ok. create server side sha256 digest signature
-        #       field should be readonly and gift signature check can verify that field is not updated by client
-        # todo: include created_at_server in server side sha256 signature? no, but return created_at_server timestamp in signature check
         sha256_server_text = ([gid, sha256_client, direction] + signature_users.collect { |u| u.user_id }).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
         logger.debug2 "sha256_server = #{sha256_server}"
@@ -312,8 +286,9 @@ class Gift < ActiveRecord::Base
     return {:gifts => response, :no_errors => no_errors}
   end # self.new_gifts
 
-
   # verify gifts request from client - used when receiving new gifts from other clients - check server side sha256 signature and return true or false
+  # sha256 is required and must be valid
+  # sha256_deleted and sha256_accepted are optional in request and are validated if supplied
   # login user must be friend with giver or receiver of gift
   def self.verify_gifts (new_gifts, login_user_ids)
     logger.debug2 "new_gifts = #{new_gifts.to_json}"
@@ -406,25 +381,26 @@ class Gift < ActiveRecord::Base
       giver_user_ids.sort!
       receiver_user_ids.sort!
 
-      # calculate and check server side sha256 signature for gift in verify gifts request
+      # calculate and check server side sha256 signature
+      direction = nil
       if giver_user_ids.size > 0
         sha256_server_text = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        if gift.sha256 == sha256_server
-          # gift ok - was created by giver
-          response << { :seq => seq, :gid => gid, :created_at_server => true }
-          next
-        end
+        direction = 'giver' if gift.sha256 == sha256_server
       end
       if receiver_user_ids.size > 0
         sha256_server_text = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        if gift.sha256 == sha256_server
-          # gift ok - was created by receiver
-          response << { :seq => seq, :gid => gid, :created_at_server => true }
-          next
-        end
+        direction = 'receiver' if gift.sha256 == sha256_server
       end
+      if !direction
+        response << { :seq => seq, :gid => gid, :created_at_server => false }
+        next
+      end
+
+      # if supplied - calculate and check server side sha256_deleted signature
+
+      # if supplied - calculate and check server side sha256_accepted signature
 
       # invalid signature. one or more fields in gift is invalid / has been changed by a client
       response << { :seq => seq, :gid => gid, :created_at_server => false }
@@ -435,24 +411,5 @@ class Gift < ActiveRecord::Base
     { :gifts => response }
   end # self.verify_gifts
 
-
-  # https://github.com/jmazzi/crypt_keeper gem encrypts all attributes and all rows in db with the same key
-  # this extension to use different encryption for each attribute and each row
-  # overwrite non model specific methods defined in /config/initializers/active_record_extensions.rb
-  protected
-  def encrypt_pk
-    self.gid
-  end
-
-  def encrypt_pk=(new_encrypt_pk_value)
-    self.gid = new_encrypt_pk_value
-  end
-
-  def new_encrypt_pk
-    loop do
-      temp_gid = String.generate_random_string(20)
-      return temp_gid unless Gift.find_by_gid(temp_gid)
-    end
-  end
 
 end # Gift

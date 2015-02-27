@@ -2177,10 +2177,18 @@ angular.module('gifts', ['ngRoute'])
                         }                    }
                 }
 
+                // data migration. delete marked gift with invalid sha256 signature on server
+                //if (gift.gid == "14239781692773321072") {
+                //    // force create + delete
+                //    console.log(pgm + 'Gift ' + gift.gid + ' was marked as a new gift') ;
+                //    delete gift.created_at_server ;
+                //    migration = true ;
+                //}
+
                 gifts.push(gift);
             }
             if (migration) save_gifts();
-            console.log('GiftService.load_gifts: gifts.length = ' + gifts.length);
+            console.log(pgm + 'gifts.length = ' + gifts.length);
             init_gifts_index();
         };
         load_gifts();
@@ -2386,6 +2394,7 @@ angular.module('gifts', ['ngRoute'])
         // send meta-data for newly created gifts to server and get gift.created_at_server response (boolean) from server.
         // called from UserService.ping
         var new_gifts_request = function () {
+            var pgm = service + '.new_gifts_request: ' ;
             var request = [];
             var gift, hash, text_client, sha256_client;
             for (var i = 0; i < gifts.length; i++) {
@@ -2642,6 +2651,7 @@ angular.module('gifts', ['ngRoute'])
         // send meta-data for deleted gifts to server and get gift.deleted_at_server response (boolean) from server.
         // called from UserService.ping
         var delete_gifts_request = function () {
+            var pgm = service + '.delete_gifts_request: ' ;
             var request = [];
             var gift, hash, text_client, sha256, sha256_deleted, sha256_accepted ;
             for (var i = 0; i < gifts.length; i++) {
@@ -2678,7 +2688,7 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + '.delete_gifts_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
-            if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' gifts was not created');
+            if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' gifts was not deleted. See following error message.');
             if (!response.hasOwnProperty('gifts')) return;
             var new_gifts = response.gifts;
             var new_gift, gid, index, gift, created_at_server;
@@ -2686,22 +2696,6 @@ angular.module('gifts', ['ngRoute'])
             for (var i = 0; i < new_gifts.length; i++) {
                 new_gift = new_gifts[i];
                 gid = new_gift.gid;
-                // check response. must be an ok response without error message or error response with an error message.
-                if (new_gift.hasOwnProperty('error') && new_gift.deleted_at_server) {
-                    console.log(pgm + 'System error. Invalid deleted gifts response. Gift ' + gid + ' deleted signature created on server WITH an error message. error = ' + new_gift.error) ;
-                    continue ;
-                }
-                if (!new_gift.hasOwnProperty('error') && !new_gift.deleted_at_server) {
-                    console.log(pgm + 'System error. Invalid new gifts response. Gift ' + gid + ' deleted signature was not created on server and no error message was returned.') ;
-                    continue ;
-                }
-                if (!new_gift.deleted_at_server) {
-                    // gift deleted signature was not created
-                    console.log(pgm + 'gift + ' + gid + ' deleted signature was not created on server. ' + new_gift.error);
-                    // todo: undelete gift and display error message in page header or add user notification
-                    continue;
-                }
-                // gift delete signature was created
                 if (!gifts_index.hasOwnProperty(gid)) {
                     console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (1).');
                     continue;
@@ -2716,8 +2710,25 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (3).');
                     continue;
                 }
+                // check response. must be an ok response without error message or error response with an error message.
+                if (new_gift.hasOwnProperty('error') && new_gift.deleted_at_server) {
+                    console.log(pgm + 'System error. Invalid deleted gifts response. Gift ' + gid + ' deleted signature created on server WITH an error message. error = ' + new_gift.error) ;
+                    continue ;
+                }
+                if (!new_gift.hasOwnProperty('error') && !new_gift.deleted_at_server) {
+                    console.log(pgm + 'System error. Invalid new gifts response. Gift ' + gid + ' deleted signature was not created on server and no error message was returned.') ;
+                    continue ;
+                }
+                if (!new_gift.deleted_at_server) {
+                    // gift deleted signature was not created
+                    console.log(pgm + 'gift ' + gid + ' deleted signature was not created on server. ' + new_gift.error);
+                    console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
+                    // todo: undelete gift and display error message in page header or add user notification
+                    continue;
+                }
+                // gift delete signature was created
                 if (gift.hasOwnProperty('deleted_at_server')) {
-                    console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property was setted between delete gifts request and delete gifts response.') ;
+                    console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property was set between delete gifts request and delete gifts response.') ;
                     continue ;
                 }
                 refresh_gift(gift);
@@ -4581,7 +4592,7 @@ angular.module('gifts', ['ngRoute'])
                     // get result of gift verification (gifts received from other devices)
                     if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
                     // get result of delete gifts request
-                    // if (response.data.delete_gifts) giftService.delete_gifts_response(response.data.delete_gifts) ;
+                    if (response.data.delete_gifts) giftService.delete_gifts_response(response.data.delete_gifts) ;
                     // get timestamps for newly created comments from server
                     if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
                     // get result of comment verification (comments received from other devices)

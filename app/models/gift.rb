@@ -258,6 +258,9 @@ class Gift < ActiveRecord::Base
         g.sha256 = sha256_server
         g.save!
         response << {:gid => gid, :created_at_server => true}
+        # logger.debug2 "new gift #{gid} was created. sha256_server_text = #{sha256_server_text}, sha256_server = #{sha256_server}, g.sha256 = #{g.sha256}"
+        # g.reload
+        # logger.debug2 "g.sha256 after reload = #{g.sha256}"
         next
       end
 
@@ -450,6 +453,7 @@ class Gift < ActiveRecord::Base
 
     # process delete gifts request
     response = []
+    no_errors = delete_gifts.size # guilty until proven innocent
     delete_gifts.each do |delete_gift|
 
       # check if gift exists
@@ -464,12 +468,12 @@ class Gift < ActiveRecord::Base
       end
 
       if delete_gift["giver_user_ids"] and delete_gift["giver_user_ids"].size > 0
-        giver_user_ids = delete_gift["giver_user_ids"]
+        giver_user_ids = delete_gift["giver_user_ids"].uniq
       else
         giver_user_ids = []
       end
       if delete_gift["receiver_user_ids"] and delete_gift["receiver_user_ids"].size > 0
-        receiver_user_ids = delete_gift["receiver_user_ids"]
+        receiver_user_ids = delete_gift["receiver_user_ids"].uniq
       else
         receiver_user_ids = []
       end
@@ -500,6 +504,8 @@ class Gift < ActiveRecord::Base
         user_id
       end.sort
 
+      # new_gifts: sha256_server_text = ([gid, sha256_client, direction] + signature_users.collect { |u| u.user_id }).join(',')
+
       # old server sha256 signature was generated when gift was created
       # calculate and check sha256 signature from delete gifts request
       sha256_client = delete_gift["sha256"]
@@ -508,11 +514,13 @@ class Gift < ActiveRecord::Base
         sha256_server_text = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
         direction = 'giver' if gift.sha256 == sha256_server # creator = giver
+        # logger.debug2 "check 1 failed for #{gid}. sha256_server_text = #{sha256_server_text}, sha256_server = #{sha256_server}, gift.sha256 = #{gift.sha256}" unless direction
       end
       if receiver_user_ids.size > 0
         sha256_server_text = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
         sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
         direction = 'receiver' if gift.sha256 == sha256_server # creator = receiver
+        # logger.debug2 "check 2 failed for #{gid}. sha256_server_text = #{sha256_server_text}, sha256_server = #{sha256_server}, gift.sha256 = #{gift.sha256}" unless direction
       end
       if !direction
         response << { :gid => gid, :deleted_at_server => false, :error => 'Delete gift request failed. Unauthorized change in gift (sha256 signature)' }
@@ -551,6 +559,7 @@ class Gift < ActiveRecord::Base
       if gift.sha256_deleted == sha256_deleted_server
         # ok - has been deleted with identical signature in a previous request
         response << { :gid => gid, :deleted_at_server => true }
+        no_errors -= 1
       else
         # error - gift has previous been deleted but signature is invalid in this request
         response << { :gid => gid, :deleted_at_server => false, :error => 'Delete gift request failed. Unauthorized change in gift (sha256_deleted signature)' }
@@ -559,7 +568,7 @@ class Gift < ActiveRecord::Base
     end # each new_gift
 
     logger.debug2 "response = #{response}"
-    { :gifts => response }
+    { :no_errors => no_errors, :gifts => response }
   end # self.delete_gifts
 
 

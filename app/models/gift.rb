@@ -393,11 +393,11 @@ class Gift < ActiveRecord::Base
         next
       end
 
-      # if supplied - calculate and check server side sha256_deleted signature
-      logger.error2 "todo: sha256_deleted verification is missing" if verify_gift["sha256_deleted"]
-
       # if supplied - calculate and check server side sha256_accepted signature
       logger.error2 "todo: sha256_accepted verification is missing" if verify_gift["sha256_accepted"]
+
+      # if supplied - calculate and check server side sha256_deleted signature
+      logger.error2 "todo: sha256_deleted verification is missing" if verify_gift["sha256_deleted"]
 
       # no errors
       response << { :seq => seq, :gid => gid, :verified_at_server => true }

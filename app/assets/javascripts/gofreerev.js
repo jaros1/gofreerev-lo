@@ -813,27 +813,30 @@ var Gofreerev = (function() {
     // arguments: list of input fields to sha256 calculation
     // todo: ignore empty fields at end of input? will allow adding new empty fields to gifts and comments signature without destroying old signatures
     function sha256 () {
-        var text = '' ;
+        var texts = [] ;
         for (var i=0; i < arguments.length; i++) {
-            if (i>0) text += ',' ;
             switch(typeof arguments[i]) {
                 case 'string' :
-                    text += arguments[i] ;
+                    texts.push(arguments[i]) ;
                     break ;
                 case 'boolean':
-                    text += arguments[i] ;
+                    texts.push(arguments[i].toString()) ;
                     break ;
                 case 'number':
-                    text += arguments[i].toString();
+                    texts.push(arguments[i].toString());
                     break ;
                 case 'undefined':
+                    texts.push('') ;
                     break ;
                 default:
                     // null or an object
-                    if (arguments[i] == null) break;
-                    text += JSON.stringify(arguments[i]) ;
+                    if (arguments[i] == null) texts.push('') ;
+                    else texts.push(JSON.stringify(arguments[i])) ;
             } // switch
         };
+        // strip empty fields from end of sha256 input
+        while ((texts.length > 0) && (texts[texts.length-1] == '')) texts.length = texts.length - 1 ;
+        var text = texts.length == 0 ? '' : texts.join(',') ;
         return CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1);
     } // sha256
 
@@ -2206,6 +2209,11 @@ angular.module('gifts', ['ngRoute'])
                             }
                         }                    }
                 }
+                // gifts data migration. empty fields (fx open graph) removed from end of all sha256 signatures. recreate all server side gift signatures
+                //if (gift.created_at_server) {
+                //    delete gift.created_at_server ;
+                //    migration = true ;
+                //}
 
                 gifts.push(gift);
             }
@@ -2438,18 +2446,15 @@ angular.module('gifts', ['ngRoute'])
         // that should ensure that gift information on client is not changed
         var gift_signature_for_server = function (gift) {
             var signature = {
-                sha256: Gofreerev.sha256(
-                    gift.created_at_client.toString(), gift.description, gift.open_graph_url,
-                    gift.open_graph_title, gift.open_graph_description, gift.open_graph_image)
+                sha256: Gofreerev.sha256(gift.created_at_client, gift.description, gift.open_graph_url,
+                                         gift.open_graph_title, gift.open_graph_description, gift.open_graph_image)
             };
-            // todo: accept gift - add accepted_cid and accepted_at_client to gift
-            if (gift.accepted_at_client) hash.sha256_accepted = sha256.Gofreerev.sha256(
-                gift.created_at_client.toString(), gift.description, gift.open_graph_url,
+            if (gift.accepted_at_client) signature.sha256_accepted = Gofreerev.sha256(
+                gift.created_at_client, gift.description, gift.open_graph_url,
                 gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
                 gift.price, gift.currency, gift.accepted_cid, gift.accepted_at_client);
-            return signature;
-            if (gift.deleted_at_client) hash.sha256_deleted = sha256.Gofreerev.sha256(
-                gift.created_at_client.toString(), gift.description, gift.open_graph_url,
+            if (gift.deleted_at_client) signature.sha256_deleted = Gofreerev.sha256(
+                gift.created_at_client, gift.description, gift.open_graph_url,
                 gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
                 gift.price, gift.currency, gift.accepted_cid, gift.accepted_at_client, gift.deleted_at_client);
             return signature;
@@ -2461,15 +2466,12 @@ angular.module('gifts', ['ngRoute'])
         var new_gifts_request = function () {
             var pgm = service + '.new_gifts_request: ' ;
             var request = [];
-            var gift, hash, text_client, sha256_client;
+            var gift, hash, text_client, sha256_client, signature;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
                 if (!gift.created_at_server) {
-                    // send meta-data for new gift to server and generate a sha256 signature for gift on server
-                    sha256_client = Gofreerev.sha256(
-                        gift.created_at_client.toString(), gift.description, gift.open_graph_url,
-                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image);
-                    hash = {gid: gift.gid, sha256: sha256_client};
+                    signature = gift_signature_for_server(gift) ;
+                    hash = {gid: gift.gid, sha256: signature.sha256};
                     if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids;
                     if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids;
                     request.push(hash);
@@ -2585,6 +2587,7 @@ angular.module('gifts', ['ngRoute'])
             var old_request = request.length ; // resend old requests
             var new_request = 0 ;
             var verify_gift, sha256_client, hash, key ;
+            var signatures ;
             while (verify_gifts.length > 0) {
                 verify_gift = verify_gifts.shift();
                 if (verify_gift.hasOwnProperty('verified_at_server')) {
@@ -2597,16 +2600,23 @@ angular.module('gifts', ['ngRoute'])
                     waiting_for_verification += 1;
                     continue;
                 } // if
-                // prepare request - using same client sha256 calculation as in new_gifts_request
-                sha256_client = Gofreerev.sha256(
-                    verify_gift.created_at_client.toString(), verify_gift.description, verify_gift.open_graph_url,
-                    verify_gift.open_graph_title, verify_gift.open_graph_description, verify_gift.open_graph_image);
-                hash = {
-                    gid: verify_gift.gid,
-                    sha256: sha256_client
-                };
+                // prepare request - using same client sha256 calculations as in new_gifts_request
+                //sha256_client = Gofreerev.sha256(
+                //    verify_gift.created_at_client.toString(), verify_gift.description, verify_gift.open_graph_url,
+                //    verify_gift.open_graph_title, verify_gift.open_graph_description, verify_gift.open_graph_image);
+                //hash = {
+                //    gid: verify_gift.gid,
+                //    sha256: signatures.sha256_client
+                //};
+                // calculate 1-3 client side signatures (sha256, sha256_accepted and/or sha256_deleted)
+                signatures = gift_signature_for_server(verify_gift) ;
+                hash = { gid: verify_gift.gid, sha256: signatures.sha256 };
+                if (signatures.sha256_accepted) hash.sha256_accepted = signatures.sha256_accepted ;
+                if (signatures.sha256_deleted) hash.sha256_deleted = signatures.sha256_deleted ;
+                // add user ids
                 if (verify_gift.giver_user_ids.length > 0) hash.giver_user_ids = verify_gift.giver_user_ids ;
                 if (verify_gift.receiver_user_ids.length > 0) hash.receiver_user_ids = verify_gift.receiver_user_ids ;
+                // check verify gifts buffer
                 key = JSON.stringify(hash);
                 seq = verify_gifts_key_to_seq[key];
                 if (seq) {
@@ -2715,29 +2725,14 @@ angular.module('gifts', ['ngRoute'])
         var delete_gifts_request = function () {
             var pgm = service + '.delete_gifts_request: ' ;
             var request = [];
-            var gift, hash, text_client, sha256, sha256_deleted, sha256_accepted ;
+            var gift, hash, signatures ;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
                 if (!gift.deleted_at_client) continue ;
                 if (!gift.deleted_at_server) {
-                    // send meta-data for deleted gift to server and generate a sha256_deleted signature for gift on server
-                    // client side sha256_accepted signature is only sent to server for accepted gifts (ekstra validation)
-                    sha256 = Gofreerev.sha256(
-                        gift.created_at_client.toString(), gift.description, gift.open_graph_url,
-                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image);
-                    sha256_deleted = Gofreerev.sha256(
-                        gift.created_at_client.toString(), gift.description, gift.open_graph_url,
-                        gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
-                        gift.deleted_at_client);
-                    if (gift.accepted_at_server) {
-                        sha256_accepted = Gofreerev.sha256(
-                            gift.created_at_client.toString(), gift.description, gift.open_graph_url,
-                            gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
-                            gift.accepted_at_client);
-                    }
-                    else sha256_accepted = null;
-                    hash = {gid: gift.gid, sha256: sha256, sha256_deleted: sha256_deleted};
-                    if (sha256_accepted) hash.sha256_accepted = sha256_accepted ;
+                    signatures = gift_signature_for_server(gift);
+                    hash = {gid: gift.gid, sha256: signatures.sha256, sha256_deleted: signatures.sha256_deleted};
+                    if (signatures.sha256_accepted) hash.sha256_accepted = signatures.sha256_accepted ;
                     if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids;
                     if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids;
                     request.push(hash);
@@ -3862,7 +3857,7 @@ angular.module('gifts', ['ngRoute'])
         // - index - index to current "sync_gift" message in messages array
         var receive_message_sync_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_sync_gifts: ' ;
-            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            // console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
 
@@ -4405,7 +4400,7 @@ angular.module('gifts', ['ngRoute'])
         // missing gifts request from other device
         var receive_message_request_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_request_gifts: ' ;
-            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            // console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
             console.log(pgm + 'Error. Not implemented') ;
@@ -4416,7 +4411,7 @@ angular.module('gifts', ['ngRoute'])
         // check gift sha256 sub values and return gift, comments or both to other device
         var receive_message_check_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_check_gifts: ' ;
-            console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
+            // console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
             console.log(pgm + 'Error. Not implemented') ;

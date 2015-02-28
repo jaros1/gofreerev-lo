@@ -188,17 +188,6 @@ class Gift < ActiveRecord::Base
     login_providers = login_users.collect { |u| u.provider }
     # logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
 
-    # common gift array JSON schema structure in new_gifts, verify_gifts, accept_gifts and delete_gifts
-    # check that sha256_deleted and sha256_accepted is not in new_comments request
-    new_gifts.each do |new_gift|
-      if new_gift.has_key?("sha256_deleted")
-        return {:error => "#{msg}System error. sha256_deleted is not allowed in new_gifts request."}
-      end
-      if new_gift.has_key?("sha256_accepted")
-        return {:error => "#{msg}System error. sha256_accepted is not allowed in new_gifts request."}
-      end
-    end
-
     # check and create sha256 digest signatures for new gifts
     # returns created_at_server = true or an error message for each gid
     new_gifts.shuffle!
@@ -289,18 +278,17 @@ class Gift < ActiveRecord::Base
     return {:gifts => response, :no_errors => no_errors}
   end # self.new_gifts
 
+
   # verify gifts request from client - used when receiving new gifts from other clients - check server side sha256 signature and return true or false
   # sha256 is required and must be valid
   # sha256_deleted and sha256_accepted are optional in request and are validated if supplied
-  # login user must be friend with giver or receiver of gift
-  def self.verify_gifts (new_gifts, login_user_ids)
-    logger.debug2 "new_gifts = #{new_gifts.to_json}"
+  # client should supply sha256_accepted in request if gift has been accepted
+  # client should supply sha256_deleted in request if gift has been deleted
+  # todo: login user must be friend with giver or receiver of gift?
+  def self.verify_gifts (verify_gifts, login_user_ids)
+    logger.debug2 "verify_gifts = #{verify_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
-    # new_gifts = [{"gid":"14239781115388288755","sha256":";¯\u000B6\"r\u0000\u00114»í?@A'b_O\u0017ra\u0007Á3ßx","giver_user_ids":[920],"receiver_user_ids":null,"seq":1},
-    #              {"gid":"14239781115388735516","sha256":"Zøl¦_µÿ|t\u0000#*Ï\u0017=Úö´VQ­À^Bõ@°Y","giver_user_ids":[920],"receiver_user_ids":null,"seq":2}]
-    # login_user_ids = ["78951805/foursquare","1092213433/instagram","1705481075/facebook"]
-
-    return unless new_gifts
+    return unless verify_gifts
 
     # cache friends for login users - giver and/or receiver for gifts must be friend of login user
     login_users = User.where(:user_id => login_user_ids)
@@ -320,7 +308,7 @@ class Gift < ActiveRecord::Base
     gids = []
     gifts_user_ids = []
     seqs = {}
-    new_gifts.each do |new_gift|
+    verify_gifts.each do |new_gift|
       seq = new_gift["seq"]
       return { :error => 'Invalid verify gifts request. Seq in gifts array must be unique' } if seqs.has_key? seq
       seqs[seq] = true
@@ -332,25 +320,25 @@ class Gift < ActiveRecord::Base
     User.where(:id => gifts_user_ids.uniq).each { |u| users[u.id] = u.user_id }
 
     response = []
-    new_gifts.each do |new_gift|
-      seq = new_gift["seq"]
-      sha256_client = new_gift["sha256"]
+    verify_gifts.each do |verify_gift|
+      seq = verify_gift["seq"]
+      sha256_client = verify_gift["sha256"]
 
       # check if gift exists
-      gid = new_gift["gid"]
+      gid = verify_gift["gid"]
       gift = gifts[gid]
       if !gift
         # gift not found -
         # todo: how to implement cross server gift sha256 signature validation?
-        logger.debug2 "gid #{gid} was not found"
-        response << { :seq => seq, :gid => gid, :created_at_server => false }
+        logger.warn2 "gid #{gid} was not found"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false }
         next
       end
 
       # check mutual friends
       mutual_friend = false
       giver_user_ids = []
-      new_gift["giver_user_ids"].each do |user_id|
+      verify_gift["giver_user_ids"].each do |user_id|
         giver = users[user_id]
         if giver
           giver_user_ids << giver
@@ -358,13 +346,15 @@ class Gift < ActiveRecord::Base
           mutual_friend = true if friend and friend <= 2
         else
           logger.warn2 "Gid #{gid} : Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
-          response << { :seq => seq, :gid => gid, :created_at_server => false }
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
           next
         end
-      end if new_gift["giver_user_ids"]
+      end if verify_gift["giver_user_ids"]
+      giver_user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
       giver_user_ids.sort!
+
       receiver_user_ids = []
-      new_gift["receiver_user_ids"].each do |user_id|
+      verify_gift["receiver_user_ids"].each do |user_id|
         receiver = users[user_id]
         if receiver
           receiver_user_ids << receiver
@@ -372,48 +362,51 @@ class Gift < ActiveRecord::Base
           mutual_friend = true if friend and friend <= 2
         else
           logger.warn2 "Gid #{gid} : Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
-          response << { :seq => seq, :gid => gid, :created_at_server => false }
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
           next
         end
-      end if new_gift["receiver_user_ids"]
+      end if verify_gift["receiver_user_ids"]
       if !mutual_friend
         logger.debug2 "gid #{gid} is not from a friend"
         response << { :seq => seq, :gid => gid }
         next
       end
-      giver_user_ids.sort!
+      receiver_user_ids.uniq! # todo: should return an error if doublets in receiver_user_ids array
       receiver_user_ids.sort!
 
       # calculate and check server side sha256 signature
       direction = nil
       if giver_user_ids.size > 0
-        sha256_server_text = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
-        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        direction = 'giver' if gift.sha256 == sha256_server
+        sha256_input = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        direction = 'giver' if gift.sha256 == sha256_calc
+        logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = #{sha256_calc}, gift.sha256 = #{gift.sha256}" unless direction
       end
       if receiver_user_ids.size > 0
-        sha256_server_text = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
-        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        direction = 'receiver' if gift.sha256 == sha256_server
+        sha256_input = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        direction = 'receiver' if gift.sha256 == sha256_calc
+        logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = #{sha256_calc}, gift.sha256 = #{gift.sha256}" unless direction
       end
       if !direction
-        response << { :seq => seq, :gid => gid, :created_at_server => false }
+        response << { :seq => seq, :gid => gid, :verified_at_server => false }
         next
       end
 
       # if supplied - calculate and check server side sha256_deleted signature
+      logger.error2 "todo: sha256_deleted verification is missing" if verify_gift["sha256_deleted"]
 
       # if supplied - calculate and check server side sha256_accepted signature
+      logger.error2 "todo: sha256_accepted verification is missing" if verify_gift["sha256_accepted"]
 
-      # invalid signature. one or more fields in gift is invalid / has been changed by a client
-      response << { :seq => seq, :gid => gid, :created_at_server => false }
+      # no errors
+      response << { :seq => seq, :gid => gid, :verified_at_server => true }
 
     end # each new_gift
 
     logger.debug2 "response = #{response}"
     { :gifts => response }
   end # self.verify_gifts
-
 
 
   # delete gifts request from client - used after gift has been deleted on client - check server side sha256 signature and return true or false
@@ -456,17 +449,7 @@ class Gift < ActiveRecord::Base
     no_errors = delete_gifts.size # guilty until proven innocent
     delete_gifts.each do |delete_gift|
 
-      # check if gift exists
-      gid = delete_gift["gid"]
-      gift = gifts[gid]
-      if !gift
-        # gift not found -
-        # todo: how to implement cross server gift sha256 signature validation?
-        logger.debug2 "gid #{gid} was not found"
-        response << { :gid => gid, :deleted_at_server => false, :error => 'Gift was not found' }
-        next
-      end
-
+      # validate row in delete gift request
       if delete_gift["giver_user_ids"] and delete_gift["giver_user_ids"].size > 0
         giver_user_ids = delete_gift["giver_user_ids"].uniq
       else
@@ -477,20 +460,43 @@ class Gift < ActiveRecord::Base
       else
         receiver_user_ids = []
       end
+      if giver_user_ids.size == 0 and receiver_user_ids.size == 0
+        response << { :gid => gid, :deleted_at_server => false, :error => 'Invalid request. Giver user ids and receiver user ids are missing.'}
+        next
+      end
+      if giver_user_ids.size != giver_user_ids.uniq.size
+        response << { :gid => gid, :deleted_at_server => false, :error => 'Invalid request. User ids in giver user ids list must be unique'}
+        next
+      end
+      if receiver_user_ids.size != receiver_user_ids.uniq.size
+        response << { :gid => gid, :deleted_at_server => false, :error => 'Invalid request. User ids in receiver user ids list must be unique'}
+        next
+      end
+
+      if delete_gift["sha256_accepted"]
+        if giver_user_ids.size == 0
+          response << { :gid => gid, :deleted_at_server => false, :error => 'Invalid request. Giver user ids are missing for accepted gift'}
+          next
+        end
+        if receiver_user_ids.size == 0
+          response << { :gid => gid, :deleted_at_server => false, :error => 'Invalid request. Receiver user ids are missing for accepted gift'}
+          next
+        end
+      end
 
       # check login - minimum one api login as giver or receiver is required
       gift_user_ids = (giver_user_ids + receiver_user_ids).uniq
       if (login_user_ids & gift_user_ids).size == 0
         logger.debug2 "gid #{gid} delete not allowed"
-        response << { :gid => gid, :deleted_at_server => false, :error => 'Not authorized to delete this gift' }
+        response << { :gid => gid, :deleted_at_server => false, :error => 'You are not authorized to delete this gift' }
         next
       end
       
-      # translate user ids from internal id to uid/provider format before sha256 signature calculations
+      # translate user ids from internal id (sequence) to uid/provider format before sha256 signature calculations
       giver_user_ids = giver_user_ids.collect do |id|
         user_id = users[id]
         if !user_id
-          response << { :gid => gid, :deleted_at_server => false, :error => "System error. Unknown internal giver user id #{id} for gift" }
+          response << { :gid => gid, :deleted_at_server => false, :error => "Invalid request. Unknown internal giver user id #{id}" }
           next
         end
         user_id
@@ -498,48 +504,62 @@ class Gift < ActiveRecord::Base
       receiver_user_ids = receiver_user_ids.collect do |id|
         user_id = users[id]
         if !user_id
-          response << { :gid => gid, :deleted_at_server => false, :error => "System error. Unknown internal receiver user id #{id} for gift" }
+          response << { :gid => gid, :deleted_at_server => false, :error => "Invalid request. Unknown internal receiver user id #{id}" }
           next
         end
         user_id
       end.sort
 
-      # new_gifts: sha256_server_text = ([gid, sha256_client, direction] + signature_users.collect { |u| u.user_id }).join(',')
+      # check if gift exists
+      gid = delete_gift["gid"]
+      gift = gifts[gid]
+      if !gift
+        # gift not found!
+        # todo: how to implement cross server gift sha256 signature validation?
+        logger.debug2 "gid #{gid} was not found"
+        response << { :gid => gid, :deleted_at_server => false, :error => 'Gift was not found on server' }
+        next
+      end
+
+      # ready for sha256 signatures calculation and check (sha256, sha256_accepted (optional) and sha256_deleted)
 
       # old server sha256 signature was generated when gift was created
-      # calculate and check sha256 signature from delete gifts request
+      # calculate and check sha256 signature from information received in delete gifts request
       sha256_client = delete_gift["sha256"]
       direction = nil
       if giver_user_ids.size > 0
-        sha256_server_text = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
-        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        direction = 'giver' if gift.sha256 == sha256_server # creator = giver
+        sha256_input = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        direction = 'giver' if gift.sha256 == sha256_calc # creator = giver
         # logger.debug2 "check 1 failed for #{gid}. sha256_server_text = #{sha256_server_text}, sha256_server = #{sha256_server}, gift.sha256 = #{gift.sha256}" unless direction
       end
       if receiver_user_ids.size > 0
-        sha256_server_text = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
-        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        direction = 'receiver' if gift.sha256 == sha256_server # creator = receiver
+        sha256_input = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        direction = 'receiver' if gift.sha256 == sha256_calc # creator = receiver
         # logger.debug2 "check 2 failed for #{gid}. sha256_server_text = #{sha256_server_text}, sha256_server = #{sha256_server}, gift.sha256 = #{gift.sha256}" unless direction
       end
       if !direction
-        response << { :gid => gid, :deleted_at_server => false, :error => 'Delete gift request failed. Unauthorized change in gift (sha256 signature)' }
+        response << { :gid => gid, :deleted_at_server => false, :error => 'Sha256 signature verification failed. Could be unauthorized changes in gift information' }
         next
       end
 
       # sha256_accepted: if supplied - calculate and check server side sha256_accepted signature
-      # old server sha256_accepted signature was generated when gift was accepted / deal was closed
-      # calculate and check sha256_accepted signature from delete gifts request
+      # old server sha256_accepted signature was generated when gift was accepted and deal was closed
+      # calculate and check sha256_accepted signature from information received in delete gifts request
       sha256_accepted_client = delete_gift["sha256_accepted"]
       if sha256_accepted_client
+        error = 'Sha256_accepted signature verification failed. Could be unauthorized changes in gift information'
         if !gift.sha256_accepted
-          response << { :gid => gid, :deleted_at_server => false, :error => 'Delete gift request failed. Unauthorized change in gift (sha256_accepted signature)' }
+          logger.warn2 "Gift #{gid}. Delete gift request failed. #{error}. sha256_accepted in request but gift dont have a sha256_accepted signature on server."
+          response << { :gid => gid, :deleted_at_server => false, :error => error }
           next
         end
-        sha256_accepted_server_text = ([gid, sha256_accepted_client, direction] + giver_user_ids + receiver_user_ids).join(',')
-        sha256_accepted_server = Base64.encode64(Digest::SHA256.digest(sha256_accepted_server_text))
-        if gift.sha256_accepted != sha256_accepted_server
-          response << { :gid => gid, :deleted_at_server => false, :error => 'Delete gift request failed. Unauthorized change in gift (sha256_accepted signature)' }
+        sha256_input = ([gid, sha256_accepted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        if gift.sha256_accepted != sha256_calc
+          logger.warn2 "Gift #{gid}. Delete gift request failed. #{error}. new sha256_accepted calculation = #{sha256_calc}. old sha256_accepted on server = #{gift.sha256_accepted}."
+          response << { :gid => gid, :deleted_at_server => false, :error => error }
           next
         end
       end
@@ -547,22 +567,22 @@ class Gift < ActiveRecord::Base
       # sha256_deleted: calculate server side sha256_deleted signature
       sha256_deleted_client = delete_gift["sha256_deleted"]
       if direction == 'giver'
-        sha256_deleted_server_text = ([gid, sha256_deleted_client, 'giver'] + giver_user_ids).join(',')
+        sha256_input = ([gid, sha256_deleted_client, 'giver'] + giver_user_ids).join(',')
       else
-        sha256_deleted_server_text = ([gid, sha256_deleted_client, 'receiver'] + receiver_user_ids).join(',')
+        sha256_input = ([gid, sha256_deleted_client, 'receiver'] + receiver_user_ids).join(',')
       end
-      sha256_deleted_server = Base64.encode64(Digest::SHA256.digest(sha256_deleted_server_text))
+      sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
       if !gift.sha256_deleted
-        gift.sha256_deleted = sha256_deleted_server
+        gift.sha256_deleted = sha256_calc
         gift.save!
       end
-      if gift.sha256_deleted == sha256_deleted_server
-        # ok - has been deleted with identical signature in a previous request
+      if gift.sha256_deleted == sha256_calc
+        # ok - gift has been deleted previously with identical signature
         response << { :gid => gid, :deleted_at_server => true }
         no_errors -= 1
       else
-        # error - gift has previous been deleted but signature is invalid in this request
-        response << { :gid => gid, :deleted_at_server => false, :error => 'Delete gift request failed. Unauthorized change in gift (sha256_deleted signature)' }
+        # error - gift has been deleted previously but signature input is invalid in this request
+        response << { :gid => gid, :deleted_at_server => false, :error => 'Sha256_deleted signature verification failed. Could be unauthorized changes in gift information' }
       end
 
     end # each new_gift

@@ -231,6 +231,7 @@ JSON_SCHEMA = {
               # at least one api logged in user must be giver or receiver of gift. sha256_deleted is required in request.
               :delete_gifts => {
                   :type => 'array',
+                  :title => 'Server delete gifts request. Sha256_accepted must be supplied when deleting an closed deal with both giver and receiver',
                   :items => {
                       :type => 'object',
                       :properties => {
@@ -369,6 +370,7 @@ JSON_SCHEMA = {
               # optional array with response for new_gifts request
               :new_gifts => {
                   :type => 'object',
+                  :title => 'Server new gifts response with created_at_server = true or an error message for each gift in new gifts request',
                   :properties => {
                       # any generic error message when processing of new_gifts request. see also error property in gifts array
                       :error => {:type => 'string'},
@@ -399,6 +401,7 @@ JSON_SCHEMA = {
               # optional array with created_at_server (boolean) response for verify_gifts request
               :verify_gifts => {
                   :type => 'object',
+                  :title => 'Server verify gifts response with verified_at_server true or false for each gifts in verify gifts request',
                   :properties => {
                       # any fatal errors
                       :error => {:type => 'string'},
@@ -413,9 +416,9 @@ JSON_SCHEMA = {
                                   # gid - unique gift id - from verify_gifts request
                                   :gid => {:type => 'string', :pattern => uid_pattern},
                                   # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
-                                  :created_at_server => {:type => 'boolean'}
+                                  :verified_at_server => {:type => 'boolean'}
                               },
-                              :required => %w(seq gid created_at_server),
+                              :required => %w(seq gid verified_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1
@@ -427,12 +430,14 @@ JSON_SCHEMA = {
               # optional array with response for delete_gifts request
               :delete_gifts => {
                   :type => 'object',
+                  :title => 'Server delete gifts response with error message, gifts and number of errors',
                   :properties => {
                       # any fatal error when processing delete_gifts request. see also error in gifts array
                       :error => {:type => 'string'},
                       # array with deleted_at_server = true or error messages for each gid in delete_gifts request
                       :gifts => {
                           :type => 'array',
+                          :title => 'Gifts array. Deleted_at_server = true or an error message for each gift in delete gifts request',
                           :items => {
                               :type => 'object',
                               :properties => {
@@ -747,8 +752,14 @@ JSON_SCHEMA = {
                                             :deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                             # optional accepted boolean - true if new proposal has been accepted by creator of gift/offer, false if new proposal has been rejected by creator of gift/offer
                                             :accepted => {:type => %w(undefined boolean) },
-                                            # updated_by - list with internal user id - users that have accepted or rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
-                                            :updated_by => {:type => %w(undefined array), :items => {:type => 'integer'}}
+                                            # optional accepted at client unix timestamp - 10 decimals - used in comment signature on server
+                                            :accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+                                            # optional updated_by - list with internal user id - users that have accepted - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
+                                            :accepted_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}},
+                                            # optional rejected at client unix timestamp - 10 decimals - used in comment signature on server
+                                            :rejected_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+                                            # optional updated_by - list with internal user id - users that have rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
+                                            :rejected_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}}
                                         }, # comment properties
                                         :required => %w(cid user_ids comment created_at_client created_at_server),
                                         :additionalProperties => false

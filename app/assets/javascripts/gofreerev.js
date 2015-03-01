@@ -438,24 +438,27 @@ var Gofreerev = (function() {
     // - data are preserved when user closes tab or browser
     // - some values are global values without <userid> prefix. others are user specific values with <userid> prefix
     // - some values are encrypted (keys, authorization and other sensible information)
+    // - encryption: key is as only item encrypted with password (human text). All other encrypted items are is encrypted with key (random string)
     // - some values are compressed (users and gifts arrays)
     // - rules (local_storage_rules) are derived from key name
     // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
 
     var storage_rules = {
-        currency: {session: false, userid: true, compress: false, encrypt: false}, // currency code (ISO 4217)
-        did: {session: false, userid: true, compress: false, encrypt: false}, // new unique device id
-        gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts
-        password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
-        passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
-        oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
-        prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
-        pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
-        secret: {session: false, userid: true, compress: true, encrypt: false}, // client secret - used in device.sha256 signature
-        seq: {session: false, userid: true, compress: true, encrypt: false}, // sequence - for example used in verift_gifts request and response
-        sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
-        userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
-        users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
+        currency: {session: false, userid: true, compress: false, encrypt: false, key: false}, // currency code (ISO 4217)
+        did: {session: false, userid: true, compress: false, encrypt: false, key: false}, // new unique device id
+        gifts: {session: false, userid: true, compress: true, encrypt: true, key: false}, // array with user and friends gifts - password encrypted
+        new_gifts: {session: false, userid: true, compress: true, encrypt: true, key: true}, // array with user and friends gifts - key encrypted
+        key: {session: false, userid: true, compress: true, encrypt: true, key: false}, // random string 100 characters used in encryption
+        password: {session: true, userid: false, compress: false, encrypt: false, key: false}, // session password in clear text
+        passwords: {session: false, userid: false, compress: false, encrypt: false, key: false}, // array with hashed passwords. size = number of accounts
+        oauth: {session: false, userid: true, compress: true, encrypt: true, key: false}, // login provider oauth authorization
+        prvkey: {session: false, userid: true, compress: true, encrypt: true, key: false}, // for encrypted user to user communication
+        pubkey: {session: false, userid: true, compress: true, encrypt: false, key: false}, // for encrypted user to user communication
+        secret: {session: false, userid: true, compress: true, encrypt: false, key: false}, // client secret - used in device.sha256 signature - 10 digits
+        seq: {session: false, userid: true, compress: true, encrypt: false, key: false}, // sequence - for example used in verify_gifts request and response
+        sid: {session: true, userid: false, compress: false, encrypt: false, key: false}, // unique session id
+        userid: {session: true, userid: false, compress: false, encrypt: false, key: false}, // session userid (1, 2, etc) in clear text
+        users: {session: false, userid: true, compress: true, encrypt: true, key: false} // array with logged in users and friends
     };
 
     // first character in stored value is an encryption/compression storage flag
@@ -621,6 +624,10 @@ var Gofreerev = (function() {
         if (!key_options.hasOwnProperty('encrypt')) {
             console.log(pgm + 'Warning. using default value encrpt=false for key ' + key) ;
             key_options.encrypt = false ;
+        }
+        if (!key_options.hasOwnProperty('key')) {
+            console.log(pgm + 'Warning. using default value key=false for key ' + key) ;
+            key_options.key = false ;
         }
         return key_options ;
     } // get_local_storage_rule
@@ -867,7 +874,9 @@ var Gofreerev = (function() {
         if ((passwords_a.length == 0) || create_new_account) {
             // create new account
             userid = passwords_a.length + 1 ; // sequence = number of user accounts in local storage
-            // save login
+            // save login in sessionStorage
+            // note that password is saved in clear text in sessionStorage
+            // please use device log out or to close browser tab when finished
             setItem('userid', userid) ;
             setItem('password', password) ;
             if (!getItem('sid')) setItem(Gofreerev.get_new_uid()) ;
@@ -881,11 +890,15 @@ var Gofreerev = (function() {
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();
+            // generate key - used together with password for encrypted data in localStorage
+            // data in localStorage is encrypted with key. key is as only item encrypted with password
+            var key = Gofreerev.generate_random_password(100) ;
             // ready to store new account information.
             // save new user account
+            setItem('key', key) ;
             setItem('did', did) ; // unique device id
-            setItem('prvkey', prvkey) ;
-            setItem('pubkey', pubkey) ; // public key
+            setItem('prvkey', prvkey) ; // private key - only used on this device - never sent to server or other clients
+            setItem('pubkey', pubkey) ; // public key - sent to server and other clients
             setItem('seq', '0') ; // sequence, for example used in verify gifts request/response
             setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
             return userid ;
@@ -1024,15 +1037,16 @@ var Gofreerev = (function() {
     function is_json_response_invalid (pgm, json_response, action, msg) {
         if (!msg) msg = '' ;
         // check if schema definition exists
-        var json_schema = action + '_response';
+        var json_schemaname = action + '_response';
         var error ;
-        if (!Gofreerev.rails['JSON_SCHEMA'].hasOwnProperty(json_schema)) {
-            error = 'JSON schema definition ' + json_schema + ' was not found. ' + action + ' response could not be validated. ' + msg ;
+        if (!Gofreerev.rails['JSON_SCHEMA'].hasOwnProperty(json_schemaname)) {
+            error = 'JSON schema definition ' + json_schemaname + ' was not found. ' + action + ' response could not be validated. ' + msg ;
             console.log(pgm + error);
             return error;
         }
+        var json_schema = Gofreerev.rails['JSON_SCHEMA'][json_schemaname] ;
         // validate do_tasks response received from server
-        if (tv4.validate(json_response, Gofreerev.rails['JSON_SCHEMA'][json_schema])) return null ; // json is valid
+        if (tv4.validate(json_response, json_schema)) return null ;
         // report error
         var json_error = JSON.parse(JSON.stringify(tv4.error));
         delete json_error.stack;
@@ -1040,7 +1054,7 @@ var Gofreerev = (function() {
         error = 'Error in JSON ' + action + ' response from server. ' + msg ;
         console.log(pgm + error);
         console.log(pgm + 'response: ' + JSON.stringify(json_response));
-        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
+        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schemaname]));
         console.log(pgm + 'errors : ' + json_errors);
         // return error
         return error + '. ' + json_errors ;
@@ -1907,6 +1921,29 @@ angular.module('gifts', ['ngRoute'])
             };
         } // check_logged_in_providers
 
+        // convert an array of internal user ids to an array of external user ids
+        // return null if unknown user ids in input array
+        var get_external_user_ids = function (internal_user_ids) {
+            var pgm = service + '.get_external_user_ids: ' ;
+            if (typeof internal_user_ids == 'undefined') return null ;
+            if (internal_user_ids == null) return null ;
+            if (internal_user_ids.length == 0) return [] ;
+            var external_user_ids = [], user, internal_user_id, external_user_id ;
+            for (var i=0 ; i<internal_user_ids.length ; i++) {
+                internal_user_id = internal_user_ids[i] ;
+                user = get_user(internal_user_id) ;
+                if (!user) {
+                    console.log(pgm + 'Warning. Unknown internal user id ' + internal_user_id) ;
+                    return null ; // should force an error in calling routine
+                }
+                external_user_id = user.uid + '/' + user.provider ;
+                if (external_user_ids.indexOf(external_user_id) != -1) console.log(pgm + 'Warning. Doublet user ids in ' + internal_user_ids.join(', ') + '.') ;
+                else external_user_ids.push(external_user_id) ;
+            }
+            external_user_ids = external_user_ids ;
+            return external_user_ids ;
+        } // get_external_user_ids ;
+
         return {
             providers: providers,
             is_logged_in: is_logged_in,
@@ -1932,7 +1969,8 @@ angular.module('gifts', ['ngRoute'])
             cache_oauth_info: cache_oauth_info,
             check_logged_in_providers: check_logged_in_providers,
             expired_tokens_response: expired_tokens_response,
-            oauths_response: oauths_response
+            oauths_response: oauths_response,
+            get_external_user_ids: get_external_user_ids
         }
         // end UserService
     }])
@@ -1940,31 +1978,6 @@ angular.module('gifts', ['ngRoute'])
         var self = this;
         var service = 'GiftService';
         console.log(service + ' loaded');
-
-        // convert an array of internal user ids to an array of external user ids
-        // return null if unknown user ids in input array
-        // sort by external user id - used in signatures
-        function get_external_user_ids (internal_user_ids) {
-            var pgm = service + '.get_external_user_ids: ' ;
-            if (typeof internal_user_ids == 'undefined') return null ;
-            if (internal_user_ids == null) return null ;
-            if (internal_user_ids.length == 0) return [] ;
-            var external_user_ids = [], user, internal_user_id, external_user_id ;
-            for (var i=0 ; i<internal_user_ids.length ; i++) {
-                internal_user_id = internal_user_ids[i] ;
-                user = userService(internal_user_id) ;
-                if (!user) {
-                    console.log(pgm + 'Warning. Unknown internal user id ' + internal_user_id) ;
-                    return null ;
-                }
-                external_user_id = user.uid + '/' + user.provider ;
-                if (external_user_ids.indexOf(external_user_id) != -1) console.log(pgm + 'Warning. Doblet user ids in ' + internal_user_ids.join(', ') + '.') ;
-                else external_user_ids.push(external_user_id) ;
-            } ;
-            external_user_ids = external_user_ids.sort ;
-            return external_user_ids ;
-        } // get_external_user_ids
-
 
         // calculate sha256 value for comment. used when comparing gift lists between clients. replicate gifts with changed sha256 value between clients
         // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
@@ -1988,8 +2001,9 @@ angular.module('gifts', ['ngRoute'])
             var accepted_by_user_ids;
             if (!comment.hasOwnProperty('accepted_by_user_ids') || (typeof comment.accepted_by_user_ids == 'undefined') || (comment.accepted_by_user_ids == null)) accepted_by_user_ids = [];
             else {
-                accepted_by_user_ids = get_external_user_ids(comment.accepted_by_user_ids);
+                accepted_by_user_ids = userService.get_external_user_ids(comment.accepted_by_user_ids);
                 if (!accepted_by_user_ids) return null;
+                accepted_by_user_ids = accepted_by_user_ids.sort ;
             }
             accepted_by_user_ids.unshift(accepted_by_user_ids.length);
             accepted_by_user_ids = accepted_by_user_ids.join(',');
@@ -1997,8 +2011,9 @@ angular.module('gifts', ['ngRoute'])
             var rejected_by_user_ids;
             if (!comment.hasOwnProperty('rejected_by_user_ids') || (typeof comment.rejected_by_user_ids == 'undefined') || (comment.rejected_by_user_ids == null)) rejected_by_user_ids = [];
             else {
-                rejected_by_user_ids = get_external_user_ids(comment.rejected_by_user_ids);
+                rejected_by_user_ids = userService.get_external_user_ids(comment.rejected_by_user_ids);
                 if (!rejected_by_user_ids) return null;
+                rejected_by_user_ids = rejected_by_user_ids.sort ;
             }
             rejected_by_user_ids.unshift(rejected_by_user_ids.length);
             rejected_by_user_ids = rejected_by_user_ids.join(',');
@@ -2006,7 +2021,7 @@ angular.module('gifts', ['ngRoute'])
                                     comment.accepted_by_user_ids, comment.rejected_at_client, comment.rejected_by_user_ids);
         } // calc_sha256_for_comment
 
-        // calculate sha256 value for gift. used when comparing gift lists between devices. replicate gifts with changed sha256 value between devices
+        // calculate sha256 value for gift. used when comparing gift lists between clients. replicate gifts with changed sha256 value between devices
         // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for gift
         //   created_at_client, description, open_graph_url, open_graph_title, open_graph_description and open_graph_image,
         //   direction, giver_user_ids and receiver_user_ids
@@ -2057,8 +2072,8 @@ angular.module('gifts', ['ngRoute'])
             comments_sha256.unshift(comments.length.toString());
             var comments_str = comments_sha256.join(',');
             // return an array with 3 sha256 values. sha256 is the real sha256 value for gift. sha256_gift and sha256_comments are sub sha256 values used in gifts sync between devices
-            var sha256 = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, comments_str);
-            var sha256_gift = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client);
+            var sha256 = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, gift.accepted_cid, gift.accepted_at_client, comments_str);
+            var sha256_gift = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, gift.accepted_cid, gift.accepted_at_client);
             var sha256_comments = Gofreerev.sha256(comments_str);
             return [sha256, sha256_gift, sha256_comments];
         }; // sha256_gift
@@ -2069,7 +2084,7 @@ angular.module('gifts', ['ngRoute'])
             return 0;
         }; // sort_by_gid
 
-        var gifts = [];
+        var gifts = []; // xxx
         var gifts_index = {};
         var user_id_gifts_index = {};
         var init_gifts_index = function () {
@@ -2123,6 +2138,8 @@ angular.module('gifts', ['ngRoute'])
                 if (gift.hasOwnProperty('sha256')) delete gift.sha256;
                 if (gift.hasOwnProperty('sha256_gift')) delete gift.sha256_gift;
                 if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments;
+                if (gift.hasOwnProperty('verified_at_server')) delete gift.verified_at_server;
+                if (gift.hasOwnProperty('verify_seq')) delete gift.verify_seq;
                 if (!gift.hasOwnProperty('comments')) gift.comments = [];
                 comments = gift.comments;
                 for (var j = 0; j < comments.length; j++) {
@@ -2335,8 +2352,10 @@ angular.module('gifts', ['ngRoute'])
             if (gift.like != new_gift.like) gift.like = new_gift.like;
             if (gift.follow != new_gift.follow) gift.follow = new_gift.follow;
             if (gift.show != new_gift.show) gift.show = new_gift.show;
-            if (gift.deleted_at_client != new_gift.deleted_at_client) gift.deleted_at_client = new_gift.deleted_at_client;
             // todo: add gift.deleted_at_server (integer)
+            if (gift.deleted_at_client != new_gift.deleted_at_client) gift.deleted_at_client = new_gift.deleted_at_client;
+            if (gift.accepted_cid != new_gift.accepted_cid) gift.accepted_cid = new_gift.accepted_cid;
+            if (gift.accepted_at_client != new_gift.accepted_at_client) gift.accepted_at_client = new_gift.accepted_at_client;
             // todo: should merge comments and keep sequence - not overwrite arrays
             if (!gift.hasOwnProperty('comments')) gift.comments = [];
             if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [];
@@ -2413,6 +2432,8 @@ angular.module('gifts', ['ngRoute'])
                     if (gifts[insert_point].show != new_gifts[i].show) gifts[insert_point].show = new_gifts[i].show;
                     if (gifts[insert_point].deleted_at_client != new_gifts[i].deleted_at_client) gifts[insert_point].deleted_at_client = new_gifts[i].deleted_at_client;
                     // todo: add gift.deleted_at_server (integer)
+                    if (gifts[insert_point].accepted_cid != new_gifts[i].accepted_cid) gifts[insert_point].accepted_cid = new_gifts[i].accepted_cid;
+                    if (gifts[insert_point].accepted_at_client != new_gifts[i].accepted_at_client) gifts[insert_point].accepted_at_client = new_gifts[i].accepted_at_client;
                     if (!gifts[insert_point].hasOwnProperty('comments')) gifts[insert_point].comments = [];
                     if (!new_gifts[i].hasOwnProperty('comments')) new_gifts[i].comments = [];
                     if (gifts[insert_point].comments != new_gifts[i].comments) refresh_comments(gifts[insert_point].comments, new_gifts[i].comments);
@@ -3731,8 +3752,10 @@ angular.module('gifts', ['ngRoute'])
                         open_graph_description: gift.open_graph_description,
                         open_graph_image: gift.open_graph_image,
                         like: gift.like,
-                        deleted_at_client: gift.deleted_at_client
+                        deleted_at_client: gift.deleted_at_client,
                         // todo: add deleted_at_server (integer)
+                        accepted_cid: gift.accepted_cid,
+                        accepted_at_client: gift.accepted_at_client
                         // ,sha256: gift.sha256 - // sha256 is not sent - receiver will make gift sha256 calculations
                     };
                     var comment ;
@@ -4005,7 +4028,7 @@ angular.module('gifts', ['ngRoute'])
                     return;
                 } // if doublet_cids
                 new_cids = null;
-                // calc sha256 values for new gifts
+                // calc sha256 values for new gifts received from other client
                 var sha256_calc_errors = 0 ;
                 for (i = 0; i < msg.gifts.length; i++) {
                     new_gift = msg.gifts[i] ;
@@ -4051,7 +4074,9 @@ angular.module('gifts', ['ngRoute'])
             var validation_system_errors = []; // gid array with
 
             var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, old_cids;
-            var new_gift_creators, old_gift_creators
+            var new_gift_creators, old_gift_creators, new_gift_counterpart, old_gift_counterpart ;
+            var old_gift_accepted, new_gift_accepted, gift_accept_action, gift_delete_action, gift_price_action, gift_like_action;
+            var counterpart_errors ;
 
 
             // pass 1, 2, 3 loop - continue until 1) wait for verification, 2) error report, 3) done
@@ -4070,6 +4095,7 @@ angular.module('gifts', ['ngRoute'])
                 verifying_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
                 index_system_errors = []; // gid array with gift index system errors - fatal javascript errors - not communication errors
                 validation_system_errors = []; // gid array with
+                counterpart_errors = [] ;
 
                 // gifts loop
                 for (i = 0; i < msg.gifts.length; i++) {
@@ -4102,10 +4128,22 @@ angular.module('gifts', ['ngRoute'])
                             // many gift fields are readonly but minor changes are allowed.
 
                             // changed gift - check if readonly fields used in server side sha256 signature have been changed
-                            if (new_gift.direction == 'giver') new_gift_creators = new_gift.giver_user_ids.sort.join(',');
-                            else new_gift_creators = new_gift.receiver_user_ids.sort.join(',');
-                            if (old_gift.direction == 'giver') old_gift_creators = old_gift.giver_user_ids.sort.join(',');
-                            else old_gift_creators = old_gift.receiver_user_ids.sort.join(',');
+                            if (new_gift.direction == 'giver') {
+                                new_gift_creators = new_gift.giver_user_ids.sort.join(',');
+                                new_gift_counterpart = (new_gift.receiver_user_ids || []).sort.join(',');
+                            }
+                            else {
+                                new_gift_creators = new_gift.receiver_user_ids.sort.join(',');
+                                new_gift_counterpart = (new_gift.giver_user_ids || []).sort.join(',');
+                            }
+                            if (old_gift.direction == 'giver') {
+                                old_gift_creators = old_gift.giver_user_ids.sort.join(',');
+                                old_gift_counterpart = (old_gift.receiver_user_ids || []).sort.join(',') ;
+                            }
+                            else {
+                                old_gift_creators = old_gift.receiver_user_ids.sort.join(',');
+                                old_gift_counterpart = (old_gift.giver_user_ids || []).sort.join(',');
+                            }
                             if (!identical_values(old_gift.created_at_client, new_gift.created_at_client) ||
                                 !identical_values(old_gift.direction, new_gift.direction) ||
                                 !identical_values(old_gift_creators, new_gift_creators) ||
@@ -4116,11 +4154,11 @@ angular.module('gifts', ['ngRoute'])
                                 !identical_values(old_gift.open_graph_image, new_gift.open_graph_image)) {
                                 // changed readonly fields!
                                 // fields used in server side sha256 signature are NOT identical for new and old gift
-                                // can be a communication error or gift has been modified by this or by other client
+                                // could be a communication error or gift could have been modified by this or by other client
                                 if (!new_gift.hasOwnProperty('verify_seq')) {
                                     // new gift must be server validated before continuing
                                     validate_new_gifts += 1;
-                                    validate_gifts.push(new_gift);
+                                    verify_gifts.push(new_gift);
                                     continue;
                                 }
                                 if (!new_gift.hasOwnProperty('verified_at_server')) {
@@ -4128,16 +4166,17 @@ angular.module('gifts', ['ngRoute'])
                                     verifying_new_gifts += 1;
                                     continue;
                                 }
-                                if (new_gift.created_at_server != new_gift.verified_at_server) {
+                                if (!new_gift.verified_at_server) {
                                     // invalid signature for new gift
                                     new_gifts_invalid_signature.push(gid);
                                     continue;
                                 }
-                                // there is a problem. new gift is valid. old gift must be invalid
+                                // there is a problem. new gift is valid. old gift must be invalid  - changed readonly fields in old gift
                                 if (!old_gift.hasOwnProperty('verify_seq')) {
                                     // old gift must be server validated before continuing
                                     validate_old_gifts += 1;
-                                    validate_gifts.push(old_gift);
+                                    delete old_gift.verified_at_server ;
+                                    verify_gifts.push(old_gift);
                                     continue;
                                 }
                                 if (!old_gift.hasOwnProperty('verified_at_server')) {
@@ -4145,7 +4184,7 @@ angular.module('gifts', ['ngRoute'])
                                     verifying_old_gifts += 1;
                                     continue;
                                 }
-                                if (old_gift.created_at_server != old_gift.verified_at_server) {
+                                if (!old_gift.verified_at_server) {
                                     // invalid signature for gift - must be deleted and new gift accepted
                                     old_gifts_invalid_signature.push(gid);
                                     continue;
@@ -4155,9 +4194,20 @@ angular.module('gifts', ['ngRoute'])
                                 continue;
                             } // if changed readonly fields!
 
-                            // allow minor changes in gift fields
+                            // analyse changes in gift
+                            old_gift_accepted = (old_gift.accepted_cid || old_gift.accepted_at_client) ;
+                            new_gift_accepted = (new_gift.accepted_cid || new_gift.accepted_at_client) ;
+                            gift_accept_action = ((old_gift_accepted && !new_gift_accepted) || (!old_gift_accepted && new_gift_accepted)) ;
+                            gift_delete_action = ((old_gift.deleted_at_client && !new_gift.deleted_at_client) || (!old_gift.deleted_at_client && new_gift.deleted_at_client)) ;
+                            gift_price_action = !gift_accept_action && ((old_gift.price != new_gift.price) || (old_gift.currency != new_gift.currency)) ;
+                            gift_like_action = (old_gift.like != new_gift.like) ;
+                            if (!gift_accept_action && (old_gift_counterpart != new_gift_counterpart)) {
+                                counterpart_errors.push(gid) ;
+                                continue ;
+                            }
+
                             if (msg.pass == 3) {
-                                // todo: add updated_at_client timestamp to gift.
+                                // todo: add updated_at_client timestamp to gift. last update wins in a few situations
                                 // updateable fields:
                                 // 1) other user ids when proposal has been accepted - opposite of creator
                                 //    there must a new proposal in comments with accepted = true
@@ -4165,10 +4215,38 @@ angular.module('gifts', ['ngRoute'])
                                 // 2) price - can be updated until accepted proposal and must after accept be identical with price accepted proposal
                                 // 3) currency - can be updated until accepted proposal and must after accept be identical with price accepted proposal
                                 // 4) like - todo: now a boolean. must be changed to a likes array with user ids and like/unlike timestamps. merge likes
-                                // 5) deleted_at - todo: rename to deleted_at_client (unix timestamp) + add deleted_at_server (integer)
+                                // 5) deleted_at_client
+                                // 6) accepted_cid
+                                // 7) accepted_at_client
+
+                                // allowed actions:
+                                // a) price and currency change and not an accept gift action
+                                // b) merge likes
+                                // c) accept gift
+                                // d) delete gift
+                                // e) control. old and new gift should be identical
+                                // analyse gift changes
+                                // do actions
+                                if (gift_price_action) {
+                                    // todo: use price and currency from last changed gift. add updated_at_client to gift
+                                    console.log(pgm + 'Error: Implement gift price action: old price = ' + old_gift.price + old_gift.currency + ', new price = ' + new_gift.price + new_gift.currency) ;
+                                }
+                                if (gift_like_action) {
+                                    // todo: change like to array with userid and timestamps for like and unlike
+                                    console.log(pgm + 'Error: Implement gift like action: old like = ' + JSON.stringify(old_gift.like) + ', new like = ' + JSON.stringify(new_gift.like));
+                                }
+                                if (gift_accept_action) {
+                                    if (old_gift_accepted) {
+                                        // todo: send gift to other client
+                                    }
+                                    else {
+                                        // update gift with
+                                    }
+                                }
 
 
-                            }
+
+                            } // if pass 3
 
                         } // if old_gift.sha256_gift != new_gift.sha256_gift
 
@@ -4222,11 +4300,19 @@ angular.module('gifts', ['ngRoute'])
                     } // if
                 } // for i (gifts loop)
 
-                // end gifts looo
+                // end gifts loop
 
                 // check result of pass 1, 2 and 3
-
-                // pass 1 - wait for server side sha256 signature validation
+                if (msg.pass == 1) {
+                    // pass 1 - check for fatal errors
+                    if (index_system_errors.length > 0) console.log(pgm + 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ')) ;
+                    if (validation_system_errors.length > 0) console.log(pgm + 'System error. Sha256 signature failure for old and new gift. Gifts: ' + validation_system_errors.join(', ')) ;
+                    if (counterpart_errors.length > 0) console.log(pgm + 'System error. Invalid counterpart update. Gifts: ' + counterpart_errors.join(', ')) ;
+                    if (index_system_errors.length + validation_system_errors.length + counterpart_errors.length) {
+                        // todo: send error to other client and exit
+                    }
+                    // pass 1 - wait for server side sha256 signature validation
+                }
 
 
                 // error report, wait or continue with next pass
@@ -4272,7 +4358,7 @@ angular.module('gifts', ['ngRoute'])
             }
 
 
-            if (validate_gifts.length + validate_comments.length > 0) {
+            if (verify_gifts.length + verify_comments.length > 0) {
                 // wait for next ping - server validation for gift created on other gofreerev servers can take some time
                 console.log(pgm + 'Waiting for new gifts and new comments to be server validated.');
                 mailbox.read.push(msg);
@@ -4599,7 +4685,7 @@ angular.module('gifts', ['ngRoute'])
             //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
             //console.log(pgm + 'old stat: ' + old_stat) ;
             //console.log(pgm + 'new stat: ' + new_stat) ;
-        } // sync_users
+        }; // sync_users
 
         // ping server once every minute - server maintains a list of online users / devices
         var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
@@ -4708,27 +4794,27 @@ angular.module('gifts', ['ngRoute'])
                     giftService.messages_not_sent() ;
 
                 })
-        } // ping
+        }; // ping
         $timeout(function () { ping(ping_interval); }, ping_interval) ;
         console.log('NavCtrl.start ping process. start up ping interval = ' + ping_interval) ;
 
         var get_js_timezone = function () {
             return -(new Date().getTimezoneOffset()) / 60.0 ;
-        }
+        };
         var start_do_tasks_spinner = function ()
         {
             var spinner_id = 'ajax-tasks-spinner' ;
             var spinner = document.getElementById(spinner_id) ;
             if (spinner) spinner.style.display = '' ;
             else Gofreerev.add2log('start_do_tasks_spinner: spinner was not found') ;
-        } // start_do_tasks_spinner
+        }; // start_do_tasks_spinner
         var stop_do_tasks_spinner = function ()
         {
             var spinner_id = 'ajax-tasks-spinner' ;
             var spinner = document.getElementById(spinner_id) ;
             if (spinner) spinner.style.display = 'none' ;
             else Gofreerev.add2log('stop_tasks_form_spinner: spinner was not found') ;
-        } // stop_tasks_form_spinner
+        }; // stop_tasks_form_spinner
 
         // post page task - execute some post-page / post-login ajax tasks and get fresh json data from server (oauth and users)
         var do_tasks = function () {
@@ -4771,7 +4857,7 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'error = ' + JSON.stringify(error)) ;
                 }) ;
 
-        }
+        };
         $timeout(do_tasks, 1000);
         // end NavCtrl
     }])
@@ -4801,7 +4887,7 @@ angular.module('gifts', ['ngRoute'])
         self.confirm_device_password = '' ;
         self.is_logged_in = function (provider) {
             return userService.is_logged_in_with_provider(provider)
-        }
+        };
         self.login = function (provider) {
             if (userService.is_logged_in_with_provider(provider)) return ;
             var userid = Gofreerev.getItem('userid') ;
@@ -4809,7 +4895,7 @@ angular.module('gifts', ['ngRoute'])
         };
         self.is_logged_off = function (provider) {
             return !userService.is_logged_in_with_provider(provider)
-        }
+        };
         self.logout = function (provider) {
             var logged_in = userService.is_logged_in_with_provider(provider) ;
             if (!logged_in) console.loog('AuthCtrl.logout. error. not logged in with ' + provider) ;
@@ -4820,25 +4906,25 @@ angular.module('gifts', ['ngRoute'])
             console.log('AuthCtrl.logout: debug 3') ;
             $location.path('/auth/0') ;
             $location.replace() ;
-        }
+        };
         self.trafic_light_status = function (provider) {
             if (userService.is_logged_in_with_provider(provider)) return 'connected' ;
             else return 'disconnected' ;
-        }
+        };
         self.register_disabled = function() {
             var device_password = $window.document.getElementById('device_password').value ;
             if (device_password.length < 10) return true ;
             if (device_password.length > 50) return true ;
             var confirm_device_password = $window.document.getElementById('confirm_device_password').value ;
             return (device_password != confirm_device_password) ;
-        }
+        };
         self.login_or_register_error = '' ;
         var set_login_or_register_error = function (error) {
             // todo: not working - error from userService.send_oauth is NOT injected into view!
             self.login_or_register_error = error ;
             // workaround - use old tasks error table in page header
             if (error != '') Gofreerev.add_to_tasks_errors(error) ;
-        }
+        };
         set_login_or_register_error('') ;
         self.login_or_register = function() {
             var pgm = 'AuthCtrl.login_or_register: ' ;
@@ -4848,6 +4934,7 @@ angular.module('gifts', ['ngRoute'])
                 alert('Invalid password');
             }
             else {
+                // clear login form
                 self.device_password = '' ;
                 self.confirm_device_password = '' ;
                 self.register = '' ;
@@ -4869,7 +4956,7 @@ angular.module('gifts', ['ngRoute'])
                 $location.path('/auth/' + userid) ;
                 $location.replace();
             }
-        }
+        };
         // end AuthCtrl
     }])
     .controller('GiftsCtrl', ['$location', '$http', '$document', '$window', '$sce', '$timeout',  'UserService', 'GiftService', 'TextService',
@@ -5245,20 +5332,18 @@ angular.module('gifts', ['ngRoute'])
             var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
             var user_ids = $(login_user_ids).filter(gift_user_ids) ;
             if (user_ids.length == 0) return [] ;
-            // merge with creator of comment. minimum one common provider is required
-            var user_providers = [] ;
-            for (var i= 0 ; i<user_ids.length ; i++) user_providers.push(user_ids[i].split('/')[1]) ;
-            var comment_providers = [] ;
-            for (i=0 ; i<comment.user_ids.length ; i++) comment_providers.push(comment.user_ids[i].split('/')[1]) ;
-            var providers = $(user_providers).filter(comment_providers) ;
-            if (providers.length == 0) return [] ; // no common providers between creator, logged in users and creator of comment
-            user_ids = [] ;
-            for (i=0 ; i<comment.user_ids.length ; i++) {
-                if (providers.indexOf(comment.user_ids[i].split('/')[1]) != -1) user_ids.push(comment.user_ids[i]) ;
+            // find providers - old gift creator & logged in
+            var user_providers = [], user ;
+            for (var i= 0 ; i<user_ids.length ; i++) {
+                user = userService.get_user(user_ids[i]) ;
+                user_providers.push(user.provider) ;
             }
-            if (user_ids.length != providers.length) {
-                console.log(pgm + 'System error when checking comment user ids. user_ids.length = ' + user_ids.length + ', providers.length = ' + providers.length) ;
-                return [] ;
+            // there must be minimum one common provider between creator of gift, login users and creator of comment
+            user_ids = [] ;
+            var comment_providers = [] ;
+            for (i=0 ; i<comment.user_ids.length ; i++) {
+                user = userService.get_user(comment.user_ids[i]) ;
+                if (user && (user_providers.indexOf(user.provider) != -1)) user_ids.push(comment.user_ids[i]) ;
             }
             return user_ids ;
         } // get_deal_close_by_user_ids
@@ -5713,7 +5798,7 @@ angular.module('gifts', ['ngRoute'])
             // new deal check box is only shown if login user is not creator of gift
             var creator_user_ids ;
             if (gift.direction == 'giver') creator_user_ids = gift.giver_user_ids ;
-            else creator_user_ids = receiver_user_ids ;
+            else creator_user_ids = gift.receiver_user_ids ;
             var creator = userService.get_closest_user(creator_user_ids) ;
             // console.log(pgm + 'other_user_id = ' + JSON.stringify(other_user_id)) ;
             // console.log(pgm + 'other_user = ' + JSON.stringify(other_user)) ;

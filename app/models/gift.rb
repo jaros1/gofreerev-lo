@@ -667,6 +667,4 @@ class Gift < ActiveRecord::Base
   end # self.delete_gifts
 
 
-
-
 end # Gift

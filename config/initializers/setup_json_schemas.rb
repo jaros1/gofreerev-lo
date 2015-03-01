@@ -197,8 +197,7 @@ JSON_SCHEMA = {
                       :required => %w(gid sha256),
                       :additionalProperties => false
                   },
-                  :minItems => 1,
-                  :uniqueItems => %w(gid)
+                  :minItems => 1
               },
 
               # verify_gifts - optional array used when verifying gifts received from other clients - check server sha256 signature created in a previous new_gifts request
@@ -225,8 +224,7 @@ JSON_SCHEMA = {
                       :required => %w(seq gid sha256),
                       :additionalProperties => false
                   },
-                  :minItems => 1,
-                  :uniqueItems => %w(seq)
+                  :minItems => 1
               },
 
               # delete gifts request - optional array with deleted gifts. gift server sha256 signature is verified and server sha256_deleted signature is created
@@ -253,8 +251,7 @@ JSON_SCHEMA = {
                       :required => %w(gid sha256 sha256_deleted),
                       :additionalProperties => false
                   },
-                  :minItems => 1,
-                  :uniqueItems => %w(gid)
+                  :minItems => 1
               },
 
               # new_comments - optional array with minimal meta-information for new comments (cid, sha256 and user ids)
@@ -273,8 +270,7 @@ JSON_SCHEMA = {
                       :required => %w(cid sha256 user_ids),
                       :additionalProperties => false
                   },
-                  :minItems => 1,
-                  :uniqueItems => %w(cid)
+                  :minItems => 1
               },
 
               # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request
@@ -295,8 +291,7 @@ JSON_SCHEMA = {
                       :required => %w(seq cid sha256 user_ids),
                       :additionalProperties => false
                   },
-                  :minItems => 1,
-                  :uniqueItems => %w(seq)
+                  :minItems => 1
               },
               # pubkeys - optional array with did (unique device id) - request public key for other client before starting client to client communication
               :pubkeys => {
@@ -661,7 +656,7 @@ JSON_SCHEMA = {
                     :properties => {
                         # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                         :gid => {:type => 'string', :pattern => uid_pattern},
-                        # sha256 calculation for gift
+                        # sha256 calculation for gift and comments
                         :sha256 => {:type => 'string', :maxLength => 32}
                     },
                     :required => %w(gid sha256),
@@ -731,6 +726,10 @@ JSON_SCHEMA = {
                                 :like => {:type => %w(undefined boolean)},
                                 # optional deleted at timestamp if gift has been deleted by giver or receiver
                                 :deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+                                # optional accepted cid - from accepted new deal proposal (comment) - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                :accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
+                                # optional accepted at client unix timestamp for accepted new deal proposal.
+                                :accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                 # optional array with gift comments
                                 :comments => {
                                     :type => 'array',

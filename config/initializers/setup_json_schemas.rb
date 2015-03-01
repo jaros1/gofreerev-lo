@@ -197,7 +197,8 @@ JSON_SCHEMA = {
                       :required => %w(gid sha256),
                       :additionalProperties => false
                   },
-                  :minItems => 1
+                  :minItems => 1,
+                  :uniqueItems => %w(gid)
               },
 
               # verify_gifts - optional array used when verifying gifts received from other clients - check server sha256 signature created in a previous new_gifts request
@@ -224,7 +225,8 @@ JSON_SCHEMA = {
                       :required => %w(seq gid sha256),
                       :additionalProperties => false
                   },
-                  :minItems => 1
+                  :minItems => 1,
+                  :uniqueItems => %w(seq)
               },
 
               # delete gifts request - optional array with deleted gifts. gift server sha256 signature is verified and server sha256_deleted signature is created
@@ -251,7 +253,8 @@ JSON_SCHEMA = {
                       :required => %w(gid sha256 sha256_deleted),
                       :additionalProperties => false
                   },
-                  :minItems => 1
+                  :minItems => 1,
+                  :uniqueItems => %w(gid)
               },
 
               # new_comments - optional array with minimal meta-information for new comments (cid, sha256 and user ids)
@@ -270,7 +273,8 @@ JSON_SCHEMA = {
                       :required => %w(cid sha256 user_ids),
                       :additionalProperties => false
                   },
-                  :minItems => 1
+                  :minItems => 1,
+                  :uniqueItems => %w(cid)
               },
 
               # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request
@@ -291,7 +295,8 @@ JSON_SCHEMA = {
                       :required => %w(seq cid sha256 user_ids),
                       :additionalProperties => false
                   },
-                  :minItems => 1
+                  :minItems => 1,
+                  :uniqueItems => %w(seq)
               },
               # pubkeys - optional array with did (unique device id) - request public key for other client before starting client to client communication
               :pubkeys => {
@@ -306,9 +311,9 @@ JSON_SCHEMA = {
                       :type => 'object',
                       :properties => {
                           :provider => {:type => 'string', :pattern => providers_pattern},
-                          :access_token => {:type => 'string'}
+                          :refresh_token => {:type => 'string'}
                       },
-                      :required => %w(provider access_token),
+                      :required => %w(provider refresh_token),
                       :additionalProperties => false
                   },
                   :minItems => 1,

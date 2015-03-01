@@ -1750,8 +1750,15 @@ angular.module('gifts', ['ngRoute'])
             var provider, i ;
             for (i=0 ; i<expired_tokens.length ; i++) {
                 provider = expired_tokens[i] ;
-                console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
-                remove_oauth(provider) ;
+                if (provider == 'google_oauth2') {
+                    // send google+ refresh token to server in next refresh_tokens_request
+                    console.log(pgm + 'send google+ refresh token to server in next refresh_tokens_request') ;
+                    self.expires_at[provider] = self.expires_at[provider] - 24*60*60 ; // expired one day ago
+                }
+                else {
+                    console.log(pgm + 'log off for ' + provider + '. access token was expired') ;
+                    remove_oauth(provider) ;
+                }
             }
         } // expired_tokens_response
 
@@ -1780,6 +1787,16 @@ angular.module('gifts', ['ngRoute'])
         var oauths_response = function (oauth_array) {
             var pgm = 'oauths_response: ' ;
             if (!oauth_array) return ;
+            if ((oauth_array.length == 1) && (oauth_array[0].provider == 'google_oauth2') && (!oauth_array[0].refresh_token)) {
+                // received a dummy google+ oauth token from server ping
+                // must be failed attempt to renew google+ refresh token on server
+                // see rails: application_controller.check_expired_tokens
+                console.log(pgm + 'Refreshed dummy google+ oauth from server') ;
+                console.log(pgm + 'oauth_array = ' + JSON.stringify(oauth_array)) ;
+                remove_oauth('google_oauth2') ;
+                return ;
+            }
+
             // convert from array to an hash before calling add_oauth
             console.log(pgm + 'oauth_array = ' + JSON.stringify(oauth_array)) ;
             var oauth_hash = oauth_array_to_hash(oauth_array) ;

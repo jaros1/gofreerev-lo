@@ -322,10 +322,49 @@ class Gift < ActiveRecord::Base
     response = []
     verify_gifts.each do |verify_gift|
       seq = verify_gift["seq"]
-      sha256_client = verify_gift["sha256"]
+      gid = verify_gift["gid"]
+
+      # validate row in verify gift request
+      if verify_gift["giver_user_ids"] and verify_gift["giver_user_ids"].size > 0
+        giver_user_ids = verify_gift["giver_user_ids"].uniq
+      else
+        giver_user_ids = []
+      end
+      if verify_gift["receiver_user_ids"] and verify_gift["receiver_user_ids"].size > 0
+        receiver_user_ids = verify_gift["receiver_user_ids"].uniq
+      else
+        receiver_user_ids = []
+      end
+      if giver_user_ids.size == 0 and receiver_user_ids.size == 0
+        logger.error2 "gid #{gid}. Invalid request. Giver user ids and receiver user ids are missing."
+        response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        next
+      end
+      if giver_user_ids.size != giver_user_ids.uniq.size
+        logger.error2 "gid #{gid}. Invalid request. User ids in giver user ids list must be unique."
+        response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        next
+      end
+      if receiver_user_ids.size != receiver_user_ids.uniq.size
+        logger.error2 "gid #{gid}. Invalid request. User ids in receiver user ids list must be unique"
+        response << { :seq => seq, :gid => gid, :verified_server => false }
+        next
+      end
+
+      if verify_gift["sha256_accepted"]
+        if giver_user_ids.size == 0
+          logger.error2 "gid #{gid}. Invalid request. Giver user ids are missing for accepted gift"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          next
+        end
+        if receiver_user_ids.size == 0
+          logger.error2 "gid #{gid}. Invalid request. Receiver user ids are missing for accepted gift"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          next
+        end
+      end
 
       # check if gift exists
-      gid = verify_gift["gid"]
       gift = gifts[gid]
       if !gift
         # gift not found -
@@ -375,6 +414,7 @@ class Gift < ActiveRecord::Base
       receiver_user_ids.sort!
 
       # calculate and check server side sha256 signature
+      sha256_client = verify_gift["sha256"]
       direction = nil
       if giver_user_ids.size > 0
         sha256_input = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
@@ -393,11 +433,46 @@ class Gift < ActiveRecord::Base
         next
       end
 
-      # if supplied - calculate and check server side sha256_accepted signature
-      logger.error2 "todo: sha256_accepted verification is missing" if verify_gift["sha256_accepted"]
+      # sha256_accepted: if supplied - calculate and check server side sha256_accepted signature
+      # old server sha256_accepted signature was generated when gift was accepted and deal was closed
+      # calculate and check sha256_accepted signature from information received in verify gifts request
+      sha256_accepted_client = verify_gift["sha256_accepted"]
+      if sha256_accepted_client
+        if !gift.sha256_accepted
+          logger.warn2 "Gift #{gid}. Verify gift request failed. sha256_accepted in request but gift dont have a sha256_accepted signature on server."
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          next
+        end
+        sha256_input = ([gid, sha256_accepted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        if gift.sha256_accepted != sha256_calc
+          logger.warn2 "Gift #{gid}. Verify gift request failed. new sha256_accepted calculation = #{sha256_calc}. old sha256_accepted on server = #{gift.sha256_accepted}."
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          next
+        end
+      end
 
-      # if supplied - calculate and check server side sha256_deleted signature
-      logger.error2 "todo: sha256_deleted verification is missing" if verify_gift["sha256_deleted"]
+      # sha256_deleted: if supplied - calculate and check server side sha256_deleted signature
+      # old server sha256_deleted signature was generated when gift previously was deleted
+      # calculate and check sha256_deleted signature from information received in verify gifts request
+      sha256_deleted_client = verify_gift["sha256_deleted"]
+      if sha256_deleted_client
+        if !gift.sha256_deleted
+          logger.warn2 "Gift #{gid}. Verify gift request failed. sha256_deleted in request but gift dont have a sha256_deleted signature on server."
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          next
+        end
+        if direction == 'giver'
+          sha256_input = ([gid, sha256_deleted_client, 'giver'] + giver_user_ids).join(',')
+        else
+          sha256_input = ([gid, sha256_deleted_client, 'receiver'] + receiver_user_ids).join(',')
+        end
+        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        if gift.sha256_deleted != sha256_calc
+          logger.warn2 "Gift #{gid}. Verify gift request failed. new sha256_deleted calculation = #{sha256_calc}. old sha256_deleted on server = #{gift.sha256_deleted}."
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        end
+      end
 
       # no errors
       response << { :seq => seq, :gid => gid, :verified_at_server => true }

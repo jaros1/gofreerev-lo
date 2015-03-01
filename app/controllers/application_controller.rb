@@ -164,7 +164,9 @@ class ApplicationController < ActionController::Base
             res1 = nil
             expires_at = nil
             delete_session_array_value(:refresh_tokens, provider)
-            expired_tokens << provider
+            # return dummy google+ oauth without refresh token
+            logger.debug2 "return dummy google+ oauth without refresh token"
+            oauth = [{:provider => provider, :user_id => user_id, :token => 'expired', :expires_at => 1.day.ago.to_i}]
           rescue => e
             # other errors.
             logger.debug2 "Google+: could not use refresh_token to get a new access_token"
@@ -173,7 +175,9 @@ class ApplicationController < ActionController::Base
             res1 = nil
             expires_at = nil
             delete_session_array_value(:refresh_tokens, provider)
-            expired_tokens << provider
+            # return dummy google+ oauth without refresh token
+            logger.debug2 "return dummy google+ oauth without refresh token"
+            oauth = [{:provider => provider, :user_id => user_id, :token => 'expired', :expires_at => 1.day.ago.to_i}]
           end
           if res1
             logger.secret2 "res1 = #{res1}"
@@ -199,15 +203,21 @@ class ApplicationController < ActionController::Base
       if !expires_at or (expires_at < Time.now.to_i)
         # found login with missing or expired access token
         # this message is also used after single sign-on with one or more expired access tokens
-        logger.debug2 "found login user with missing or expired access token. provider = #{provider}, expires_at = #{expires_at}"
-        add_error_key 'auth.destroy.expired_access_token',
-                      :provider => provider, :apiname => provider_downcase(provider), :appname => APP_NAME
-        delete_session_array_value(:user_ids, user_id)
-        delete_session_array_value(:tokens, provider)
-        delete_session_array_value(:expires_at, provider)
+        if provider == 'google_oauth2' and context == :ping and !refresh_token
+          # google+ is expired on server but client did not send google+ refresh token in last ping.
+          # return google+ as expired login provider but keep server login
+          logger.warn2 "google+ is expired on server. Requests google+ refresh token in next ping request from client"
+        else
+          logger.debug2 "found login user with missing or expired access token. provider = #{provider}, expires_at = #{expires_at}"
+          add_error_key 'auth.destroy.expired_access_token',
+                        :provider => provider, :apiname => provider_downcase(provider), :appname => APP_NAME
+          delete_session_array_value(:user_ids, user_id)
+          delete_session_array_value(:tokens, provider)
+          delete_session_array_value(:expires_at, provider)
+        end
         expired_tokens << provider
       end
-    end
+    end # each user_id
     expired_tokens = expired_tokens.size == 0 ? nil : expired_tokens
 
     [expired_tokens, oauth]

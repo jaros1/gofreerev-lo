@@ -84,12 +84,52 @@ PING_INTERVAL = 60000
 # see util/ping
 MAX_AVG_LOAD = `nproc`.to_i - 0.4 # 0.6, 1.6, 2.6, 3.6 etc
 
-# country gem. country to currency mapping. default currency for new users
-country_to_currency = {} ;
-Country.all.each do |c1|
-  countrycode = c1[1].downcase
-  c2 = Country.new countrycode
-  currencycode = (c2.currency ? c2.currency.code.downcase : nil )
-  country_to_currency[countrycode] = currencycode if currencycode
-end
-COUNTRY_TO_CURRENCY = country_to_currency
+# extract country to currency hash from country gem (https://github.com/hexorx/countries) - used as default currency for new users
+# country_to_currency = {} ;
+# Country.all.each do |c1|
+#   countrycode = c1[1].downcase
+#   c2 = Country.new countrycode
+#   currencycode = (c2.currency ? c2.currency.code.downcase : nil )
+#   currencycode = 'gbp' if currencycode and %w(imp jep).index(currencycode)
+#   country_to_currency[countrycode] = currencycode if currencycode
+# end
+COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd", "ai" => "xcd", "al" => "all",
+                       "am" => "amd", "an" => "ang", "ao" => "aoa", "ar" => "ars", "as" => "usd", "at" => "eur",
+                       "au" => "aud", "aw" => "awg", "az" => "azn", "ba" => "bam", "bb" => "bbd", "bd" => "bdt",
+                       "be" => "eur", "bf" => "xof", "bg" => "bgn", "bh" => "bhd", "bi" => "bif", "bj" => "xof",
+                       "bl" => "eur", "bm" => "bmd", "bn" => "bnd", "bo" => "bob", "bq" => "usd", "br" => "brl",
+                       "bs" => "bsd", "bt" => "btn", "bv" => "nok", "bw" => "bwp", "by" => "byr", "bz" => "bzd",
+                       "ca" => "cad", "cc" => "aud", "cf" => "xaf", "ch" => "chf", "ci" => "xof", "ck" => "nzd",
+                       "cl" => "clp", "cm" => "xaf", "cn" => "cny", "co" => "cop", "cr" => "crc", "cu" => "cup",
+                       "cv" => "cve", "cw" => "ang", "cx" => "aud", "cy" => "eur", "cz" => "czk", "de" => "eur",
+                       "dj" => "djf", "dk" => "dkk", "dm" => "xcd", "do" => "dop", "dz" => "dzd", "ec" => "usd",
+                       "ee" => "eur", "eg" => "egp", "eh" => "mad", "er" => "etb", "es" => "eur", "et" => "etb",
+                       "fi" => "eur", "fj" => "usd", "fk" => "fkp", "fm" => "usd", "fo" => "dkk", "fr" => "eur",
+                       "ga" => "xaf", "gb" => "gbp", "gd" => "xcd", "ge" => "gel", "gf" => "eur", "gg" => "gbp",
+                       "gh" => "ghs", "gi" => "gip", "gl" => "dkk", "gm" => "gmd", "gn" => "gnf", "gp" => "eur",
+                       "gr" => "eur", "gt" => "gtq", "gu" => "usd", "gw" => "xof", "gy" => "gyd", "hk" => "hkd",
+                       "hm" => "aud", "hn" => "hnl", "hr" => "hrk", "ht" => "usd", "hu" => "huf", "id" => "idr",
+                       "ie" => "eur", "il" => "ils", "im" => "gbp", "in" => "inr", "io" => "usd", "iq" => "iqd",
+                       "ir" => "irr", "is" => "isk", "it" => "eur", "je" => "gbp", "jm" => "jmd", "jo" => "jod",
+                       "jp" => "jpy", "ke" => "kes", "kg" => "kgs", "kh" => "khr", "ki" => "aud", "km" => "kmf",
+                       "kn" => "xcd", "kp" => "kpw", "kr" => "krw", "kw" => "kwd", "ky" => "kyd", "kz" => "kzt",
+                       "la" => "lak", "lb" => "lbp", "lc" => "xcd", "li" => "chf", "lk" => "lkr", "lr" => "lrd",
+                       "ls" => "lsl", "lt" => "eur", "lu" => "eur", "lv" => "eur", "ly" => "lyd", "ma" => "mad",
+                       "mc" => "eur", "md" => "mdl", "me" => "eur", "mf" => "eur", "mh" => "usd", "mk" => "mkd",
+                       "ml" => "xof", "mm" => "mmk", "mn" => "mnt", "mp" => "usd", "mq" => "eur", "mr" => "mro",
+                       "ms" => "xcd", "mt" => "eur", "mu" => "mur", "mv" => "mvr", "mw" => "mwk", "mx" => "mxn",
+                       "my" => "myr", "mz" => "mzn", "na" => "nad", "nc" => "xpf", "ne" => "xof", "nf" => "aud",
+                       "ng" => "ngn", "ni" => "nio", "nl" => "eur", "no" => "nok", "np" => "npr", "nr" => "aud",
+                       "nz" => "nzd", "om" => "omr", "pa" => "pab", "pe" => "pen", "pf" => "xpf", "pg" => "pgk",
+                       "ph" => "php", "pk" => "pkr", "pl" => "pln", "pm" => "eur", "pn" => "nzd", "pr" => "usd",
+                       "pt" => "eur", "pw" => "usd", "py" => "pyg", "qa" => "qar", "re" => "eur", "ro" => "ron",
+                       "rs" => "rsd", "ru" => "rub", "rw" => "rwf", "sa" => "sar", "sb" => "sbd", "sc" => "scr",
+                       "sd" => "sdg", "se" => "sek", "sg" => "sgd", "sh" => "shp", "si" => "eur", "sj" => "nok",
+                       "sk" => "eur", "sl" => "sll", "sm" => "eur", "sn" => "xof", "so" => "sos", "sr" => "srd",
+                       "st" => "std", "sv" => "usd", "sx" => "ang", "sy" => "syp", "sz" => "szl", "tc" => "usd",
+                       "td" => "xaf", "tf" => "eur", "tg" => "xof", "th" => "thb", "tj" => "tjs", "tk" => "nzd",
+                       "tl" => "idr", "tn" => "tnd", "to" => "top", "tr" => "try", "tt" => "ttd", "tv" => "tvd",
+                       "tw" => "twd", "tz" => "tzs", "ua" => "uah", "ug" => "ugx", "um" => "usd", "us" => "usd",
+                       "uy" => "uyu", "uz" => "uzs", "va" => "eur", "vc" => "xcd", "ve" => "vef", "vg" => "usd",
+                       "vi" => "usd", "vn" => "vnd", "wf" => "xpf", "ws" => "usd", "ye" => "yer", "yt" => "eur",
+                       "za" => "zar", "zm" => "zmk", "zw" => "zwd"};

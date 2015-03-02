@@ -31,5 +31,5 @@ Gofreerev.rails['COUNTRY_TO_CURRENCY'] = JSON.parse('<%= COUNTRY_TO_CURRENCY.to_
       active_currencies = ers & valid_currencies
     end
   end
-  "Gofreerev.rails['ACTIVE_CURRENCIES'] = JSON.parse('#{active_currencies.to_json}')"
+  "Gofreerev.rails['VALID_CURRENCIES'] = JSON.parse('#{valid_currencies.to_json}'); Gofreerev.rails['ACTIVE_CURRENCIES'] = JSON.parse('#{active_currencies.to_json}')"
 %> ;

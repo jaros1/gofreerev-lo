@@ -444,21 +444,21 @@ var Gofreerev = (function() {
     // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
 
     var storage_rules = {
-        currency: {session: false, userid: true, compress: false, encrypt: false, key: false}, // currency code (ISO 4217)
-        did: {session: false, userid: true, compress: false, encrypt: false, key: false}, // new unique device id
-        gifts: {session: false, userid: true, compress: true, encrypt: true, key: false}, // array with user and friends gifts - password encrypted
-        new_gifts: {session: false, userid: true, compress: true, encrypt: true, key: true}, // array with user and friends gifts - key encrypted
-        key: {session: false, userid: true, compress: true, encrypt: true, key: false}, // random string 100 characters used in encryption
-        password: {session: true, userid: false, compress: false, encrypt: false, key: false}, // session password in clear text
-        passwords: {session: false, userid: false, compress: false, encrypt: false, key: false}, // array with hashed passwords. size = number of accounts
-        oauth: {session: false, userid: true, compress: true, encrypt: true, key: false}, // login provider oauth authorization
-        prvkey: {session: false, userid: true, compress: true, encrypt: true, key: false}, // for encrypted user to user communication
-        pubkey: {session: false, userid: true, compress: true, encrypt: false, key: false}, // for encrypted user to user communication
-        secret: {session: false, userid: true, compress: true, encrypt: false, key: false}, // client secret - used in device.sha256 signature - 10 digits
-        seq: {session: false, userid: true, compress: true, encrypt: false, key: false}, // sequence - for example used in verify_gifts request and response
-        sid: {session: true, userid: false, compress: false, encrypt: false, key: false}, // unique session id
-        userid: {session: true, userid: false, compress: false, encrypt: false, key: false}, // session userid (1, 2, etc) in clear text
-        users: {session: false, userid: true, compress: true, encrypt: true, key: false} // array with logged in users and friends
+        currency: {session: false, userid: true, compress: false, encrypt: false}, // currency code (ISO 4217)
+        did: {session: false, userid: true, compress: false, encrypt: false}, // new unique device id
+        gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts - password encrypted
+        new_gifts: {session: false, userid: true, compress: true, encrypt: true}, // array with user and friends gifts - key encrypted
+        key: {session: false, userid: true, compress: true, encrypt: true}, // random string 100 characters used in encryption
+        password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
+        passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
+        oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
+        prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
+        pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
+        secret: {session: false, userid: true, compress: true, encrypt: false}, // client secret - used in device.sha256 signature - 10 digits
+        seq: {session: false, userid: true, compress: true, encrypt: false}, // sequence - for example used in verify_gifts request and response
+        sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
+        userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
+        users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
     };
 
     // first character in stored value is an encryption/compression storage flag
@@ -625,10 +625,10 @@ var Gofreerev = (function() {
             console.log(pgm + 'Warning. using default value encrpt=false for key ' + key) ;
             key_options.encrypt = false ;
         }
-        if (!key_options.hasOwnProperty('key')) {
-            console.log(pgm + 'Warning. using default value key=false for key ' + key) ;
-            key_options.key = false ;
-        }
+        //if (!key_options.hasOwnProperty('key')) {
+        //    console.log(pgm + 'Warning. using default value key=false for key ' + key) ;
+        //    key_options.key = false ;
+        //}
         return key_options ;
     } // get_local_storage_rule
 
@@ -636,8 +636,8 @@ var Gofreerev = (function() {
     function getItem (key) {
         var pgm = 'Gofreerev.getItem: ' ;
         // if (key == 'password') console.log(pgm + 'caller: ' + arguments.callee.caller.toString()) ;
-        var rename_uid = (key == 'did') ; // possible rename uid to did (unique device id)
         var rule = get_local_storage_rule(key) ;
+        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key') ;
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid') ;
@@ -651,26 +651,7 @@ var Gofreerev = (function() {
         }
         // read stored value
         var value = rule.session ? sessionStorage.getItem(key) : localStorage.getItem(key) ;
-        if ((typeof value == 'undefined') || (value == null) || (value == '')) {
-            if (rename_uid) {
-                // <userid>_did was not found - check if <userid>_uid exists
-                var key2 = userid + '_uid' ;
-                value = localStorage.getItem(key2) ;
-                if ((typeof value == 'undefined') || (value == null) || (value == '')) return null ;
-                else {
-                    // rename uid to did and continue
-                    localStorage.removeItem(key2) ;
-                    localStorage.setItem(key, value) ;
-                }
-            }
-            else return null ; // key not found
-        }
-
-        // todo: remove old data migration. truncate did from 21 to 20 characters
-        if (rename_uid && (value.length > 21)) {
-            value = value.substr(0,21) ;
-            localStorage.setItem(key, value) ;
-        }
+        if ((typeof value == 'undefined') || (value == null) || (value == '')) return null ; // key not found
 
         // get storage flag - how was data stored - first character in value
         var storage_flag = value.substr(0,1) ;
@@ -691,9 +672,9 @@ var Gofreerev = (function() {
         // decrypt
         if (storage_options.encrypt) {
             // console.log(pgm + key + ' before decrypt = ' + value) ;
-            var password = getItem('password') ;
+            var password = getItem(password_type) ; // use key or password
             if ((typeof password == 'undefined') || (password == null) || (password == '')) {
-                console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
+                console.log(pgm + 'Error. key ' + key + ' is stored encrypted but ' + password_type + ' was not found') ;
                 return null ;
             }
             value = decrypt(value, password);
@@ -714,9 +695,9 @@ var Gofreerev = (function() {
 
     function setItem (key, value) {
         var pgm = 'Gofreerev.setItem: ' ;
-        var rename_uid = (key == 'did') ; // possible rename uid to did (unique device id)
         var save_value = value ; // for optional lzma_compress0
         var rule = get_local_storage_rule(key) ;
+        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key') ;
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid') ;
@@ -731,9 +712,9 @@ var Gofreerev = (function() {
         // check password
         var password ;
         if (rule.encrypt) {
-            password = getItem('password') ;
+            password = getItem(password_type) ; // use key or password
             if ((typeof password == 'undefined') || (password == null) || (password == '')) {
-                console.log(pgm + 'Error. key ' + key + ' is stored encrypted but password was not found') ;
+                console.log(pgm + 'Error. key ' + key + ' is stored encrypted but ' + password_type + ' was not found') ;
                 return ;
             }
         }
@@ -771,11 +752,6 @@ var Gofreerev = (function() {
             return ;
         }
         value = storage_flag + value ;
-        // check for uid => did rename
-        if (rename_uid) {
-            var key2 = userid + '_uid' ;
-            if (localStorage.getItem(key2)) localStorage.removeItem(key2) ;
-        }
         // save
         // if (key.match(/oauth/)) console.log('setItem. key = ' + key + ', value = ' + value) ;
         if (rule.session) sessionStorage.setItem(key, value) ;
@@ -876,31 +852,29 @@ var Gofreerev = (function() {
             userid = passwords_a.length + 1 ; // sequence = number of user accounts in local storage
             // save login in sessionStorage
             // note that password is saved in clear text in sessionStorage
-            // please use device log out or to close browser tab when finished
+            // please use device log out or close browser tab when finished
             setItem('userid', userid) ;
             setItem('password', password) ;
-            if (!getItem('sid')) setItem(Gofreerev.get_new_uid()) ;
+            if (!getItem('sid')) setItem('sid', Gofreerev.get_new_uid()) ;
             // setup new account
             did = Gofreerev.get_new_uid() ; // unique device id
-            // hash password
             passwords_a.push(password_sha256) ;
             passwords_s = JSON.stringify(passwords_a) ;
-            // generate key pair for user to user encryption
+            // generate key pair for client to client RSA encryption (symmetric password handshake)
             crypt = new JSEncrypt({default_key_size: 2048});
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();
-            // generate key - used together with password for encrypted data in localStorage
-            // data in localStorage is encrypted with key. key is as only item encrypted with password
-            var key = Gofreerev.generate_random_password(100) ;
-            // ready to store new account information.
+            // key for symmetric encryption in localStorage - 80-120 characters
+            var key_lng = Math.round(Math.random()*40)+80 ;
+            var key = Gofreerev.generate_random_password(key_lng) ;
             // save new user account
             setItem('key', key) ;
             setItem('did', did) ; // unique device id
             setItem('prvkey', prvkey) ; // private key - only used on this device - never sent to server or other clients
             setItem('pubkey', pubkey) ; // public key - sent to server and other clients
             setItem('seq', '0') ; // sequence, for example used in verify gifts request/response
-            setItem('passwords', passwords_s) ; // array with hashed passwords. size = number of accounts
+            setItem('passwords', passwords_s) ; // array with sha256 hashed passwords. length = number of accounts
             return userid ;
         }
         // invalid password (create_new_account=false)
@@ -1142,15 +1116,27 @@ angular.module('gifts', ['ngRoute'])
         };
         // todo: add route to show gift - as gifts page with one gift and without create new gift
         // todo: is there any reason for :userid in angularJS - will not be 100% correct if link to a gift is shared with an other gofreerev-lo user
+        // todo: /gifts/ is only allowed for api provider logins. that is: users.length > 0
         $routeProvider
             .when('/gifts/:userid?', {
                 templateUrl: 'main/gifts',
                 controller: 'GiftsCtrl as ctrl',
                 resolve: {
                     check_userid: ['$route', '$location', function ($route, $location) {
+                        // check /:userid in url
                         var userid = get_local_userid();
                         if (userid != $route.current.params.userid) {
+                            // invalid or missing /:userid in url
                             $location.path('/gifts/' + userid);
+                            $location.replace();
+                            return ;
+                        }
+                        // check api provider login
+                        var oauth = Gofreerev.getItem('oauth') ;
+                        if (oauth) oauth = JSON.parse(oauth) ;
+                        if (!oauth || (oauth.length == 0)) {
+                            // no api provider login
+                            $location.path('/auth/' + userid);
                             $location.replace();
                         }
                     }]
@@ -1979,6 +1965,235 @@ angular.module('gifts', ['ngRoute'])
         var service = 'GiftService';
         console.log(service + ' loaded');
 
+        // todo: add comment validations.
+        // - invalid_comment is called from create_new_comment, when receiving new comments from other clients and before sending comments to other clients
+        // - invalid_comment_change is called in any local updates and when merging comment information from other clients into local comment
+        var invalid_comment = function (comment) {
+            var pgm = service + '.invalid_comment: ' ;
+            console.log(pgm + 'Not implemented') ;
+            return null ;
+        };
+        var invalid_comment_change = function (old_comment, new_comment) {
+            var pgm = service + '.invalid_changed_comment: ' ;
+            console.log(pgm + 'Not implemented') ;
+            return null ;
+        };
+
+        // todo: add gift validations.
+        // - invalid_gift is called from create_new_gift, when receiving new gifts from other clients and before sending gifts to other clients
+        // - invalid_gift_change is called in any local updates and when merging gift information from other clients into local gift
+        var invalid_gift = function (gift) {
+            var pgm = service + '.invalid_gift: ' ;
+            var errors = [] ;
+            // fields to validate:
+            //  1) gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            //  2) giver_user_ids and/or receiver_user_ids
+            //  3) created_at_client unix timestamp - 10 decimals - used in gift signature on server
+            //  4) price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
+            //  5) currency: optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
+            //  6) direction: giver or receiver
+            //  7) description   :description => {:type => 'string'},
+            //  8) open_graph_url => {:type => %w(undefined string) },
+            //  9) open_graph_title => {:type => %w(undefined string) },
+            // 10) open_graph_description => {:type => %w(undefined string) },
+            // 11) open_graph_image => {:type => %w(undefined string) },
+            // 12) like - todo: must be changed to an array with user ids and like/unlike timestamps
+            // 13) deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            // 14) accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
+            // 15) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            // 16) comments array
+
+            //  1) gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            var from_unix_timestamp = Math.floor((new Date('2014-01-01')).getTime()/1000) ;
+            var to_unix_timestamp =  Math.floor((new Date).getTime()/1000) + 24*60*60;
+            if (!gift.gid) errors.push('Required gid (unique gift id) is missing') ;
+            else if (typeof gift.gid != 'string') errors.push('Invalid gid (unique gift id). Gid must be a string with 20 digits') ;
+            else if (!gift.gid.match(/^[0-9]{20}$/)) errors.push('Invalid gid (unique gift id). Gid must be a string with 20 digits') ;
+            else if (parseInt(gift.gid.substr(0,10)) < from_unix_timestamp) errors.push('Invalid gid (unique gift id). The first 10 digits must be a valid unix timestamp') ;
+            else if (parseInt(gift.gid.substr(0,10)) > to_unix_timestamp) errors.push('Invalid gid (unique gift id). The first 10 digits must be a valid unix timestamp') ;
+
+            //  2) giver_user_ids and/or receiver_user_ids
+            var giver_user_ids = gift.giver_user_ids || [] ;
+            var receiver_user_ids = gift.receiver_user_ids || [] ;
+            if ((giver_user_ids.length == 0) && (receiver_user_ids.length ==0)) errors.push('Gift without giver or receiver is not allowed') ;
+            var user_ids, providers, user_id, user ;
+            user_ids = [] ;
+            providers = [] ;
+            var logged_in_user = false ;
+            var friend = false ;
+            for (var i=0 ; i<giver_user_ids.length ; i++) {
+                user_id = giver_user_ids[i] ;
+                if (user_ids.indexOf(user_id) != -1) {
+                    errors.push('Giver is invalid. Doublet user ids in giver_user_ids') ;
+                    break ;
+                }
+                user = userService.get_user(user_id) ;
+                if (!user) {
+                    errors.push('Giver is invalid. Unknown user id in giver_user_ids') ;
+                    break ;
+                }
+                if (providers.indexOf(user.provider) != -1) {
+                    errors.push('Giver is invalid. Doublet provider in giver_user_ids') ;
+                    break ;
+                }
+                providers.push(user.provider) ;
+                if (user.friend == 1) logged_in_user = true ;
+                if (user.friend <= 2) friend = true ;
+            } // for i
+            user_ids = [] ;
+            providers = [] ;
+            for (var i=0 ; i<receiver_user_ids.length ; i++) {
+                user_id = receiver_user_ids[i] ;
+                if (user_ids.indexOf(user_id) != -1) {
+                    errors.push('Receiver is invalid. Doublet user ids in receiver_user_ids') ;
+                    break ;
+                }
+                user = userService.get_user(user_id) ;
+                if (!user) {
+                    errors.push('Receiver is invalid. Unknown user id in receiver_user_ids') ;
+                    break ;
+                }
+                if (providers.indexOf(user.provider) != -1) {
+                    errors.push('Receiver is invalid. Doublet provider in receiver_user_ids') ;
+                    break ;
+                }
+                providers.push(user.provider) ;
+                if (user.friend == 1) logged_in_user = true ;
+                if (user.friend <= 2) friend = true ;
+            } // for i
+            if ($(giver_user_ids).filter(receiver_user_ids).length > 0) {
+                errors.push('Giver/receiver is invalid. Found common user id in giver and receiver user ids. A user cannot be both giver and receiver of a gift') ;
+            }
+            if ((giver_user_ids.length == 0) && (gift.direction == 'giver')) {
+                errors.push('Giver is invalid. Cannot be empty for direction=giver') ;
+            }
+            else if (gift.accepted_cid || gift.accepted_at_client) {
+                errors.push('Giver is invalid. Cannot be empty for an accepted deal') ;
+            }
+            if ((receiver_user_ids.length == 0) && (gift.direction == 'receiver')) {
+                errors.push('Receiver is invalid. Cannot be empty for direction=receiver') ;
+            }
+            else if (gift.accepted_cid || gift.accepted_at_client) {
+                errors.push('Receiver is invalid. Cannot be empty for an accepted deal') ;
+            }
+
+            //  3) created_at_client unix timestamp - 10 decimals - used in gift signature on server
+            if (!gift.created_at_client) errors.push('Required created_at_client unix timestamp is missing') ;
+            else if (gift.created_at_client < from_unix_timestamp) errors.push('Invalid created_at_client unix timestamp') ;
+            else if (gift.created_at_client > to_unix_timestamp) errors.push('Invalid created_at_client unix timestamp') ;
+
+            //  4) price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
+            // console.log(pgm + 'price = ' + gift.price + ', typeof price = ' + typeof gift.price) ;
+            if ((typeof gift.price != 'undefined') && (gift.price != null)) {
+                if (typeof gift.price != 'number') errors.push('Price is invalid. Must be an number >= 0') ;
+                else if (gift.price < 0) errors.push('Price is invalid. Must be an number >= 0') ;
+                else if (gift.price != Math.round(gift.price, 2)) errors.push('Price is invalid. Max 2 decimals are allowed in prices') ;
+            }
+
+            //  5) currency: optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with some restrictions
+            // Gofreerev.rails['VALID_CURRENCIES'] is a list with currencies from country to currency hash (from money gem)
+            // not all currencies in list is active and not all currencies have exchange rates from default money bank
+            if ((typeof gift.price == 'number') && (!gift.currency)) errors.push('Required currency is missing') ;
+            if (gift.currency) {
+                if (typeof gift.currency != 'string') errors.push('Currency is invalid. Must be a 3 letters string with valid iso4217 currency code') ;
+                else if (!gift.currency.match(/^[a-z]{3}$/)) errors.push('Currency is invalid. Must be a 3 letters string with valid iso4217 currency code') ;
+                else if (Gofreerev.rails['VALID_CURRENCIES'].indexOf(gift.currency) == -1) errors.push('Unknown currency ' + gift.currency) ;
+            }
+            else {
+                if (typeof gift.price == 'number') errors.push('Required currency is missing') ;
+            }
+
+            //  6) direction: giver or receiver
+            if (!gift.direction) errors.push('Required direction is missing') ;
+            else if (typeof gift.direction != 'string') errors.push('Direction is invalid. Must be giver or receiver') ;
+            else if (['giver', 'receiver'].indexOf(gift.direction) == -1) errors.push('Direction is invalid. Must be giver or receiver') ;
+            else if ((gift.direction == 'giver') && (giver_user_ids.length == 0)) errors.push('Direction is giver but no giver user ids was found') ;
+            else if ((gift.direction == 'receiver') && (receiver_user_ids.length == 0)) errors.push('Direction is receiver but no receiver user ids was found') ;
+
+            //  7) description   :description => {:type => 'string'},
+            if ((typeof gift.description != 'string') || (gift.description == '')) errors.push('Required description is missing') ;
+
+            //  8) open_graph_url => {:type => %w(undefined string) },
+            if (gift.open_graph_url) {
+                if (typeof gift.open_graph_url != 'string') errors.push('Open graph link is invalid. Must be an http url') ;
+                else if (!gift.open_graph_url.match(/^https?:\/\//)) errors.push('Open graph link is invalid. Must be an http url') ;
+                else if (!gift.open_graph_title && !gift.open_graph_description && !gift.open_graph_image) errors.push('Open graph link is invalid. Open graph must have a title, a description and/or an image') ;
+            }
+
+            //  9) open_graph_title => {:type => %w(undefined string) },
+            if (gift.open_graph_title && (typeof gift.open_graph_title != 'string')) errors.push('Invalid open graph title. Must be blank or a string') ;
+
+            // 10) open_graph_description => {:type => %w(undefined string) },
+            if (gift.open_graph_description && (typeof gift.open_graph_description != 'string')) errors.push('Invalid open graph description. Must be blank or a string') ;
+
+            // 11) open_graph_image => {:type => %w(undefined string) },
+            if (gift.open_graph_image) {
+                if (typeof gift.open_graph_image != 'string') errors.push('Open graph image is invalid. Must be an http url') ;
+                else if (!gift.open_graph_image.match(/^https?:\/\//)) errors.push('Open graph image is invalid. Must be an http url') ;
+            }
+            
+            // 12) like - todo: must be changed to an array with user ids and like/unlike timestamps
+            
+            // 13) deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            if (gift.deleted_at_client) {
+                if (gift.deleted_at_client < from_unix_timestamp) errors.push('Invalid deleted_at_client unix timestamp') ;
+                else if (gift.deleted_at_client > to_unix_timestamp) errors.push('Invalid deleted_at_client unix timestamp') ;
+            }
+            
+            // 14) accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
+            if (gift.accepted_cid) {
+                if (typeof gift.accepted_cid != 'string') errors.push('Invalid accepted cid (unique comment id). Cid must be a string with 20 digits') ;
+                else if (!gift.accepted_cid.match(/^[0-9]{20}$/)) errors.push('Invalid accepted cid (unique comment id). Cid must be a string with 20 digits') ;
+                else if (parseInt(gift.accepted_cid.substr(0,10)) < from_unix_timestamp) errors.push('Invalid accepted cid (unique comment id). The first 10 digits must be a valid unix timestamp') ;
+                else if (parseInt(gift.accepted_cid.substr(0,10)) > to_unix_timestamp) errors.push('Invalid accepted cid (unique comment id). The first 10 digits must be a valid unix timestamp') ;
+                else if (!gift.comments || (gift.comments.length == 0)) errors.push('Unknown accepted cid (unique comment id). Accepted deal proposal was not found') ;
+                else {
+                    var accepted_comment = null, comment ;
+                    for (var i=0 ; i<gift.comments.length ; i++) {
+                        if (gift.comments[i].cid == gift.accepted_cid) accepted_comment = gift.comments[i] ;
+                    }
+                    if (!accepted_comment) errors.push('Unknown accepted cid (unique comment id). Accepted deal proposal was not found') ;
+                    else if (accepted_comment.accepted) errors.push('Invalid accepted cid (unique comment id). Comment is not an accepted deal proposal') ;
+                    else if (!accepted_comment.accepted_by_user_ids) errors.push('Invalid accepted cid (unique comment id). Accepted by for accepted deal proposal was not found') ;
+                    else {
+                        // todo: compare comment.accepted_by_user_ids and gift.giver_user_ids / gift.receiver_user_ids
+
+                    }
+
+                }
+            }
+
+            // 15) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            if (gift.accepted_at_client) {
+                if (gift.accepted_at_client < from_unix_timestamp) errors.push('Invalid accepted_at_client unix timestamp') ;
+                else if (gift.accepted_at_client > to_unix_timestamp) errors.push('Invalid accepted_at_client unix timestamp') ;
+                else if (accepted_comment && (gift.accepted_at_client != accepted_comment.accepted_at_client)) {
+                    errors.push('Invalid accepted_at_client unix timestamp') ;
+                    accepted_comment = null ;
+                }
+            }
+
+            if (accepted_comment) {
+
+            }
+
+            // 16) comments array
+            var comments = gift.comments ;
+            var no_comments_errors = 0 ;
+            if (comments) {
+                for (i=0 ; i<comments.length ; i++) if (invalid_comment(comments[i])) no_comments_errors += 1 ;
+                if (no_comments_errors > 0) errors.push(no_comments_errors + ' invalid comments') ;
+            }
+
+            if (errors.size > 0) console.log(pgm + 'Gift with errors. gift = ' + JSON.stringify(gift)) ;
+            return (errors.size == 0 ? null : errors.join('. ')) ;
+        };
+        var invalid_gift_change = function (old_gift, new_gift) {
+            var pgm = service + '.invalid_changed_gift: ' ;
+            console.log(pgm + 'Not implemented') ;
+            return null ;
+        };
+
         // calculate sha256 value for comment. used when comparing gift lists between clients. replicate gifts with changed sha256 value between clients
         // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
         // - created_at_client    - readonly- used in client path of server side sha256 signature - not included in comment sha256 calculation
@@ -2019,7 +2234,7 @@ angular.module('gifts', ['ngRoute'])
             rejected_by_user_ids = rejected_by_user_ids.join(',');
             return Gofreerev.sha256(comment.new_deal, comment.deleted_at_client, comment.accepted, comment.accepted_at_client,
                                     comment.accepted_by_user_ids, comment.rejected_at_client, comment.rejected_by_user_ids);
-        } // calc_sha256_for_comment
+        }; // calc_sha256_for_comment
 
         // calculate sha256 value for gift. used when comparing gift lists between clients. replicate gifts with changed sha256 value between devices
         // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for gift
@@ -2049,7 +2264,6 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]);
                     return [null,null,null];
                 }
-                ;
                 other_participant_external_ids.push(user.uid + '/' + user.provider);
             }
             other_participant_external_ids = other_participant_external_ids.sort();
@@ -2084,9 +2298,10 @@ angular.module('gifts', ['ngRoute'])
             return 0;
         }; // sort_by_gid
 
-        var gifts = []; // xxx
-        var gifts_index = {};
-        var user_id_gifts_index = {};
+        var gifts = []; // gifts array used in main/gifts page - todo: add gift.updated_at_timestamp and sort gifts by updated_at_client timestamp - last changed in top of page
+        var gifts_index = {}; // from gid to index in gifts array
+        var user_id_gifts_index = {}; // from internal user id to array of gifts - for fast user.sha256 calculation
+
         var init_gifts_index = function () {
             gifts_index = {};
             user_id_gifts_index = {};
@@ -2123,7 +2338,7 @@ angular.module('gifts', ['ngRoute'])
                 user_id_gifts_index[user_id].sort(sort_by_gid);
             }
             // console.log('user_id_gifts_index = ' + JSON.stringify(user_id_gifts_index)) ;
-        };
+        }; // init_gifts_index
 
         // save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
         var save_gifts = function () {
@@ -2149,6 +2364,8 @@ angular.module('gifts', ['ngRoute'])
             // save
             Gofreerev.setItem('gifts', JSON.stringify(gifts_clone));
         }; // save_gifts
+
+
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         var load_gifts = function () {
@@ -2247,6 +2464,16 @@ angular.module('gifts', ['ngRoute'])
                 //if (gift.created_at_server) {
                 //    delete gift.created_at_server ;
                 //    migration = true ;
+                //}
+
+                // datamigration - check two invalid gifts
+                //"GiftService.new_gifts_response: gift + 14252357688958255016 signature was not created on server. Could not create gift signature on server. giver_user_ids or receiver_user_ids property was missing" gofreerev.js:2745:20
+                //"GiftService.new_gifts_response: gift + 14252357466622052986 signature was not created on server. Could not create gift signature on server. giver_user_ids or receiver_user_ids property was missing" gofreerev.js:2745:20
+                //var errors ;
+                //if (errors=invalid_gift(gift)) console.log(pgm + 'Gift ' + gift.gid + ', errors = ' + errors) ;
+                //if (['14252357688958255016', '14252357466622052986'].indexOf(gift.gid) != -1) {
+                //    migration = true ;
+                //    continue ;
                 //}
 
                 gifts.push(gift);
@@ -4634,6 +4861,10 @@ angular.module('gifts', ['ngRoute'])
 
         return {
             gifts: gifts,
+            invalid_comment: invalid_comment,
+            invalid_comment_change: invalid_comment_change,
+            invalid_gift: invalid_gift,
+            invalid_gift_change: invalid_gift_change,
             load_gifts: load_gifts,
             refresh_gift: refresh_gift,
             refresh_gift_and_comment: refresh_gift_and_comment,
@@ -4848,7 +5079,7 @@ angular.module('gifts', ['ngRoute'])
                     var new_users = response.data.users ;
                     if (new_users) {
                         // new user and friends info received from util.generic_post_login task
-                        console.log('post login. new users = ' + new_users) ;
+                        console.log(pgm + 'new users = ' + JSON.stringify(new_users)) ;
                         userService.update_users(new_users, false) ; // replace=false - add new users
                     }
                 },
@@ -5339,6 +5570,8 @@ angular.module('gifts', ['ngRoute'])
                 user_providers.push(user.provider) ;
             }
             // there must be minimum one common provider between creator of gift, login users and creator of comment
+            // users logged in with common providers will see user information for giver and receiver
+            // users not logged in with common providers will in some situations see "unknown user" for giver or provider
             user_ids = [] ;
             var comment_providers = [] ;
             for (i=0 ; i<comment.user_ids.length ; i++) {
@@ -5411,14 +5644,14 @@ angular.module('gifts', ['ngRoute'])
             self.new_gift = {
                 direction: 'giver',
                 currency: userService.get_currency(),
+                errors: null,
                 file_upload_title: function () {
                     if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: appname}) ;
                     else return I18n.t('js.new_gift.file_title_false', {appname: appname}) ;
                 },
                 show: function () {
-                    var currency = userService.get_currency() ;
-                    // console.log('currency = ' + JSON.stringify(currency)) ;
-                    return (currency != null) ; // logged in with one or more login providers?
+                    var user_ids = userService.get_login_userids() ;
+                    return (user_ids.length > 0) ; // logged in with one or more login providers?
                 }
             };
             // todo: resize gift description
@@ -5541,6 +5774,7 @@ angular.module('gifts', ['ngRoute'])
         // new_gift ng-submit
         self.create_new_gift = function () {
             var pgm = 'GiftsCtrl.create_new_gift: ' ;
+            self.new_gift.errors = null ;
             var gift = {
                 gid: Gofreerev.get_new_uid(),
                 giver_user_ids: [],
@@ -5559,6 +5793,13 @@ angular.module('gifts', ['ngRoute'])
             };
             if (gift.direction == 'giver') gift.giver_user_ids = userService.get_login_userids() ;
             else gift.receiver_user_ids = userService.get_login_userids() ;
+            var errors ;
+            if (errors=giftService.invalid_gift(gift)) {
+                self.new_gift.errors = 'Could not create new gift: ' + errors ;
+                console.log(pgm + 'Could not create gift: ' + self.new_gift.errors) ;
+                console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
+                return ;
+            }
             giftService.sync_gifts() ;
             giftService.unshift_gift(gift) ;
             // resize description textarea after current digest cycle is finish

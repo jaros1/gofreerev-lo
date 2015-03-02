@@ -141,6 +141,9 @@
                                         <div>
                                             <table>
                                                 <tbody>
+                                                <tr ng-show="ctrl.new_gift.errors">
+                                                    <td><span ng-bind="ctrl.new_gift.errors"></span></td>
+                                                </tr>
                                                 <tr ng-show="ctrl.new_gift.open_graph_image">
                                                     <td><img width="200" ng-src="{{ctrl.new_gift.open_graph_image}}">
                                                     </td>

@@ -256,8 +256,8 @@ class UtilController < ApplicationController
       logger.debug2 "debug 5: key = #{key} (#{key.class})"
     rescue AppNotAuthorized => e
       # app has been deauthorized after login and before executing post login task for this provider
-      logout(provider)
-      key, options = ['.post_login_fl_not_authorized', login_user.app_and_apiname_hash]
+      session_logout(provider)
+      key, options = ['util.do_tasks.post_login_fl_not_authorized', login_user.app_and_apiname_hash]
       logger.debug2 "debug 6: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options]
     rescue => e
@@ -324,7 +324,7 @@ class UtilController < ApplicationController
       # ok
       nil
     rescue AppNotAuthorized
-      logout :provider => provider
+      session_logout :provider => provider
       return add_error_key('.linkedin_access_denied', {:provider => provider})
     rescue LinkedIn::Errors::AccessDeniedError => e
       return add_error_key('.linkedin_access_denied', {:provider => provider}) if e.message.to_s =~ /Access to connections denied/
@@ -821,6 +821,13 @@ class UtilController < ApplicationController
       # get login users, check expired providers, refresh google access token
       expired_providers, oauths_response = fetch_users :login
       @json[:expired_tokens] = expired_providers if expired_providers
+      if login_user_ids.size < providers.size
+        logger.debug2 "One or more expired providers was removed from session user ids array."
+        logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+        logger.debug2 "old providers  = #{providers.join(', ')}"
+        providers = login_user_ids.collect { |user_id| user_id.split('/').last }
+        logger.debug2 "new providers  = #{providers.join(', ')}"
+      end
 
       # update friend lists from login providers and return user info to client
       @json[:users] = []
@@ -829,6 +836,13 @@ class UtilController < ApplicationController
         login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
         if key
           add_error_key(key, options)
+          # check for AppNotAuthorized response in post_login_update_friends. user removed from user_ids.
+          is_provider_logged_in = login_user_ids.find { |user_id| user_id.split('/').last == provider }
+          if (!is_provider_logged_in)
+            logger.debug2 "added provider #{provider} with authorization error to @json[:expired_tokens] response"
+            @json[:expired_tokens] = [] unless @json[:expired_tokens]
+            @json[:expired_tokens] << provider
+          end
           next
         end
         # return json object with relevant user info. see list with friends categories in User.cache_friend_info
@@ -952,6 +966,8 @@ class UtilController < ApplicationController
         ping.save!
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
+      logger.debug2 "pind.pid = #{ping.did}"
+      @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token
       expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens])
@@ -1002,6 +1018,8 @@ class UtilController < ApplicationController
       ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
       ping.save!
 
+
+
       if !@json[:error]
 
         # ping stat
@@ -1011,34 +1029,41 @@ class UtilController < ApplicationController
         # get list of online devices - ignore current session(s) - only online devices with friends are relevant
         pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
                            ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
-        login_users_friends = Friend.where(:user_id_giver => login_user_ids)
-                                  .find_all { |f| f.friend_status_code == 'Y' }
-                                  .collect { |f| f.user_id_receiver } unless pings.size == 0
-        pings = pings.delete_if do |p|
-          if (login_user_ids & p.user_ids).size == 0 and (login_user_friends & p.user_ids).size == 0
-            # no shared login users and not friends - remove from list
-            true
-          else
-            # get user ids for other session
-            # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
-            # include a list of mutual friends between this and other session
-            # ( devices sync gifts for mutual friends )
-            other_session_friends = Friend.where(:user_id_giver => p.user_ids)
-                                        .find_all { |f| f.friend_status_code == 'Y' }
-                                        .collect { |f| f.user_id_receiver }
-            p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
-            logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
-            logger.debug2 "login_users_friends = #{login_users_friends.join(', ')}"
-            logger.debug2 "p.user_ids = #{p.user_ids.join(', ')}"
-            logger.debug2 "p.friends = #{other_session_friends.join(', ')}"
-            logger.debug2 "p.mutual_friends = #{p.mutual_friends.join(', ')}"
-            # keep in list
-            false
+        if pings.size > 0
+          # found other online devices
+          login_users_friends = Friend.where(:user_id_giver => login_user_ids)
+                                    .find_all { |f| f.friend_status_code == 'Y' }
+                                    .collect { |f| f.user_id_receiver }
+          pings = pings.delete_if do |p|
+            if (login_user_ids & p.user_ids).size == 0 and (login_users_friends & p.user_ids).size == 0
+              # no shared login users and not friends - remove from list
+              true
+            elsif !p.did or !p.sha256
+              # ignore pings without did/sha256. did er received at login and added to ping after first ping
+              logger.error2 "ignoring ping id #{p.id} without pid or sha256."
+              true
+            else
+              # get user ids for other session
+              # p.internal_user_ids = User.where(:user_id => p.user_ids).collect { |u| u.id }
+              # include a list of mutual friends between this and other session
+              # ( devices sync gifts for mutual friends )
+              other_session_friends = Friend.where(:user_id_giver => p.user_ids)
+                                          .find_all { |f| f.friend_status_code == 'Y' }
+                                          .collect { |f| f.user_id_receiver }
+              p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
+              logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+              logger.debug2 "login_users_friends = #{login_users_friends.join(', ')}"
+              logger.debug2 "p.user_ids = #{p.user_ids.join(', ')}"
+              logger.debug2 "p.friends = #{other_session_friends.join(', ')}"
+              logger.debug2 "p.mutual_friends = #{p.mutual_friends.join(', ')}"
+              # keep in list
+              false
+            end
+          end.collect do |p|
+            {:did => p.did,
+             :sha256 => p.sha256,
+             :mutual_friends => p.mutual_friends}
           end
-        end.collect do |p|
-          {:did => p.did,
-           :sha256 => p.sha256,
-           :mutual_friends => p.mutual_friends}
         end
         # logger.debug2 "pings.size (after) = #{pings.size}"
         # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }

@@ -102,15 +102,20 @@ class ApplicationController < ActionController::Base
       logger.secret2 "context=login. refresh_tokens from session = #{refresh_tokens}"
     end
 
-    expired_tokens = []
     if context == :ping and refresh_tokens.size > 0
       # received refresh token for expired google+ token on client
-      # add google+ to expired providers if not logged in with google+ on server
-      # will send a log out signal to client
+      # return dummy google+ oauth without refresh token if not logged in with google+ on server
+      # as a kind of log out signal to client
+      refresh_token_not_logged_in = false
       refresh_tokens.each do |hash|
-        expired_tokens << hash['provider'] unless login_user_ids.find { |user_id| user_id.split('/').last == hash['provider'] }
+        refresh_token_not_logged_in = true unless login_user_ids.find { |user_id| user_id.split('/').last == hash['provider'] }
       end
-      logger.warn2 "received refresh tokens from not logged in providers #{expired_tokens.join(', ')}" if expired_tokens.size > 0
+      logger.debug2 'refresh providers = ' + refresh_tokens.collect { |hash| hash['provider'] }.join(', ')
+      logger.debug2 "login_user_ids    = #{login_user_ids.join(', ')}"
+      if refresh_token_not_logged_in
+        logger.warn2 "received refresh tokens from not logged user (google+ only)"
+        oauth = [{:provider => 'google_oauth2', :user_id => 'unknown_user/google_oauth2', :token => 'expired', :expires_at => 1.day.ago.to_i}]
+      end
     end
 
     oauth = nil # only google+
@@ -129,6 +134,7 @@ class ApplicationController < ActionController::Base
     logger.debug2 "client_timestamp = #{client_timestamp}, server_timestamp = #{server_timestamp}, timestamp_dif = #{timestamp_dif}, now = #{now}"
 
     # remove logged in users with expired access token
+    expired_tokens = []
     login_user_ids.each do |user_id|
       uid, provider = user_id.split('/')
       next if uid == 'gofreerev' # dummy user for not connected session
@@ -748,6 +754,9 @@ class ApplicationController < ActionController::Base
     nil
   end # login
 
+
+  # todo: logout in application controller is overwritten by logout in util controller. temporary using session_logout in util controller
+  #
   def logout (provider=nil)
     if !provider
       session.delete(:user_ids)
@@ -765,6 +774,26 @@ class ApplicationController < ActionController::Base
     @users.delete_if { |user| user.provider == provider }
     add_dummy_user if @users.size == 0
   end # logout
+
+  def session_logout (provider=nil)
+    if !provider
+      session.delete(:user_ids)
+      session.delete(:tokens)
+      session.delete(:expires_at)
+      @users = []
+      add_dummy_user
+      return
+    end
+    user_ids_tmp = get_session_value(:user_ids)
+    user_ids_tmp = user_ids_tmp.delete_if { |user_id| user_id.split('/').last == provider}
+    set_session_value(:user_ids, user_ids_tmp)
+    delete_session_array_value(:tokens, provider)
+    delete_session_array_value(:expires_at, provider)
+    @users.delete_if { |user| user.provider == provider }
+    add_dummy_user if @users.size == 0
+  end # session_logout
+
+
 
   # protection from Cross-site Request Forgery
   # state is set before calling login provider
@@ -1141,13 +1170,14 @@ class ApplicationController < ActionController::Base
         result = self.execute(request)
         # logger.debug2  "result = #{result}"
         # logger.debug2  "result.error_message.class = #{result.error_message.class}"
-        # logger.debug2  "result.error_message = #{result.error_message}"
+        logger.debug2  "result.error_message = #{result.error_message}"
         # known errors from Google API
         return [friends_hash, 'util.do_tasks.google_access_not_configured', {:provider => provider}] if result.error_message.to_s == 'Access Not Configured'
         return [friends_hash, 'util.do_tasks.google_insufficient_permission', {:provider => provider}] if result.error_message.to_s == 'Insufficient Permission'
+        raise AppNotAuthorized if result.error_message.to_s == 'Invalid Credentials'
         # other errors from Google API
         return [friends_hash, 'util.do_tasks.google_other_errors', {:provider => provider, :error => result.error_message}] if !result.data.total_items
-
+        # xxx
         # copy friends to hash.
         # logger.debug2  "result.data.items = #{result.data.items}"
         # todo: check friend.kind = plus#person - maybe ignore rows with friend.kind != plus#person

@@ -318,6 +318,7 @@ JSON_SCHEMA = {
               # temporary buffer on server until message is delivered or message is expired/too old
               :messages => {
                   :type => 'array',
+                  :title => 'Request with messages from client to other clients',
                   :items => {
                       :type => 'object',
                       :properties => {
@@ -530,33 +531,47 @@ JSON_SCHEMA = {
                   },
                   :minItems => 1
               },
+
               # optional array with providers with expired oauth authorization
               :expired_tokens => expired_tokens_type,
+
               # optional array with new oauth authorization - for now only used for google+
               :oauths => oauths_type,
+
               # array with encrypted messages to client from other devices (users_sha256, todo: gifts_sha256, gifts etc)
               # temporary buffered on server until message was delivered or message was expired/too old
               :messages => {
-                  :type => 'array',
-                  :items => {
-                      :type => 'object',
-                      :properties => {
-                          # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-                          :sender_did => {:type => 'string', :pattern => uid_pattern},
-                          # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
-                          :sender_sha256 => {:type => 'string'},
-                          # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
-                          :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
-                          # when was message received from other device - unix timestamp - todo: rename to received_on_server
-                          :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i},
-                          # message for receiver device encrypted with device public key
-                          :message => {:type => 'string'}
+                  :type => 'object',
+                  :title => 'Response with messages from other clients to client',
+                  :properties => {
+                      :messages => {
+                          :type => 'array',
+                          :title => 'Array with messages from other clients to client',
+                          :items => {
+                              :type => 'object',
+                              :properties => {
+                                  # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                  :sender_did => {:type => 'string', :pattern => uid_pattern},
+                                  # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
+                                  :sender_sha256 => {:type => 'string'},
+                                  # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
+                                  :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
+                                  # when was message received from other device - unix timestamp - todo: rename to received_on_server
+                                  :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i},
+                                  # message for receiver device encrypted with device public key
+                                  :message => {:type => 'string'}
+                              },
+                              :required => %w(sender_did sender_sha256 created_at_server message),
+                              :additionalProperties => false
+                          },
+                          :minItems => 1
                       },
-                      :required => %w(sender_did sender_sha256 created_at_server message),
-                      :additionalProperties => false
+                      # optional error message (fatal server errors)
+                      :error => {:type => 'string'}
                   },
-                  :minItems => 1
+                  :additionalProperties => false
               }
+
              },
          :required => %w(interval),
          :additionalProperties => false

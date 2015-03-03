@@ -1746,14 +1746,14 @@ angular.module('gifts', ['ngRoute'])
         } // remove_oauth
 
         // process expired tokens response - used in login and ping response processing
-        var expired_tokens_response = function (expired_tokens) {
+        var expired_tokens_response = function (expired_tokens, context) {
             var pgm = 'expired_tokens_response: ' ;
             if (!expired_tokens) return ;
             var provider, i ;
             for (i=0 ; i<expired_tokens.length ; i++) {
                 provider = expired_tokens[i] ;
-                if (provider == 'google_oauth2') {
-                    // send google+ refresh token to server in next refresh_tokens_request
+                if ((provider == 'google_oauth2') && (context == 'ping')) {
+                    // send google+ refresh token to server in next ping (refresh_tokens_request)
                     console.log(pgm + 'send google+ refresh token to server in next refresh_tokens_request') ;
                     self.expires_at[provider] = self.expires_at[provider] - 24*60*60 ; // expired one day ago
                 }
@@ -1825,11 +1825,11 @@ angular.module('gifts', ['ngRoute'])
             //}
             // get old oauth
             var oauth_str = Gofreerev.getItem('oauth') ;
-            if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '')) {
+            if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '') || (oauth_str == '{}')) {
                 console.log(pgm + 'no oauth to send to server') ;
                 return $q.reject('') ; // empty promise error response
             }
-            // console.log(pgm + 'oauth_str = ' + oauth_str) ;
+            console.log(pgm + 'oauth_str = ' + oauth_str) ;
             var oauth = JSON.parse(oauth_str) ;
             // send oauth hash (authorization for one or more login providers) to server
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
@@ -1846,12 +1846,15 @@ angular.module('gifts', ['ngRoute'])
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
-                    if (response.data.error) console.log(pgm + 'post login error = ' + response.data.error) ;
+                    if (response.data.error) {
+                        console.log(pgm + 'post login error = ' + response.data.error) ;
+                        return $q.reject(response.data.error) ;
+                    }
                     // validate login response received from server
                     var json_errors ;
                     if (json_errors=Gofreerev.is_json_response_invalid(pgm, response.data, 'login', '')) return $q.reject(json_errors) ;
                     // check expired access token (server side check)
-                    if (response.data.expired_tokens) expired_tokens_response(response.data.expired_tokens) ;
+                    if (response.data.expired_tokens) expired_tokens_response(response.data.expired_tokens, 'login') ;
                     // check for new oauth authorization (google+ only)
                     if (response.data.oauths) oauths_response(response.data.oauths) ;
                     // check users array
@@ -2342,34 +2345,8 @@ angular.module('gifts', ['ngRoute'])
             for (user_id in user_id_to_gifts) {
                 user_id_to_gifts[user_id].sort(sort_by_gid);
             }
-            // console.log('user_id_gifts_index = ' + JSON.stringify(user_id_gifts_index)) ;
+            console.log('user_id_to_gifts = ' + JSON.stringify(user_id_to_gifts)) ;
         }; // init_gifts_index
-
-        // save_gifts are called after any changes in a gift (like, follow, hide, delete etc)
-        var save_gifts = function () {
-            // remove some session specific attributes before save
-            // also remove sha256 calculation - no reason to keep sha256 calculations in localStorage
-            var gifts_clone = JSON.parse(JSON.stringify(gifts));
-            var gift, comments;
-            for (var i = 0; i < gifts_clone.length; i++) {
-                gift = gifts_clone[i];
-                if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments;
-                if (gift.hasOwnProperty('new_comment')) delete gift.new_comment;
-                if (gift.hasOwnProperty('sha256')) delete gift.sha256;
-                if (gift.hasOwnProperty('sha256_gift')) delete gift.sha256_gift;
-                if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments;
-                if (gift.hasOwnProperty('verified_at_server')) delete gift.verified_at_server;
-                if (gift.hasOwnProperty('verify_seq')) delete gift.verify_seq;
-                if (!gift.hasOwnProperty('comments')) gift.comments = [];
-                comments = gift.comments;
-                for (var j = 0; j < comments.length; j++) {
-                    if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256;
-                }
-            }
-            // save
-            Gofreerev.setItem('gifts', JSON.stringify(gifts_clone));
-        }; // save_gifts
-
 
         // remove some session specific attributes before save
         // also remove sha256 calculation - no reason to keep sha256 calculations in localStorage
@@ -2400,7 +2377,30 @@ angular.module('gifts', ['ngRoute'])
             init_gifts_index() ;
         }; // create_new_gift
 
-
+        // save_gift are called after any changes in a gift (like, follow, hide, delete etc)
+        var save_gift = function (gift) {
+            var pgm = service + '.save_gift: ' ;
+            var seq = gid_to_seq[gift.gid] ;
+            var error ;
+            if (!seq) {
+                error = 'Gift with gid ' + gift.gid + ' was not found in localStorage gid_to_seq index' ;
+                console.log(pgm + 'Error. Save gift failed. ' + error);
+                return error ;
+            }
+            var key = 'gift_' + seq ;
+            var old_gift = Gofreerev.getItem(key) ;
+            if (!old_gift) {
+                error = 'Gift with gid ' + gift.gid + ' was not found in localStorage. Key = ' + key ;
+                console.log(pgm + 'Error. Save gift failed. ' + error);
+                return error ;
+            }
+            old_gift = JSON.parse(old_gift) ;
+            error = invalid_gift_change(old_gift, gift) ;
+            if (error) return error ; // invalid update
+            var new_gift = prepare_gift_for_save(gift) ;
+            Gofreerev.setItem(key, JSON.stringify(new_gift)) ;
+            return null ;
+        } ;
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         //var seq_to_gid = {} ; // localStorage: from gift_<seq> in localStorage to gid
@@ -2831,7 +2831,6 @@ angular.module('gifts', ['ngRoute'])
             if (!response.hasOwnProperty('gifts')) return;
             var new_gifts = response.gifts;
             var new_gift, gid, index, gift, created_at_server;
-            var save = false;
             for (var i = 0; i < new_gifts.length; i++) {
                 new_gift = new_gifts[i];
                 gid = new_gift.gid;
@@ -2877,9 +2876,8 @@ angular.module('gifts', ['ngRoute'])
                     continue;
                 }
                 gift.created_at_server = 1; // always 1 for this server - remote gifts are received in client to client communication
-                save = true;
+                save_gift(gift) ;
             } // for i
-            if (save) save_gifts();
         }; // new_gifts_response
 
         
@@ -3092,7 +3090,6 @@ angular.module('gifts', ['ngRoute'])
             if (!response.hasOwnProperty('gifts')) return;
             var new_gifts = response.gifts;
             var new_gift, gid, index, gift, created_at_server;
-            var save = false;
             for (var i = 0; i < new_gifts.length; i++) {
                 new_gift = new_gifts[i];
                 gid = new_gift.gid;
@@ -3138,9 +3135,9 @@ angular.module('gifts', ['ngRoute'])
                     continue;
                 }
                 gift.deleted_at_server = 1;
+                save_gift(gift) ;
                 save = true;
             } // for i
-            if (save) save_gifts();
         }; // delete_gifts_response
 
         // check sha256 server signature for comments received from other devices before adding comment on this device
@@ -3160,7 +3157,7 @@ angular.module('gifts', ['ngRoute'])
 
         // send meta-data for new comments to server and get comment.created_at_server boolean.
         // called from UserService.ping
-        var new_comments_request_index = {}; // from cid to comment - used in new_comments_response for quick comment lookup
+        var new_comments_request_index = {}; // from cid to [gift,comment] - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
             var pgm = service + '.new_comments_request: ';
             var request = [];
@@ -3178,8 +3175,8 @@ angular.module('gifts', ['ngRoute'])
                     sha256_client = Gofreerev.sha256(gift.gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency);
                     hash = {cid: cid, user_ids: comment.user_ids, sha256: sha256_client};
                     request.push(hash);
-                    // cid to comment index - used in new_comments_response for quick comment lookup
-                    new_comments_request_index[cid] = comment;
+                    // cid to gift+comment helper - used in new_comments_response for quick gift and comment lookup
+                    new_comments_request_index[cid] = [gift, comment];
                 } // for j
             } // for i
             return (request.length == 0 ? null : request);
@@ -3192,7 +3189,7 @@ angular.module('gifts', ['ngRoute'])
             if (!response.hasOwnProperty('comments')) return;
             var new_comments = response.comments;
             var new_comment, cid, comment, created_at_server;
-            var save = false;
+            var gift_and_comment, gift ;
             for (var i = 0; i < new_comments.length; i++) {
                 new_comment = new_comments[i];
                 cid = new_comment.cid;
@@ -3216,7 +3213,9 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'System error. Unknown comment ' + cid + ' in new comments response (1)');
                     continue;
                 }
-                comment = new_comments_request_index[cid];
+                gift_and_comment = new_comments_request_index[cid] ;
+                gift = gift_and_comment[0] ;
+                comment = gift_and_comment[1] ;
                 if (!comment) {
                     console.log(pgm + 'System error. Unknown comment ' + cid + ' in new comments response (2)');
                     continue;
@@ -3234,9 +3233,8 @@ angular.module('gifts', ['ngRoute'])
                     continue;
                 }
                 comment.created_at_server = 1;
-                save = true ;
+                save_gift(gift) ;
             } // for i
-            if (save) save_gifts();
             new_comments_request_index = {};
         }; // new_comments_response
         
@@ -3811,6 +3809,10 @@ angular.module('gifts', ['ngRoute'])
             var gifts_sha256_hash = {}, j, gift ;
             for (i=0 ; i<user_ids.length ; i++) {
                 user_id = user_ids[i] ;
+                if (!user_id_to_gifts.hasOwnProperty(user_id)) {
+                    console.log(pgm + 'No gifts was found for mutual friend with user id ' + user_id) ;
+                    continue ;
+                }
                 console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_to_gifts[user_id].length) ;
                 for (j=0 ; j<user_id_to_gifts[user_id].length ; j++) {
                     gift = user_id_to_gifts[user_id][j] ;
@@ -3898,6 +3900,11 @@ angular.module('gifts', ['ngRoute'])
             var gifts_sha256_hash = {}, user_id, i, j, gift, gid ;
             for (i=0 ; i<msg.mutual_friends.length ; i++) {
                 user_id = msg.mutual_friends[i] ;
+                if (!user_id_to_gifts.hasOwnProperty(user_id)) {
+                    // no gifts for this user id
+                    console.log(pgm + 'no gifts for mutual friend with user id ' + user_id) ;
+                    continue ;
+                }
                 console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_to_gifts[user_id].length) ;
                 for (j=0 ; j<user_id_to_gifts[user_id].length ; j++) {
                     gift = user_id_to_gifts[user_id][j] ;
@@ -4825,15 +4832,19 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'Error. Not implemented') ;
         }; // receive_message_check_gifts
 
-
         // receive messages from other devices
         var receive_messages = function (response) {
             var pgm = service + '.receive_messages: ' ;
             // console.log(pgm + 'receive ' + JSON.stringify(response)) ;
+            if (response.error) {
+                console.log(pgm + 'Error when sending and receiving messages. ' + response.error) ;
+                if (!response.messages) return ;
+            }
+            messages_sent() ;
             var encrypt, prvkey ;
             var msg_server_envelope, key, index, mailbox, did, device, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc, msg_client_envelope ;
-            for (var i=0 ; i<response.length ; i++) {
-                msg_server_envelope = response[i] ;
+            for (var i=0 ; i<response.messages.length ; i++) {
+                msg_server_envelope = response.messages[i] ;
                 key = msg_server_envelope.sender_did + msg_server_envelope.sender_sha256 ;
                 if (!key_mailbox_index.hasOwnProperty(key)) {
                     console.log(pgm + 'Error. Ignoring message from device ' + msg_server_envelope.sender_did + ' with unknown key ' + key + '. message = ' + JSON.stringify(msg_server_envelope)) ;
@@ -4947,7 +4958,7 @@ angular.module('gifts', ['ngRoute'])
             refresh_gift: refresh_gift,
             refresh_gift_and_comment: refresh_gift_and_comment,
             create_new_gift: create_new_gift,
-            save_gifts: save_gifts,
+            save_gift: save_gift,
             sync_gifts: sync_gifts,
             unshift_gift: unshift_gift,
             new_gifts_request: new_gifts_request,
@@ -5052,9 +5063,6 @@ angular.module('gifts', ['ngRoute'])
                     // todo: report ping errors to inbox.
                     if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
 
-                    // move messages from mailbox.sending to mailbox.sent
-                    giftService.messages_sent() ;
-
                     // process ping response
                     if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
                     // check online users/devices - create a mail box for each online device
@@ -5072,11 +5080,12 @@ angular.module('gifts', ['ngRoute'])
                     // get result of comment verification (comments received from other devices)
                     if (response.data.verify_comments) giftService.verify_comments_response(response.data.verify_comments) ;
                     // check expired access token (server side check)
-                    if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens) ;
+                    if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens, 'ping') ;
                     // check for new oauth authorization (google+ only)
                     if (response.data.oauths) userService.oauths_response(response.data.oauths) ;
                     // check for new messages from other devices
                     if (response.data.messages) giftService.receive_messages(response.data.messages) ;
+                    else giftService.messages_sent() ;
 
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds
@@ -5475,23 +5484,23 @@ angular.module('gifts', ['ngRoute'])
         self.like_gift = function (gift) {
             giftService.refresh_gift(gift);
             gift.like = true ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
         self.unlike_gift = function (gift) {
             giftService.refresh_gift(gift);
             gift.like = false ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
 
         self.follow_gift = function (gift) {
             giftService.refresh_gift(gift);
             gift.follow = true ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
         self.unfollow_gift = function (gift) {
             giftService.refresh_gift(gift);
             gift.follow = false ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
 
         // delete gift. show delete link if login user(s) is giver or receiver of gift
@@ -5538,7 +5547,7 @@ angular.module('gifts', ['ngRoute'])
             var confirm_text = I18n.t(confirm_key, confirm_options) ;
             if (!confirm(confirm_text)) return ;
             gift.deleted_at_client = Gofreerev.unix_timestamp() ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         }; // delete_gift
 
         self.hide_gift = function (gift) {
@@ -5547,7 +5556,7 @@ angular.module('gifts', ['ngRoute'])
             var confirm_text = I18n.t("js.gifts.confirm_hide_gift") ;
             if (!confirm(confirm_text)) return ;
             gift.show = false ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
 
         self.show_older_comments = function (gift) {
@@ -5606,7 +5615,7 @@ angular.module('gifts', ['ngRoute'])
             if (confirm(self.texts.comments.confirm_delete_comment)) {
                 comment.deleted_at_client = Gofreerev.unix_timestamp() ;
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
-                giftService.save_gifts() ;
+                giftService.save_gift(gift) ;
             }
             // console.log(pgm + 'cid = ' + comment.cid + ', deleted_at_client = ' + comment.deleted_at_client) ;
         };
@@ -5626,7 +5635,7 @@ angular.module('gifts', ['ngRoute'])
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
             if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
             comment.new_deal = false ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
 
         // user "other" user ids to be used when closing a deal (adding giver or receiver user ids to gift)
@@ -5686,7 +5695,7 @@ angular.module('gifts', ['ngRoute'])
             comment.accepted = true ;
             comment.accepted_by_user_ids = user_ids ;
             comment.accepted_at_client = gift.accepted_at_client ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
 
         self.show_reject_new_deal_link = function (gift,comment) {
@@ -5702,7 +5711,7 @@ angular.module('gifts', ['ngRoute'])
             comment.accepted = false ;
             comment.rejected_by_user_ids = user_ids ;
             comment.rejected_at_client = Gofreerev.unix_timestamp() ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         };
 
         self.show_new_deal_checkbox = function (gift) {
@@ -5926,7 +5935,7 @@ angular.module('gifts', ['ngRoute'])
                 var text = $window.document.getElementById(gift.gid + '-new-comment') ;
                 if (text) Gofreerev.autoresize_text_field(text) ;
             }, 0, false) ;
-            giftService.save_gifts() ;
+            giftService.save_gift(gift) ;
         } // create_new_comment
 
         // end GiftsCtrl
@@ -6006,12 +6015,6 @@ angular.module('gifts', ['ngRoute'])
             // old rails code was t('.gift_link_text', format_gift_param(api_gift))
             return function (gift, precision) {
                 var created_at_client = formatDateShort(gift.created_at_client);
-                if (!created_at_client) {
-                    // fix data migration error (date renamed to created_at_client). todo: remove
-                    console.log('formatGiftLinkText: gift = ' + JSON.stringify(gift)) ;
-                    gift.created_at_client = Math.round((new Date).getTime()/1000) ;
-                    giftService.save_gifts() ;
-                }
                 var optional_price = formatGiftPriceOptional(gift, precision);
                 var direction = formatDirection(gift) ;
                 return I18n.t('js.gifts.gift_link_text', {date: created_at_client, optional_price: optional_price, direction: direction }) ;

@@ -15,7 +15,14 @@ class Message < ActiveRecord::Base
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages = #{input_messages}"
 
-    # save any new messages from client to other devices
+    if !sender_did
+      return { :error => 'System error in message service. Did for actual client is unknown on server.'}
+    end
+    if !sender_sha256
+      return { :error => 'System error in message service. Sha256 for actual client is unknown on server.'}
+    end
+
+    # save any new messages received from client to other clients
     if input_messages.class == Array
       input_messages.each do |message|
         m = Message.new
@@ -39,7 +46,8 @@ class Message < ActiveRecord::Base
         :message => m.message }
     end
     ms.delete_all
-    output_messages.size == 0 ? nil : output_messages
+
+    output_messages.size == 0 ? nil : { :messages => output_messages }
   end
 
 end

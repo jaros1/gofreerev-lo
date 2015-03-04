@@ -2055,6 +2055,8 @@ angular.module('gifts', ['ngRoute'])
             else if (parseInt(gift.gid.substr(0,10)) > to_unix_timestamp) errors.push('Invalid gid (unique gift id). The first 10 digits must be a valid unix timestamp') ;
 
             //  2) giver_user_ids and/or receiver_user_ids
+            // todo: how to handle "unknown user ids" in giver or receiver lists?
+            //
             var giver_user_ids = gift.giver_user_ids || [] ;
             var receiver_user_ids = gift.receiver_user_ids || [] ;
             if ((giver_user_ids.length == 0) && (receiver_user_ids.length ==0)) errors.push('Gift without giver or receiver is not allowed') ;
@@ -2066,16 +2068,16 @@ angular.module('gifts', ['ngRoute'])
             for (var i=0 ; i<giver_user_ids.length ; i++) {
                 user_id = giver_user_ids[i] ;
                 if (user_ids.indexOf(user_id) != -1) {
-                    errors.push('Giver is invalid. Doublet user ids in giver_user_ids') ;
+                    errors.push('Giver is invalid. Doublet user ids in giver_user_ids' + giver_user_ids.join(', ')) ;
                     break ;
                 }
                 user = userService.get_user(user_id) ;
                 if (!user) {
-                    errors.push('Giver is invalid. Unknown user id in giver_user_ids') ;
+                    errors.push('Giver is invalid. Unknown user id ' + user_id + ' in giver_user_ids ' + giver_user_ids.join(', ')) ;
                     break ;
                 }
                 if (providers.indexOf(user.provider) != -1) {
-                    errors.push('Giver is invalid. Doublet provider in giver_user_ids') ;
+                    errors.push('Giver is invalid. Doublet provider in giver_user_ids' + giver_user_ids.join(', ')) ;
                     break ;
                 }
                 providers.push(user.provider) ;
@@ -2087,16 +2089,16 @@ angular.module('gifts', ['ngRoute'])
             for (var i=0 ; i<receiver_user_ids.length ; i++) {
                 user_id = receiver_user_ids[i] ;
                 if (user_ids.indexOf(user_id) != -1) {
-                    errors.push('Receiver is invalid. Doublet user ids in receiver_user_ids') ;
+                    errors.push('Receiver is invalid. Doublet user ids in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
                 }
                 user = userService.get_user(user_id) ;
                 if (!user) {
-                    errors.push('Receiver is invalid. Unknown user id in receiver_user_ids') ;
+                    errors.push('Receiver is invalid. Unknown user id ' + user_id + 'in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
                 }
                 if (providers.indexOf(user.provider) != -1) {
-                    errors.push('Receiver is invalid. Doublet provider in receiver_user_ids') ;
+                    errors.push('Receiver is invalid. Doublet provider in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
                 }
                 providers.push(user.provider) ;
@@ -3582,7 +3584,6 @@ angular.module('gifts', ['ngRoute'])
                         device.password1 = Gofreerev.generate_random_password(40); // 42 characters password to long for RSA
                         device.password1_at = (new Date).getTime();
                     }
-                    ;
                     setup_device_password(device);
                     message = [device.password1, device.password1_at];
                     if (device.password_md5) message.push(device.password_md5); // verify complete symmetric password (password1+password2) for device
@@ -3609,7 +3610,7 @@ angular.module('gifts', ['ngRoute'])
                 if (mailbox.outbox.length == 0) continue; // no new messages for this mailbox
 
                 // send continue with symmetric key communication
-                console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key);
+                // console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key);
                 // initialise an array with messages for device
                 messages = [];
                 if (mailbox.sending.length > 0) {
@@ -3663,8 +3664,7 @@ angular.module('gifts', ['ngRoute'])
                 };
                 // send encrypted message
                 response.push(message_with_envelope);
-                console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope));
-                // todo: empty mailbox.outbox or move to mailbox.sending while sending messages to server. reinsert into outbox if send messages fails (ping/error)
+                // console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope));
             } // for i (mailboxes)
             return (response.length == 0 ? null : response);
         }; // send_messages
@@ -3705,7 +3705,7 @@ angular.module('gifts', ['ngRoute'])
 
         // communication step 1 - receive symmetric password (part 2) from other device
         var receive_message_password = function (device, msg) {
-            var pgm = service + 'receive_message_password: ';
+            var pgm = service + '.receive_message_password: ';
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
             console.log(pgm + 'msg = ' + JSON.stringify(msg));
             // msg is an array with password, password_at and optional md5 for complete password
@@ -3989,7 +3989,7 @@ angular.module('gifts', ['ngRoute'])
             // todo: users in this gifts_sha256 message should be identical to users in previous users_sha256 message (now in done)
 
             // find sha256 values for relevant gifts / users (sublist of mutual friends)
-            var gifts_sha256_hash = {}, user_id, i, j, gift, gid ;
+            var gifts_sha256_hash = {}, user_id, i, j, k, gift, gid ;
             for (i=0 ; i<msg_users.length ; i++) {
                 user_id = msg_users[i] ;
                 if (!user_id_to_gifts.hasOwnProperty(user_id)) {
@@ -4077,14 +4077,12 @@ angular.module('gifts', ['ngRoute'])
                 } // end compare switch
             } // for gid
 
-            // resume
-            console.log('request_gids = ' + request_gids.join(', ')) ;
-            console.log('send_gids = ' + send_gids.join(', ')) ;
-            console.log('check_gids = ' + check_gids.join(', ')) ;
-            console.log('ok_gids = ' + ok_gids.join(', ')) ;
-            console.log('error_gids = ' + error_gids.join(', ')) ;
-            // request_gids = 14239781115388288755, 14239781115388735516
-            // send_gids = 14239781692770120364, 14239781692770348983, 14239781692770427293, 14239781692770522732, 14239781692770775148, 14239781692770876536, 14239781692771119206, 14239781692771120584, 14239781692771483562, 14239781692771530176, 14239781692771703391, 14239781692772499411, 14239781692772777453, 14239781692773030964, 14239781692773321072, 14239781692774532744, 14239781692774974940, 14239781692775813294, 14239781692775882233, 14239781692776555896, 14239781692776993269, 14239781692777372502, 14239781692777574345, 14239781692778276592, 14239781692778309061, 14239781692778518406, 14239781692778583942, 14239781692779726598, 14244918825228386518, 14244924316655606495, 14244941900636888171
+            // compare gifts resume
+            if (request_gids.length > 0) console.log(pgm + 'request_gids = ' + request_gids.join(', ')) ;
+            if (send_gids.length    > 0) console.log(pgm + 'send_gids = ' + send_gids.join(', ')) ;
+            if (check_gids.length   > 0) console.log(pgm + 'check_gids = ' + check_gids.join(', ')) ;
+            if (ok_gids.length      > 0) console.log(pgm + 'ok_gids = ' + ok_gids.join(', ')) ;
+            if (error_gids.length   > 0) console.log(pgm + 'error_gids = ' + error_gids.join(', ')) ;
             if (ok_gids.length == msg.gifts.length) {
                 console.log(pgm + 'Gift replication finished. ' + ok_gids.length + ' identical gifts were found.') ;
                 return ;
@@ -4116,10 +4114,12 @@ angular.module('gifts', ['ngRoute'])
                 var send_gifts_message = {
                     mid: Gofreerev.get_new_uid(),
                     msgtype: 'send_gifts',
-                    gifts: []
+                    gifts: [],
+                    users: []
                 };
-                var gift_clone ;
+                var index, gift_clone, users = [], gift_users, user ;
                 for (i=0 ; i<send_gids.length ; i++) {
+                    gift_users = [] ;
                     gid = send_gids[i];
                     if (!gid_to_gifts_index.hasOwnProperty(gid)) {
                         console.log(pgm + 'Could not send gift ' + gid + ' to other device. Index was not found.') ;
@@ -4133,6 +4133,14 @@ angular.module('gifts', ['ngRoute'])
                     gift = gifts[index] ;
                     if (gift.gid != gid) {
                         console.log(pgm + 'Could not send gift ' + gid + ' to other device. Invalid gifts index (2).') ;
+                        continue ;
+                    }
+                    // validate gift before cloning for send_gifts sub message
+                    error = invalid_gift(gift) ;
+                    if (error) {
+                        console.log(pgm + 'Warning. Invalid gift was not added to send_gifts sub message.') ;
+                        console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
+                        console.log(pgm + 'Error message: ' + error) ;
                         continue ;
                     }
 
@@ -4162,6 +4170,22 @@ angular.module('gifts', ['ngRoute'])
                         accepted_at_client: gift.accepted_at_client
                         // ,sha256: gift.sha256 - // sha256 is not sent - receiver will make gift sha256 calculations
                     };
+                    // save relevant gift.receiver_user_ids in gift_users buffer
+                    if (gift.receiver_user_ids) for (j=0 ; j<gift.receiver_user_ids.length ; j++) {
+                        user_id = gift.receiver_user_ids[j] ;
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) continue ; // mutual friends are not added to send_gifts message
+                        if (users.indexOf(user_id) != -1) continue ; // already in send_gifts message
+                        if (gift_users.indexOf(user_id) != -1) continue ; // already in buffer for this gift
+                        gift_users.push(user_id) ;
+                    }
+                    // save relevant gift.giver_user_ids in gift_users buffer
+                    if (gift.giver_user_ids) for (j=0 ; j<gift.giver_user_ids.length ; j++) {
+                        user_id = gift.giver_user_ids[j] ;
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) continue ; // mutual friends are not added to send_gifts message
+                        if (users.indexOf(user_id) != -1) continue ; // already in send_gifts message
+                        if (gift_users.indexOf(user_id) != -1) continue ; // already in buffer for this gift
+                        gift_users.push(user_id) ;
+                    }
                     var comment ;
                     if (gift.comments && (gift.comments.length > 0)) {
                         gift_clone.comments = [] ;
@@ -4190,12 +4214,41 @@ angular.module('gifts', ['ngRoute'])
                                 rejected_by_user_ids: comment.rejected_by_user_ids
                                 // ,sha256: comment.sha256
                             }) ;
+                            // save relevant comment.user_ids in gift_users buffer
+                            for (k=0 ; k<comment.user_ids.length ; k++) {
+                                user_id = comment.user_ids[k] ;
+                                if (mailbox.mutual_friends.indexOf(user_id) != -1) continue ; // mutual friends are not added to send_gifts message
+                                if (users.indexOf(user_id) != -1) continue ; // already in send_gifts message
+                                if (gift_users.indexOf(user_id) != -1) continue ; // already in buffer for this gift
+                                gift_users.push(user_id) ;
+                            }
                         } // for j (comments loop)
                     } // if comments
+                    // validate gift_clone before adding gift to send_gifts sub message
+                    error = invalid_gift(gift_clone) ;
+                    if (error) {
+                        console.log(pgm + 'System error when adding gift to send_gifts sub message.') ;
+                        console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
+                        console.log(pgm + 'Error message: ' + error) ;
+                        continue ;
+                    }
                     send_gifts_message.gifts.push(gift_clone) ;
+                    // add relevant users to send_gifts message - used as fallback information in case of "unknown user" error on receiving client
+                    for (j=0 ; j<gift_users.length ; j++) {
+                        user_id = gift_users[j] ;
+                        user = userService.get_user(user_id) ;
+                        send_gifts_message.users.push({
+                            user_id: user.user_id,
+                            uid: user.uid,
+                            provider: user.provider,
+                            user_name: user.user_name,
+                            api_profile_picture_url: user.api_profile_picture_url
+                        }) ;
+                    } // for j (gift_users)
+                    gift_users.length = 0 ;
                 } // for i (send_gids loop)
                 if (send_gifts_message.gifts.length > 0) sync_gifts_message.send_gifts = send_gifts_message ;
-                else console.log(pgm + 'Error. No send_gifts sub message was added. See prevous error messages in log.') ;
+                else console.log(pgm + 'Error. No send_gifts sub message was added. See previous error messages in log.') ;
             } // if send_gids.length > 0
 
             // - 2) request missing gifts from other device
@@ -4244,7 +4297,7 @@ angular.module('gifts', ['ngRoute'])
                 else console.log(pgm + 'Error. No check_gifts sub message was added. See prevous error messages in log.') ;
             } // if check_gids.length > 0
 
-            console.log(pgm + 'sync_gifts_messages = ' + JSON.stringify(sync_gifts_message)) ;
+            console.log(pgm + 'sync_gifts_message = ' + JSON.stringify(sync_gifts_message)) ;
             // sync_gifts_messages =
             //   {"mid":"14245918981101515509",
             //    "request_mid":"14245918952724622555",
@@ -4378,6 +4431,7 @@ angular.module('gifts', ['ngRoute'])
             if (msg.pass == 0) {
                 // pass 0 - check for some fatal errors before processing send_gifts message - gid and cid must be unique
                 var error;
+
                 // check missing gifts array
                 if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) {
                     error = 'No gifts array or empty gifts array in send_gifts message.';
@@ -4390,6 +4444,7 @@ angular.module('gifts', ['ngRoute'])
                     });
                     return;
                 } // if missing gifts array
+
                 // check doublet gifts
                 var new_gids = [], i, new_gift, doublet_gids = 0;
                 for (i = 0; i < msg.gifts.length; i++) {
@@ -4398,7 +4453,7 @@ angular.module('gifts', ['ngRoute'])
                     else new_gids.push(new_gift.gid);
                 } // for i
                 if (doublet_gids > 0) {
-                    error = 'Found ' + doublet_gids + ' doublet gifts in send_gifts message. gid must be unique.';
+                    error = 'Found ' + doublet_gids + ' doublet gifts in sync_gifts/send_gifts sub message. gid must be unique.';
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
@@ -4409,6 +4464,7 @@ angular.module('gifts', ['ngRoute'])
                     return;
                 } // if doublet_gids
                 new_gids = null;
+
                 // check doublet comments
                 var new_cids = [], doublet_cids = 0, j, new_comment;
                 for (i = 0; i < msg.gifts.length; i++) {
@@ -4421,7 +4477,7 @@ angular.module('gifts', ['ngRoute'])
                     } // for j (comments)
                 } // for i (gifts)
                 if (doublet_cids > 0) {
-                    error = 'Found ' + doublet_cids + ' doublet comments in send_gifts message. cid must be unique.';
+                    error = 'Found ' + doublet_cids + ' doublet comments in sync_gifts/send_gifts sub message. cid must be unique.';
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
@@ -4432,6 +4488,26 @@ angular.module('gifts', ['ngRoute'])
                     return;
                 } // if doublet_cids
                 new_cids = null;
+
+                // validate received gifts
+                var errors = [] ;
+                for (i = 0; i < msg.gifts.length; i++) {
+                    new_gift = msg.gifts[i] ;
+                    error = invalid_gift(new_gift) ;
+                    if (error) errors.push('gid=' + new_gift.gid + ', error=' + error ) ;
+                } // for i (gifts)
+                if (errors.length > 0) {
+                    error = 'Found ' + errors.length + ' gifts with errors in sync_gifts/send_gifts sub message: ' + errors.join(', ');
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    });
+                    return;
+                }
+
                 // calc sha256 values for new gifts received from other client
                 var sha256_calc_errors = 0 ;
                 for (i = 0; i < msg.gifts.length; i++) {

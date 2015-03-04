@@ -605,15 +605,19 @@ JSON_SCHEMA = {
         :additionalProperties => false
     },
 
-    # device to device communication (server spec)
+    # todo: device to device communication (server spec)
+
+
 
     # device to device communication (client spec)
+
+    # todo: client to client communication step 1 - symmetric password handshake
 
     # client to client communication step 2
     # send a list of users sha256 values to other client for a list of mutual friends from ping (online devices)
     :users_sha256 => {
         :type => 'object',
-        :title => 'Compare gifts sha256 check sum for a list of mutual friends',
+        :title => 'Communication step 2 with user sha256 values to other client',
         :properties => {
             # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :mid => {:type => 'string', :pattern => uid_pattern},
@@ -644,6 +648,7 @@ JSON_SCHEMA = {
     # send list with gifts sha256 values to other client after having compared sha256 values for mutual friends:
     :gifts_sha256 => {
         :type => 'object',
+        :title => 'Communication step 3 with gift sha256 values to other client',
         :properties => {
             # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :mid => {:type => 'string', :pattern => uid_pattern},
@@ -691,6 +696,7 @@ JSON_SCHEMA = {
     # 3) check_gifts: send sub sha256 values (seperate sha256 for gift and comments) for changed gifts to other client
     :sync_gifts => {
         :type => 'object',
+        :title => 'Communication step 3 with send_gifts, request_gifts and check_gifts sub messages to other client',
         :properties => {
             # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :mid => {:type => 'string', :pattern => uid_pattern},
@@ -708,7 +714,7 @@ JSON_SCHEMA = {
                     :mid => {:type => 'string', :pattern => uid_pattern},
                     # msgtype = send_gifts
                     :msgtype => {:type => 'string', :pattern => '^send_gifts$'},
-                    # array with missing gifts for other client
+                    # array with missing gifts to other client
                     :gifts => {
                         :type => 'array',
                         :items => {
@@ -790,6 +796,28 @@ JSON_SCHEMA = {
                             :additionalProperties => false
                         },
                         :minItems => 1
+                    },
+                    # array with users used in gifts array without mutual users - used as fallback information in case of unknown users error on other client
+                    :users => {
+                        :type => 'array',
+                        :items => {
+                            :type => 'object',
+                            # fields in user record (login user, friend etc)
+                            :properties => {
+                                # internal user id (sequence) - used in internal arrays
+                                :user_id => {:type => 'integer', :minimum => 1},
+                                # provider unique user id - used in signatures and in communication between clients
+                                :uid => {:type => 'string'},
+                                # login provider - facebook, foursquare etc
+                                :provider => {:type => 'string', :pattern => providers_pattern},
+                                # full user name
+                                :user_name => {:type => 'string'},
+                                # url to profile picture
+                                :api_profile_picture_url => {:type => 'string'}
+                            },
+                            :required => %w(user_id uid provider user_name),
+                            :additionalProperties => false
+                        }
                     }
                 },
                 :required => %w(mid msgtype gifts),

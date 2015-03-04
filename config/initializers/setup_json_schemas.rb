@@ -613,13 +613,14 @@ JSON_SCHEMA = {
     # send a list of users sha256 values to other client for a list of mutual friends from ping (online devices)
     :users_sha256 => {
         :type => 'object',
+        :title => 'Compare gifts sha256 check sum for a list of mutual friends',
         :properties => {
             # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :mid => {:type => 'string', :pattern => uid_pattern},
             # msgtype = users_sha256
             :msgtype => {:type => 'string', :pattern => '^users_sha256$'},
-            # array with internal user id and sha256 calculation for mutual friends (from gifts)
-            :mutual_friends => {
+            # array with internal user id and sha256 calculation for a list of users (mutual friends) - use empty sha256 if no gifts was found for a user
+            :users => {
                 :type => 'array',
                 :items => {
                     :type => 'object',
@@ -635,7 +636,7 @@ JSON_SCHEMA = {
                 :minItems => 1
             }
         },
-        :required => %w(mid msgtype mutual_friends),
+        :required => %w(mid msgtype users),
         :additionalProperties => false
     },
 
@@ -657,14 +658,14 @@ JSON_SCHEMA = {
                 :type => 'array',
                 :items => {:type => 'string', :pattern => uid_pattern}
             },
-            # array with internal user id for mutual friends
-            :mutual_friends => {
+            # array with internal user ids - must be a sublist of mutual friends - from previous users_sha256 message
+            :users => {
                 :type => 'array',
                 :items => {:type => 'integer'},
                 :minItems => 1
             },
-            # array with sha256 values for gifts for mutual friends
-            :mutual_gifts => {
+            # array with sha256 values for gifts for users - empty array if no gifts were found for requested users (mutual friends)
+            :gifts => {
                 :type => 'array',
                 :items => {
                     :type => 'object',
@@ -676,11 +677,10 @@ JSON_SCHEMA = {
                     },
                     :required => %w(gid sha256),
                     :additionalProperties => false
-                },
-                :minItems => 1
+                }
             }
         },
-        :required => %w(mid request_mid msgtype mutual_friends mutual_gifts),
+        :required => %w(mid request_mid msgtype users gifts),
         :additionalProperties => false
     },
 
@@ -698,8 +698,8 @@ JSON_SCHEMA = {
             :request_mid => {:type => 'string', :pattern => uid_pattern},
             # msgtype = sync_gifts
             :msgtype => {:type => 'string', :pattern => '^sync_gifts$'},
-            # array with internal user id for mutual friends
-            :mutual_friends => {:type => 'array', :items => {:type => 'integer'}, :minItems => 1},
+            # array with internal user ids - must be a subset of mutual friends - from previous gifts_sha256 message
+            :users => {:type => 'array', :items => {:type => 'integer'}, :minItems => 1},
             # optional sub message 1 - send_gifts - send missing gifts to other client
             :send_gifts => {
                 :type => 'object',
@@ -846,7 +846,7 @@ JSON_SCHEMA = {
                 }
             }
         },
-        :required => %w(mid request_mid msgtype mutual_friends),
+        :required => %w(mid request_mid msgtype users),
         :additionalProperties => false
     }
 

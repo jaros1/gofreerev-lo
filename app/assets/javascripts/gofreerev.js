@@ -1001,7 +1001,7 @@ var Gofreerev = (function() {
         var json_errors = JSON.stringify(json_error) ;
         error = 'Error in JSON ' + json_schema + ' message. ' + json_schema + ' message was not sent to other client.' + msg ;
         console.log(pgm + error);
-        console.log(pgm + 'request: ' + JSON.stringify(json_msg));
+        console.log(pgm + 'message: ' + JSON.stringify(json_msg));
         console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
         console.log(pgm + 'errors : ' + json_errors);
         return error + '. ' + json_errors ;
@@ -1379,6 +1379,28 @@ angular.module('gifts', ['ngRoute'])
             Gofreerev.setItem('users', JSON.stringify(users)) ;
         } // update_users
 
+
+        // less that <n> milliseconds between util/ping for client_userid
+        // there must be more than one browser tab open with identical client login
+        // sync changes in users array in local storage with js users array
+        var sync_users = function () {
+            var pgm = 'NavCtrl.sync_users: ' ;
+            var old_length = users.length ;
+            var old_stat = provider_stat(users) ;
+            var new_users = JSON.parse(Gofreerev.getItem('users')) ;
+            update_users(new_users, true) ;
+            var new_length = users.length ;
+            var new_stat = provider_stat(users) ;
+            //console.log(
+            //    pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
+            //    'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
+            //    'there was ' + new_users.length + ' users in localstorage.') ;
+            //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
+            //console.log(pgm + 'old stat: ' + old_stat) ;
+            //console.log(pgm + 'new stat: ' + new_stat) ;
+        }; // sync_users
+
+
         var is_logged_in = function () {
             if (typeof users == 'undefined') return false ;
             for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
@@ -1559,7 +1581,10 @@ angular.module('gifts', ['ngRoute'])
             return is_logged_in_with_provider('facebook') ;
         }
 
-        // local log out (provider=null) or log in provider log out (provider facebook,  google+, linkedin etc)
+        // logout:
+        // - null: device log out
+        // - provider: provider log out (provider facebook,  google+, linkedin etc)
+        // - *: log out all providers but keep device log in
         var logout = function (provider) {
             var pgm = 'UserService.logout: ' ;
             console.log(pgm + 'provider = ' + provider) ;
@@ -1573,6 +1598,16 @@ angular.module('gifts', ['ngRoute'])
                 Gofreerev.removeItem('userid') ;
                 Gofreerev.removeItem('sid') ;
                 // giftService.load_gifts() ; // moved to AuthCtrl
+            }
+            else if (provider == '*') {
+                console.log(pgm + 'received "Not logged in" response from ping. Not logged in on server. Log out all providers on client.') ;
+                users = [] ;
+                users_index_by_user_id = {} ;
+                Gofreerev.setItem('users', JSON.stringify(users)) ;
+                save_oauth({}) ;
+                self.expires_at = {} ;
+                self.refresh_tokens = {} ;
+                provider = null ;
             }
             else {
                 // log in provider log out
@@ -1720,6 +1755,7 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
         } // add_oauth
 
+        // remove provider from oauth hash.
         var remove_oauth = function (provider) {
             var pgm = 'UserService.remove_oauth: ' ;
             console.log(pgm + 'provider = ' + provider) ;
@@ -1953,6 +1989,7 @@ angular.module('gifts', ['ngRoute'])
             client_userid: client_userid,
             client_secret: client_secret,
             update_users: update_users,
+            sync_users: sync_users,
             oauth_array_to_hash: oauth_array_to_hash,
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
@@ -2311,6 +2348,7 @@ angular.module('gifts', ['ngRoute'])
         var gid_to_seq = {} ; // localStorage: from gid to gift_<seq> in localStorage
 
         var init_gifts_index = function () {
+            var pgm = service + '.init_gifts_index: ' ;
             gid_to_gifts_index = {};
             user_id_to_gifts = {};
             var user_ids, user_id, i, j, gift, sha256_values;
@@ -2345,7 +2383,7 @@ angular.module('gifts', ['ngRoute'])
             for (user_id in user_id_to_gifts) {
                 user_id_to_gifts[user_id].sort(sort_by_gid);
             }
-            console.log('user_id_to_gifts = ' + JSON.stringify(user_id_to_gifts)) ;
+            // console.log(pgm + 'user_id_to_gifts = ' + JSON.stringify(user_id_to_gifts)) ;
         }; // init_gifts_index
 
         // remove some session specific attributes before save
@@ -2402,17 +2440,11 @@ angular.module('gifts', ['ngRoute'])
             return null ;
         } ;
 
-        // load/reload gifts and comments from localStorage - used at startup and after login/logout
-        //var seq_to_gid = {} ; // localStorage: from gift_<seq> in localStorage to gid
-        //var gid_to_seq = {} ; // localStorage: from gid to gift_<seq> in localStorage
-        var load_gifts = function () {
-            var pgm = service + '.load_gifts: ';
-            var new_gifts = [];
-
-            Gofreerev.removeItem('gifts') ; // remove old gifts storage
-
-            // find all gift_<seq> keys in localStorage for actual user
+        // find all gift_<seq> keys in localStorage for actual user
+        function get_gift_keys () {
+            var pgm = service + '.get_gift_keys: ' ;
             var userid = userService.client_userid() ;
+            if (userid == 0) return [] ;
             var regexp = new RegExp('^' + userid + '_gift_[0-9]+$') ; // format <userid>_gift_<seq>
             var keys = [] ;
             var lng = localStorage.length ;
@@ -2427,12 +2459,26 @@ angular.module('gifts', ['ngRoute'])
                     keys.push(key) ;
                 }
             }
-            // sort gift_<seq> keys. heighest seq first
+            // sort gift_<seq> keys. highest seq first
             keys = keys.sort(function(a,b) {
                 var a9 = parseInt(a.split('_')[1]) ;
                 var b9 = parseInt(b.split('_')[1]) ;
                 return b9-a9 ;
             }) ;
+            return keys ;
+        } // get_gift_keys
+
+        // load/reload gifts and comments from localStorage - used at startup and after login/logout
+        //var seq_to_gid = {} ; // localStorage: from gift_<seq> in localStorage to gid
+        //var gid_to_seq = {} ; // localStorage: from gid to gift_<seq> in localStorage
+        var load_gifts = function () {
+            var pgm = service + '.load_gifts: ';
+            var new_gifts = [];
+
+            Gofreerev.removeItem('gifts') ; // remove old gifts storage. now gift_1, gift_2 etc
+
+            // find all gift_<seq> keys in localStorage for actual user
+            keys = get_gift_keys() ;
 
             // ready to initialize gifts array including 4 helper hashes
             gifts.length = 0 ;
@@ -2706,10 +2752,17 @@ angular.module('gifts', ['ngRoute'])
         // sync changes in gifts array in local storage with js gifts array
         var sync_gifts = function () {
             var pgm = service + '. sync_gift: ';
-            console.log(pgm + 'start');
-            var new_gifts = JSON.parse(Gofreerev.getItem('gifts'));
+            // console.log(pgm + 'start');
+
+            // read "new" gifts from localStorage
+            var new_gifts = [] ;
+            var keys = get_gift_keys() ;
+            for (var i=0 ; i < keys.length ; i++) new_gifts.push(JSON.parse(Gofreerev.getItem(keys[i]))) ;
+            console.log()
+
             // todo: remove - index should normally always be up-to-date
             init_gifts_index();
+
             // insert and update gifts (keep sequence)
             var gid;
             var insert_point = new_gifts.length;
@@ -3321,7 +3374,7 @@ angular.module('gifts', ['ngRoute'])
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
                         msgtype: 'users_sha256',
-                        mutual_friends: JSON.parse(JSON.stringify(new_mutual_friends))
+                        users: JSON.parse(JSON.stringify(new_mutual_friends))
                     });
                 }
             }
@@ -3345,7 +3398,7 @@ angular.module('gifts', ['ngRoute'])
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
                         msgtype: 'users_sha256',
-                        mutual_friends: JSON.parse(JSON.stringify(mailbox.mutual_friends))
+                        users: JSON.parse(JSON.stringify(mailbox.mutual_friends))
                     });
                     mailboxes.push(mailbox);
                 }
@@ -3464,7 +3517,7 @@ angular.module('gifts', ['ngRoute'])
             var users_sha256_message = {
                 msgtype: msg.msgtype,
                 mid: msg.mid,
-                mutual_friends: calc_sha256_for_users(msg.mutual_friends, oldest_gift_at, ignore_invalid_gifts)
+                users: calc_sha256_for_users(msg.users, oldest_gift_at, ignore_invalid_gifts)
             };
             
             // validate users_sha256 message before sending to other device
@@ -3709,6 +3762,7 @@ angular.module('gifts', ['ngRoute'])
         // communication step 2 - receive "users_sha256" message from other device. one user.sha256 signature for each mutual friend
         var receive_message_users_sha256 = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_users_sha256: ' ;
+            var error ;
             console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
 
@@ -3718,7 +3772,7 @@ angular.module('gifts', ['ngRoute'])
                 var json_error = JSON.parse(JSON.stringify(tv4.error));
                 delete json_error.stack;
                 var json_errors = JSON.stringify(json_error) ;
-                var error = 'users_sha256 message rejected by receiver. JSON schema validation errors: ' + json_errors ;
+                error = 'users_sha256 message rejected by receiver. JSON schema validation errors: ' + json_errors ;
                 console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
                 mailbox.outbox.push({
                     mid: Gofreerev.get_new_uid(),
@@ -3730,46 +3784,56 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
 
-            // compare mailbox.mutual_friends and msg.mutual_friends. list with mutual friends should be identical
+            // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
             var my_mutual_friends = mailbox.mutual_friends ;
-            var msg_mutual_friends = [] ;
+            var msg_users = [] ;
             var i, user_id ;
-            for (i=0 ; i<msg.mutual_friends.length ; i++) {
-                user_id = msg.mutual_friends[i].user_id ;
-                msg_mutual_friends.push(user_id) ;
+            for (i=0 ; i<msg.users.length ; i++) {
+                user_id = msg.users[i].user_id ;
+                msg_users.push(user_id) ;
             } // for i
-            var invalid_user_ids = $(msg_mutual_friends).not(my_mutual_friends).get() ;
+            var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
             if (invalid_user_ids.length > 0) {
-                console.log(pgm + 'Not mutual user id ' + invalid_user_ids.join(', ') + ' was received. ' +
-                            'Expected user ids ' + my_mutual_friends.join(', ') + '. Found userids ' + msg_mutual_friends.join(', ') + '.') ;
-                msg_mutual_friends = $(msg_mutual_friends).not(invalid_user_ids).get() ;
-                if (msg_mutual_friends.length == 0) return ;
+                error = 'Not mutual user id ' + invalid_user_ids.join(', ') + ' was received in users_sha256 message. ' +
+                        'Mutual friends ' + my_mutual_friends.join(', ') + '. Received userids ' + msg_users.join(', ') + '.' ;
+                console.log(pgm + error) ;
+                if (msg_users.length == 0) {
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        request_mid: msg.mid,
+                        msgtype: 'error',
+                        error: error
+                    }) ;
+                    return ;
+                }
+                // continue without invalid user ids
+                msg_users = $(msg_users).not(invalid_user_ids).get() ;
             }
-            var missing_user_ids = $(my_mutual_friends).not(msg_mutual_friends).get() ;
-            if (missing_user_ids.length > 0) {
-                console.log(pgm + 'User id ' + missing_user_ids.join(', ') + ' was missing in message. ' +
-                            'Expected user ids ' + mailbox.mutual_friends.join(', ') + '. Found user ids ' + msg_mutual_friends.join(', ') + '.') ;
-                my_mutual_friends = $(my_mutual_friends).not(missing_user_ids).get() ;
-                if (my_mutual_friends.length == 0) return ;
-            }
-            var mutual_friends = my_mutual_friends ;
-            console.log(pgm + 'mutual_friends = ' + mutual_friends.join(', ')) ;
+            //var missing_user_ids = $(my_mutual_friends).not(msg_users).get() ;
+            //if (missing_user_ids.length > 0) {
+            //    console.log(pgm + 'User id ' + missing_user_ids.join(', ') + ' was missing in message. ' +
+            //                'Expected user ids ' + mailbox.mutual_friends.join(', ') + '. Found user ids ' + msg_users.join(', ') + '.') ;
+            //    my_mutual_friends = $(my_mutual_friends).not(missing_user_ids).get() ;
+            //    if (my_mutual_friends.length == 0) return ;
+            //}
+            //var mutual_friends = my_mutual_friends ;
+            //console.log(pgm + 'mutual_friends = ' + mutual_friends.join(', ')) ;
 
             // exclude some gifts from user sha256 calculation.
             var oldest_gift_at = 0 ; // todo: max oldest_gift_at on this device and msg.oldest_gift_at
             var ignore_invalid_gifts = []; // todo: merge msg.ignore_invalid_gifts and device.ignore_invalid_gifts gids
 
-            // compare sha256 values for mutual friends - gift sync must continue until sha256 values are identical
-            var sha256_array = calc_sha256_for_users(mutual_friends, oldest_gift_at, ignore_invalid_gifts) ;
+            // compare sha256 values for msg.users - continue gift sync until sha256 values are identical todo: or endless loop is detected
+            var sha256_array = calc_sha256_for_users(msg_users, oldest_gift_at, ignore_invalid_gifts) ;
             var sha256_hash = {} ;
             for (i=0 ; i<sha256_array.length ; i++) {
                 user_id = sha256_array[i].user_id ;
                 sha256_hash[user_id] = { my_sha256: sha256_array[i].sha256 } ;
             } // for i
-            for (i=0 ; i<msg.mutual_friends.length ; i++) {
-                user_id = msg.mutual_friends[i].user_id ;
-                if (mutual_friends.indexOf(user_id) == -1) continue ;
-                sha256_hash[user_id].msg_sha256 = msg.mutual_friends[i].sha256 ;
+            for (i=0 ; i<msg.users.length ; i++) {
+                user_id = msg.users[i].user_id ;
+                // if (mutual_friends.indexOf(user_id) == -1) continue ;
+                sha256_hash[user_id].msg_sha256 = msg.users[i].sha256 ;
             } // for i
             console.log(pgm + 'sha256_hash = ' + JSON.stringify(sha256_hash)) ;
             //sha256_hash = {"1126":{"my_sha256":null,
@@ -3805,12 +3869,12 @@ angular.module('gifts', ['ngRoute'])
                 }
             } // for i
 
-            // find sha256 values for relevant gifts / mutual friends
+            // find sha256 values for relevant gifts (msg.users)
             var gifts_sha256_hash = {}, j, gift ;
             for (i=0 ; i<user_ids.length ; i++) {
                 user_id = user_ids[i] ;
                 if (!user_id_to_gifts.hasOwnProperty(user_id)) {
-                    console.log(pgm + 'No gifts was found for mutual friend with user id ' + user_id) ;
+                    console.log(pgm + 'No gifts was found for user id ' + user_id) ;
                     continue ;
                 }
                 console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_to_gifts[user_id].length) ;
@@ -3839,19 +3903,23 @@ angular.module('gifts', ['ngRoute'])
                 request_mid: msg.mid,
                 msgtype: 'gifts_sha256',
                 ignore_invalid_gifts: ignore_invalid_gifts,
-                mutual_friends: user_ids,
-                mutual_gifts: gifts_sha256_array
+                users: user_ids,
+                gifts: gifts_sha256_array
             };
             if (oldest_gift_at > 0) gifts_sha256_message.oldest_gift_at = oldest_gift_at ;
 
             // validate gifts_sha256 message before adding to outbox
             if (Gofreerev.is_json_message_invalid(pgm,gifts_sha256_message,'gifts_sha256','')) {
                 // error message has already been written to log
+                // todo: error debugging - no mutual friends was found
+                console.log(pgm + 'users = ' + JSON.stringify(user_ids)) ;
+                console.log(pgm + 'gifts = ' + JSON.stringify(gifts_sha256_array)) ;
+                console.log(pgm + 'user_id_to_gifts = ' + JSON.stringify(user_id_to_gifts)) ;
                 // send error message to other device
                 var json_error = JSON.parse(JSON.stringify(tv4.error));
                 delete json_error.stack;
                 var json_errors = JSON.stringify(json_error) ;
-                var error = 'Error when processing users_sha256 message. JSON schema validation error in following gifts_sha256 message. ' + json_errors ;
+                error = 'Error when processing users_sha256 message. JSON schema validation error in following gifts_sha256 message. ' + json_errors ;
                 console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
                 mailbox.outbox.push({
                     mid: Gofreerev.get_new_uid(),
@@ -3896,13 +3964,37 @@ angular.module('gifts', ['ngRoute'])
             // move previous users_sha256 message to done folder
             if (!move_previous_message(pgm, mailbox, msg.request_mid, 'users_sha256', true)) return ; // ignore - not found in mailbox
 
-            // find sha256 values for relevant gifts / mutual friends
+            // todo: check that users in gifts_sha256 message is a sublist of mutual friends.
+            // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
+            var my_mutual_friends = mailbox.mutual_friends ;
+            var msg_users = msg.users ;
+            var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
+            if (invalid_user_ids.length > 0) {
+                error = 'Not mutual user id ' + invalid_user_ids.join(', ') + ' was received in gifts_sha256 message. ' +
+                'Mutual friends ' + my_mutual_friends.join(', ') + '. Received userids ' + msg_users.join(', ') + '.' ;
+                console.log(pgm + error) ;
+                if (msg_users.length == 0) {
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        request_mid: msg.mid,
+                        msgtype: 'error',
+                        error: error
+                    }) ;
+                    return ;
+                }
+                // continue without invalid user ids
+                msg_users = $(msg_users).not(invalid_user_ids).get() ;
+            }
+
+            // todo: users in this gifts_sha256 message should be identical to users in previous users_sha256 message (now in done)
+
+            // find sha256 values for relevant gifts / users (sublist of mutual friends)
             var gifts_sha256_hash = {}, user_id, i, j, gift, gid ;
-            for (i=0 ; i<msg.mutual_friends.length ; i++) {
-                user_id = msg.mutual_friends[i] ;
+            for (i=0 ; i<msg_users.length ; i++) {
+                user_id = msg_users[i] ;
                 if (!user_id_to_gifts.hasOwnProperty(user_id)) {
                     // no gifts for this user id
-                    console.log(pgm + 'no gifts for mutual friend with user id ' + user_id) ;
+                    console.log(pgm + 'no gifts for user id ' + user_id) ;
                     continue ;
                 }
                 console.log(pgm + 'user_id_gifts_index[' + user_id + '].length = ' + user_id_to_gifts[user_id].length) ;
@@ -3915,10 +4007,10 @@ angular.module('gifts', ['ngRoute'])
                 } // for j
             } // for i
             // add sha256 values received from other device
-            for (i=0 ; i<msg.mutual_gifts.length ; i++) {
-                gid = msg.mutual_gifts[i].gid ;
-                if (gifts_sha256_hash[gid]) gifts_sha256_hash[gid].msg_sha256 = msg.mutual_gifts[i].sha256 ;
-                else gifts_sha256_hash[gid] = { my_sha256: null, msg_sha256: msg.mutual_gifts[i].sha256 } ;
+            for (i=0 ; i<msg.gifts.length ; i++) {
+                gid = msg.gifts[i].gid ;
+                if (gifts_sha256_hash[gid]) gifts_sha256_hash[gid].msg_sha256 = msg.gifts[i].sha256 ;
+                else gifts_sha256_hash[gid] = { my_sha256: null, msg_sha256: msg.gifts[i].sha256 } ;
             }
             // console.log(pgm + 'gifts_sha256_hash = ' + JSON.stringify(gifts_sha256_hash)) ;
             //gifts_sha256_hash =
@@ -3993,11 +4085,11 @@ angular.module('gifts', ['ngRoute'])
             console.log('error_gids = ' + error_gids.join(', ')) ;
             // request_gids = 14239781115388288755, 14239781115388735516
             // send_gids = 14239781692770120364, 14239781692770348983, 14239781692770427293, 14239781692770522732, 14239781692770775148, 14239781692770876536, 14239781692771119206, 14239781692771120584, 14239781692771483562, 14239781692771530176, 14239781692771703391, 14239781692772499411, 14239781692772777453, 14239781692773030964, 14239781692773321072, 14239781692774532744, 14239781692774974940, 14239781692775813294, 14239781692775882233, 14239781692776555896, 14239781692776993269, 14239781692777372502, 14239781692777574345, 14239781692778276592, 14239781692778309061, 14239781692778518406, 14239781692778583942, 14239781692779726598, 14244918825228386518, 14244924316655606495, 14244941900636888171
-            if (ok_gids.length == msg.mutual_gifts.length) {
+            if (ok_gids.length == msg.gifts.length) {
                 console.log(pgm + 'Gift replication finished. ' + ok_gids.length + ' identical gifts were found.') ;
                 return ;
             }
-            if (ok_gids.length + error_gids.length == msg.mutual_gifts.length) {
+            if (ok_gids.length + error_gids.length == msg.gifts.length) {
                 console.log(pgm + 'Gift replication finished. ' + error_gids.length + ' errors and ' + ok_gids.length + ' identical gifts were found.') ;
                 console.log(pgm + 'Gifts with null sha256 values: ' + error_gids.join(', ')) ;
                 return ;
@@ -4013,7 +4105,7 @@ angular.module('gifts', ['ngRoute'])
                 mid: Gofreerev.get_new_uid(), // envelope mid
                 request_mid: msg.mid,
                 msgtype: 'sync_gifts',
-                mutual_friends: msg.mutual_friends,
+                users: msg_users,
                 send_gifts: null, // optional sub message 1)
                 request_gifts: null, // optional sub message 2)
                 check_gifts: null // optional sub message 3)
@@ -4983,35 +5075,16 @@ angular.module('gifts', ['ngRoute'])
         // end GiftService
     }])
     .controller('NavCtrl', ['TextService', 'UserService', 'GiftService', '$timeout', '$http', '$q', function(textService, userService, giftService, $timeout, $http, $q) {
-        console.log('NavCtrl loaded') ;
+        var controller = 'NavCtrl' ;
+        console.log(controller + ' loaded') ;
         var self = this ;
         self.userService = userService ;
         self.texts = textService.texts ;
 
-        // less that 60 seconds between util/ping for client_userid
-        // there must be more than one browser tab open with identical client login
-        // sync changes in users array in local storage with js users array
-        var sync_users = function () {
-            var pgm = 'NavCtrl.sync_users: ' ;
-            var old_length = users.length ;
-            var old_stat = provider_stat(users) ;
-            var new_users = JSON.parse(Gofreerev.getItem('users')) ;
-            userService.update_users(new_users, true) ;
-            var new_length = users.length ;
-            var new_stat = provider_stat(users) ;
-            //console.log(
-            //    pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
-            //    'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
-            //    'there was ' + new_users.length + ' users in localstorage.') ;
-            //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
-            //console.log(pgm + 'old stat: ' + old_stat) ;
-            //console.log(pgm + 'new stat: ' + new_stat) ;
-        }; // sync_users
-
         // ping server once every minute - server maintains a list of online users / devices
         var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
         var ping = function (old_ping_interval) {
-            var pgm = 'NavCtrl.ping: ' ;
+            var pgm = controller + '.ping: ' ;
             var userid = userService.client_userid() ;
             if (userid == 0) {
                 // no device login
@@ -5064,7 +5137,11 @@ angular.module('gifts', ['ngRoute'])
                     if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
 
                     // process ping response
-                    if (response.data.error) console.log(pgm + 'error: ' + response.data.error) ;
+                    if (response.data.error) {
+                        console.log(pgm + 'error: ' + response.data.error) ;
+                        if (response.data.error == 'Not logged in') userService.logout('*') ;
+                    }
+
                     // check online users/devices - create a mail box for each online device
                     if (response.data.online) giftService.update_mailboxes(response.data.online) ;
                     // check for new public keys for online users/devices
@@ -5100,7 +5177,7 @@ angular.module('gifts', ['ngRoute'])
                         ', new timestamp = ' + new_client_timestamp +
                         ',interval = ' + interval);
                     // sync JS users array with any changes in local storage users string
-                    sync_users() ;
+                    userService.sync_users() ;
                     giftService.sync_gifts() ;
                 },
                 function (error) {
@@ -5115,7 +5192,7 @@ angular.module('gifts', ['ngRoute'])
                 })
         }; // ping
         $timeout(function () { ping(ping_interval); }, ping_interval) ;
-        console.log('NavCtrl.start ping process. start up ping interval = ' + ping_interval) ;
+        console.log(controller + '.start ping process. start up ping interval = ' + ping_interval) ;
 
         var get_js_timezone = function () {
             return -(new Date().getTimezoneOffset()) / 60.0 ;
@@ -5137,7 +5214,7 @@ angular.module('gifts', ['ngRoute'])
 
         // post page task - execute some post-page / post-login ajax tasks and get fresh json data from server (oauth and users)
         var do_tasks = function () {
-            var pgm = 'NavCtrl.do_tasks: ' ;
+            var pgm = controller + '.do_tasks: ' ;
             var userid = userService.client_userid() ;
             if (userid == 0) return ; // only relevant for logged in users
             console.log(pgm + 'start');

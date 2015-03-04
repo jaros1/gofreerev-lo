@@ -927,6 +927,16 @@ class UtilController < ApplicationController
     begin
       now = Time.zone.now
 
+      # abort ping if from a not logged in client
+      login_user_ids = get_session_value(:user_ids)
+      if login_user_ids.class != Array or login_user_ids.size == 0
+        @json[:error] = 'Not logged in'
+        @json[:interval] = 10000
+        validate_json_response
+        format_response
+        return ;
+      end
+
       # all client sessions should ping server once every server ping cycle
       # check server load average the last 5 minutes and increase/decrease server ping cycle
       s = Sequence.get_server_ping_cycle
@@ -975,7 +985,7 @@ class UtilController < ApplicationController
       @json[:oauths] = oauths if oauths # only google+
 
       # copy login user ids from sessions to pings table (user_ids is stored encrypted in sessions but unencrypted in pings)
-      login_user_ids = get_session_value(:user_ids)
+
       if login_user_ids.class == Array and login_user_ids.size > 0
         ping.user_ids = login_user_ids
       else
@@ -1035,6 +1045,9 @@ class UtilController < ApplicationController
                                     .find_all { |f| f.friend_status_code == 'Y' }
                                     .collect { |f| f.user_id_receiver }
           pings = pings.delete_if do |p|
+            logger.error2 "login_user_ids not an array" unless login_user_ids.class == Array
+            logger.error2 "p.user_ids is not an array. p.id = #{p.id}" unless p.user_ids.class == Array
+            logger.error2 "login_users_friends is not an array" unless login_users_friends.class == Array
             if (login_user_ids & p.user_ids).size == 0 and (login_users_friends & p.user_ids).size == 0
               # no shared login users and not friends - remove from list
               true

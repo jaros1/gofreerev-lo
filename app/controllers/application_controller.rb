@@ -102,6 +102,8 @@ class ApplicationController < ActionController::Base
       logger.secret2 "context=login. refresh_tokens from session = #{refresh_tokens}"
     end
 
+    oauth = nil # only used for google+
+
     if context == :ping and refresh_tokens.size > 0
       # received refresh token for expired google+ token on client
       # return dummy google+ oauth without refresh token if not logged in with google+ on server
@@ -113,12 +115,11 @@ class ApplicationController < ActionController::Base
       logger.debug2 'refresh providers = ' + refresh_tokens.collect { |hash| hash['provider'] }.join(', ')
       logger.debug2 "login_user_ids    = #{login_user_ids.join(', ')}"
       if refresh_token_not_logged_in
+        # return dummy google+ oauth - force client log off
         logger.warn2 "received refresh tokens from not logged user (google+ only)"
         oauth = [{:provider => 'google_oauth2', :user_id => 'unknown_user/google_oauth2', :token => 'expired', :expires_at => 1.day.ago.to_i}]
       end
     end
-
-    oauth = nil # only google+
 
     # todo: expires_at check. how to handle uic time dif between server and client. not expired on client + expired on server!
     client_timestamp = (params[:client_timestamp].to_i / 1000).floor
@@ -201,6 +202,14 @@ class ApplicationController < ActionController::Base
                 :expires_at => expires_at,
                 :refresh_token => refresh_token
             }]
+            if context == :login
+              # google+ oauth was refreshed doing login process. oauth info is temporary saved in sessions table and will be used for friend list download
+              # the information in sessions table will be deleted after friend list download
+              logger.debug2 "context is login. copy new google+ oauth to sessions table. to be used in following friend list download"
+              set_session_array_value(:tokens, oauth[0][:token], provider)
+              set_session_array_value(:expires_at, oauth[0][:expires_at], provider)
+              set_session_array_value(:refresh_tokens, oauth[0][:refresh_token], provider)
+            end
           end
         else
           logger.warn2 'no refresh token was found for google+. unable to refresh google+ access token'
@@ -1195,6 +1204,7 @@ class ApplicationController < ActionController::Base
         request = result.next_page
       end # loop for all google+ friends
       # return friends has to post_login_<provider> - see also Friend.update_api_friends_from_hash
+      logger.debug2 "friends_hash..size = #{friends_hash.size}"
       [friends_hash, nil, nil]
     end # gofreerev_get_friends
     # return api client

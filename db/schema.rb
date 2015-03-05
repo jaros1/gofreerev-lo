@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150228161554) do
+ActiveRecord::Schema.define(version: 20150305090450) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -203,7 +203,7 @@ ActiveRecord::Schema.define(version: 20150228161554) do
     t.text     "did"
     t.text     "client_timestamp"
     t.text     "client_secret"
-    t.string   "sha256",           limit: 45
+    t.text     "sha256"
   end
 
   add_index "sessions", ["session_id", "client_userid"], name: "index_session_session_id", unique: true, using: :btree

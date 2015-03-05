@@ -1286,7 +1286,7 @@ angular.module('gifts', ['ngRoute'])
                     providers.push(key) ;
                 }
             }
-            console.log('UserService: providers = ' + JSON.stringify(providers)) ;
+            // console.log('UserService: providers = ' + JSON.stringify(providers)) ;
         })();
 
         // users - read from local storage - used in angularJS filter functions
@@ -1894,14 +1894,14 @@ angular.module('gifts', ['ngRoute'])
                     // check for new oauth authorization (google+ only)
                     if (response.data.oauths) oauths_response(response.data.oauths) ;
                     // check users array
-                    if (response.data.users) {
+                    if (response.data.friends) {
                         // fresh user info array was received from server
-                        console.log(pgm + 'ok response. users = ' + JSON.stringify(response.data.users)) ;
+                        console.log(pgm + 'ok response. friends = ' + JSON.stringify(response.data.friends)) ;
                         // insert relevant user info info js array
-                        init_users(response.data.users) ;
+                        init_users(response.data.friends) ;
                         // save in local storage
                         // todo: note that users array can by big and maybe have to be stripped for irrelevant users
-                        Gofreerev.setItem('users', JSON.stringify(response.data.users)) ;
+                        Gofreerev.setItem('users', JSON.stringify(response.data.friends)) ;
                     }
                     // promise - continue with success or error?
                     if (response.data.error || !response.data.users) return $q.reject(response.data.error) ;
@@ -5317,11 +5317,11 @@ angular.module('gifts', ['ngRoute'])
                         oauths = userService.oauth_array_to_hash(oauths) ;
                         userService.add_oauth(oauths) ;
                     }
-                    var new_users = response.data.users ;
-                    if (new_users) {
+                    var new_friends = response.data.friends ;
+                    if (new_friends) {
                         // new user and friends info received from util.generic_post_login task
-                        console.log(pgm + 'new users = ' + JSON.stringify(new_users)) ;
-                        userService.update_users(new_users, false) ; // replace=false - add new users
+                        console.log(pgm + 'new friends = ' + JSON.stringify(new_friends)) ;
+                        userService.update_users(new_friends, false) ; // replace=false - add new users
                     }
                 },
                 function (error) {

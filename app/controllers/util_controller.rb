@@ -292,8 +292,8 @@ class UtilController < ApplicationController
       # return json object with relevant user info. see list with friends categories in User.cache_friend_info
       User.cache_friend_info([login_user])
       users = User.where(:user_id => login_user.friends_hash.keys)
-      @json[:users] = [] unless @json[:users]
-      @json[:users] += users.collect do |user|
+      @json[:friends] = [] unless @json[:friends]
+      @json[:friends] += users.collect do |user|
         hash = { :user_id => user.id,
                  :uid => user.uid,
                  :provider => user.provider,
@@ -830,7 +830,7 @@ class UtilController < ApplicationController
       end
 
       # update friend lists from login providers and return user info to client
-      @json[:users] = []
+      @json[:friends] = []
       providers.each do |provider|
         # get hash with user_id and friend category
         login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
@@ -848,7 +848,7 @@ class UtilController < ApplicationController
         # return json object with relevant user info. see list with friends categories in User.cache_friend_info
         User.cache_friend_info([login_user])
         users = User.where(:user_id => login_user.friends_hash.keys)
-        @json[:users] += users.collect do |user|
+        @json[:friends] += users.collect do |user|
           hash = {:user_id => user.id,
                   :uid => user.uid,
                   :provider => user.provider,

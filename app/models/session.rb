@@ -1,23 +1,26 @@
 class Session < ActiveRecord::Base
 
   # create_table "sessions", force: true do |t|
-  #   t.string   "session_id",       limit: 32
-  #   t.integer  "client_userid",               default: 0
-  #   t.text     "created"
-  #   t.text     "expires_at"
-  #   t.text     "flash_id"
-  #   t.text     "language"
-  #   t.text     "last_row_at"
-  #   t.text     "last_row_id"
-  #   t.text     "refresh_tokens"
-  #   t.text     "state"
-  #   t.text     "tokens"
-  #   t.text     "user_ids"
-  #   t.text     "uid"
-  #   t.text     "client_timestamp"
-  #   t.datetime "created_at"
-  #   t.datetime "updated_at"
+  #  1  t.string   "session_id",       limit: 32
+  #  2  t.integer  "client_userid",               default: 0
+  #  3  t.text     "created"
+  #  4  t.text     "expires_at"
+  #  5  t.text     "flash_id"
+  #  6  t.text     "language"
+  #  7  t.text     "last_row_at"
+  #  8  t.text     "last_row_id"
+  #  9  t.text     "refresh_tokens"
+  # 10  t.text     "state"
+  # 11  t.text     "tokens"
+  # 12  t.text     "user_ids"
+  # 13  t.text     "did"
+  # 14  t.text     "client_timestamp"
+  # 15  t.text     "client_secret"
+  # 16  t.text     "sha256"
+  # 17  t.datetime "created_at"
+  # 18  t.datetime "updated_at"
   # end
+  # add_index "sessions", ["session_id", "client_userid"], name: "index_session_session_id", unique: true, using: :btree
 
   # only information in session cookie are userid, timezone and secret. Other session information is in sessions table
   # each session is splitted in one section/row for each client_userid/client log in
@@ -26,13 +29,14 @@ class Session < ActiveRecord::Base
   # timestamps are updated manual in ActionControllerExtensions
   self.record_timestamps = false
 
-  crypt_keeper :created, :expires_at, :encryptor => :aes, :key => ENCRYPT_KEYS[0]
+  crypt_keeper :created, :expires_at, :flash_id, :language, :last_row_at, :last_row_id, :refresh_tokens, :state, :tokens,
+               :user_ids, :did, :client_timestamp, :client_secret, :sha256, :encryptor => :aes, :key => ENCRYPT_KEYS[0]
 
   # 1) session_id - string 32 characters = request.session_options[:id
 
   # 2) client_userid - integer (0, 1, 2 etc) - from client local storage login. 0 = not logged in, > 0 = logged in
 
-  # 3) created - Time in model - encrypted text in db - start time for showing cookie note in page header (fuck EU)
+  # 3) created - Time in model - encrypted text in db - start time for showing cookie note in page header (EU cookie law - stupid waste of time!)
   def created
     return nil unless (extended_created = read_attribute(:created))
     encrypt_remove_pre_and_postfix(extended_created, 'created', 1).to_time
@@ -305,9 +309,30 @@ class Session < ActiveRecord::Base
     encrypt_remove_pre_and_postfix(extended_client_secret, 'client_secret', 13)
   end # client_secret_was
 
-  # 15) created_at
+  # 16) sha256 - String in model - encrypted text in db - used together with did as an unique mailbox address in client to client communication
+  def sha256
+    return nil unless (extended_sha256 = read_attribute(:sha256))
+    encrypt_remove_pre_and_postfix(extended_sha256, 'sha256', 14)
+  end # sha256
+  def sha256=(new_sha256)
+    if new_sha256
+      # logger.debug2  "new_sha256 = #{new_sha256} (#{new_sha256.class.name})"
+      check_type('sha256', new_sha256, 'String')
+      write_attribute :sha256, encrypt_add_pre_and_postfix(new_sha256, 'sha256', 14)
+    else
+      write_attribute :sha256, nil
+    end
+  end # sha256=
+  alias_method :sha256_before_type_cast, :sha256
+  def sha256_was
+    return sha256 unless sha256_changed?
+    return nil unless (extended_sha256 = attribute_was(:sha256))
+    encrypt_remove_pre_and_postfix(extended_sha256, 'sha256', 14)
+  end # sha256_was
 
-  # 16) updated_at
+  # 17) created_at
+
+  # 18) updated_at
 
   # secret from session cookie. encrypt/decrypt data in sessions table with secret from cookie
   attr_accessor :secret
@@ -330,7 +355,7 @@ class Session < ActiveRecord::Base
       when :tokens then self.tokens = value
       when :user_ids
         self.user_ids = value
-        # update sha256 signature - used in ping - used in client to client communication
+        # update sha256 signature (client_secret + user_ids) - used in ping - used in client to client communication
         if value.class == Array
           sha256_input = ([self.client_secret]+value.sort).join(',')
           self.sha256 = Base64.encode64(Digest::SHA256.digest(sha256_input))

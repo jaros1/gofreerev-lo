@@ -53,7 +53,7 @@ client_timestamp_type = {:type => 'integer', :minimum => 1.day.ago.to_i*1000, :m
 client_userid_type = {:type => 'integer', :minimum => 1, :maximum => 100}
 
 # array with login user and friends information (friends etc). from api friend lists. used in login and do_tasks response
-users_type = {
+friends_array_type = {
     :type => 'array',
     :items => {
         :type => 'object',
@@ -107,7 +107,7 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # array with login user and friends information (friends etc). from api friend lists
-            :users => users_type,
+            :friends => friends_array_type,
             # optional array with providers with expired oauth authorization
             :expired_tokens => expired_tokens_type,
             # optional array with new oauth authorization - for now only used for google+
@@ -115,7 +115,7 @@ JSON_SCHEMA = {
             # optional error message from login
             :error => {:type => 'string'}
         },
-        :required => %w(users),
+        :required => %w(friends),
         :additionalProperties => false
     },
 
@@ -159,7 +159,7 @@ JSON_SCHEMA = {
             # optional array with new oauth authorization to client (temporary stored in server session after api omniauth login
             :oauths => oauths_type,
             # array with login user and friends information (friends etc). from api friend lists
-            :users => users_type,
+            :friends => friends_array_type,
             # optional error message from do_tasks
             :error => {:type => 'string'}
         },
@@ -171,6 +171,8 @@ JSON_SCHEMA = {
     # client pings are distributed equally over time
     :ping_request =>
         {:type => 'object',
+         :title => 'Send requests to server and send messages to other clients',
+         :description => 'Ping request from client to server once every <interval> milliseconds. All gifts and comments must have a server side sha256 signature. Public keys and messages are used in encrypted client to client communication',
          :properties =>
              {# client userid normally = 1. Allow up to 100 user accounts in localStorage
               :client_userid => client_userid_type,
@@ -183,6 +185,8 @@ JSON_SCHEMA = {
               # login users and creators of gifts must be identical - gift is always created on this server with created_at_server = 1
               :new_gifts => {
                   :type => 'array',
+                  :title => 'Array with newly created gifts on client',
+                  :description => 'Array with meta-data for newly created gifts on client used for creation of server side sha256 signatures. Gid and a server side sha256 signature is saved on server',
                   :items => {
                       :type => 'object',
                       :properties => {
@@ -204,6 +208,8 @@ JSON_SCHEMA = {
               # gift must be from a friend - gift can be from an other gofreerev server
               :verify_gifts => {
                   :type => 'array',
+                  :title => 'Array with gifts verifications requests (gifts received from other clients)',
+                  :description => 'Array with meta-data for gifts received from other clients. Server checks if server side sha256 value is valid (gift information is unchanged)',
                   :items => {
                       :type => 'object',
                       :properties => {
@@ -231,7 +237,8 @@ JSON_SCHEMA = {
               # at least one api logged in user must be giver or receiver of gift. sha256_deleted is required in request.
               :delete_gifts => {
                   :type => 'array',
-                  :title => 'Server delete gifts request. Sha256_accepted must be supplied when deleting an closed deal with both giver and receiver',
+                  :title => 'Array with newly deleted gifts on client for creation of a server side sha256 deleted signature. ',
+                  :description => 'Array with meta-data for deleted gifts. Client side sha256_accepted value must be supplied when deleting an closed deal with both giver and receiver. A server side sha256 deleted signature is saved on server',
                   :items => {
                       :type => 'object',
                       :properties => {
@@ -340,8 +347,10 @@ JSON_SCHEMA = {
          :required => %w(client_userid client_timestamp sid),
          :additionalProperties => false
         },
+
     :ping_response =>
         {:type => 'object',
+         :title => 'Receive response from server and receive messages from other clients',
          :properties =>
              {# client unix timestamp (10) with milliseconds (3) for previous ping request from same unique device (did or session_id + user_clientid)
               :old_client_timestamp => client_timestamp_type,

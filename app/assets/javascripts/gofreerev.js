@@ -2593,6 +2593,18 @@ angular.module('gifts', ['ngRoute'])
             return keys ;
         } // get_gift_keys
 
+        // helper function. collect user ids used in gifts and comments and append to array
+        // send in load_gifts, validate_send_gifts_message etc
+        function add_user_ids_to_array (user_ids, array) {
+            if (!user_ids) return ;
+            if (user_ids.length == 0) return ;
+            var i, user_id ;
+            for (i=0 ; i<user_ids.length ; i++) {
+                user_id = user_ids[i] ;
+                if (array.indexOf(user_id) == -1) array.push(user_id) ;
+            }
+        } // add_user_ids_to_array
+
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         //var seq_to_gid = {} ; // localStorage: from gift_<seq> in localStorage to gid
         //var gid_to_seq = {} ; // localStorage: from gid to gift_<seq> in localStorage
@@ -2701,11 +2713,11 @@ angular.module('gifts', ['ngRoute'])
                 //}
                 
                 // migration_user_ids - friends used in gifts and comments must be in users
-                if (gift.giver_user_ids) for (j=0 ; j<gift.giver_user_ids.length ; j++) if (migration_user_ids.indexOf(gift.giver_user_ids[j]) == -1) migration_user_ids.push(gift.giver_user_ids[j]) ;
-                if (gift.receiver_user_ids) for (j=0 ; j<gift.receiver_user_ids.length ; j++) if (migration_user_ids.indexOf(gift.receiver_user_ids[j]) == -1) migration_user_ids.push(gift.receiver_user_ids[j]) ;
+                add_user_ids_to_array(gift.giver_user_ids, migration_user_ids) ;
+                add_user_ids_to_array(gift.receiver_user_ids, migration_user_ids) ;
                 if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
                     comment = gift.comments[j] ;
-                    for (k=0 ; k<comment.user_ids.length ; k++) if (migration_user_ids.indexOf(comment.user_ids[k]) == -1) migration_user_ids.push(comment.user_ids[k]) ;
+                    add_user_ids_to_array(comment.user_ids, migration_user_ids) ;
                 }
 
                 // save migrated gift
@@ -4445,7 +4457,7 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
 
-            // validate sync_gifts message before placing message in outbox
+            // JS validate sync_gifts message before placing message in outbox
             if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {
                 // error message has already been written to log
                 // send error message to other device
@@ -4463,6 +4475,9 @@ angular.module('gifts', ['ngRoute'])
                 }) ;
                 return ;
             }
+
+            // todo: logical validate sync:gifts message before placing message in outbox
+
 
             // send sync_gifts message
             mailbox.outbox.push(sync_gifts_message) ;
@@ -4531,7 +4546,81 @@ angular.module('gifts', ['ngRoute'])
             if (a_is_empty) return false ;
             if (b_is_empty) return false ;
             return (a == b);
-        } ;
+        } ; // identical_values
+
+
+        // logical validate "send_gifts" message before send (receive_message_sync_gifts) and after receive (receive_message_send_gifts)
+        // called after json validation but before sending send_gifts message / processing information in received send_gifts message
+        // returns nil or error message
+        var validate_send_gifts_message = function (mailbox, msg) {
+            var pgm = service + '.validate_send_gifts_message: ' ;
+            // check missing gifts array
+            if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) return 'No gifts array or empty gifts array in send_gifts message.';
+
+            // collect all user ids in send_gifts message (gift giver, gift receiver, comment creator)
+            // user must be a mutual user (mailbox.mutual_user) or must be in msg.users array
+            // in many situations an user id can be found in friends array
+            // information in msg.users array is used as fallback if user is not found in friends array
+            var send_gifts_expected_user_ids = [] ;
+
+            // check doublet gifts
+            var new_gids = [], i, j, new_gift, doublet_gids = 0;
+            for (i = 0; i < msg.gifts.length; i++) {
+                new_gift = msg.gifts[i];
+                if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1;
+                else {
+                    new_gids.push(new_gift.gid);
+                    add_user_ids_to_array(new_gift.giver_user_ids, send_gifts_expected_user_ids) ;
+                    add_user_ids_to_array(new_gift.receiver_user_ids, send_gifts_expected_user_ids) ;
+                }
+            } // for i
+            if (doublet_gids > 0) return 'Found ' + doublet_gids + ' doublet gifts in sync_gifts/send_gifts sub message. gid must be unique.';
+            new_gids = null;
+
+            // check doublet comments
+            var new_cids = [], doublet_cids = 0, j, new_comment;
+            for (i = 0; i < msg.gifts.length; i++) {
+                new_gift = msg.gifts[i];
+                if (!new_gift.comments) continue;
+                for (j = 0; j < new_gift.comments.length; j++) {
+                    new_comment = new_gift.comments[j];
+                    if (new_cids.indexOf(new_comment.cid) != -1) doublet_cids += 1;
+                    else {
+                        new_cids.push(new_comment.cid);
+                        add_user_ids_to_array(new_comment.user_ids, send_gifts_expected_user_ids);
+                    }
+                } // for j (comments)
+            } // for i (gifts)
+            if (doublet_cids > 0) return 'Found ' + doublet_cids + ' doublet comments in sync_gifts/send_gifts sub message. cid must be unique.';
+            new_cids = null;
+
+            // check received users
+            var user_id ;
+            var send_gifts_received_user_ids = [], user ;
+            var doublet_user_ids = [] ;
+            if (msg.users) for (i=0 ; i<msg.users.length ; i++) {
+                user = msg.users[i] ;
+                user_id = user.user_id ;
+                if (send_gifts_received_user_ids.indexOf(user_id) == -1) send_gifts_received_user_ids.push(user_id) ;
+                else if (doublet_user_ids.indexOf(user_id) == -1) doublet_user_ids.push(user_id) ;
+            }
+            if (doublet_user_ids.length > 0) return 'Found doublet users ' + doublet_user_ids.join(', ') + ' in sync_gifts/send_gifts sub message. Users in users array must be unique.' ;
+
+            // compare expected & received users
+            for (i=send_gifts_expected_user_ids.length-1 ; i >= 0 ; i--) {
+                user_id = send_gifts_expected_user_ids[i] ;
+                if (mailbox.mutual_friends.indexOf(user_id) != -1) send_gifts_expected_user_ids.splice(i,1) ;
+            } // for i (send_gifts_user_ids)
+            var send_gift_missing_user_ids = $(send_gifts_expected_user_ids).filter(send_gifts_received_user_ids) ;
+            if (send_gift_missing_user_ids.length > 0) {
+                return 'Users ' + send_gift_missing_user_ids.join(', ') + ' were missing in sync_gifts/send_gifts sub message. All not mutual friends must be sent in users array as fallback information.' ;
+            }
+            var send_gift_unexpected_user_ids = $(send_gifts_received_user_ids).filter(send_gifts_expected_user_ids) ;
+            if (send_gift_unexpected_user_ids.length > 0) {
+                return 'Unexpected users ' + send_gift_unexpected_user_ids.join(', ') + ' were found in sync_gifts/send_gifts sub message. Only relevant not mutual friends must be sent in users array as fallback information.' ;
+            }
+
+        }; // validate_send_gifts_message
 
 
         // communication step 4 - sub message from receive_message_sync_gifts
@@ -4554,12 +4643,14 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'msg.pass = ' + msg.pass); // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - reasy for pass 2, 3: done
 
             if (msg.pass == 0) {
-                // pass 0 - check for some fatal errors before processing send_gifts message - gid and cid must be unique
-                var error;
 
-                // check missing gifts array
-                if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) {
-                    error = 'No gifts array or empty gifts array in send_gifts message.';
+
+                // pass 0 - check for some fatal errors before processing send_gifts message
+                // 1) gid and cid must be unique
+                // 2) users in users array must be unique and be correct. see ....
+
+                var error = validate_send_gifts_message(mailbox, msg) ;
+                if (error) {
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
@@ -4568,51 +4659,7 @@ angular.module('gifts', ['ngRoute'])
                         error: error
                     });
                     return;
-                } // if missing gifts array
-
-                // check doublet gifts
-                var new_gids = [], i, new_gift, doublet_gids = 0;
-                for (i = 0; i < msg.gifts.length; i++) {
-                    new_gift = msg.gifts[i];
-                    if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1;
-                    else new_gids.push(new_gift.gid);
-                } // for i
-                if (doublet_gids > 0) {
-                    error = 'Found ' + doublet_gids + ' doublet gifts in sync_gifts/send_gifts sub message. gid must be unique.';
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
-                    mailbox.outbox.push({
-                        mid: Gofreerev.get_new_uid(),
-                        msgtype: 'error',
-                        request_mid: msg.mid,
-                        error: error
-                    });
-                    return;
-                } // if doublet_gids
-                new_gids = null;
-
-                // check doublet comments
-                var new_cids = [], doublet_cids = 0, j, new_comment;
-                for (i = 0; i < msg.gifts.length; i++) {
-                    new_gift = msg.gifts[i];
-                    if (!new_gift.comments) continue;
-                    for (j = 0; j < new_gift.comments.length; j++) {
-                        new_comment = new_gift.comments[j];
-                        if (new_cids.indexOf(new_comment.cid) != -1) doublet_cids += 1;
-                        else new_cids.push(new_comment.cid);
-                    } // for j (comments)
-                } // for i (gifts)
-                if (doublet_cids > 0) {
-                    error = 'Found ' + doublet_cids + ' doublet comments in sync_gifts/send_gifts sub message. cid must be unique.';
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
-                    mailbox.outbox.push({
-                        mid: Gofreerev.get_new_uid(),
-                        msgtype: 'error',
-                        request_mid: msg.mid,
-                        error: error
-                    });
-                    return;
-                } // if doublet_cids
-                new_cids = null;
+                } // if error (validate_send_gifts_message)
 
                 // validate received gifts
                 var errors = [] ;

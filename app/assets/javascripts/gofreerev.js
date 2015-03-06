@@ -446,6 +446,7 @@ var Gofreerev = (function() {
     var storage_rules = {
         currency: {session: false, userid: true, compress: false, encrypt: false}, // currency code (ISO 4217)
         did: {session: false, userid: true, compress: false, encrypt: false}, // new unique device id
+        friends: {session: false, userid: true, compress: true, encrypt: true}, // array with downloaded friends info from login
         gifts: {session: false, userid: true, compress: true, encrypt: true}, // "array" with gifts - encrypted - pseudo rule used for gift_1, gift_2 etc
         key: {session: false, userid: true, compress: true, encrypt: true}, // random password - used for localStorage encryption
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
@@ -457,7 +458,7 @@ var Gofreerev = (function() {
         seq: {session: false, userid: true, compress: true, encrypt: false}, // sequence - for example used in verify_gifts request and response
         sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
-        users: {session: false, userid: true, compress: true, encrypt: true} // array with logged in users and friends
+        users: {session: false, userid: true, compress: true, encrypt: true} // array with users used in gifts and comments
     };
 
     // first character in stored value is an encryption/compression storage flag
@@ -935,17 +936,7 @@ var Gofreerev = (function() {
         }
     } // inIframe
 
-
-    // angularJS - used function is used in modal login dialog form, but info in stored in angular UserService
-    // temporary get/set function until all login functionality are moved to angularJS
-    var is_fb_logged_in_account = false
-    var fb_logged_in_account = function () {
-        return is_fb_logged_in_account ;
-    }
-    function set_fb_logged_in_account (boolean) {
-        is_fb_logged_in_account = boolean ;
-    }
-
+    // unix timestamp (seconds since 1970)
     function unix_timestamp () {
         return Math.floor((new Date).getTime()/1000) ;
     };
@@ -1088,7 +1079,6 @@ var Gofreerev = (function() {
         encrypt: encrypt,
         decrypt: decrypt,
         // angular helpers
-        set_fb_logged_in_account: set_fb_logged_in_account,
         get_new_uid: get_new_uid,
         sha256: sha256,
         client_login: client_login,
@@ -1263,19 +1253,20 @@ angular.module('gifts', ['ngRoute'])
                     log_in_link_text: I18n.t('js.page_header.log_in_link_text')
                 }
             };
-        }
+        };
         self.init_language_constants();
 
         return {
             language: self.language,
             texts: self.texts,
             init_language_constants: self.init_language_constants
-        }
+        };
         // end TextService
     }])
     .factory('UserService', ['$window', '$http', '$q', '$locale', function($window, $http, $q, $locale) {
         var self = this ;
-        console.log('UserService loaded') ;
+        var service = 'UserService' ;
+        console.log(service + ' loaded') ;
 
         // initialize list with providers. used in validations and in main/auth page
         var providers = [] ;
@@ -1286,25 +1277,25 @@ angular.module('gifts', ['ngRoute'])
                     providers.push(key) ;
                 }
             }
-            // console.log('UserService: providers = ' + JSON.stringify(providers)) ;
+            // console.log(service + ': providers = ' + JSON.stringify(providers)) ;
         })();
 
-        // users - read from local storage - used in angularJS filter functions
-        var users = [] ;
-        var users_index_by_user_id = {} ;
+        // friends - downloaded from api friend list and saved temporary in local storage
+        var friends = [] ;
+        var friends_index_by_user_id = {} ;
 
-        var provider_stat = function (users) {
-            if (typeof users == 'undefined') return '' ;
-            if (users == null) return '' ;
-            if (users.length == 0) return '' ;
+        var provider_stat = function (friends) {
+            if (typeof friends == 'undefined') return '' ;
+            if (friends == null) return '' ;
+            if (friends.length == 0) return '' ;
             var hash = {} ;
-            var i, user, provider ;
-            for (i=0 ; i<users.length ; i++) {
-                user = users[i] ;
-                provider = user.provider
+            var i, friend, provider ;
+            for (i=0 ; i<friends.length ; i++) {
+                friend = friends[i] ;
+                provider = friend.provider
                 if (!hash.hasOwnProperty(provider)) hash[provider] = { users: 0, friends: 0} ;
                 hash[provider].users += 1 ;
-                if (user.friend <= 2) hash[provider].friends += 1 ;
+                if (friend.friend <= 2) hash[provider].friends += 1 ;
             }
             var stat = '' ;
             for (provider in hash) {
@@ -1312,60 +1303,74 @@ angular.module('gifts', ['ngRoute'])
                 stat += provider + ' ' + hash[provider].friends + ' (' + hash[provider].users + ')' ;
             }
             return stat ;
-        } // provider_stat
+        }; // provider_stat
 
-        var init_users = function (array) {
-            // console.log('UserService.init_users: users = ' + JSON.stringify(array)) ;
-            users = array ;
-            users_index_by_user_id = {}
-            for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
-
-            // todo: temporary inject fb logged in status into Gofreerev - used in model login dialog form
-            // remove when all login functionality are moved to UserService and NavCtrl
-            Gofreerev.set_fb_logged_in_account(fb_logged_in_account()) ;
-        }
-        // update users array: replace: true: overwrite/replace old users, false: add/keep old users
-        // called from do_tasks after api and device login
-        var update_users = function (new_users, replace) {
-            // users array returned from util.generic_post_login
-            var pgm = 'UserService.update_users: ' ;
-            // console.log(pgm + 'new_users = ' + JSON.stringify(new_users)) ;
-            var new_providers = [] ;
-            for (var i=0 ; i<new_users.length ; i++) if (new_providers.indexOf(new_users[i].provider) == -1) new_providers.push(new_users[i].provider) ;
-            // console.log(pgm + 'new providers = ' + JSON.stringify(new_providers)) ;
-            // update users array with minimal changes
+        var init_friends = function (array) {
+            // console.log(service + '.init_users: users = ' + JSON.stringify(array)) ;
+            friends = array ;
+            friends_index_by_user_id = {};
+            for (var i=0 ; i<friends.length ; i++) friends_index_by_user_id[friends[i].user_id] = i ;
+        };
+        // update friends js array: replace: true: overwrite/replace old friends, false: add/keep old friends
+        // called from do_tasks after api and device login. new friend lists downloaded from api provider
+        var update_friends = function (new_friends, replace) {
+            // new_friends is friends list returned from do_tasks / util.generic_post_login - executed at page startup and after api provider logins
+            var pgm = service + '.update_friends: ' ;
+            // console.log(pgm + 'new_friends = ' + JSON.stringify(new_friends)) ;
+            var extern_user_ids = [] ; // format uid/provider - must be unique
+            var i, extern_user_id ;
+            for (i=0 ; i<friends.length ; i++) {
+                extern_user_id = friends[i].uid + '/' + friends[i].provider ;
+                if (extern_user_ids.indexOf(extern_user_id) != -1) console.log(pgm + 'Error. Doublet extern user id ' + extern_user_id + ' in friends array.') ;
+                else extern_user_ids.push(extern_user_id) ;
+            }
+            // update friends array with minimal changes (friends info is used in filters)
             // insert or update
             var refresh_index = false ;
-            var new_user, j ;
-            for (i=0 ; i<new_users.length ; i++) {
-                new_user = new_users[i] ;
-                j = users_index_by_user_id[new_user.user_id] ;
+            var new_friend, j ;
+            for (i = 0; i < new_friends.length; i++) {
+                new_friend = new_friends[i];
+                // add download unix timestamp to friend info. not used in friends array but used in users array if friend user id is used in gifts or comments
+                if (!new_friend.hasOwnProperty('verified_at')) new_friend.verified_at = Gofreerev.unix_timestamp();
+                j = friends_index_by_user_id[new_friend.user_id];
                 if (j) {
-                    // existing user - update changed fields
-                    if (users[j].user_name != new_user.user_name) users[j].user_name = new_user.user_name ;
-                    if (users[j].balance != new_user.balance) users[j].balance = new_user.balance ;
-                    if (users[j].api_profile_picture_url != new_user.api_profile_picture_url) users[j].api_profile_picture_url = new_user.api_profile_picture_url
-                    if (users[j].friend != new_user.friend) users[j].friend = new_user.friend ;
-                    if (users[j].currency != new_user.currency) users[j].currency = new_user.currency ;
+                    // old friend - update changed fields
+                    if ((friends[j].uid != new_friend.uid) || (friends[j].provider != new_friend.provider)) {
+                        // error: unique extern user id cannot be updated (
+                        console.log(
+                            pgm + 'Error. Cannot update readonly fields in friend list. User id ' + user_id +
+                            '. Old extern user id was ' + friends[j].uid + '/' + friends[j].provider +
+                            '. New extern user id is ' + new_friend.uid + '/' + new_friend.provider + '.');
+                        continue;
+                    }
+                    if (friends[j].user_name != new_friend.user_name) friends[j].user_name = new_friend.user_name;
+                    if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) friends[j].api_profile_picture_url = new_friend.api_profile_picture_url
+                    if (friends[j].friend != new_friend.friend) friends[j].friend = new_friend.friend;
+                    if (friends[j].verified_at != new_friend.verified_at) friends[j].verified_at = new_friend.verified_at;
                 }
                 else {
-                    // insert new user
-                    users_index_by_user_id[new_user.user_id] = users.length ;
-                    users.push(new_user) ;
-                    refresh_index = true ;
+                    // insert new friend
+                    extern_user_id = new_friend.uid + '/' + new_friend.provider;
+                    if (extern_user_ids.indexOf(extern_user_id) != -1) {
+                        console.log(pgm + 'Error. Ignoring new friend with doublet extern user id ' + extern_user_id + '.') ;
+                        continue ;
+                    }
+                    extern_user_ids.push(extern_user_id) ;
+                    friends_index_by_user_id[new_friend.user_id] = friends.length;
+                    friends.push(new_friend);
+                    refresh_index = true;
                 }
-
-            }
+            } // for i (new_friends)
             if (replace) {
-                // delete old users
+                // delete old friends
                 var no_deleted = 0 ;
                 var new_users_index_by_user_id = {} ;
-                for (var i=0 ; i<new_users.length ; i++) new_users_index_by_user_id[new_users[i].user_id] = i ;
-                var old_user ;
-                for (i=users.length-1 ; i >= 0 ; i--) {
-                    old_user = users[i] ;
-                    if (!new_users_index_by_user_id.hasOwnProperty(old_user.user_id)) {
-                        users.splice(i, 1);
+                for (var i=0 ; i<new_friends.length ; i++) new_users_index_by_user_id[new_friends[i].user_id] = i ;
+                var old_friend ;
+                for (i=friends.length-1 ; i >= 0 ; i--) {
+                    old_friend = friends[i] ;
+                    if (!new_users_index_by_user_id.hasOwnProperty(old_friend.user_id)) {
+                        friends.splice(i, 1);
                         no_deleted += 1 ;
                         refresh_index = true ;
                     }
@@ -1373,24 +1378,24 @@ angular.module('gifts', ['ngRoute'])
             }
             // refresh index
             if (refresh_index) {
-                users_index_by_user_id = {}
-                for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+                friends_index_by_user_id = {};
+                for (var i=0 ; i<friends.length ; i++) friends_index_by_user_id[friends[i].user_id] = i ;
             }
-            Gofreerev.setItem('users', JSON.stringify(users)) ;
-        } // update_users
+            Gofreerev.setItem('friends', JSON.stringify(friends)) ;
+        }; // update_friends
 
 
         // less that <n> milliseconds between util/ping for client_userid
         // there must be more than one browser tab open with identical client login
         // sync changes in users array in local storage with js users array
-        var sync_users = function () {
-            var pgm = 'NavCtrl.sync_users: ' ;
-            var old_length = users.length ;
-            var old_stat = provider_stat(users) ;
-            var new_users = JSON.parse(Gofreerev.getItem('users')) ;
-            update_users(new_users, true) ;
-            var new_length = users.length ;
-            var new_stat = provider_stat(users) ;
+        var sync_friends = function () {
+            var pgm = 'NavCtrl.sync_friends: ' ;
+            var old_length = friends.length ;
+            var old_stat = provider_stat(friends) ;
+            var new_users = JSON.parse(Gofreerev.getItem('friends')) ;
+            update_friends(new_users, true) ;
+            var new_length = friends.length ;
+            var new_stat = provider_stat(friends) ;
             //console.log(
             //    pgm + 'sync users. ' + (new_length-old_length) + ' users was inserted/deleted. ' +
             //    'old JS users = ' + old_length + ', new JS users = ' + new_length + '. ' +
@@ -1398,14 +1403,14 @@ angular.module('gifts', ['ngRoute'])
             //// "UserService.ping: sync users. 0 users was inserted/deleted. old JS users = 108, new JS users = 108. there was 7 users in localstorage.
             //console.log(pgm + 'old stat: ' + old_stat) ;
             //console.log(pgm + 'new stat: ' + new_stat) ;
-        }; // sync_users
+        }; // sync_friends
 
 
         var is_logged_in = function () {
-            if (typeof users == 'undefined') return false ;
-            for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 1) return true ;
+            if (typeof friends == 'undefined') return false ;
+            for (var i=0 ; i< friends.length ; i++ ) if (friends[i].friend == 1) return true ;
             return false ;
-        }
+        };
         var client_userid = function() {
             var userid = Gofreerev.getItem('userid') ;
             if (typeof userid == 'undefined') return 0 ;
@@ -1413,7 +1418,7 @@ angular.module('gifts', ['ngRoute'])
             if (userid == '') return 0 ;
             userid = parseInt(userid) ;
             return userid ;
-        }
+        };
         var client_secret = function() {
             if (client_userid() == 0) return null ;
             var secret = Gofreerev.getItem('secret') ;
@@ -1422,59 +1427,60 @@ angular.module('gifts', ['ngRoute'])
                 Gofreerev.setItem('secret', secret) ;
             }
             return secret ;
-        }
+        };
         var is_logged_in_with_device = function () {
             var user_id = client_userid() ;
             // console.log('is_logged_in_with_device: user_id = ' + user_id) ;
             return (user_id > 0) ;
-        }
+        };
         // get encrypted oauth hash from local storage - returns null if errors
         var get_oauth = function () {
-            var pgm = 'UserService.get_oauth: ' ;
+            var pgm = service + '.get_oauth: ' ;
             // get old oauth
             var oauth_str = Gofreerev.getItem('oauth') ;
             var oauth ;
             if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '')) oauth = {} ;
             else oauth = JSON.parse(oauth_str) ;
-            // console.log('UserService.get_oauth: oauth = ' + JSON.stringify(oauth)) ;
+            // console.log(pgm + 'oauth = ' + JSON.stringify(oauth)) ;
             return oauth ;
-        } // get_oauth
+        }; // get_oauth
         var is_logged_in_with_provider = function (provider) {
+            var pgm = service + '.is_logged_in_with_provider: ' ;
             if (typeof provider == 'undefined') return is_logged_in_with_device() ;
             if (provider == null) return is_logged_in_with_device() ;
             if (provider == 'gofreerev') return is_logged_in_with_device() ;
             var oauth = get_oauth() ;
-            // console.log('UserService.is_logged_in_with_provider: oauth = ' + JSON.stringify(oauth)) ;
-            // console.log('UserService.is_logged_in_with_provider: provider = ' + provider) ;
+            // console.log(pgm + 'oauth = ' + JSON.stringify(oauth)) ;
+            // console.log(pgm + 'provider = ' + provider) ;
             var is_logged_in = oauth.hasOwnProperty(provider) ;
-            // console.log('UserService.is_logged_in_with_provider: ' + provider + ' = ' + is_logged_in) ;
+            // console.log(pgm + provider + ' = ' + is_logged_in) ;
             return is_logged_in ;
-        }
+        };
         var no_friends = function () {
             if (!is_logged_in()) return false ;
-            for (var i=0 ; i< users.length ; i++ ) if (users[i].friend == 2) return false ;
+            for (var i=0 ; i< friends.length ; i++ ) if (friends[i].friend == 2) return false ;
             return true ;
-        }
-        var get_user = function (user_id) {
-            if (typeof users == 'undefined') return null ;
+        };
+        var get_friend = function (user_id) {
+            if (typeof friends == 'undefined') return null ;
             if (typeof user_id == 'undefined') return null ;
-            var i = users_index_by_user_id[user_id] ;
+            var i = friends_index_by_user_id[user_id] ;
             if (typeof i == 'undefined') return null ;
-            var user = users[i] ;
+            var user = friends[i] ;
             if (!user.short_user_name) {
                 var user_name_a = user.user_name.split(' ') ;
                 if (user_name_a.length > 1) user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
                 else user.short_user_name = user.user_name ;
             }
-            // if (user_id == 1016) console.log('UserService.get_user: user = ' + JSON.stringify(user)) ;
+            // if (user_id == 1016) console.log(service + '.get_friend: user = ' + JSON.stringify(user)) ;
             return user ;
-        }
-        var get_closest_user = function (user_ids) {
-            var pgm = 'UserService.get_closest_user: ' ;
+        };
+        var get_closest_friend = function (user_ids) {
+            var pgm = service + '.get_closest_friend: ' ;
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
-            if (typeof users == 'undefined') return null ;
-            if (users == null) return null ;
-            if (users.length == 0) return null ;
+            if (typeof friends == 'undefined') return null ;
+            if (friends == null) return null ;
+            if (friends.length == 0) return null ;
             if (typeof user_ids == 'undefined') return null ;
             if (user_ids == null) return null ;
             if (user_ids.length == 0) return null ;
@@ -1482,8 +1488,8 @@ angular.module('gifts', ['ngRoute'])
             var closest_user_friend_status = 9 ;
             var user ;
             for (var i=0 ; i<user_ids.length ; i++) {
-                user = get_user(user_ids[i]) ;
-                // if (user) console.log(pgm + 'get_user(' + user_ids[i] + ').friend = ' + user.friend) ;
+                user = get_friend(user_ids[i]) ;
+                // if (user) console.log(pgm + 'get_friend(' + user_ids[i] + ').friend = ' + user.friend) ;
                 // else console.log(pgm + 'user with id ' + user_ids[i] + ' was not found') ;
                 if (user && (user.friend < closest_user_friend_status)) {
                     closest_user = user ;
@@ -1493,18 +1499,18 @@ angular.module('gifts', ['ngRoute'])
             // if (closest_user) console.log(pgm + 'found user with user id ' + closest_user.user_id) ;
             // else console.log(pgm + 'closest user was not found') ;
             return closest_user ;
-        } // get_closest_user
+        }; // get_closest_friend
         var get_userids_friend_status = function (user_ids) {
-            var user = get_closest_user(user_ids) ;
+            var user = get_closest_friend(user_ids) ;
             if (!user) return null ;
             return user.friend ;
-        } // get_userids_friend_status
+        }; // get_userids_friend_status
         var get_login_users = function () {
-            var pgm = 'UserService. get_login_users: ' ;
+            var pgm = service + '.get_login_users: ' ;
             var login_users = [] ;
-            if (typeof users == 'undefined') return login_users ;
-            for (var i=0 ; i<users.length ; i++) {
-                if (users[i].friend == 1) login_users.push(users[i]) ;
+            if (typeof friends == 'undefined') return login_users ;
+            for (var i=0 ; i<friends.length ; i++) {
+                if (friends[i].friend == 1) login_users.push(friends[i]) ;
             }
             // debug info
             //var text = 'length = ' + login_users.length ;
@@ -1515,23 +1521,23 @@ angular.module('gifts', ['ngRoute'])
             //}
             //console.log(pgm + text) ;
             return login_users ;
-        }
+        };
         var get_login_userids = function () {
-            var pgm = 'UserService.get_login_userids: ' ;
-            if (typeof users == 'undefined') return [] ;
+            var pgm = service + '.get_login_userids: ' ;
+            if (typeof friends == 'undefined') return [] ;
             var userids = [] ;
             // console.log(pgm + 'users.length = ' + users.length) ;
-            for (var i=0 ; i<users.length ; i++) {
+            for (var i=0 ; i<friends.length ; i++) {
                 // console.log(pgm + 'users[i] = ' + JSON.stringify(users[i])) ;
                 // console.log(pgm + 'users[' + i + '].friend = ' + users[i].friend) ;
-                if (users[i].friend == 1) userids.push(users[i].user_id) ;
+                if (friends[i].friend == 1) userids.push(friends[i].user_id) ;
             }
             // console.log(pgm + 'userids.length = ' + userids.length) ;
             return userids ;
-        }
+        };
         // get default currency from locale. use for new user accounts. for example en-us => usd
         var get_default_currency = function () {
-            var pgm = 'UserService.get_default_currency: ' ;
+            var pgm = service + '.get_default_currency: ' ;
             var default_language = 'en' ;
             var default_currency = 'usd' ;
             var id = $locale.id ;
@@ -1540,18 +1546,18 @@ angular.module('gifts', ['ngRoute'])
             if (Gofreerev.rails['ACTIVE_CURRENCIES'].indexOf(currency) == -1) currency = default_currency ;
             // console.log(pgm + '$locale.id = ' + id + ', language = ' + language + ', currency = ' + currency) ;
             return currency ;
-        }
+        };
         var get_currency = function  () {
             var currency = Gofreerev.getItem('currency') ;
             if (currency) return currency ;
             var currency = get_default_currency() ;
             Gofreerev.setItem('currency', currency) ;
             return currency ;
-        }
+        };
         var find_giver = function (gift) {
             var giver, user, i ;
             for (i=0 ; i<gift.giver_user_ids.length ; i++) {
-                user = get_user(gift.giver_user_ids[i]) ;
+                user = get_friend(gift.giver_user_ids[i]) ;
                 if (user) {
                     if (user.friend == 1) return user ; // giver is a login user
                     if (!giver) giver = user ;
@@ -1559,11 +1565,11 @@ angular.module('gifts', ['ngRoute'])
             }
             // giver is not a login in user
             return giver ;
-        }
+        };
         var find_receiver = function (gift) {
             var receiver, user, i ;
             for (i=0 ; i<gift.receiver_user_ids.length ; i++) {
-                user = get_user(gift.receiver_user_ids[i]) ;
+                user = get_friend(gift.receiver_user_ids[i]) ;
                 if (user) {
                     if (user.friend == 1) return user ; // receiver is a login user
                     if (!receiver) receiver = user ;
@@ -1571,22 +1577,14 @@ angular.module('gifts', ['ngRoute'])
             }
             // receiver is not a login in user
             return receiver ;
-        }
-
-        // is one if the logged in users a fb account?
-        // used in shared account model form in auth/index page
-        // returns: true: use fb notifications, false: use email
-        // todo: auth/index page is not yet included in angularJS (users array is empty)
-        var fb_logged_in_account = function () {
-            return is_logged_in_with_provider('facebook') ;
-        }
+        };
 
         // logout:
         // - null: device log out
         // - provider: provider log out (provider facebook,  google+, linkedin etc)
         // - *: log out all providers but keep device log in
         var logout = function (provider) {
-            var pgm = 'UserService.logout: ' ;
+            var pgm = service + '.logout: ' ;
             console.log(pgm + 'provider = ' + provider) ;
             var old_client_userid = client_userid() ;
             // console.log(pgm + 'debug 1') ;
@@ -1601,9 +1599,9 @@ angular.module('gifts', ['ngRoute'])
             }
             else if (provider == '*') {
                 console.log(pgm + 'received "Not logged in" response from ping. Not logged in on server. Log out all providers on client.') ;
-                users = [] ;
-                users_index_by_user_id = {} ;
-                Gofreerev.setItem('users', JSON.stringify(users)) ;
+                friends = [] ;
+                friends_index_by_user_id = {} ;
+                Gofreerev.setItem('friends', JSON.stringify(friends)) ;
                 save_oauth({}) ;
                 self.expires_at = {} ;
                 self.refresh_tokens = {} ;
@@ -1613,23 +1611,23 @@ angular.module('gifts', ['ngRoute'])
                 // log in provider log out
                 // remove users
                 // console.log(pgm + 'debug 3') ;
-                var old_length = users.length ;
-                var old_stat = provider_stat(users) ;
+                var old_length = friends.length ;
+                var old_stat = provider_stat(friends) ;
                 // console.log(pgm + 'removing ' + provider + ' users. old users.length = ' + users.length) ;
-                for (var i=users.length-1 ; i >= 0 ; i--) {
-                    if (users[i].provider == provider) {
+                for (var i=friends.length-1 ; i >= 0 ; i--) {
+                    if (friends[i].provider == provider) {
                         // console.log(pgm + 'remove user ' + users[i].user_name + ' + with index ' + i) ;
-                        users.splice(i, 1);
+                        friends.splice(i, 1);
                     }
                 }
-                users_index_by_user_id = {} ;
-                for (i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
-                var new_length = users.length ;
-                var new_stat = provider_stat(users) ;
+                friends_index_by_user_id = {} ;
+                for (i=0 ; i<friends.length ; i++) friends_index_by_user_id[friends[i].user_id] = i ;
+                var new_length = friends.length ;
+                var new_stat = provider_stat(friends) ;
                 console.log(pgm + 'removed ' + (new_length-old_length) + ' ' + provider + ' users. new users.length = ' + new_length) ;
                 console.log(pgm + 'old stat: ' + old_stat) ;
                 console.log(pgm + 'new stat: ' + new_stat) ;
-                Gofreerev.setItem('users', JSON.stringify(users)) ;
+                Gofreerev.setItem('friends', JSON.stringify(friends)) ;
                 // remove provider from local encrypted oauth hash
                 // console.log(pgm + 'debug 4') ;
                 remove_oauth(provider) ;
@@ -1652,7 +1650,7 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'log out error = ' + JSON.stringify(error)) ;
                     return $q.reject(JSON.stringify(error)) ;
                 }) ;
-        } // logout
+        }; // logout
 
         // test data - users - todo: receive array with users after login (login users and friends)
         // friend:
@@ -1694,31 +1692,32 @@ angular.module('gifts', ['ngRoute'])
             }
         ] ;
         // load users from local storage or test users array
-        // init_users(JSON.parse(Gofreerev.getItem('users')) || test_users) ;
-        // console.log('UserService: getItem("users") = ' + Gofreerev.getItem('users')) ;
-        if (Gofreerev.getItem('users')) init_users(JSON.parse(Gofreerev.getItem('users'))) ;
-        else Gofreerev.setItem('users', JSON.stringify([])) ;
+        // init_users(JSON.parse(Gofreerev.getItem('friends')) || test_users) ;
+        // console.log(service + ': getItem("friends") = ' + Gofreerev.getItem('friends')) ;
+        if (Gofreerev.getItem('friends')) init_friends(JSON.parse(Gofreerev.getItem('friends'))) ;
+        else Gofreerev.setItem('friends', JSON.stringify([])) ;
 
         var save_oauth = function (oauth) {
-            var pgm = 'UserService.save_oauth: ' ;
+            var pgm = service + '.save_oauth: ' ;
             // console.log(pgm + 'debug 1') ;
             // encrypt and save updated oauth
             var oauth_str = JSON.stringify(oauth) ;
-            console.log(pgm + 'UserService.save:oauth: oauth = ' + oauth_str) ;
+            // console.log(pgm + 'oauth_str = ' + oauth_str) ;
             Gofreerev.setItem('oauth', oauth_str) ;
             // console.log(pgm + 'debug 3') ;
-        }
+        };
 
         // cache some oauth information - used in ping
         self.expires_at = {} ; // unix timestamps for oauth access tokens
         self.refresh_tokens = {} ; // true/false - only used for google+ offline access
         var cache_oauth_info = function () {
+            var pgm = service + 'cache_oauth_info. ' ;
             var oauth = get_oauth() ;
             for (var provider in oauth) {
                 if (!oauth.hasOwnProperty(provider)) continue ;
                 // todo: remove after debug
                 if ((typeof provider == 'undefined') || (provider == null) || (provider == 'undefined')) {
-                    console.log('UserService: error in oauth hash. oauth = ' + JSON.stringify(oauth)) ;
+                    console.log(pgm + 'error in oauth hash. oauth = ' + JSON.stringify(oauth)) ;
                     delete oauth[provider] ;
                     save_oauth(oauth) ;
                     continue ;
@@ -1726,13 +1725,13 @@ angular.module('gifts', ['ngRoute'])
                 self.expires_at[provider] = oauth[provider].expires_at ;
                 self.refresh_tokens[provider] = oauth[provider].hasOwnProperty('refresh_token') ;
             }
-        } // init_expires_at
+        }; // init_expires_at
         cache_oauth_info() ;
 
         // save oauth received from server into oauth in local storage
         // oauth authorization are stored on server and in client (encrypted with passwords stored in client)
         var add_oauth = function (new_oauth) {
-            var pgm = 'UserService.add_oauth: ' ;
+            var pgm = service + '.add_oauth: ' ;
             // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
             var oauth = get_oauth() ;
             if (oauth == null) {
@@ -1753,11 +1752,11 @@ angular.module('gifts', ['ngRoute'])
             }
             save_oauth(oauth) ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
-        } // add_oauth
+        }; // add_oauth
 
         // remove provider from oauth hash.
         var remove_oauth = function (provider) {
-            var pgm = 'UserService.remove_oauth: ' ;
+            var pgm = service + '.remove_oauth: ' ;
             console.log(pgm + 'provider = ' + provider) ;
             // console.log(pgm + 'debug 1') ;
             var oauth = get_oauth() ;
@@ -1779,7 +1778,7 @@ angular.module('gifts', ['ngRoute'])
             delete self.refresh_tokens[provider] ;
             // console.log(pgm + 'debug 6') ;
             console.log(pgm + 'expires_at = ' + JSON.stringify(self.expires_at) + ', refresh_tokens = ' + JSON.stringify(self.refresh_tokens)) ;
-        } // remove_oauth
+        }; // remove_oauth
 
         // process expired tokens response - used in login and ping response processing
         var expired_tokens_response = function (expired_tokens, context) {
@@ -1798,7 +1797,7 @@ angular.module('gifts', ['ngRoute'])
                     remove_oauth(provider) ;
                 }
             }
-        } // expired_tokens_response
+        }; // expired_tokens_response
 
         // convert oauth hash/array - saved as hash but sent/received (json) as array
         var oauth_array_to_hash = function (oauth_array) {
@@ -1809,7 +1808,7 @@ angular.module('gifts', ['ngRoute'])
                 delete oauth_hash[oauth.provider].provider ;
             }
             return oauth_hash ;
-        } // oauth_array_to_hash
+        }; // oauth_array_to_hash
         var oauth_hash_to_array = function (oauth_hash) {
             var oauth, oauth_array = [] ;
             for (var provider in oauth_hash) {
@@ -1819,7 +1818,7 @@ angular.module('gifts', ['ngRoute'])
                 oauth_array.push(oauth) ;
             }
             return oauth_array ;
-        } // oauth_hash_to_array
+        }; // oauth_hash_to_array
 
         // process oauths array response - used in login and ping response processing
         var oauths_response = function (oauth_array) {
@@ -1841,12 +1840,12 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'oauth_hash = ' + JSON.stringify(oauth_hash)) ;
             add_oauth(oauth_hash) ;
 
-        } // oauths_response
+        }; // oauths_response
         
         // after local login - send local oauth to server
         // server checks tokens and inserts tokens into server session (encrypted in session table and secret in session cookie)
         var send_oauth = function () {
-            var pgm = 'UserService.send_oauth: ' ;
+            var pgm = service + '.send_oauth: ' ;
             // console.log(pgm + 'oauth = ' + JSON.stringify(new_oauth)) ;
             // get client_userid and password for current local login
             var userid = client_userid() ;
@@ -1898,13 +1897,13 @@ angular.module('gifts', ['ngRoute'])
                         // fresh user info array was received from server
                         console.log(pgm + 'ok response. friends = ' + JSON.stringify(response.data.friends)) ;
                         // insert relevant user info info js array
-                        init_users(response.data.friends) ;
+                        init_friends(response.data.friends) ;
                         // save in local storage
                         // todo: note that users array can by big and maybe have to be stripped for irrelevant users
-                        Gofreerev.setItem('users', JSON.stringify(response.data.friends)) ;
+                        Gofreerev.setItem('friends', JSON.stringify(response.data.friends)) ;
                     }
                     // promise - continue with success or error?
-                    if (response.data.error || !response.data.users) return $q.reject(response.data.error) ;
+                    if (response.data.error || !response.data.friends) return $q.reject(response.data.error || 'No friend lists was downloaded') ;
                 },
                 function (error) {
                     console.log(pgm + 'post login error = ' + JSON.stringify(error)) ;
@@ -1946,7 +1945,7 @@ angular.module('gifts', ['ngRoute'])
                 logged_in_provider: logged_in_provider,
                 refresh_tokens_request: refresh_tokens_request
             };
-        } // check_logged_in_providers
+        }; // check_logged_in_providers
 
         // convert an array of internal user ids to an array of external user ids
         // return null if unknown user ids in input array
@@ -1958,7 +1957,7 @@ angular.module('gifts', ['ngRoute'])
             var external_user_ids = [], user, internal_user_id, external_user_id ;
             for (var i=0 ; i<internal_user_ids.length ; i++) {
                 internal_user_id = internal_user_ids[i] ;
-                user = get_user(internal_user_id) ;
+                user = get_friend(internal_user_id) ;
                 if (!user) {
                     console.log(pgm + 'Warning. Unknown internal user id ' + internal_user_id) ;
                     return null ; // should force an error in calling routine
@@ -1969,7 +1968,113 @@ angular.module('gifts', ['ngRoute'])
             }
             external_user_ids = external_user_ids ;
             return external_user_ids ;
-        } // get_external_user_ids ;
+        }; // get_external_user_ids ;
+
+
+        // user functions (friends and other users used in gifts and comments) ==>
+
+        // js array with users in localStorage - that is users used in gifts and comments
+        // stored so that gifts and comments always are valid if authorization and friend lists changes
+        var users = [] ;
+        var users_index_by_user_id = {} ;
+        var init_users_index = function () {
+            users_index_by_user_id = {};
+            for (var i=0 ; i<users.length ; i++) users_index_by_user_id[users[i].user_id] = i ;
+        };
+
+        // load users from localStorage
+        var load_users = function () {
+            var users_tmp = Gofreerev.getItem('users') ;
+            if (users_tmp) users = JSON.parse(users_tmp) ;
+            else users = [] ;
+            init_users_index() ;
+        };
+        load_users();
+
+        var save_users = function () {
+            Gofreerev.setItem('users', JSON.stringify(users)) ;
+        };
+
+        // return user from users array
+        var get_user = function (user_id) {
+            var pgm = service + '.get_user: ' ;
+            // console.log(pgm + 'user_id = ' + user_id) ;
+            // console.log(pgm + 'users = ' + JSON.stringify(users)) ;
+            // console.log(pgm + 'users_index_by_user_id = ' + JSON.stringify(users_index_by_user_id)) ;
+            if (typeof users == 'undefined') return null ;
+            if (typeof user_id == 'undefined') return null ;
+            var i = users_index_by_user_id[user_id] ;
+            if (typeof i == 'undefined') return null ;
+            var user = users[i] ;
+            return user ;
+        }; // get_user
+
+        // add login users used in create_new_gift and create_new_comment to localStorage
+        // users from friends array are always verified users
+        var add_new_login_users = function (login_user_ids) {
+            var pgm = service + '.add_new_login_users: ' ;
+            if ((typeof login_user_ids == 'undefine') || (login_user_ids == null)) return ;
+            if (login_user_ids.size == 0) return ;
+            var save = false, user_id, friend ;
+            for (var i=0 ; i<login_user_ids.length ; i++) {
+                user_id = login_user_ids[i] ;
+                if (users_index_by_user_id.hasOwnProperty(user_id)) continue ; // already in localStorage
+                friend = get_friend(user_id) ;
+                if (!friend || (friend.friend != 1)) {
+                    console.log(pgm + 'Invalid call. ' + user_id + ' is not an logged in user') ;
+                    continue ;
+                }
+                // clone friend before adding to users index. Friend status not used but verification timestamp is required
+                friend = {
+                    user_id: friend.user_id,
+                    uid: friend.uid,
+                    provider: friend.provider,
+                    user_name: friend.user_name,
+                    api_profile_picture_url: friend.api_profile_picture_url,
+                    verified_at: friend.verified_at
+                } ;
+                if (friend.verified_at) friend.verified_at = Gofreerev.unix_timestamp() ;
+                users_index_by_user_id[user_id] = users.length ;
+                users.push(friend) ;
+                save = true ;
+            } // for i
+            if (save) save_users() ;
+        }; // add_new_login_users
+
+        // add friends from friends array to users array - used in data migration (load_gifts). todo: remove
+        var add_friends_to_users = function (user_ids) {
+            var pgm = service + '.add_friends_to_users: ' ;
+            if ((typeof user_ids == 'undefine') || (user_ids == null)) return ;
+            if (user_ids.size == 0) return ;
+            var save = false, user_id, friend ;
+            for (var i=0 ; i<user_ids.length ; i++) {
+                user_id = user_ids[i] ;
+                if (users_index_by_user_id.hasOwnProperty(user_id)) continue ; // already in users js/localStorage
+                friend = get_friend(user_id) ;
+                if (!friend) {
+                    console.log(pgm + 'Invalid call. ' + user_id + ' was not found in friend lists') ;
+                    continue ;
+                }
+                // clone friend before adding to users index. Friend status not used but verification timestamp is required
+                friend = {
+                    user_id: friend.user_id,
+                    uid: friend.uid,
+                    provider: friend.provider,
+                    user_name: friend.user_name,
+                    api_profile_picture_url: friend.api_profile_picture_url,
+                    verified_at: friend.verified_at
+                } ;
+                if (friend.verified_at) friend.verified_at = Gofreerev.unix_timestamp() ;
+                users_index_by_user_id[user_id] = users.length ;
+                users.push(friend) ;
+                save = true ;
+            } // for i
+            if (save) save_users() ;
+        }; // add_friends_to_users
+
+
+        // <== user functions
+
 
         return {
             providers: providers,
@@ -1979,17 +2084,17 @@ angular.module('gifts', ['ngRoute'])
             no_friends: no_friends,
             get_login_users: get_login_users,
             get_login_userids: get_login_userids,
-            get_user: get_user,
+            get_friend: get_friend,
             get_currency: get_currency,
-            get_closest_user: get_closest_user,
+            get_closest_friend: get_closest_friend,
             get_userids_friend_status: get_userids_friend_status,
             find_giver: find_giver,
             find_receiver: find_receiver,
             logout: logout,
             client_userid: client_userid,
             client_secret: client_secret,
-            update_users: update_users,
-            sync_users: sync_users,
+            update_friends: update_friends,
+            sync_friends: sync_friends,
             oauth_array_to_hash: oauth_array_to_hash,
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
@@ -1998,7 +2103,10 @@ angular.module('gifts', ['ngRoute'])
             check_logged_in_providers: check_logged_in_providers,
             expired_tokens_response: expired_tokens_response,
             oauths_response: oauths_response,
-            get_external_user_ids: get_external_user_ids
+            get_external_user_ids: get_external_user_ids,
+            add_new_login_users: add_new_login_users,
+            get_user: get_user,
+            add_friends_to_users: add_friends_to_users
         }
         // end UserService
     }])
@@ -2071,7 +2179,7 @@ angular.module('gifts', ['ngRoute'])
                     errors.push('Giver is invalid. Doublet user ids in giver_user_ids' + giver_user_ids.join(', ')) ;
                     break ;
                 }
-                user = userService.get_user(user_id) ;
+                user = userService.get_friend(user_id) ;
                 if (!user) {
                     errors.push('Giver is invalid. Unknown user id ' + user_id + ' in giver_user_ids ' + giver_user_ids.join(', ')) ;
                     break ;
@@ -2092,7 +2200,7 @@ angular.module('gifts', ['ngRoute'])
                     errors.push('Receiver is invalid. Doublet user ids in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
                 }
-                user = userService.get_user(user_id) ;
+                user = userService.get_friend(user_id) ;
                 if (!user) {
                     errors.push('Receiver is invalid. Unknown user id ' + user_id + 'in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
@@ -2303,7 +2411,7 @@ angular.module('gifts', ['ngRoute'])
             var other_participant_external_ids = [];
             var user;
             for (var i = 0; i < other_participant_internal_ids.length; i++) {
-                user = userService.get_user(other_participant_internal_ids[i]);
+                user = userService.get_friend(other_participant_internal_ids[i]);
                 if (!user) {
                     console.log(pgm + 'Cannot calculate sha256 for gift ' + gift.gid + '. Unknown internal user id ' + other_participant_internal_ids[i]);
                     return [null,null,null];
@@ -2407,15 +2515,30 @@ angular.module('gifts', ['ngRoute'])
             return gift ;
         }
 
-        // save new gift in localStorage
-        var create_new_gift = function (gift) {
+        // add new gift to 1) js array and to 2) localStorage. new gift has already been validated in GiftsCtrl.create_new_gift
+        var save_new_gift = function (gift) {
+            var pgm = service + '.save_new_gift: ';
+
+            // 1: add new gift to js array
+            if (gid_to_gifts_index.hasOwnProperty(gift.gid)) {
+                console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array');
+                return;
+            }
+            gifts.unshift(gift);
+            init_gifts_index();
+
+            // 2: add any new givers/receivers to localStorage
+            userService.add_new_login_users(gift.giver_user_ids) ;
+            userService.add_new_login_users(gift.receiver_user_ids) ;
+
+            // 3: add new gift to localStorage
             var gift = prepare_gift_for_save(gift) ;
             var seq = Gofreerev.get_next_seq().toString();
             Gofreerev.setItem('gift_' + seq, JSON.stringify(gift)) ;
             gid_to_seq[gift.gid] = seq ;
             seq_to_gid[seq] = gift.gid ;
             init_gifts_index() ;
-        }; // create_new_gift
+        }; // save_new_gift
 
         // save_gift are called after any changes in a gift (like, follow, hide, delete etc)
         var save_gift = function (gift) {
@@ -2477,10 +2600,8 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + '.load_gifts: ';
             var new_gifts = [];
 
-            Gofreerev.removeItem('gifts') ; // remove old gifts storage. now gift_1, gift_2 etc
-
             // find all gift_<seq> keys in localStorage for actual user
-            keys = get_gift_keys() ;
+            var keys = get_gift_keys() ;
 
             // ready to initialize gifts array including 4 helper hashes
             gifts.length = 0 ;
@@ -2488,9 +2609,12 @@ angular.module('gifts', ['ngRoute'])
             user_id_to_gifts = {};
             seq_to_gid = {} ;
             gid_to_seq = {} ;
+            
+            // todo: data migration. collect user ids used in gifts and comments and add to migration_user_id
+            var migration_user_ids = [] ; 
 
             // loop for all gifts
-            var gift, j, comment, migration, seq ;
+            var gift, j, comment, migration, seq, k ;
             for (var i=0 ; i<keys.length ; i++) {
 
                 seq = keys[i].split('_')[1] ;
@@ -2501,27 +2625,6 @@ angular.module('gifts', ['ngRoute'])
                 }
                 migration = false ;
 
-                // data migration - rename date to created_at_client
-                //if (gift.hasOwnProperty('date')) {
-                //    gift.created_at_client = gift.date ;
-                //    delete gift.date ;
-                //    migration = true ;
-                //}
-                // error cleanup - remove doublets from gifts array
-                //if (gifts_index.hasOwnProperty(gift.gid)) {
-                //    console.log(pgm + 'Error. removed gift doublet with gid ' + gift.gid) ;
-                //    migration = true ;
-                //    continue ;
-                //}
-                // data migration. server side sha256 signature is invalid after 4 open graph fields have been added to client side part of signature
-                //if ((typeof gift.open_graph_url != 'undefined') && (gift.open_graph_url != null) && (gift.open_graph_url != '') && (gift.hasOwnProperty('created_at_server'))) {
-                //    // gift with open graph attributes.
-                //    var old_gid = gift.gid ;
-                //    gift.gid = Gofreerev.get_new_uid() ;
-                //    delete gift.created_at_server ;
-                //    console.log(pgm + 'migration after sha256 signature change. old gid = ' + old_gid + ', new gid = ' + gift.gid) ;
-                //    migration = true ;
-                //}
                 // data migration. rename comment.created_at to created_at_client
                 //if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
                 //    for (j=0 ; j<gift.comments.length ; j++) {
@@ -2539,48 +2642,48 @@ angular.module('gifts', ['ngRoute'])
                 //gifts_index[gift.gid] = gifts.length ;
 
                 // fix json error - js data migration. change gift deleted_at timestamp from milliseconds to seconds -- todo: remove
-                if (gift.deleted_at) {
-                    if (gift.deleted_at.toString().length == 13) {
-                        gift.deleted_at = Math.floor(gift.deleted_at / 1000) ;
-                        migration = true ;
-                    }
-                }
+                //if (gift.deleted_at) {
+                //    if (gift.deleted_at.toString().length == 13) {
+                //        gift.deleted_at = Math.floor(gift.deleted_at / 1000) ;
+                //        migration = true ;
+                //    }
+                //}
 
                 // gift data migration. rename gift.deleted_at to gift.deleted_at_client
-                if (gift.hasOwnProperty('deleted_at')) {
-                    gift.deleted_at_client = gift.deleted_at ;
-                    delete gift.deleted_at ;
-                    migration = true ;
-                }
+                //if (gift.hasOwnProperty('deleted_at')) {
+                //    gift.deleted_at_client = gift.deleted_at ;
+                //    delete gift.deleted_at ;
+                //    migration = true ;
+                //}
                 // comment data migration - rename comment.deleted_at to comment.deleted_at_client
-                if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
-                    for (j=0 ; j<gift.comments.length ; j++) {
-                        comment = gift.comments[j] ;
-                        if (comment.hasOwnProperty('deleted_at')) {
-                            comment.deleted_at_client = comment.deleted_at ;
-                            delete comment.deleted_at ;
-                            migration = true ;
-                        }
-                    }
-                }
+                //if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
+                //    for (j=0 ; j<gift.comments.length ; j++) {
+                //        comment = gift.comments[j] ;
+                //        if (comment.hasOwnProperty('deleted_at')) {
+                //            comment.deleted_at_client = comment.deleted_at ;
+                //            delete comment.deleted_at ;
+                //            migration = true ;
+                //        }
+                //    }
+                //}
                 // gift data migration - change gift.created_at_server from a unix timestamp to an integer - server number - 1 for current server
-                if (gift.hasOwnProperty('created_at_server')) {
-                    if (gift.created_at_server.toString().length == 10) {
-                        gift.created_at_server = 1 ;
-                        migration = true ;
-                    }
-                }
+                //if (gift.hasOwnProperty('created_at_server')) {
+                //    if (gift.created_at_server.toString().length == 10) {
+                //        gift.created_at_server = 1 ;
+                //        migration = true ;
+                //    }
+                //}
                 // comment data migration - change comment.created_at_server from a unix timestamp to an integer - server number - 1 for current server
-                if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
-                    for (j=0 ; j<gift.comments.length ; j++) {
-                        comment = gift.comments[j] ;
-                        if (comment.hasOwnProperty('created_at_server')) {
-                            if (comment.created_at_server.toString().length == 10) {
-                                comment.created_at_server = 1 ;
-                                migration = true ;
-                            }
-                        }                    }
-                }
+                //if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
+                //    for (j=0 ; j<gift.comments.length ; j++) {
+                //        comment = gift.comments[j] ;
+                //        if (comment.hasOwnProperty('created_at_server')) {
+                //            if (comment.created_at_server.toString().length == 10) {
+                //                comment.created_at_server = 1 ;
+                //                migration = true ;
+                //            }
+                //        }                    }
+                //}
                 // gifts data migration. empty fields (fx open graph) removed from end of all sha256 signatures. recreate all server side gift signatures
                 //if (gift.created_at_server) {
                 //    delete gift.created_at_server ;
@@ -2596,7 +2699,16 @@ angular.module('gifts', ['ngRoute'])
                 //    migration = true ;
                 //    continue ;
                 //}
+                
+                // migration_user_ids - friends used in gifts and comments must be in users
+                if (gift.giver_user_ids) for (j=0 ; j<gift.giver_user_ids.length ; j++) if (migration_user_ids.indexOf(gift.giver_user_ids[j]) == -1) migration_user_ids.push(gift.giver_user_ids[j]) ;
+                if (gift.receiver_user_ids) for (j=0 ; j<gift.receiver_user_ids.length ; j++) if (migration_user_ids.indexOf(gift.receiver_user_ids[j]) == -1) migration_user_ids.push(gift.receiver_user_ids[j]) ;
+                if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
+                    comment = gift.comments[j] ;
+                    for (k=0 ; k<comment.user_ids.length ; k++) if (migration_user_ids.indexOf(comment.user_ids[k]) == -1) migration_user_ids.push(comment.user_ids[k]) ;
+                }
 
+                // save migrated gift
                 if (migration) Gofreerev.setItem(keys[i], JSON.stringify(gift)) ;
 
                 gifts.push(gift);
@@ -2606,6 +2718,28 @@ angular.module('gifts', ['ngRoute'])
             }
             console.log(pgm + 'gifts.length = ' + gifts.length);
             init_gifts_index();
+
+            // data migration. add missing users from friends to users array. todo: remove
+            // console.log(pgm + 'migration_user_ids = ' + migration_user_ids.join(', ')) ;
+            var user_id, migration_user ;
+            for (i=migration_user_ids.length-1 ; i>= 0 ; i--) {
+                user_id = migration_user_ids[i] ;
+                migration_user = userService.get_user(user_id) ;
+                if (migration_user) {
+                    // already in users array
+                    migration_user_ids.splice(i,1) ;
+                    continue ;
+                }
+                migration_user = userService.get_friend(user_id) ;
+                if (!migration_user) {
+                    console.log(pgm + 'user_id ' + user_id + ' is missing in users array but was not found in friends array') ;
+                    migration_user_ids.splice(i,1) ;
+                    continue ;
+                }
+                // keep in migration_user_ids array
+            } // for i (migration_user_ids)
+            console.log(pgm + 'migration_user_ids.length = ' + migration_user_ids.length) ;
+            if (migration_user_ids.length > 0) userService.add_friends_to_users(migration_user_ids) ;
         };
         load_gifts();
 
@@ -2816,15 +2950,6 @@ angular.module('gifts', ['ngRoute'])
             }
         }; // sync_gifts
 
-        var unshift_gift = function (gift) {
-            var pgm = service + '.unshift_gift: '
-            if (gid_to_gifts_index.hasOwnProperty(gift.gid)) {
-                console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array');
-                return;
-            }
-            gifts.unshift(gift);
-            init_gifts_index();
-        } // unshift_gift
 
 
         // return hash with 1-3 sha256 gift signatures used when communicating with server and other clients
@@ -4236,7 +4361,7 @@ angular.module('gifts', ['ngRoute'])
                     // add relevant users to send_gifts message - used as fallback information in case of "unknown user" error on receiving client
                     for (j=0 ; j<gift_users.length ; j++) {
                         user_id = gift_users[j] ;
-                        user = userService.get_user(user_id) ;
+                        user = userService.get_friend(user_id) ;
                         send_gifts_message.users.push({
                             user_id: user.user_id,
                             uid: user.uid,
@@ -5125,10 +5250,9 @@ angular.module('gifts', ['ngRoute'])
             load_gifts: load_gifts,
             refresh_gift: refresh_gift,
             refresh_gift_and_comment: refresh_gift_and_comment,
-            create_new_gift: create_new_gift,
+            save_new_gift: save_new_gift,
             save_gift: save_gift,
             sync_gifts: sync_gifts,
-            unshift_gift: unshift_gift,
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response,
             verify_gifts_request: verify_gifts_request,
@@ -5253,7 +5377,7 @@ angular.module('gifts', ['ngRoute'])
                         ', new timestamp = ' + new_client_timestamp +
                         ',interval = ' + interval);
                     // sync JS users array with any changes in local storage users string
-                    userService.sync_users() ;
+                    userService.sync_friends() ;
                     giftService.sync_gifts() ;
                 },
                 function (error) {
@@ -5319,9 +5443,9 @@ angular.module('gifts', ['ngRoute'])
                     }
                     var new_friends = response.data.friends ;
                     if (new_friends) {
-                        // new user and friends info received from util.generic_post_login task
+                        // new friend lists received from util.generic_post_login task
                         console.log(pgm + 'new friends = ' + JSON.stringify(new_friends)) ;
-                        userService.update_users(new_friends, false) ; // replace=false - add new users
+                        userService.update_friends(new_friends, false) ; // replace=false - add new friends
                     }
                 },
                 function (error) {
@@ -5500,7 +5624,7 @@ angular.module('gifts', ['ngRoute'])
                 return;
             }
             var user_id = user_ids[0] ;
-            var user = userService.get_user(user_id) ;
+            var user = userService.get_friend(user_id) ;
             if (!user) return ; // error - user not found in users array
             if (!user.friend) return ; // error - no friend status was found
             if ([1,2,3,4].indexOf(user.friend) == -1) return ; // ok - not clickable div
@@ -5807,7 +5931,7 @@ angular.module('gifts', ['ngRoute'])
             // find providers - old gift creator & logged in
             var user_providers = [], user ;
             for (var i= 0 ; i<user_ids.length ; i++) {
-                user = userService.get_user(user_ids[i]) ;
+                user = userService.get_friend(user_ids[i]) ;
                 user_providers.push(user.provider) ;
             }
             // there must be minimum one common provider between creator of gift, login users and creator of comment
@@ -5816,7 +5940,7 @@ angular.module('gifts', ['ngRoute'])
             user_ids = [] ;
             var comment_providers = [] ;
             for (i=0 ; i<comment.user_ids.length ; i++) {
-                user = userService.get_user(comment.user_ids[i]) ;
+                user = userService.get_friend(comment.user_ids[i]) ;
                 if (user && (user_providers.indexOf(user.provider) != -1)) user_ids.push(comment.user_ids[i]) ;
             }
             return user_ids ;
@@ -5829,7 +5953,7 @@ angular.module('gifts', ['ngRoute'])
             if (user_ids.length == 0) return false ;
             // check friend relation with creator of new deal proposal
             // friends relation can have changed - or maybe not logged in with provider or correct provider user
-            var user = userService.get_closest_user(user_ids);
+            var user = userService.get_closest_friend(user_ids);
             if (typeof user == 'undefined') return false ;
             if (user == null) return false ;
             return (user.friend <= 2) ;
@@ -6041,8 +6165,8 @@ angular.module('gifts', ['ngRoute'])
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
                 return ;
             }
-            giftService.unshift_gift(gift) ;
-            giftService.create_new_gift(gift) ;
+            // add new gift to 1) JS array and 2) localStorage
+            giftService.save_new_gift(gift) ;
             // resize description textarea after current digest cycle is finish
             resize_textarea(gift.description) ;
             // reset new gift form
@@ -6069,6 +6193,7 @@ angular.module('gifts', ['ngRoute'])
                 created_at_client: Gofreerev.unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
+            // todo: validate new comment - return any errors to UI
             // console.log(pgm + 'cid = ' + new_comment.cid) ;
             // resize comment textarea after current digest cycle is finish
             resize_textarea(new_comment.comment) ;
@@ -6088,6 +6213,7 @@ angular.module('gifts', ['ngRoute'])
                 var text = $window.document.getElementById(gift.gid + '-new-comment') ;
                 if (text) Gofreerev.autoresize_text_field(text) ;
             }, 0, false) ;
+            userService.add_new_login_users(new_comment.user_ids) ;
             giftService.save_gift(gift) ;
         } // create_new_comment
 
@@ -6202,7 +6328,7 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             // console.log(pgm + 'typeof user_ids = ' + (typeof user_ids)) ;
             if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return null ;
-            var user = userService.get_closest_user(user_ids);
+            var user = userService.get_closest_friend(user_ids);
             if (!user) {
                 // user(s) not found in users array
                 // unknown user in gifts and comments can not be 100% avoided as users are free to select api provider logins
@@ -6234,7 +6360,7 @@ angular.module('gifts', ['ngRoute'])
             var pgm = 'formatUserImgSrc: ' ;
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
             if ((typeof user_ids == 'undefined') || (user_ids == null) || (user_ids.length == 0)) return '/images/invisible-picture.gif' ;
-            var user = userService.get_closest_user(user_ids);
+            var user = userService.get_closest_friend(user_ids);
             if (!user) {
                 // user(s) not found in users array
                 // could by a previous friend in a closed deal
@@ -6274,7 +6400,7 @@ angular.module('gifts', ['ngRoute'])
             var creator_user_ids ;
             if (gift.direction == 'giver') creator_user_ids = gift.giver_user_ids ;
             else creator_user_ids = gift.receiver_user_ids ;
-            var creator = userService.get_closest_user(creator_user_ids) ;
+            var creator = userService.get_closest_friend(creator_user_ids) ;
             // console.log(pgm + 'other_user_id = ' + JSON.stringify(other_user_id)) ;
             // console.log(pgm + 'other_user = ' + JSON.stringify(other_user)) ;
             if (!creator) {

@@ -1003,7 +1003,7 @@ class UtilController < ApplicationController
 
       # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
       # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
-      # see angularJS UserService.ping function (sync_users and sync_gifts)
+      # see angularJS UserService.ping function (sync_friends and sync_gifts)
       old_timestamp = get_session_value(:client_timestamp)
       @json[:old_client_timestamp] = old_timestamp if old_timestamp
       new_timestamp = params[:client_timestamp].to_s.to_i

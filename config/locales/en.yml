@@ -1322,3 +1322,8 @@ en:
         zar: "South African rand"
         zmk: "Zambian kwacha"
         zwd: "Zimbabwean dollar"
+     noti_title: # title for notification types
+        undelete_gift: "Gift delete rejected by server"
+     noti: # notifications. <notitype>_<key>
+        addnoti_save: "Warning. Missing or invalid \"save\" property for notification type %{notitype}. Must be true or false."
+        addnoti_title: "Warning. Missing or invalid \"title\" property for notification type %{notitype}. Must be a text string."

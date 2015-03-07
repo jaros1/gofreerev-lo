@@ -487,7 +487,7 @@ class Gift < ActiveRecord::Base
   # delete gifts request from client - used after gift has been deleted on client - check server side sha256 signature and return true or false
   # sha256 is required and must be valid
   # sha256_deleted is required and is used in server side sha256_deleted signature
-  # sha256_accepted is optional and should be in request if gift previously has been accepted by an other user (ekstra validation)
+  # sha256_accepted is optional but must be in request if gift has been accepted by an other user
   # login user must be giver or receiver of gift
   def self.delete_gifts (delete_gifts, login_user_ids)
     logger.debug2 "delete_gifts = #{delete_gifts.to_json}"
@@ -599,7 +599,7 @@ class Gift < ActiveRecord::Base
       # ready for sha256 signatures calculation and check (sha256, sha256_accepted (optional) and sha256_deleted)
 
       # old server sha256 signature was generated when gift was created
-      # calculate and check sha256 signature from information received in delete gifts request
+      # calculate and check sha256 signature from information received in delete gifts row
       sha256_client = delete_gift["sha256"]
       direction = nil
       if giver_user_ids.size > 0
@@ -637,6 +637,10 @@ class Gift < ActiveRecord::Base
           response << { :gid => gid, :deleted_at_server => false, :error => error }
           next
         end
+      elsif gift.sha256_accepted
+        error = 'Delete gift failed. Gift has been accepted on an other device/browser. Please wait for update before deleting gift.'
+        logger.debug2 error
+        response << { :gid => gid, :deleted_at_server => false, :error => error }
       end
 
       # sha256_deleted: calculate server side sha256_deleted signature

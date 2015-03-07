@@ -1326,3 +1326,8 @@ da:
         zar: "Rand"
         zmk: "Kwacha"
         zwd: "Zimbabwiske dollar"
+     noti_title: # title for notification types
+        undelete_gift: "Gift delete rejected by server"
+     noti: # notifications. <notitype>_<key>
+        addnoti_save: "Advarsel. Manglende eller ugyldig \"save\" attribute for notifikationstype %{notitype}. Skal være true eller false."
+        addnoti_title: "Advarsel. Manglende eller ugyldig \"title\" attribute for notifikationstype %{notitype}. Skal være en tekst string."

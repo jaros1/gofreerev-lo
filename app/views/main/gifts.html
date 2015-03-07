@@ -276,6 +276,10 @@
                     </div>
                 </td>
             </tr>
+            <tr ng-show="gift.link_error_at">
+                <td colspan="2"></td>
+                <td colspan="2" ng-bind="gift.link_error"></td>
+            </tr>
             <tr ng-repeat="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)) track by comment.cid">
                 <td colspan="2">
 

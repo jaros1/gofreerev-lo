@@ -1103,13 +1103,7 @@ class UtilController < ApplicationController
         new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids)
         @json[:new_comments] = new_comments_response if new_comments_response
 
-        # 4) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client
-        # login user must be friend with giver or receiver of gift
-        # client must reject gift if created_at_server timestamp is null or does not match
-        # sha256 signature should ensure that gift information is not unauthorized updated on client
-        logger.debug2 "verify_gifts = #{params[:verify_gifts]} (#{params[:verify_gifts].class})"
-        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids)
-        @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
+        # 4) todo: add accept_gifts request and response
 
         # 5) delete gifts. mark gifts as deleted with a server side sha256_deleted signature. Returns deleted_at_server = true or an error message for each gift
         # signatures (sha256 and sha256_deleted) should ensure that gift information is not unauthorized updated on client
@@ -1117,7 +1111,15 @@ class UtilController < ApplicationController
         delete_gifts_response = Gift.delete_gifts(params[:delete_gifts], login_user_ids)
         @json[:delete_gifts] = delete_gifts_response if delete_gifts_response
 
-        # 6) client to client messages
+        # 6) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client
+        # login user must be friend with giver or receiver of gift
+        # client must reject gift if created_at_server timestamp is null or does not match
+        # sha256 signature should ensure that gift information is not unauthorized updated on client
+        logger.debug2 "verify_gifts = #{params[:verify_gifts]} (#{params[:verify_gifts].class})"
+        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids)
+        @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
+
+        # 7) client to client messages
         # input: buffer messages from this client to other devices - return ok or error message for each input message
         # output: return messages to this client from other devices - todo: client should respond with ok/error for received messages!
         # return any messages from other devices to client

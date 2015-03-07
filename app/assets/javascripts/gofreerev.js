@@ -109,7 +109,7 @@ var Gofreerev = (function() {
         // add2log(pgm + 'number_of_rows = ' + number_of_rows) ;
         for (i=rows.length-number_of_rows ; i < rows.length ; i++) {
             id = 'afe-' + now + '-' + i ;
-            rows[i].id = id
+            rows[i].id = id;
             ajax_flash(id) ;
         } // for
     } // ajax_flash_new_table_rows
@@ -189,7 +189,7 @@ var Gofreerev = (function() {
             else add_to_tasks_errors(I18n.t('js.general.ajax_leave_page', {location: 1, debug: 0})) ;
         }
         leaving_page = true;
-    } // window.onbeforeunload
+    }; // window.onbeforeunload
 
 
     var last_user_ajax_comment_at ; // timestamp (JS Date) for last new comment created by user
@@ -424,7 +424,7 @@ var Gofreerev = (function() {
         if (!timezone) return ;
         timezone.value = get_js_timezone();
         // add2log('timezone = ' + timezone.value) ;
-    })
+    });
 
     // local or session storage functions ==>
 
@@ -449,6 +449,7 @@ var Gofreerev = (function() {
         friends: {session: false, userid: true, compress: true, encrypt: true}, // array with downloaded friends info from login
         gifts: {session: false, userid: true, compress: true, encrypt: true}, // "array" with gifts - encrypted - pseudo rule used for gift_1, gift_2 etc
         key: {session: false, userid: true, compress: true, encrypt: true}, // random password - used for localStorage encryption
+        noti: {session: false, userid: true, compress: true, encrypt: true}, // "array" with notifications (message in UI) - only some type of notifications are saved in localStorage
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
         passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
         oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
@@ -555,7 +556,7 @@ var Gofreerev = (function() {
             // lzma compress sequence 2 was better than lzstring compress and/or lzma compress sequence = 0 (compress => encrypt)
             console.log(pgm + 'key = ' + key + '. lzma compress sequence 2 was better than lzstring compress and/or lzma compress sequence = 0 (compress => encrypt)') ;
             // find storage flag and save new compressed value
-            var storage_options = {compress: 2, encrypt: 1, sequence: 1}
+            var storage_options = {compress: 2, encrypt: 1, sequence: 1};
             var bin_key = storage_options_bin_key(storage_options);
             var storage_flag = storage_flag_index[bin_key];
             if (!storage_flag) {
@@ -581,7 +582,7 @@ var Gofreerev = (function() {
                 // lzma compress was better than lzstring compress
                 console.log(pgm + 'key = ' + key + '. lzma compress was better than lzstring compress') ;
                 // find storage flag and save new compressed value
-                var storage_options = {compress: 2, encrypt: (password ? 1 : 0), sequence: 0}
+                var storage_options = {compress: 2, encrypt: (password ? 1 : 0), sequence: 0};
                 var bin_key = storage_options_bin_key(storage_options);
                 var storage_flag = storage_flag_index[bin_key];
                 if (!storage_flag) {
@@ -746,7 +747,7 @@ var Gofreerev = (function() {
         // set storage flag - how are data stored - first character in value
         var storage_options = { compress: (rule.compress ? 1 : 0),
                                 encrypt: (rule.encrypt ? 1 : 0),
-                                sequence: sequence }
+                                sequence: sequence };
         var bin_key = storage_options_bin_key(storage_options) ;
         var storage_flag = storage_flag_index[bin_key] ;
         if (!storage_flag) {
@@ -1263,7 +1264,147 @@ angular.module('gifts', ['ngRoute'])
         };
         // end TextService
     }])
-    .factory('UserService', ['$window', '$http', '$q', '$locale', function($window, $http, $q, $locale) {
+    .factory('NotiService', ['TextService', function (textService) {
+        var self = this ;
+        var service = 'NotiService' ;
+        console.log(service + ' loaded') ;
+
+        // load any old notification (nid => folder => messages)
+        var notifications = {} ;
+        (function () {
+            // load any stored notifications
+            var stored_notifications = Gofreerev.getItem('noti') ;
+            if (stored_notifications) notifications = JSON.parse(stored_notifications) ;
+        })();
+
+        // notification index. from nid to pos in notifications array
+        var notification_nid_index = {} ;
+        function init_notification_nid_index () {
+            notification_nid_index = {} ;
+            for (var i=0 ; i<notifications.length ; i++) init_notification_nid_index[notifications[i].nid] = i ;
+        }
+        init_notification_nid_index() ;
+
+        // hash with known notification types. save=true => save in localStorage
+        var notification_types = {
+            undelete_gift: { title: I18n.t('js.noti_title.undelete_gift'), save: true }
+        } ;
+
+        // add notification - returns an nid (unique notification id) - used as id for repeating notifications - for example ping errors
+        // args is an object with notitype, key, options, url, nid and extra:
+        // - notitype must exist in notificatin_types
+        // - translation key <notitype>_<key> must exist in locales (en, da etc)
+        // - url is an options angularJS url - link to gift, user etc
+        // - nid is old/previous nid. used for repeating notifications. for example ping or communication errors
+        // - extra is optional extra information. for example gid
+        var add_notification = function (args) {
+            var pgm = service + '.add_notification: ';
+            JSON.parse(JSON.stringify(args)) ; // stack trace
+            if ((typeof args.notitype != 'string') || (typeof args.key != 'string'))
+                throw 'Missing required arguments notitype and key when calling add_notification' ;
+
+            // save: true: save notification in localStorage. false: save only temporary in js notifications array
+            var save = false, error, key, error ;
+            if (!notification_types.hasOwnProperty(args.notitype))
+                throw 'Unknown notitype ' + args.notitype + ' when calling add_notification' ;
+            else if (typeof notification_types[args.notitype].save != 'boolean') {
+                console.log(pgm + 'Warning. Missing or invalid save property for notification type ' + args.notitype + '. Must be true or false.');
+                add_notification({notitype: 'addnoti', key: 'save', options: {notitype: args.notitype, save: JSON.stringify(args.save)}});
+                notification_types[args.notitype].save = false;
+            }
+            else save = notification_types[args.notitype].save;
+
+            if (typeof notification_types[notitype].title != 'string') {
+                console.log(pgm + 'Warning. Missing or invalid title property for notification type ' + args.notitype + '. Must be a text string.');
+                add_notification({notitype: 'addnoti', key: 'title', options: {notitype: args.notitype, title: JSON.stringify(notification_types[notitype].title)}});
+                notification_types[args.notitype].title = 'Notification type ' + args.notitype + ' with missing or invalid title.';
+            } ;
+
+            // find or create folder.
+            var now = Gofreerev.unix_timestamp();
+            var nid = args.nid ;
+            var index, folder;
+            if (nid) {
+                // check if folder nid still exists
+                if (notification_nid_index.hasOwnProperty(nid)) {
+                    index = notification_nid_index[nid] ;
+                    folder = notifications[index] ;
+                    if (index > 0) {
+                        // move folder with newest messages to top
+                        notifications.splice(index, 1) ;
+                        notifications.unshift(folder) ;
+                        init_notification_nid_index() ;
+                    }
+                }
+            }
+            if (!folder) {
+                // add new folder
+                nid = Gofreerev.get_new_uid();
+                folder = { nid: nid, count: 0, created_at: now, updated_at: now, save: false, messages: []} ;
+                notifications.unshift(folder) ;
+                notifications.length = 20; // max 20 folders with max 5 messages in each folder = max 100 messages
+                init_notification_nid_index() ;
+            };
+            if (save) folder.save =true ;
+            if (folder.save) save=true ;
+
+            // find or create message. max 5 messages in each folder / for each nid
+            // messages are identical if key, options, url and extra are identical
+            // don't include timestamps in extra
+            var new_message = { key: args.key } ;
+            if (args.options) new_message.options = args.options ;
+            if (args.url) new_message.options = args.url ;
+            if (args.extra) new_message.options = args.extra ;
+            var new_message_json = JSON.stringify(new_message) ;
+            var i, old_message, old_message_clone ;
+            index = -1 ;
+            for (var i=0 ; i<folder.messages.length ; i++) {
+                old_message = folder.messages[i] ;
+                old_message_clone = { key: old_message.key} ;
+                if (old_message.options) old_message_clone.options = old_message.options ;
+                if (old_message.url) old_message_clone.url = old_message.url ;
+                if (old_message.extra) old_message_clone.extra = old_message.extra ;
+                if (new_message_json == JSON.stringify(old_message_clone)) { index = i ; break ; };
+            } // for i (folder.messages)
+            if (index == -1) {
+                new_message.created_at = now ;
+                new_message.updated_at = now ;
+                new_message.count = 1 ;
+                folder.messages.unshift(new_message) ;
+                if (folder.messages.length > 5) folder.messages.length = 5 ;
+            }
+            else {
+                old_message = folder.messages[index] ;
+                old_message.updated_at = now ;
+                old_message.count += 1 ;
+            }
+            folder.count += 1 ;
+            folder.updated_at = now ;
+
+            // keep "last" 20 notification.
+            if (notifications.length > 20) {
+                init_notification_nid_index() ;
+            }
+
+            // save only notifications with save=true
+            if (save) {
+                var notifications_clone = [] ;
+                for (i=0 ; i<notifications.length ; i++) {
+                    folder = notifications[i] ;
+                    if (folder.save) notifications_clone.push(folder) ;
+                }
+                Gofreerev.setItem('noti', JSON.stringify(notifications_clone));
+            }
+
+            return nid;
+        }; // add_notification
+
+        return {
+            notifications: notifications,
+            add_notification: add_notification
+        };
+    }])
+    .factory('UserService', ['TextService', 'NotiService', '$window', '$http', '$q', '$locale', function(textService, notiService, $window, $http, $q, $locale) {
         var self = this ;
         var service = 'UserService' ;
         console.log(service + ' loaded') ;
@@ -1292,7 +1433,7 @@ angular.module('gifts', ['ngRoute'])
             var i, friend, provider ;
             for (i=0 ; i<friends.length ; i++) {
                 friend = friends[i] ;
-                provider = friend.provider
+                provider = friend.provider;
                 if (!hash.hasOwnProperty(provider)) hash[provider] = { users: 0, friends: 0} ;
                 hash[provider].users += 1 ;
                 if (friend.friend <= 2) hash[provider].friends += 1 ;
@@ -1344,7 +1485,7 @@ angular.module('gifts', ['ngRoute'])
                         continue;
                     }
                     if (friends[j].user_name != new_friend.user_name) friends[j].user_name = new_friend.user_name;
-                    if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) friends[j].api_profile_picture_url = new_friend.api_profile_picture_url
+                    if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) friends[j].api_profile_picture_url = new_friend.api_profile_picture_url;
                     if (friends[j].friend != new_friend.friend) friends[j].friend = new_friend.friend;
                     if (friends[j].verified_at != new_friend.verified_at) friends[j].verified_at = new_friend.verified_at;
                 }
@@ -2107,10 +2248,10 @@ angular.module('gifts', ['ngRoute'])
             add_new_login_users: add_new_login_users,
             get_user: get_user,
             add_friends_to_users: add_friends_to_users
-        }
+        };
         // end UserService
     }])
-    .factory('GiftService', ['UserService', function(userService) {
+    .factory('GiftService', ['TextService', 'NotiService', 'UserService', function(textService, notiService, userService) {
         var self = this;
         var service = 'GiftService';
         console.log(service + ' loaded');
@@ -2132,7 +2273,8 @@ angular.module('gifts', ['ngRoute'])
         // todo: add gift validations.
         // - invalid_gift is called from create_new_gift, when receiving new gifts from other clients and before sending gifts to other clients
         // - invalid_gift_change is called in any local updates and when merging gift information from other clients into local gift
-        var invalid_gift = function (gift) {
+        // user_users is an optional array with new users (used when validating new gifts received from other clients)
+        var invalid_gift = function (gift, new_users) {
             var pgm = service + '.invalid_gift: ' ;
             var errors = [] ;
             // fields to validate:
@@ -2153,6 +2295,10 @@ angular.module('gifts', ['ngRoute'])
             // 15) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
             // 16) comments array
 
+            // new_users from send_gifts sub message (sync_gifts) - fallback information used in case of unknown user
+            var new_users_index = {} ;
+            for (var i=0 ; i<new_users.length ; i++) new_users_index[new_users[i].user_id] = new_users[i] ;
+
             //  1) gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             var from_unix_timestamp = Math.floor((new Date('2014-01-01')).getTime()/1000) ;
             var to_unix_timestamp =  Math.floor((new Date).getTime()/1000) + 24*60*60;
@@ -2163,8 +2309,7 @@ angular.module('gifts', ['ngRoute'])
             else if (parseInt(gift.gid.substr(0,10)) > to_unix_timestamp) errors.push('Invalid gid (unique gift id). The first 10 digits must be a valid unix timestamp') ;
 
             //  2) giver_user_ids and/or receiver_user_ids
-            // todo: how to handle "unknown user ids" in giver or receiver lists?
-            //
+            // must be friend or user or in new_users
             var giver_user_ids = gift.giver_user_ids || [] ;
             var receiver_user_ids = gift.receiver_user_ids || [] ;
             if ((giver_user_ids.length == 0) && (receiver_user_ids.length ==0)) errors.push('Gift without giver or receiver is not allowed') ;
@@ -2179,7 +2324,10 @@ angular.module('gifts', ['ngRoute'])
                     errors.push('Giver is invalid. Doublet user ids in giver_user_ids' + giver_user_ids.join(', ')) ;
                     break ;
                 }
+                // lookup user: 1) friends array, 2) users array, 3) new_users array
                 user = userService.get_friend(user_id) ;
+                if (!user) user = userService.get_user(user_id) ;
+                if (!user) user = new_users_index[user_id] ;
                 if (!user) {
                     errors.push('Giver is invalid. Unknown user id ' + user_id + ' in giver_user_ids ' + giver_user_ids.join(', ')) ;
                     break ;
@@ -2189,8 +2337,10 @@ angular.module('gifts', ['ngRoute'])
                     break ;
                 }
                 providers.push(user.provider) ;
-                if (user.friend == 1) logged_in_user = true ;
-                if (user.friend <= 2) friend = true ;
+                if (user.hasOwnProperty('friend')) {
+                    if (user.friend == 1) logged_in_user = true ;
+                    if (user.friend <= 2) friend = true ;
+                }
             } // for i
             user_ids = [] ;
             providers = [] ;
@@ -2200,7 +2350,10 @@ angular.module('gifts', ['ngRoute'])
                     errors.push('Receiver is invalid. Doublet user ids in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
                 }
+                // lookup user: 1) friends array, 2) users array, 3) new_users array
                 user = userService.get_friend(user_id) ;
+                if (!user) user = userService.get_user(user_id) ;
+                if (!user) user = new_users_index[user_id] ;
                 if (!user) {
                     errors.push('Receiver is invalid. Unknown user id ' + user_id + 'in receiver_user_ids' + receiver_user_ids.join(', ')) ;
                     break ;
@@ -2210,8 +2363,10 @@ angular.module('gifts', ['ngRoute'])
                     break ;
                 }
                 providers.push(user.provider) ;
-                if (user.friend == 1) logged_in_user = true ;
-                if (user.friend <= 2) friend = true ;
+                if (user.hasOwnProperty('friend')) {
+                    if (user.friend == 1) logged_in_user = true ;
+                    if (user.friend <= 2) friend = true ;
+                }
             } // for i
             if ($(giver_user_ids).filter(receiver_user_ids).length > 0) {
                 errors.push('Giver/receiver is invalid. Found common user id in giver and receiver user ids. A user cannot be both giver and receiver of a gift') ;
@@ -2507,6 +2662,9 @@ angular.module('gifts', ['ngRoute'])
             if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments;
             if (gift.hasOwnProperty('verified_at_server')) delete gift.verified_at_server;
             if (gift.hasOwnProperty('verify_seq')) delete gift.verify_seq;
+            if (gift.hasOwnProperty('link_error')) delete gift.link_error;
+            if (gift.hasOwnProperty('link_error_at')) delete gift.link_error_at;
+            if (gift.hasOwnProperty('link_error_undelete_nid')) delete gift.link_error_undelete_nid;
             if (!gift.hasOwnProperty('comments')) gift.comments = [];
             var comments = gift.comments;
             for (var j = 0; j < comments.length; j++) {
@@ -2746,7 +2904,7 @@ angular.module('gifts', ['ngRoute'])
                 if (!migration_user) {
                     console.log(pgm + 'user_id ' + user_id + ' is missing in users array but was not found in friends array') ;
                     migration_user_ids.splice(i,1) ;
-                    continue ;
+
                 }
                 // keep in migration_user_ids array
             } // for i (migration_user_ids)
@@ -2906,7 +3064,7 @@ angular.module('gifts', ['ngRoute'])
             var new_gifts = [] ;
             var keys = get_gift_keys() ;
             for (var i=0 ; i < keys.length ; i++) new_gifts.push(JSON.parse(Gofreerev.getItem(keys[i]))) ;
-            console.log()
+            console.log();
 
             // todo: remove - index should normally always be up-to-date
             init_gifts_index();
@@ -2957,11 +3115,26 @@ angular.module('gifts', ['ngRoute'])
             var new_gifts_index = {};
             for (i = 0; i < new_gifts.length; i++) new_gifts_index[new_gifts[i].gid] = i;
             for (i = gifts.length - 1; i >= 0; i--) {
-                gid = gifts[i].gid
+                gid = gifts[i].gid;
                 if (!new_gifts_index.hasOwnProperty(gid)) gifts.splice(i, 1);
             }
         }; // sync_gifts
 
+
+        // remove "old" error messages from gifts
+        // 1) errors from delete gifts response. delete failed. gift was undeleted
+        var remove_old_link_errors = function () {
+            var pgm = service + '.remove_old_link_errors: ' ;
+            var now = Gofreerev.unix_timestamp() ;
+            var i, gift ;
+            for (i=0 ; i<gifts.length ; i++) {
+                gift = gifts[i] ;
+                if (!gift.hasOwnProperty('link_error_at')) continue ;
+                if (now - gift.link_error_at < 60) continue ;
+                delete gift.link_error ;
+                delete gift.link_error_at ;
+            }
+        }; // remove_old_link_errors
 
 
         // return hash with 1-3 sha256 gift signatures used when communicating with server and other clients
@@ -3168,7 +3341,7 @@ angular.module('gifts', ['ngRoute'])
                         key: key,
                         gifts: [verify_gift],
                         request: hash
-                    }
+                    };
                     request.push(hash);
                     new_request += 1 ;
                 }
@@ -3193,7 +3366,7 @@ angular.module('gifts', ['ngRoute'])
             var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, new_gift  ;
             for (i=0 ; i<response.gifts.length ; i++) {
                 new_gift = response.gifts[i] ;
-                seq = new_gift.seq
+                seq = new_gift.seq;
                 if (seqs.indexOf(seq) == -1) {
                     seqs.push(seq) ;
                     if (!verify_gifts_seq_to_gifts[seq]) {
@@ -3230,7 +3403,7 @@ angular.module('gifts', ['ngRoute'])
                 seq = gift_verification.seq ;
                 if (old_remote_seq.indexOf(seq) != -1) continue ; // ignore old remote gift verification
                 no_verifications += 1 ;
-                new_gifts = verify_gifts_seq_to_gifts[seq].gifts
+                new_gifts = verify_gifts_seq_to_gifts[seq].gifts;
                 while (new_gifts.length > 0) {
                     no_gifts += 1 ;
                     new_gift = new_gifts.shift() ;
@@ -3281,7 +3454,7 @@ angular.module('gifts', ['ngRoute'])
             if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' gifts was not deleted. See following error message.');
             if (!response.hasOwnProperty('gifts')) return;
             var new_gifts = response.gifts;
-            var new_gift, gid, index, gift, created_at_server;
+            var new_gift, gid, index, gift, created_at_server, noti;
             for (var i = 0; i < new_gifts.length; i++) {
                 new_gift = new_gifts[i];
                 gid = new_gift.gid;
@@ -3311,7 +3484,15 @@ angular.module('gifts', ['ngRoute'])
                 if (!new_gift.deleted_at_server) {
                     // delete gift request failed. see error message from server
                     console.log(pgm + 'Gift ' + gid + '. Delete gift request failed. ' + new_gift.error);
-                    // todo: undelete gift and display error message in page header or add user notification
+                    gift.link_error = new_gift.error ;
+                    gift.link_error_at = Gofreerev.unix_timestamp() ;
+                    gift.link_error_undelete_nid = notiService.add_notification({
+                        notitype: 'undelete_gift',
+                        nid: gift.link_error_undelete_nid,
+                        message: new_gift.error,
+                        url:'todo: add show gift url',
+                        extra: {gid: gid}}) ;
+                    delete gift.deleted_at_client ;
                     continue;
                 }
                 // gift delete signature was created
@@ -3479,7 +3660,7 @@ angular.module('gifts', ['ngRoute'])
                 delete device.password_at;
                 // console.log(pgm + 'elapsed = ' + elapsed + ', device = ' + JSON.stringify(device)) ;
             } // for did
-        } // post_symmetric_password_setup
+        }; // post_symmetric_password_setup
 
         // mailbox actions:
         // - online => offline - continue to buffer messages in javascript arrays
@@ -3844,7 +4025,7 @@ angular.module('gifts', ['ngRoute'])
         var receive_message_password = function (device, msg) {
             var pgm = service + '.receive_message_password: ';
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
-            console.log(pgm + 'msg = ' + JSON.stringify(msg));
+            // console.log(pgm + 'msg = ' + JSON.stringify(msg));
             // msg is an array with password, password_at and optional md5 for complete password
             // password setup is complete when received md5 in msg and password md5 for device are identical
             device.password2 = msg[0];
@@ -3893,7 +4074,7 @@ angular.module('gifts', ['ngRoute'])
             }
             console.log(pgm + 'Error. Old ' + request_msgtype + ' message with mid ' + request_mid + ' was not found in mailbox.');
             return false ;
-        } // move_previous_message
+        }; // move_previous_message
 
 
         // communication step 2 - receive "users_sha256" message from other device. one user.sha256 signature for each mutual friend
@@ -4353,7 +4534,7 @@ angular.module('gifts', ['ngRoute'])
                         continue ;
                     }
                     // validate gift before cloning for send_gifts sub message
-                    error = invalid_gift(gift) ;
+                    error = invalid_gift(gift, []) ;
                     if (error) {
                         console.log(pgm + 'Warning. Invalid gift was not added to send_gifts sub message.') ;
                         console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
@@ -4423,7 +4604,7 @@ angular.module('gifts', ['ngRoute'])
                         } // for j (comments loop)
                     } // if comments
                     // validate gift_clone before adding gift to send_gifts sub message
-                    error = invalid_gift(gift_clone) ;
+                    error = invalid_gift(gift_clone, []) ;
                     if (error) {
                         console.log(pgm + 'System error when adding gift to send_gifts sub message.') ;
                         console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
@@ -4660,7 +4841,7 @@ angular.module('gifts', ['ngRoute'])
 
                 // pass 0 - check for some fatal errors before processing send_gifts message
                 // 1) gid and cid must be unique
-                // 2) users in users array must be unique and be correct. see ....
+                // 2) users in users array must be unique and be correct (all user ids in gifts array except mutual friends)
 
                 var error = validate_send_gifts_message(mailbox, msg) ;
                 if (error) {
@@ -4675,10 +4856,12 @@ angular.module('gifts', ['ngRoute'])
                 } // if error (validate_send_gifts_message)
 
                 // validate received gifts
-                var errors = [] ;
+                var errors = [], new_gift ;
                 for (i = 0; i < msg.gifts.length; i++) {
                     new_gift = msg.gifts[i] ;
-                    error = invalid_gift(new_gift) ;
+                    // note msg.users as second argument 2 to invalid_gift call
+                    // allows gift validation to use msg.users as fallback information in case of unknown users in givers, receivers or comments
+                    error = invalid_gift(new_gift, msg.users) ;
                     if (error) errors.push('gid=' + new_gift.gid + ', error=' + error ) ;
                 } // for i (gifts)
                 if (errors.length > 0) {
@@ -4721,7 +4904,7 @@ angular.module('gifts', ['ngRoute'])
 
             // one loop for pass 1, 2 and 3 - logic is identical except for a few things
             // pass 1: validation without server side sha256 check - find new gifts and comments that must be server side validated
-            // server side sha256 check between pass 1 and pass 2
+            // between pass 1 and 2: server side sha256 check - see ping verify_gifts_request and verify_gifts_response
             // pass 2: validation with server side sha256 check
             // pass 3: do actions (create gifts, update gifts, merge comments etc)
 
@@ -4743,8 +4926,7 @@ angular.module('gifts', ['ngRoute'])
             var old_gift_accepted, new_gift_accepted, gift_accept_action, gift_delete_action, gift_price_action, gift_like_action;
             var counterpart_errors ;
 
-
-            // pass 1, 2, 3 loop - continue until 1) wait for verification, 2) error report, 3) done
+            // pass 1, 2, 3 loop - continue until 1) without server verification, 2) with server verification, 3) do actions (insert, update)
             while (true) {
 
                 // reset counters and arrays - used after gifts loop to select next action and used in errors and warnings
@@ -4784,13 +4966,14 @@ angular.module('gifts', ['ngRoute'])
                             index_system_errors.push(gid);
                             continue;
                         }
+                        // compare old (this client) and new gift (from other client)
                         if (old_gift.sha256 == new_gift.sha256) {
                             identical_gift_and_comments.push(gid) ;
                             continue ;
                         }
                         if (old_gift.sha256_gift != new_gift.sha256_gift) {
-                            // old gift != new gift ignoring comments -
-                            // many gift fields are readonly but minor changes are allowed.
+                            // old gift != new gift when ignoring comments
+                            // many gift fields are readonly but update is allowed for a few fields
 
                             // changed gift - check if readonly fields used in server side sha256 signature have been changed
                             if (new_gift.direction == 'giver') {
@@ -4821,7 +5004,7 @@ angular.module('gifts', ['ngRoute'])
                                 // fields used in server side sha256 signature are NOT identical for new and old gift
                                 // could be a communication error or gift could have been modified by this or by other client
                                 if (!new_gift.hasOwnProperty('verify_seq')) {
-                                    // new gift must be server validated before continuing
+                                    // new gift must be server validated before continuing (between pass 1 and pass 2)
                                     validate_new_gifts += 1;
                                     verify_gifts.push(new_gift);
                                     continue;
@@ -4832,13 +5015,13 @@ angular.module('gifts', ['ngRoute'])
                                     continue;
                                 }
                                 if (!new_gift.verified_at_server) {
-                                    // invalid signature for new gift
+                                    // invalid signature for new gift - changed on other client or not correct in message
                                     new_gifts_invalid_signature.push(gid);
                                     continue;
                                 }
-                                // there is a problem. new gift is valid. old gift must be invalid  - changed readonly fields in old gift
+                                // new gift is valid. old gift must be invalid  - changed on this client or not saved correct
                                 if (!old_gift.hasOwnProperty('verify_seq')) {
-                                    // old gift must be server validated before continuing
+                                    // old gift must be server validated before continuing (between pass 1 and pass 2)
                                     validate_old_gifts += 1;
                                     delete old_gift.verified_at_server ;
                                     verify_gifts.push(old_gift);
@@ -4850,7 +5033,7 @@ angular.module('gifts', ['ngRoute'])
                                     continue;
                                 }
                                 if (!old_gift.verified_at_server) {
-                                    // invalid signature for gift - must be deleted and new gift accepted
+                                    // invalid signature for gift - old gift must be deleted and new gift accepted
                                     old_gifts_invalid_signature.push(gid);
                                     continue;
                                 }
@@ -4859,7 +5042,13 @@ angular.module('gifts', ['ngRoute'])
                                 continue;
                             } // if changed readonly fields!
 
-                            // analyse changes in gift
+                            // pass 2 or pass 3 - few changed fields in gift
+
+                            // check changes in gift - only few changes are allowed
+                            // accept and delete actions changes server side sha256 signature (already validated) and are one direction actions
+                            // todo: testcase - accept gift on one client and delete gift on an other client
+                            // todo: 1) sub testcase: server delete gift before server accept gift
+                            // todo: 2) sub testcase: server accept gift before server delete gift
                             old_gift_accepted = (old_gift.accepted_cid || old_gift.accepted_at_client) ;
                             new_gift_accepted = (new_gift.accepted_cid || new_gift.accepted_at_client) ;
                             gift_accept_action = ((old_gift_accepted && !new_gift_accepted) || (!old_gift_accepted && new_gift_accepted)) ;
@@ -4867,6 +5056,7 @@ angular.module('gifts', ['ngRoute'])
                             gift_price_action = !gift_accept_action && ((old_gift.price != new_gift.price) || (old_gift.currency != new_gift.currency)) ;
                             gift_like_action = (old_gift.like != new_gift.like) ;
                             if (!gift_accept_action && (old_gift_counterpart != new_gift_counterpart)) {
+                                // counterpart can only be changed when accepting proposal
                                 counterpart_errors.push(gid) ;
                                 continue ;
                             }
@@ -5086,7 +5276,7 @@ angular.module('gifts', ['ngRoute'])
                     }
                     if (!identical_values(old_gift_creators, new_gift_creators)) {
                         creator_changed.push(gid);
-                        continue;
+
                     }
                     // Ok. only minor gift changes
 
@@ -5132,7 +5322,7 @@ angular.module('gifts', ['ngRoute'])
 
             console.log(pgm + 'Error. Not implemented');
 
-        } // receive_message_send_gifts
+        }; // receive_message_send_gifts
 
 
         // error in client to client communication
@@ -5313,6 +5503,7 @@ angular.module('gifts', ['ngRoute'])
             save_new_gift: save_new_gift,
             save_gift: save_gift,
             sync_gifts: sync_gifts,
+            remove_old_link_errors: remove_old_link_errors,
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response,
             verify_gifts_request: verify_gifts_request,
@@ -5363,8 +5554,11 @@ angular.module('gifts', ['ngRoute'])
                 $timeout(function () { ping(ping_interval); }, ping_interval) ;
                 return ;
             }
+            // cleanup old error messages
+            giftService.remove_old_link_errors() ;
             // make ping request
             var sid = Gofreerev.getItem('sid') ;
+            // todo: add accept_gifts request and response
             var ping_request = {
                 client_userid: userid,
                 sid: sid,
@@ -5853,7 +6047,7 @@ angular.module('gifts', ['ngRoute'])
             var pgm = controller + '.delete_gft: ' ;
             giftService.refresh_gift(gift);
             if (!self.show_delete_gift(gift)) return ;
-            var confirm_options = { price: gift.price, currency: gift.currency }
+            var confirm_options = { price: gift.price, currency: gift.currency };
             // todo: show/insert error messages under gifts link in main/gifts page? like old insert_gift_links_errors_table JS method
             if (gift.received_at && gift.price && (gift.price != 0.0)) {
                 var giver = userService.find_giver(gift) ;
@@ -5874,7 +6068,7 @@ angular.module('gifts', ['ngRoute'])
                 if ((giver.friend == 1) && (receiver.friend == 1)) keyno = 2 ; // simple confirm
                 else {
                     // confirm with warning
-                    keyno = 1
+                    keyno = 1;
                     confirm_options['user_name'] = is_giver ? receiver.user_name : giver.user_name ;
                 }
             }
@@ -6179,7 +6373,7 @@ angular.module('gifts', ['ngRoute'])
             clearTimeout(gift_open_graph_url_timer);
             if (!self.new_gift.open_graph_url) reset_open_graph_preview() ;
             else gift_open_graph_url_timer = setTimeout(gift_open_graph_url_done, 2000);
-        }
+        };
 
         // <== new gift link open graph preview in gifts/index page
 
@@ -6219,7 +6413,7 @@ angular.module('gifts', ['ngRoute'])
             if (gift.direction == 'giver') gift.giver_user_ids = userService.get_login_userids() ;
             else gift.receiver_user_ids = userService.get_login_userids() ;
             var errors ;
-            if (errors=giftService.invalid_gift(gift)) {
+            if (errors=giftService.invalid_gift(gift, [])) {
                 self.new_gift.errors = 'Could not create new gift: ' + errors ;
                 console.log(pgm + 'Could not create gift: ' + self.new_gift.errors) ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
@@ -6232,7 +6426,7 @@ angular.module('gifts', ['ngRoute'])
             // reset new gift form
             init_new_gift() ;
             // add new gift to local storage
-        } // self.create_new_gift
+        }; // self.create_new_gift
 
         // new comment ng-submit
         self.create_new_comment = function (gift) {
@@ -6275,7 +6469,7 @@ angular.module('gifts', ['ngRoute'])
             }, 0, false) ;
             userService.add_new_login_users(new_comment.user_ids) ;
             giftService.save_gift(gift) ;
-        } // create_new_comment
+        }; // create_new_comment
 
         // end GiftsCtrl
     }])
@@ -6305,7 +6499,7 @@ angular.module('gifts', ['ngRoute'])
             return I18n.toNumber(p,
                 {delimiter: delimiter, precision: precision,
                     separator: separator, strip_insignificant_zeros: strip_insignificant_zeros}) ;
-        }
+        };
         // end formatPrice filter
     }])
     .filter('formatGiftPriceOptional', ['formatPriceFilter', function (formatPrice) {
@@ -6317,7 +6511,7 @@ angular.module('gifts', ['ngRoute'])
             if (typeof p == 'undefined') return '' ;
             if (p == null) return '' ;
             return I18n.t('js.gifts.optional_price', {price: formatPrice(p, precision), currency: gift.currency }) ;
-        }
+        };
         // end formatGiftPriceOptional
     }])
     .filter('formatCommentPriceOptional', ['formatPriceFilter', function (formatPrice) {
@@ -6343,7 +6537,7 @@ angular.module('gifts', ['ngRoute'])
                 {givername: giver ? giver.short_user_name : 'no name',
                 receivername: receiver ? receiver.short_user_name : 'no name'}) ;
             return x ;
-        }
+        };
         // end formatCommentPriceOptional
     }])
     .filter('formatGiftLinkText', ['formatDateShortFilter', 'formatGiftPriceOptionalFilter', 'formatDirectionFilter', 'GiftService',
@@ -6357,7 +6551,7 @@ angular.module('gifts', ['ngRoute'])
                 var optional_price = formatGiftPriceOptional(gift, precision);
                 var direction = formatDirection(gift) ;
                 return I18n.t('js.gifts.gift_link_text', {date: created_at_client, optional_price: optional_price, direction: direction }) ;
-            }
+            };
             // end formatGiftLinkText
     }])
     .filter('formatGiftDescription', ['$window', '$sce', function ($window, $sce) {
@@ -6368,7 +6562,7 @@ angular.module('gifts', ['ngRoute'])
             if ($window.navigator.userAgent.indexOf('Opera/9.80') == -1) return $sce.trustAsHtml(description) ;
             var shy_description = description.split('').join('&shy;') + '&shy;' ;
             return $sce.trustAsHtml(shy_description) ;
-        }
+        };
         // end formatGiftDescription
     }])
     .filter('formatBalance', [function () {
@@ -6378,7 +6572,7 @@ angular.module('gifts', ['ngRoute'])
             // todo 1: format user balance. hash with currencies and amounts
             // todo 2: server side or client side balance calculation?
             return JSON.stringify(balance) ;
-        }
+        };
         // end formatBalance
     }])
     .filter('formatUserImgTitle', ['formatBalanceFilter', 'UserService', function (formatBalance, userService) {
@@ -6404,14 +6598,14 @@ angular.module('gifts', ['ngRoute'])
                 2: 'friend_click',
                 3: 'non_friend_click',
                 4: 'non_friend_click'
-            }
+            };
             var key = 'js.user_div.title_' + (keys[user.friend] || 'non_friend');
             // translate
             var username = (user.friend <= 2) ? user.short_user_name : user.user_name;
             var apiname = user.provider;
             var balance = formatBalance(user.balance);
             return I18n.t(key, {username: username, apiname: apiname, balance: balance});
-        }
+        };
         // end formatUserImgTitle
     }])
     .filter('formatUserImgSrc', ['UserService', function (userService) {
@@ -6431,7 +6625,7 @@ angular.module('gifts', ['ngRoute'])
             }
             // console.log(pgm + 'user with user id ' + user.user_id + ' was found. user.api_profile_picture_url = ' + user.api_profile_picture_url) ;
             return user.api_profile_picture_url;
-        }
+        };
         // end formatUserImgSrc filter
     }])
     .filter('formatComment', ['formatDateShortFilter', 'formatCommentPriceOptionalFilter', function (formatDateShort, formatCommentPriceOptional) {
@@ -6447,7 +6641,7 @@ angular.module('gifts', ['ngRoute'])
                 optional_price: optional_price,
                 text: comment.comment
             });
-        }
+        };
         // end formatComment filter
     }])
     .filter('formatNewProposalTitle', ['UserService', function (userService) {
@@ -6470,7 +6664,7 @@ angular.module('gifts', ['ngRoute'])
             var title = I18n.t('js.new_comment.proposal_title', {username: creator.short_user_name}) ;
             // console.log(pgm + 'title = ' + JSON.stringify(title)) ;
             return title ;
-        }
+        };
         // end formatNewProposalTitle filter
     }])
     .filter('formatInviteFriendsLink', ['$window', '$sce', function ($window, $sce) {
@@ -6506,9 +6700,9 @@ angular.module('gifts', ['ngRoute'])
                 "?subject=" + encodeURIComponent(subject) +
                 "&amp;body=" + encodeURIComponent(body);
             }
-            var a = '<a href="' + href + '" title="' + link_title + '">' + apiname + '<a>'
+            var a = '<a href="' + href + '" title="' + link_title + '">' + apiname + '<a>';
             return $sce.trustAsHtml(a);
-        }
+        };
         // end formatInviteFriendsLink filter
     }])
     .filter('formatProviderName', [function() {
@@ -6516,51 +6710,51 @@ angular.module('gifts', ['ngRoute'])
         var providers = Gofreerev.rails['API_CAMELIZE_NAME'] ;
         return function (provider) {
             return (providers[provider] || appname) ;
-        }
+        };
         // end formatProviderName filter
     }])
     .filter('formatProviderSrc', [function () {
         return function (provider) {
             return '/images/' + (provider || 'gofreerev') + '.png';
-        }
+        };
         // end formatProviderSrc filter
     }])
     .filter('formatProviderTraficLightSrc', ['UserService', function (userService) {
         return function (trafic_light_status) {
             return '/images/' + trafic_light_status + '.png';
-        }
+        };
         // end formatProviderTraficLightSrc filter
     }])
     .filter('formatLoginSrc', [function () {
         return function (logged_in) {
             if (logged_in) return '/images/invisible-picture.gif' ;
             else return '/images/connect.png' ;
-        }
+        };
         // end formatLoginSrc filter
     }])
     .filter('formatLogoutSrc', [function () {
         return function (logged_out) {
             if (logged_out) return '/images/invisible-picture.gif' ;
             else return '/images/disconnect.png' ;
-        }
+        };
         // end formatLogoutSrc filter
     }])
     .filter('formatProviderLogoutSrc', ['UserService', function (userService) {
         return function (provider) {
             if (userService.is_logged_in_with_provider(provider.provider)) return '/images/disconnect.png';
             else return '/images/invisible-picture.gif';
-        }
+        };
         // end formatProviderLogoutSrc filter
     }])
     .filter('formatProviderLoginHref', ['UserService', function (userService) {
         return function (provider) {
             return '/auth/' + provider.provider ;
-        }
+        };
         // end formatProviderLoginHref filter
     }])
     .filter('formatProviderHomeUrl', [function () {
         return function (provider) {
             return Gofreerev.rails['API_URL'][provider.provider] ;
-        }
+        };
         // end formatProviderHomeUrl filter
     }]) ;

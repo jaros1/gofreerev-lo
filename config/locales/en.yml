@@ -1323,7 +1323,10 @@ en:
         zmk: "Zambian kwacha"
         zwd: "Zimbabwean dollar"
      noti_title: # title for notification types
+        add_noti: "Systemfejl med tilføjelse af notifikation"
         undelete_gift: "Gift delete rejected by server"
      noti: # notifications. <notitype>_<key>
+        addnoti_req: "System error. Missing required arguments notitype and key when calling \"add_notification\". args = %{args}"
+        addnoti_notitype: "System error. Unknown notification type %{notitype} when calling \"add_notification\"."
         addnoti_save: "Warning. Missing or invalid \"save\" property for notification type %{notitype}. Must be true or false."
         addnoti_title: "Warning. Missing or invalid \"title\" property for notification type %{notitype}. Must be a text string."

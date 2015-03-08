@@ -522,6 +522,7 @@ class Gift < ActiveRecord::Base
     # process delete gifts request
     response = []
     no_errors = delete_gifts.size # guilty until proven innocent
+    first_gift = true
     delete_gifts.each do |delete_gift|
 
       # validate row in delete gift request
@@ -595,6 +596,14 @@ class Gift < ActiveRecord::Base
         response << { :gid => gid, :deleted_at_server => false, :error => 'Gift was not found on server' }
         next
       end
+
+      # # todo: remove. test how client is handling undelete
+      # if first_gift
+      #   response << { :gid => gid, :deleted_at_server => false, :error => 'Test undelete on client after failed server delete' }
+      #   first_gift = false
+      #   next
+      # end
+
 
       # ready for sha256 signatures calculation and check (sha256, sha256_accepted (optional) and sha256_deleted)
 

@@ -1327,7 +1327,10 @@ da:
         zmk: "Kwacha"
         zwd: "Zimbabwiske dollar"
      noti_title: # title for notification types
+        add_noti: "Add notification system error"
         undelete_gift: "Gift delete rejected by server"
      noti: # notifications. <notitype>_<key>
+        addnoti_req: "Systemfejl. Manglende krævede parametre ved kald af \"add_notification\". Parametre = %{args}"
+        addnoti_notitype: "Systemfejl. Ukendt notifikationstype %{notitype} ved kald af \"add_notification\"."
         addnoti_save: "Advarsel. Manglende eller ugyldig \"save\" attribute for notifikationstype %{notitype}. Skal være true eller false."
         addnoti_title: "Advarsel. Manglende eller ugyldig \"title\" attribute for notifikationstype %{notitype}. Skal være en tekst string."

@@ -1287,7 +1287,7 @@ angular.module('gifts', ['ngRoute'])
         // hash with known notification types. save=true => save in localStorage
         var notification_types = {
             add_noti: { title: I18n.t('js.noti_title.add_noti'), save: false },
-            undelete_gift: { title: I18n.t('js.noti_title.undelete_gift'), save: true }
+            delete_gift: { title: I18n.t('js.noti_title.delete_gift'), save: true }
         } ;
 
         // add notification - returns an nid (unique notification id) - used as id for repeating notifications - for example ping errors
@@ -1387,6 +1387,10 @@ angular.module('gifts', ['ngRoute'])
             }
             folder.count += 1 ;
             folder.updated_at = now ;
+
+            // output to log
+            key = 'js.noti.' + args.notitype + '_' + args.key ;
+            console.log(pgm + key + ' = ' + I18n.t(key, args.options)) ;
 
             // keep "last" 20 notification.
             if (notifications.length > 20) {
@@ -2263,6 +2267,10 @@ angular.module('gifts', ['ngRoute'])
         var service = 'GiftService';
         console.log(service + ' loaded');
 
+        // cache nid for repeating errors without an object (gift, comment, user etc). for example nid for system errors.
+        // nid is used as message folder in notifications
+        var cache_nid = {} ;
+
         // todo: add comment validations.
         // - invalid_comment is called from create_new_comment, when receiving new comments from other clients and before sending comments to other clients
         // - invalid_comment_change is called in any local updates and when merging comment information from other clients into local comment
@@ -2658,26 +2666,63 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'user_id_to_gifts = ' + JSON.stringify(user_id_to_gifts)) ;
         }; // init_gifts_index
 
-        // remove some session specific attributes before save
-        // also remove sha256 calculation - no reason to keep sha256 calculations in localStorage
-        function prepare_gift_for_save (gift) {
-            var gift = JSON.parse(JSON.stringify(gift)) ;
-            if (gift.hasOwnProperty('show_no_comments')) delete gift.show_no_comments;
-            if (gift.hasOwnProperty('new_comment')) delete gift.new_comment;
-            if (gift.hasOwnProperty('sha256')) delete gift.sha256;
-            if (gift.hasOwnProperty('sha256_gift')) delete gift.sha256_gift;
-            if (gift.hasOwnProperty('sha256_comments')) delete gift.sha256_comments;
-            if (gift.hasOwnProperty('verified_at_server')) delete gift.verified_at_server;
-            if (gift.hasOwnProperty('verify_seq')) delete gift.verify_seq;
-            if (gift.hasOwnProperty('link_error')) delete gift.link_error;
-            if (gift.hasOwnProperty('link_error_at')) delete gift.link_error_at;
-            if (gift.hasOwnProperty('link_error_undelete_nid')) delete gift.link_error_undelete_nid;
-            if (!gift.hasOwnProperty('comments')) gift.comments = [];
-            var comments = gift.comments;
-            for (var j = 0; j < comments.length; j++) {
-                if (comments[j].hasOwnProperty('sha256')) delete comments[i].sha256;
+
+        //if (gift.giver_user_ids != new_gift.giver_user_ids) gift.giver_user_ids = new_gift.giver_user_ids;
+        //if (gift.receiver_user_ids != new_gift.receiver_user_ids) gift.receiver_user_ids = new_gift.receiver_user_ids;
+        //if (gift.created_at_client != new_gift.created_at_client) gift.created_at_client = new_gift.created_at_client;
+        //if (gift.created_at_server != new_gift.created_at_server) gift.created_at_server = new_gift.created_at_server;
+        //if (gift.price != new_gift.price) gift.price = new_gift.price;
+        //if (gift.currency != new_gift.currency) gift.currency = new_gift.currency;
+        //if (gift.direction != new_gift.direction) gift.direction = new_gift.direction;
+        //if (gift.description != new_gift.description) gift.description = new_gift.description;
+        //if (gift.open_graph_url != new_gift.open_graph_url) gift.open_graph_url = new_gift.open_graph_url;
+        //if (gift.open_graph_title != new_gift.open_graph_title) gift.open_graph_title = new_gift.open_graph_title;
+        //if (gift.open_graph_description != new_gift.open_graph_description) gift.open_graph_description = new_gift.open_graph_description;
+        //if (gift.open_graph_image != new_gift.open_graph_image) gift.open_graph_image = new_gift.open_graph_image;
+        //if (gift.like != new_gift.like) gift.like = new_gift.like;
+        //if (gift.follow != new_gift.follow) gift.follow = new_gift.follow;
+        //if (gift.show != new_gift.show) gift.show = new_gift.show;
+        //// todo: add gift.deleted_at_server (integer)
+        //if (gift.deleted_at_client != new_gift.deleted_at_client) gift.deleted_at_client = new_gift.deleted_at_client;
+        //if (gift.accepted_cid != new_gift.accepted_cid) gift.accepted_cid = new_gift.accepted_cid;
+        //if (gift.accepted_at_client != new_gift.accepted_at_client) gift.accepted_at_client = new_gift.accepted_at_client;
+        //// todo: should merge comments and keep sequence - not overwrite arrays
+        //if (!gift.hasOwnProperty('comments')) gift.comments = [];
+        //if (!new_gift.hasOwnProperty('comments')) new_gift.comments = [];
+        //if (gift.comments != new_gift.comments) refresh_comments(gift.comments, new_gift.comments);
+
+
+        // remove session specific attributes from gift and comments before save
+        function prepare_gift_for_save(gift) {
+            var pgm = service + '.prepare_gift_for_save: ';
+            var gift = JSON.parse(JSON.stringify(gift));
+            // remove temp gift properties before save
+            var keep_gift_property = {
+                gid: true, giver_user_ids: true, receiver_user_ids: true, created_at_client: true,
+                created_at_server: true, price: true, currency: true, direction: true, description: true,
+                open_graph_url: true, open_graph_title: true, open_graph_description: true, open_graph_image: true,
+                like: true, follow: true, show: true, deleted_at_client: true, deleted_at_server: true,
+                accepted_cid: true, accepted_at_client: true, accepted_at_server: true, comments: true
+            };
+            for (var key in gift) {
+                if (gift.hasOwnProperty(key) && !keep_gift_property[key]) delete gift[key];
             }
-            return gift ;
+            // remove temp comment properties before save
+            if (!gift.hasOwnProperty('comments')) gift.comments = [];
+            var comment;
+            var keep_comment_property = {
+                cid: true, user_ids: true, price: true, currency: true, comment: true, created_at_client: true,
+                created_at_server: true, new_deal: true, deleted_at_client: true, deleted_at_server: true,
+                accepted: true, accepted_at_client: true, accepted_at_server: true, accepted_by_user_ids: true,
+                rejected_at_client: true, rejected_by_user_ids: true
+            } ;
+            for (var i = 0; i < gift.comments.length; i++) {
+                comment = gift.comments[i] ;
+                for (var key in comment) {
+                    if (comment.hasOwnProperty(key) && !keep_comment_property[key]) delete comment[key];
+                }
+            }
+            return gift;
         }
 
         // add new gift to 1) js array and to 2) localStorage. new gift has already been validated in GiftsCtrl.create_new_gift
@@ -3129,7 +3174,7 @@ angular.module('gifts', ['ngRoute'])
 
 
         // remove "old" error messages from gifts
-        // 1) errors from delete gifts response. delete failed. gift was undeleted
+        // 1) errors from delete gifts response. delete failed. gift was "undeleted"
         var remove_old_link_errors = function () {
             var pgm = service + '.remove_old_link_errors: ' ;
             var now = Gofreerev.unix_timestamp() ;
@@ -3462,50 +3507,70 @@ angular.module('gifts', ['ngRoute'])
             if (!response.hasOwnProperty('gifts')) return;
             var new_gifts = response.gifts;
             var new_gift, gid, index, gift, created_at_server, noti;
+            function add_index_error (gid, ref) {
+                // system error in gid/gift lookup
+                cache_nid.delete_gift_syserr123_nid = notiService.add_notification({
+                    notitype: 'delete_gift', key: 'syserr' + ref, options: {gid: gid, ref: ref},
+                    extra: {gid: gid, ref: ref}, nid: cache_nid.delete_gift_syserr123_nid}) ;
+            }
+            function add_response_error (new_gift, ref) {
+                // system error in delete gifts response
+                cache_nid.delete_gift_syserr456_nid = notiService.add_notification({
+                    notitype: 'delete_gift', key: 'syserr' + ref, options: { gid: new_gift.gid, error: new_gift.error, key: new_gift.key, options: JSON.stringify(new_gift.options)},
+                    extra: {gid: gift.gid, ref: ref}, nid: cache_nid.delete_gift_syserr456_nid}) ;
+            }
             for (var i = 0; i < new_gifts.length; i++) {
                 new_gift = new_gifts[i];
+                // lookup gift
                 gid = new_gift.gid;
-                if (!gid_to_gifts_index.hasOwnProperty(gid)) {
-                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (1).');
-                    continue;
-                }
+                if (!gid_to_gifts_index.hasOwnProperty(gid)) { add_index_error(gid, 1) ; continue; }
                 index = gid_to_gifts_index[gid];
-                if ((index < 0) || (index >= gifts.length)) {
-                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (2).');
-                    continue;
-                }
+                if ((index < 0) || (index >= gifts.length)) { add_index_error(gid, 2) ; continue; }
                 gift = gifts[index];
-                if (!gift) {
-                    console.log(pgm + 'System error. Invalid gift ' + gid + ' in delete gifts response (3).');
-                    continue;
-                }
-                // check response. must be an ok response without error message or error response with an error message.
-                // todo: add support for key+options in delete gifts response. use key+options for within site error message. use error for cross site error messages
-                if (new_gift.hasOwnProperty('error') && new_gift.deleted_at_server) {
-                    console.log(pgm + 'System error. Invalid deleted gifts response. Gift ' + gid + ' deleted signature created on server WITH an error message. error = ' + new_gift.error) ;
+                if (!gift) { add_index_error(gid, 3); continue; }
+                // check response. must be an ok response without error message (error=key=options=null) or an error
+                // response with either an error message (cross server error) or with key+options (within server error)
+                if (new_gift.deleted_at_server && (new_gift.hasOwnProperty('error') || new_gift.hasOwnProperty('key') || new_gift.hasOwnProperty('options'))) {
+                    // unexpected error information
+                    add_response_error (new_gift,4) ;
                     continue ;
                 }
-                if (!new_gift.hasOwnProperty('error') && !new_gift.deleted_at_server) {
-                    console.log(pgm + 'System error. Invalid new gifts response. Gift ' + gid + ' deleted signature was not created on server and no error message was returned.') ;
-                    continue ;
+                if (!new_gift.deleted_at_server) {
+                    // gift delete rejected by server
+                    if (!new_gift.hasOwnProperty('error') && !new_gift.hasOwnProperty('key') && !new_gift.hasOwnProperty('options')) {
+                        add_response_error (new_gift,5) ; // no error information
+                        continue ;
+                    }
+                    if (new_gift.hasOwnProperty('error') && (new_gift.hasOwnProperty('key') || new_gift.hasOwnProperty('options'))) {
+                        add_response_error (new_gift,6) ; // inconsistent error information
+                        continue ;
+                    }
+                    if (new_gift.hasOwnProperty('options') && !new_gift.hasOwnProperty('key')) {
+                        add_response_error (new_gift,6) ; // inconsistent error information
+                        continue ;
+                    }
+
                 }
                 if (!new_gift.deleted_at_server) {
                     // delete gift request failed. see error message from server
                     console.log(pgm + 'Gift ' + gid + '. Delete gift request failed. ' + new_gift.error);
                     gift.link_error = new_gift.error ;
                     gift.link_error_at = Gofreerev.unix_timestamp() ;
-                    gift.link_error_undelete_nid = notiService.add_notification({
-                        notitype: 'undelete_gift', key: 'error', options: {error: new_gift.error},
-                        nid: gift.link_error_undelete_nid,
+                    gift.link_error_delete_nid = notiService.add_notification({
+                        notitype: 'delete_gift', key: 'error', options: {error: new_gift.error},
+                        nid: gift.link_error_delete_nid,
                         url:'todo: add show gift url',
                         extra: {gid: gid}}) ;
-                    console.log(pgm + 'undelete gift - remove delete_at_client property') ;
+                    // undelete gift
+                    refresh_gift(gift) ;
                     delete gift.deleted_at_client ;
+                    save_gift(gift) ;
                     continue;
                 }
+                // todo: how to handle "remote delete". created by user A on server A, replicated to user A on server B. deleted by under A on server B.
                 // gift delete signature was created
                 if (gift.hasOwnProperty('deleted_at_server')) {
-                    console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property was set between delete gifts request and delete gifts response.') ;
+                    console.log(pgm + 'System error. Gift ' + gid + ' deleted marked on server but deleted_at_server property was set between delete gifts request and delete gifts response.') ;
                     continue ;
                 }
                 refresh_gift(gift);

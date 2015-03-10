@@ -599,11 +599,11 @@ class Gift < ActiveRecord::Base
 
       # # todo: remove. test how client is handling undelete
       # if first_gift
+      #   gid = '14258041591425804159'
       #   response << { :gid => gid, :deleted_at_server => false, :error => 'Test undelete on client after failed server delete' }
       #   first_gift = false
       #   next
       # end
-
 
       # ready for sha256 signatures calculation and check (sha256, sha256_accepted (optional) and sha256_deleted)
 

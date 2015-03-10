@@ -1328,9 +1328,16 @@ da:
         zwd: "Zimbabwiske dollar"
      noti_title: # title for notification types
         add_noti: "Add notification system error"
-        undelete_gift: "Gift delete rejected by server"
-     noti: # notifications. <notitype>_<key>
+        delete_gift: "Gift delete rejected by server"
+     noti: # notifications. format <notitype>_<key>
         addnoti_req: "Systemfejl. Manglende krævede parametre ved kald af \"add_notification\". Parametre = %{args}"
         addnoti_notitype: "Systemfejl. Ukendt notifikationstype %{notitype} ved kald af \"add_notification\"."
         addnoti_save: "Advarsel. Manglende eller ugyldig \"save\" attribute for notifikationstype %{notitype}. Skal være true eller false."
         addnoti_title: "Advarsel. Manglende eller ugyldig \"title\" attribute for notifikationstype %{notitype}. Skal være en tekst string."
+        delete_gift_syserr1: "Systemfejl ved sletning af opslag %{gid}. Ukendt gift id %{gid} i \"slet opslag\" svar fra server."
+        delete_gift_syserr2: "Systemfejl ved sletning af opslag %{gid}. Fejl i index (%{ref}) for gift id %{gid}."
+        delete_gift_syserr3: "Systemfejl ved sletning af opslag %{gid}. Fejl i index (%{ref}) for gift id %{gid}."
+        delete_gift_syserr4: "Systemfejl ved sletning af opslag %{gid}. Opslag er blevet sletmæærkeret af server, men med ekstra fejl information. error=%{error}, key=%{key}, options=%{options}."
+        delete_gift_syserr5: "Systemfejl ved sletning af opslag %{gid}. Sletning af opslag blev afvist af server, men uden fejl information."
+        delete_gift_syserr6: "Systemfejl ved sletning af opslag %{gid}. Sletning af opslag blev afvist af server, men med inkonsistent fejl information. error=%{error}, key=%{key}, options=%{options}."
+        delete_gift_error: "Sletning af opslag blev afvist af server. %{error}" # cross server error format

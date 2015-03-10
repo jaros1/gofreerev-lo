@@ -21,7 +21,19 @@ class ExchangeRate < ActiveRecord::Base
     today = Sequence.get_last_exchange_rate_date
     ers = ExchangeRate.where("date = ?", today)
     if ers.size == 0
-      today = ExchangeRate.order("date desc").first.date
+      today = ExchangeRate.order("date desc").first
+      if !today
+        # no exchange rates! must be a new empty db
+        ExchangeRate.fetch_exchange_rates
+        today = ExchangeRate.order("date desc").first
+        if !today
+          # no exchange rates from default money bank!
+          @@exchange_rates = {}
+          @@today = nil
+          return @@today
+        end
+      end
+      today = today.date
       ers = ExchangeRate.where("date = ?", today)
     end
     @@exchange_rates = {}

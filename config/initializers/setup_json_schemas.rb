@@ -455,7 +455,11 @@ JSON_SCHEMA = {
                                   :gid => {:type => 'string', :pattern => uid_pattern},
                                   # deleted_at_server - boolean here - integer in client (1=current gofreerev server)
                                   :deleted_at_server => {:type => 'boolean'},
-                                  # error message if gift could not be deleted (deleted_at_server=false)
+                                  # error message if gift could not be deleted (deleted_at_server=false). either key+options or error
+                                  # use error format key+options for within server error messages.
+                                  # use error string for cross server error messages (gift created on an other gofreerev server)
+                                  :key => {:type => 'string'}, # js.noti.delete_gift_<key> translation must exist
+                                  :options => {:type => 'object'},
                                   :error => {:type => 'string'}
                               },
                               :required => %w(gid deleted_at_server),

@@ -210,7 +210,7 @@ gem 'angular_rails_csrf'
 # http://stackoverflow.com/questions/8362458/error-when-running-rails-app-execjsruntimeerror
 gem 'therubyracer'
 
-# validate server side json
+# server side schema json validation. https://github.com/geraintluff/tv4 is used for client side schema json validation
 gem 'json-schema'
 
 # use when moving to an other db environment. See issue 12

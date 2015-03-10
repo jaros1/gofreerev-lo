@@ -5746,7 +5746,7 @@ angular.module('gifts', ['ngRoute'])
             if (userid == 0) return ; // only relevant for logged in users
             console.log(pgm + 'start');
             var secret = userService.client_secret() ;
-            var do_tasks_request = {client_userid: userid, client_secret: secret, timezone: get_js_timezone()} ;
+            var do_tasks_request = {client_userid: userid, client_secret: secret, did: Gofreerev.getItem('did')} ;
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();

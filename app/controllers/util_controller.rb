@@ -113,11 +113,10 @@ class UtilController < ApplicationController
 
       # remember client secret - used in data sync. between devices
       set_session_value :client_secret, params[:client_secret]
+      set_session_value :did, params[:did]
 
       # todo: debug why IE is not setting state before redirecting to facebook in facebook/autologin
       logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
-      # save timezone received from javascript
-      set_timezone(params[:timezone])
       # todo: debug problems with session[:last_row_id]
       logger.debug2 "session[:last_row_id] = #{get_last_row_id()}"
       # cleanup old tasks
@@ -764,6 +763,12 @@ class UtilController < ApplicationController
     begin
 
       # remember unique device uid and client secret - used in sync. data between devices
+      if params[:did].to_s == ''
+        # did er required in login json. This error should have been detected in json validation
+        @json[:error] = "login and did is empty"
+        format_response
+        return
+      end
       set_session_value :did, params[:did]
       set_session_value :client_secret, params[:client_secret]
 

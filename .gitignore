@@ -28,5 +28,6 @@ Capfile.1
 
 # ignore private files
 *betatesters*
+todo*
 
 

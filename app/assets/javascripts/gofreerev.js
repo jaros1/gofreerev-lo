@@ -2005,31 +2005,29 @@ angular.module('gifts', ['ngRoute'])
                 console.log(pgm + 'device userid was not found. oauth was not saved') ;
                 return ;
             }
-            //var password = client_password() ;
-            //if (password == '') {
-            //    console.log(pgm + 'device password was not found. oauth was not saved') ;
-            //    return ;
-            //}
             // get old oauth
             var oauth_str = Gofreerev.getItem('oauth') ;
-            if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '') || (oauth_str == '{}')) {
-                console.log(pgm + 'no oauth to send to server') ;
-                return $q.reject('') ; // empty promise error response
-            }
-            console.log(pgm + 'oauth_str = ' + oauth_str) ;
-            var oauth = JSON.parse(oauth_str) ;
+            //if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '') || (oauth_str == '{}')) {
+            //    console.log(pgm + 'no oauth to send to server') ;
+            //    return $q.reject('') ; // empty promise error response
+            //}
+            // null oauth is allowed. did, client_secret and public key are sent to server after device login
+            var oauth ;
+            if ((typeof oauth_str == 'undefined') || (oauth_str == null) || (oauth_str == '') || (oauth_str == '{}')) oauth = null;
+            else oauth = oauth_hash_to_array(JSON.parse(oauth_str)) ;
             // send oauth hash (authorization for one or more login providers) to server
             // oauth authorization is validated on server by fetching fresh friends info (api_client.gofreerev_get_friends)
             var login_request = {
                 client_userid: userid,
                 client_secret: client_secret(),
                 client_timestamp: (new Date).getTime(),
-                oauths: oauth_hash_to_array(oauth),
+                oauths: oauth,
                 did: Gofreerev.getItem('did'),
                 pubkey: Gofreerev.getItem('pubkey')} ;
             // validate json login request before sending request to server
             var json_errors ;
             if (json_errors=Gofreerev.is_json_request_invalid(pgm, login_request, 'login')) return $q.reject(json_errors) ;
+            console.log(pgm + 'login_request = ' + JSON.stringify(login_request)) ;
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
@@ -5746,7 +5744,7 @@ angular.module('gifts', ['ngRoute'])
             if (userid == 0) return ; // only relevant for logged in users
             console.log(pgm + 'start');
             var secret = userService.client_secret() ;
-            var do_tasks_request = {client_userid: userid, client_secret: secret, did: Gofreerev.getItem('did')} ;
+            var do_tasks_request = {client_userid: userid} ;
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();

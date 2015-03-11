@@ -52,6 +52,7 @@ class UtilController < ApplicationController
   # used in do_tasks, login, logout and ping
   private
   def validate_json_request
+    logger.debug2 "params = #{params.to_json}"
     json_schema = "#{params[:action]}_request".to_sym
     if !JSON_SCHEMA.has_key? json_schema
       # abort action and report error
@@ -110,10 +111,6 @@ class UtilController < ApplicationController
   public
   def do_tasks
     begin
-
-      # remember client secret - used in data sync. between devices
-      set_session_value :client_secret, params[:client_secret]
-      set_session_value :did, params[:did]
 
       # todo: debug why IE is not setting state before redirecting to facebook in facebook/autologin
       logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
@@ -781,6 +778,17 @@ class UtilController < ApplicationController
         p.did = params[:did]
         p.pubkey = params[:pubkey]
         p.save!
+      end
+
+      if !params.has_key? :oauth
+        # empty login
+        set_session_value :user_ids, []
+        set_session_value :tokens, {}
+        set_session_value :expires_at, {}
+        set_session_value :refresh_tokens, {}
+        @json[:friends] = []
+        format_response
+        return
       end
 
       oauths = params[:oauths] # array with oauth authorization

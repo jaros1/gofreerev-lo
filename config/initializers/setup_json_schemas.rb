@@ -101,7 +101,7 @@ JSON_SCHEMA = {
             # array with oauth authorization for zero, one or more social networks (from localStorage)
             :oauths => oauths_type
         },
-        :required => %w(client_userid client_timestamp client_secret did pubkey oauths),
+        :required => %w(client_userid client_timestamp client_secret did pubkey),
         :additionalProperties => false
     },
     :login_response => {
@@ -145,13 +145,9 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # client userid normally = 1. Old client userid at device logout (provider=null). Allow up to 100 user accounts in localStorage
-            :client_userid => client_userid_type,
-            # client secret - string with 10 decimals - used in device.sha256 signature
-            :client_secret => {:type => 'string'},
-            # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-            :did => {:type => 'string', :pattern => uid_pattern}
+            :client_userid => client_userid_type
         },
-        :required => %w(client_userid client_secret did),
+        :required => %w(client_userid),
         :additionalProperties => false
     },
     :do_tasks_response => {

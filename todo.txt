@@ -1232,9 +1232,6 @@
 310) each server should have a "public" catalog over "active" users. Last connect within x days.
      each server should search "public" catalogs for match and keep an ea
 
-311) did + client_secret + public keys are sent in login and do_tasks request
-     should only be send to server once for every session
-
 312) add server public/private keys
      add servers table: server_id, url, public key, private key
      this server: server_id = 1 and private key
@@ -1243,6 +1240,9 @@
      1) send/request public key
      2) send/receive password for symmetric encrypted communication
      3) ping once every ... seconds.
+
+313) register with password for old account
+     error message or login on old account?
 
 
 

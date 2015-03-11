@@ -213,6 +213,9 @@ gem 'therubyracer'
 # server side schema json validation. https://github.com/geraintluff/tv4 is used for client side schema json validation
 gem 'json-schema'
 
+# server public private key encryption
+gem 'sshkey'
+
 # use when moving to an other db environment. See issue 12
 # https://github.com/ludicast/yaml_db
 # https://github.com/ludicast/yaml_db/pull/45

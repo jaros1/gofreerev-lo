@@ -287,6 +287,7 @@ GEM
       actionpack (>= 3.0)
       activesupport (>= 3.0)
       sprockets (~> 2.8)
+    sshkey (1.6.1)
     sshkit (1.7.1)
       colorize (>= 0.7.0)
       net-scp (>= 1.1.2)
@@ -375,6 +376,7 @@ DEPENDENCIES
   sdoc
   session_off
   simple_form
+  sshkey
   therubyracer
   turbolinks
   twitter (>= 5.5.1)

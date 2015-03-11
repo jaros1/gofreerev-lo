@@ -1,0 +1,1249 @@
+ 2) api notifications:
+    get a app access token.
+    send only notifications to api if internal notifications in app is not read.
+    Short summary of unread app notifications in api notification
+    Only few api notifications and stop sending messages if user do not start app
+    for example notification every 1, 2, 4, 7, 14, 28 day
+    one notification every day if user connects to app.
+    don't send any more notifications if user has not been connected for 28 days
+    check out facebook, linkedin & twitter notification possibilities
+    https://developers.facebook.com/docs/games/notifications/
+    https://developers.facebook.com/docs/graph-api/reference/user/notifications/
+    get application token:
+      api_server = Koala::Facebook::RealtimeUpdates.new :app_id => API_ID[:facebook], :secret => API_SECRET[:facebook]
+      api_server.app_access_token
+      res = RestClient.post "https://graph.facebook.com/1705481075/notifications", :href => 'http://localhost/da/gifts', :template => 'this is a test', :access_token => api_server.app_access_token
+      res == "{\"success\":true}"
+      signature from FB notification:
+      Started POST "/?fb_source=notification&fb_ref=friends_find&ref=notif&notif_t=app_notification" for 127.0.0.1 at 2014-04-02 07:48:09 +0200
+      User Load (5.5ms)  SELECT "users".* FROM "users" WHERE (user_id in ('1705481075/facebook'))
+      CACHE (0.1ms)  SELECT "users".* FROM "users" WHERE (user_id in ('1705481075/facebook'))
+      Processing by FacebookController#create as HTML
+      Parameters: {"signed_request"=>"6xbhSI-JNpGOf7Ye54gft7kF4Tmxdr0AQVA0Iy0hw34.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImV4cGlyZXMiOjEzOTY0MjIwMDAsImlzc3VlZF9hdCI6MTM5NjQxNzY4Mywib2F1dGhfdG9rZW4iOiJDQUFGalpCR3p6T2tjQkFQUGoyakJtVTc2UkxkODFjcG0xSTVqMDlZcWNZNjFSOFRwYnRoa3l0QlNkb0JoalNrQWh0UFBhaTN3VmlCekZRM2dsb1pCVUtxTVhXV0tlTkVqeVk3U2pOTXJRZXUzWkI4MVRoVEhwTEtBZzMyRzlLaVpCaFpCR1pBbEdROFpBQThnN3R5aDZVREpRS0pqY3dnek52djZqaE9lR00yUlUyTEk1MkZDWkFIZUJaQWdSWVVWZXVTRHNzamdrYjVKcTNBWkRaRCIsInVzZXIiOnsiY291bnRyeSI6ImRrIiwibG9jYWxlIjoiZW5fR0IiLCJhZ2UiOnsibWluIjoyMX19LCJ1c2VyX2lkIjoiMTcwNTQ4MTA3NSJ9",
+                   "fb_locale"=>"en_GB", "fb_source"=>"notification", "fb_ref"=>"friends_find",
+                   "ref"=>"notif", "notif_t"=>"app_notification"}
+    - added FB app notifications for friends find
+
+ 3) add accept conditions for new users?
+
+ 4) recalculate user balance at request or once every day
+
+ 5) user.recalculate_balance recalculates balance for all closed deals with user as giver or receiver.
+    ok when few closed deals for a user, but can be a performance issue with many closed deals for a user.
+    allow recalculating balance from a specific date or from a specific gift.id
+    should only recalculate balance from last closed deal
+
+ 7) check texts in views/fb/create.html.erb and create_da_html.erb
+
+ 9) check todo's in source
+
+11) find some way to combine or group "identical" notifications in inbox/index page
+
+12) stress test. make a db with really many rows and test performance.
+    There maybe are missing an index or two
+    there maybe are some sql that should be rewritten
+    performance issues are different in sqlite3 and in mysql
+    move development db to mysql before test
+    db_load fails with import errors
+    https://github.com/ludicast/yaml_db
+    https://github.com/ludicast/yaml_db/pull/45
+    second try - make an new mysql database for stress test
+
+13) check session variables
+    session variables should only be used from accessor methods in app. controller
+    gives a better overview and an easier to maintain code
+
+14) tests - needs new users.yml file - encryption now is with old userids
+
+15) test case:
+    create deal [ a.provider1, a.provider2] as giver, [ b.provider1, b.provider2 ] as receiver, price > 0
+    login as a.provider1 and b.provider2
+    problem with user/show balance. logged users are giver and receiver at the same time
+    must be displayed as 0 in balance
+    check code with [ag.user_id_giver, ag.user_id_receiver].index(user_id)
+    check code with login_user_ids.index(ag.user_id_giver)
+    check code with api_gift = api_gifts.find { |ag| [ ag.user_id_giver, ag.user_id_receiver].index(???)
+
+17) add mysql development environment on localhost.
+    there some are minor difference between using sqlite3 and mysql as db
+    a) problem with "" around table names in mysql
+    b) Less float precession in mysql than in sqlite3
+
+19) check notifications and change notification test cases to support multiple logins
+
+20) better github page
+
+21) links on app setup pages to github page (wiki, report bugs etc)
+    check app setup for facebook, google+, linkedin and twitter
+
+22) post on linkedin from localhost
+    can not upload picture with localhost url to linkedin
+    add a special error message for this case?
+
+24) add server site cleanup for api_gifts with temp url
+    created in gifts/create - removed in util.delete_local_picture after post_on_<provider> tasks
+
+25) check if user div onclick events could be handled on a higher level - for example on document
+    can not use user_id in id. user divs are repeated many times for each user.
+    use data-id attribute for user.id
+    use jquery "on" and delegated events: https://api.jquery.com/on/
+
+26) link from post on gofreerev to post on facebook but only if FB friend
+    link from post on gofreerev to post on linkedin but only if LinkedIn connection
+    should have small API icons for each post.
+    multiple icons if multiple logins and post in multiple API's
+
+27) check response from FastImage.type(gift_file.path) if site is temporary unavailable
+    should not error mark pictures if a api picture server is temporary out of service
+    FastImage.type returns nil if server is temporary unavailable
+    Must combine FastImage = nil with a http get page notfound check
+    http://stackoverflow.com/questions/2695020/how-can-i-use-ruby-to-check-if-a-domain-exists
+
+29) deal proposal and changed friend relations
+    cancel deal proposal when friends are removed
+    could be remove friends in users/index page
+    could be changed api friend relation in post login provider task
+
+30) jquery. url from xhr object is used to find html element that triggered the ajax event
+    for example to setup tables for ajax error messages within gifts/index page
+    it could be nice if jquery has information about the html element that started the ajax request
+    $(classname).bind('click', function ... - find id for html element with classname with triggered this bind handler
+    jquery signatures. found a "success: function (responseText, statusText, xhr, $form)"
+    signature for #new_gift ajax handler (ajaxForm). $form[0] was form object.
+    jquery .bind("ajax:success", function (evt, data, status, xhr) signature
+    dump properties for all 4 parameters. Maybe there is a back reference to element that triggered the event.
+    dump of a beforeSend xhr object:
+    tasks_form_xhr.status = undefined
+    tasks_form_xhr.statusText = undefined
+    tasks_form_xhr.readyState = undefined
+    tasks_form_xhr[type] = ajax:beforeSend
+    tasks_form_xhr[timeStamp] = 1395056109867
+    tasks_form_xhr[jQuery1110005057767523957335] = true
+    tasks_form_xhr[isTrigger] = 3
+    tasks_form_xhr[namespace] =
+    tasks_form_xhr[namespace_re] = null
+    tasks_form_xhr[result] = undefined
+    tasks_form_xhr[target] = [object HTMLFormElement]
+    tasks_form_xhr[delegateTarget] = [object HTMLDocument]
+    tasks_form_xhr[currentTarget] = [object HTMLFormElement]
+    tasks_form_xhr[handleObj] = [object Object]
+    tasks_form_xhr[data] = undefined
+    tasks_form_xhr[isDefaultPrevented] = function returnFalse() { return false; }
+    tasks_form_xhr[isPropagationStopped] = function returnFalse() { return false; }
+    tasks_form_xhr[isImmediatePropagationStopped] = function returnFalse() { return false; }
+    tasks_form_xhr[preventDefault] = function () { var e = this.originalEvent; this.isDefaultPrevented = returnTrue; if ( !e ) { return; } // If preventDefault exists, run it on the original event if ( e.preventDefault ) { e.preventDefault(); // Support: IE // Otherwise set the returnValue property of the original event to false } else { e.returnValue = false; } }
+    tasks_form_xhr[stopPropagation] = function () { var e = this.originalEvent; this.isPropagationStopped = returnTrue; if ( !e ) { return; } // If stopPropagation exists, run it on the original event if ( e.stopPropagation ) { e.stopPropagation(); } // Support: IE // Set the cancelBubble property of the original event to true e.cancelBubble = true; }
+    tasks_form_xhr[stopImmediatePropagation] = function () { this.isImmediatePropagationStopped = returnTrue; this.stopPropagation(); }
+    xhr.target and xhr.currentTarget looks interesting
+
+32) edit user options
+    - cross provider balance y/n checkbox
+    - share balance
+
+33) a number of "invalid" inbox notification keys. Could be missing keys. Could be wrong notifications
+
+    missing translate key. key .accepted_proposal_giver_follow_2_v1_to_url, noti.id 542,
+    options {:giftid=>"894", :gifttext=>"x", :no_users=>"2", :no_other_users=>"0", :username1=>"Gofreerev A", :username2=>"Jan R", :username3=>"", :givername=>"Gofreerev A", :receivername=>""},
+    error translation missing: en.inbox.index.accepted_proposal_giver_follow_2_v1_to_url
+
+    missing translate key. key .accepted_proposal_giver_follow_2_v1_to_msg, noti.id 542,
+    options {:giftid=>"894", :gifttext=>"x", :no_users=>"2", :no_other_users=>"0", :username1=>"Gofreerev A", :username2=>"Jan R", :username3=>"", :givername=>"Gofreerev A", :receivername=>""},
+    error translation missing: en.inbox.index.accepted_proposal_giver_follow_2_v1_to_msg
+
+    Notification 542 to 100006397022113/facebook Charlie S
+
+    1) gift 894
+       created Fri, 24 Jan 2014 10:35:02 UTC +00:00
+       created by givers 100006399422155/facebook Sandra Q, 109316109373670614208/google_oauth2 and 2179784783/twitter Jan R
+    2) new deal proposal comment id 754
+       created 2014-01-24 10:35:19
+       created by 100006397022113/facebook Charlie S
+    3) accept deal proposal comment id 754
+       accepted 2014-01-24 10:35:37
+       accepted by 100006399422155/facebook Sandra Q
+
+
+    giver = 100006399422155/facebook Sandra Q,               receiver = 100006397022113/facebook Charlie S
+    giver = 109316109373670614208/google_oauth2 Gofreerev A, receiver = gofreerev/google_oauth2 Gofreerev G
+    giver = 2179784783/twitter Jan R,                        receiver = gofreerev/twitter Gofreerev T
+    Deal between Sandra Q and Charlie S - dummy receivers for google+ and twitter
+
+    Notification 541 :
+
+    ============================================================================
+
+    missing translate key. key .accepted_proposal_giver_2_v1_to_url, noti.id 541,
+    options {:giftid=>"894", :gifttext=>"x", :no_users=>"2", :no_other_users=>"0", :username1=>"Gofreerev A", :username2=>"Jan R", :username3=>"", :givername=>"Sandra Q", :receivername=>""},
+    error translation missing: en.inbox.index.accepted_proposal_giver_2_v1_to_url
+
+    missing translate key. key .accepted_proposal_giver_2_v1_to_msg, noti.id 541,
+    options {:giftid=>"894", :gifttext=>"x", :no_users=>"2", :no_other_users=>"0", :username1=>"Gofreerev A", :username2=>"Jan R", :username3=>"", :givername=>"Sandra Q", :receivername=>""},
+    error translation missing: en.inbox.index.accepted_proposal_giver_2_v1_to_msg
+
+    missing translate key. key .new_comment_giver_follow_1_v1_from_url, noti.id 341,
+    options {:giftid=>"425", :gifttext=>"e", :no_users=>"1", :no_other_users=>"-1", :username1=>"Charlie S", :username2=>"", :username3=>"", :givername=>"", :receivername=>""},
+    error translation missing: en.inbox.index.new_comment_giver_follow_1_v1_from_url
+
+    missing translate key. key .new_comment_giver_follow_1_v1_from_msg, noti.id 341,
+    options {:giftid=>"425", :gifttext=>"e", :no_users=>"1", :no_other_users=>"-1", :username1=>"Charlie S", :username2=>"", :username3=>"", :givername=>"", :receivername=>""},
+    error translation missing: en.inbox.index.new_comment_giver_follow_1_v1_from_msg
+
+    missing translate key. key .new_comment_giver_follow_1_v1_from_url, noti.id 340,
+    options {:giftid=>"425", :gifttext=>"e", :no_users=>"1", :no_other_users=>"-1", :username1=>"Charlie S", :username2=>"", :username3=>"", :givername=>"", :receivername=>""},
+    error translation missing: en.inbox.index.new_comment_giver_follow_1_v1_from_url
+
+    missing translate key. key .new_comment_giver_follow_1_v1_from_msg, noti.id 340,
+    options {:giftid=>"425", :gifttext=>"e", :no_users=>"1", :no_other_users=>"-1", :username1=>"Charlie S", :username2=>"", :username3=>"", :givername=>"", :receivername=>""},
+    error translation missing: en.inbox.index.new_comment_giver_follow_1_v1_from_msg
+
+    missing translate key. key .new_comment_giver_follow_1_v1_from_url, noti.id 339,
+    options {:giftid=>"425", :gifttext=>"e", :no_users=>"1", :no_other_users=>"-1", :username1=>"Charlie S", :username2=>"", :username3=>"", :givername=>"", :receivername=>""},
+    error translation missing: en.inbox.index.new_comment_giver_follow_1_v1_from_url
+
+    missing translate key. key .new_comment_giver_follow_1_v1_from_msg, noti.id 339,
+    options {:giftid=>"425", :gifttext=>"e", :no_users=>"1", :no_other_users=>"-1", :username1=>"Charlie S", :username2=>"", :username3=>"", :givername=>"", :receivername=>""},
+    error translation missing: en.inbox.index.new_comment_giver_follow_1_v1_from_msg
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_url, noti.id 297,
+    options {:giftid=>"265", :gifttext=>"accept test 12", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_url
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_msg, noti.id 297,
+    options {:giftid=>"265", :gifttext=>"accept test 12", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_msg
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_url, noti.id 293,
+    options {:giftid=>"263", :gifttext=>"accept test 10", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_url
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_msg, noti.id 293,
+    options {:giftid=>"263", :gifttext=>"accept test 10", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_msg
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_url, noti.id 277,
+    options {:giftid=>"255", :gifttext=>"test accept 2", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_url
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_msg, noti.id 277,
+    options {:giftid=>"255", :gifttext=>"test accept 2", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_msg
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_url, noti.id 275,
+    options {:giftid=>"254", :gifttext=>"test accept", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_url
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_msg, noti.id 275,
+    options {:giftid=>"254", :gifttext=>"test accept", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_msg
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_url, noti.id 273,
+    options {:giftid=>"253", :gifttext=>"Cykel", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_url
+
+    missing translate key. key .accepted_proposal_giver_1_v1_from_msg, noti.id 273,
+    options {:giftid=>"253", :gifttext=>"Cykel", :no_users=>"0", :no_other_users=>"-2", :username1=>"", :username2=>"", :username3=>"", :givername=>"Charlie S", :receivername=>"Karen S"},
+    error translation missing: en.inbox.index.accepted_proposal_giver_1_v1_from_msg
+
+38) add language LOV to page header if width > xxx
+
+39) gift giver pic mouse over text should have information about multiple provider givers
+    gift receiver pic mouse over text should have information about multiple provider receivers
+
+40) google+ and twitter.
+    how to prevent friend invitations from people you do not know?
+    F - you are following someone on google+ and twitter, and do not want to receive friend invitations from them
+    S - you are stalked by someone on google+ and twitter and do not want to receive friend invitations from them
+    block all and allow selected users
+    allow all and block selected users
+
+43) User.api_gifts
+    maybe problem with very big select if really many friends for logged in users
+    on other option could be 2 sub queries combined with filter for deselected friends
+    select * from api_gifts
+    where user_id_giver in (select ...) and user_id_giver not in (1,2,3, ..)
+    or    user_id_receiver in (select ...) and user_id_receiver not in (1,2,3, ..)
+
+45) check out JS API's for login providers. most interesting are readonly API's (google+ and instagram)
+    some not supported server site operations could be implemented with client side JS
+
+46) users/index - friends of friends - why in list - show name(s) of friend
+    maybe the same issue as in previous dropped mutual friends
+
+47) find a better location for ajax tasks spinner in top of page
+    show/hide spinner makes the page bouncing
+    add mouse over title to ajax tasks title with explanation.
+    maybe after ".create_gift_header_line"
+    Maybe under ".description_prompt"
+
+48) add mini spinners for some time consuming tasks.
+    for example deleting a closed deal (recalculate balance)
+
+49) users/index: search, friend name filter or alphabetical tabs
+    it is slowly to scroll down (3 seconds delay for each 10 rows lookup)
+
+50) running ajax tasks and http links - for example link to other page
+    error. more information in server log" and ajax spinner is hidden
+    should hide ajax error message and maybe not hide ajax spinner
+    an other solution could be showing spinner after click on link
+
+51) opera 12.16 bug when gofreerev starts from facebook https://apps.facebook.com/gofreerev-dev/
+    Warning
+    https://dev1.gofreerev.com/
+    A page on the public internet requests data from your private intranet.
+    For security reasons, automatic access is blocked, but you may choose to continue.
+    Continue
+    Always continue when data is requested from this server on my private intranet
+    Generated by Opera.
+    Only problem in first https://apps.facebook.com/gofreerev-dev/ request => get /
+    Second https://apps.facebook.com/gofreerev-dev/ request => post /
+    Opera console does not reveal any rejected localhost requests. But should not start with a "get /" in log
+
+53) localhost / login servers Sandra/fb and Gofreerev A/gp
+    2+2 notifications. 2 accepted and 2 accepted follow notification.
+    for example 13. feb. 2014 11.58
+    should only send notification to Sandra+Gofreerev as creator of proposal.
+    should not send notification to Sandra+Gofreerev as follower of proposal.
+    the same pattern for "outbox" for Jan R/google+ as sender of message.
+    also 13. feb. 2014 11.58
+
+55) how to check for an "official" gofreerev version
+    easy to copy gofreerev and misuse the concept (harvest user information from API's)
+    maybe a list of officiel gofreerev sites
+
+56) users/index apiname=<provider> filter. Use login user = selected provider.
+    in that way all user dev pictures are from the same login provider.
+
+58) find all methods with case provider ... implementations. Should be listed in todo for adding a new login provider.
+    maybe add a special search word that can be used to find all relevant points in source code when adding a new login provider
+    add "API SETUP" comment for all case provider statements
+
+59) users/index friends filter: add follows and followed by filters?
+
+60) auth/index page
+    - add * note for login providers that does not support post on wall
+    - add missing provider? note. add a github page with request for missing login providers
+
+ 62) linkedin gem. frozen to an old version due to error. Unfreeze when error is solved
+     https://github.com/hexgnu/linkedin/issues/216
+
+ 64) refactor linkedin & flickr controller translate keys into shared? Almost identical translations
+
+ 66) check out open graph meta-tags in flickr.
+     maybe some that could by used
+     <meta property="fb:app_id" content="137206539707334" />    x
+     <meta property="og:title" content="u6bbc6h8oy" />
+     <meta property="og:type" content="flickr_photos:photo" />
+     <meta property="og:url" content="http://www.flickr.com/photos/gofreerev/12593199523/" />
+     <meta property="og:site_name" content="Flickr" />
+     <meta property="twitter:card" content="photo" />
+     <meta property="twitter:site" content="@flickr" />
+     <meta property="og:description" content="localhost/da/gifts/VyGiwGM7NXQ1JzBA2XAj1VV5zeGEtb" />
+     <meta property="og:image" content="https://farm4.staticflickr.com/3716/12593199523_7600c19134_z.jpg" />
+     <meta property="og:image:width" content="514" />
+     <meta property="og:image:height" content="640" />
+     <meta property="flickr_photos:by" content="http://www.flickr.com/people/gofreerev/" />
+     <meta property="twitter:description" content="localhost/da/gifts/VyGiwGM7NXQ1JzBA2XAj1VV5zeGEtb" />
+
+ 68) two or three column friend list in users/index page.
+     responsive design or use javascript to organize table layout
+     could use float divs in a multi column users/index page
+     that is fixed width, height and fixed table column size
+     number of users in http/ajax requests should match number of columns.
+     2 columns: get 2 friends in first request - get 20 friends in next request
+     3 columns: get 3 friends in first request - get 30 friends in next request
+     problems with show-more-rows functionality?
+
+ 69) post on twitter: Exception: execution expired (Twitter::Error) after 6 seconds
+     added exception to post on twitter for debug
+     maybe a generic way to handle execution expired when posting on api walls
+     repeat up to 3 times before giving up
+     return warning to user and try once more time
+     delete_local_picture task and expired post on wall exception!
+
+ 70) localhost - looking af gift id 909 logged in as Jan R/FB
+     from user div ok = me
+     to user div = dummy FB user gofreerev/facebook
+     that is no information about google+ receiver 109316109373670614208/google_oauth2 Gofreerev A
+     irb(main):009:0> [ g.api_gifts[0].giver.debug_info, g.api_gifts[0].receiver.debug_info ]
+     => ["1705481075/facebook Jan R", "gofreerev/facebook Gofreerev F"]
+     irb(main):010:0> [ g.api_gifts[1].giver.debug_info, g.api_gifts[1].receiver.debug_info ]
+     => ["117657151428689087350/google_oauth2 Jan R", "109316109373670614208/google_oauth2 Gofreerev A"]
+     also a comments from 100006399422155/facebook Sandra Q
+     can not se that comments also was from 109316109373670614208/google_oauth2 Gofreerev A
+     Not necessarily a problem as users normally will use there real names, but can be a problem in test
+
+ 72) view: add timestamps to comments?
+
+ 74) add a JS text length counter when entering text. Twitter users would like to known how long the text is.
+     special problem for twitter where 23 characters is subtracted from 140 for links and for images.
+     one "<n> remaining characters" counter for each provider with post on wall selected and authorized?
+
+ 75) api_profile_picture_url with small (50x50) and big (100x100) pictures.
+     100x100 (5246 bytes) is only used in users/index and users/show
+     50x50   (1744/2877 bytes) is used everywhere else
+     can make a difference on a slow connection / slow device
+
+ 77) distribute option:
+     find friends / see gifts on other gofreerev servers
+     user-a id api friend with user-b, user-a is on server-a and user-b on server-b.
+     user-a should be allowed to see user-b's gifts on server b
+     user-b should be allowed to see user-a's gifts on server a
+
+ 78) ruby profiler. It could be nice with a good ruby profiler statistic.
+     http://hiltmon.com/blog/2012/02/27/quick-and-dirty-rails-performance-profiling/
+     https://github.com/ruby-prof/ruby-prof
+     http://david.paluy.org/blog/2013/04/09/profiling-rails-applications/
+
+ 79) collect and organize screen dumps
+
+ 84) css wrapword. word-break: break-all;.
+     works fine on small width screens but do not look nice on wide screens.
+     there is implemented a workaround for opera 12 (that does not support break-all).
+     it could be nice to avoid break-all on wide screens but there would still be a problems with long texts without spaces
+     a possibility could be hyphenator to insert soft hyphen into text: https://code.google.com/p/hyphenator/
+
+ 85) problem with ie10 new gift with very large text.
+     submit bottom is moved under text area on wide pc screen
+
+ 86) auto-remove max height if text if only a bit higher than max height
+
+ 91) opera 12: A page on the public internet requests data from your private intranet.
+     For security reasons, automatic access is blocked, but you may choose to continue.
+     problem is not in opera 19 on windows.
+     opera:config#Network|AllowCrossNetworkNavigation
+
+ 92) gifts link and comments links
+     use jquery "on" and delegated events: https://api.jquery.com/on/
+     "bind" works only for existing elements in page
+     are using unbind+bind after adding new rows
+     could not get it to work for comment-action-link ajax
+
+ 93) JS error handling. It would be nice with line number for JS errors.
+     special a problem in old browsers (IE8)
+     check http://stackoverflow.com/questions/1340872/how-to-get-javascript-caller-function-line-number-how-to-get-javascript-caller
+     check https://github.com/stacktracejs/stacktrace.js
+
+ 94) make test check list. every test should be done in every supported browser.
+
+ 95) ie8 target=blank opens in a new window and no shared cookie.
+     could be a special spoon.net test problem - could be a reel problem with IE
+     ( test: use windows xp on virtualbox http://10.0.2.2 )
+
+
+ 96) check if there is any virtual machines available for test
+     cannot test latest safari browsers from soon.net
+
+ 98) nice to have: decrease number of older comments in show older comments link if older comments has been deleted
+     hard to implement without ajax replacing gift in gifts/index page
+
+ 99) there is a little problem with ajax replace new gift after new gift has been created
+     problem is that user could be entering a new comment and that this new unsaved comment will be removed
+     testcase: create new gift and start adding a comment for new gift - will be deleted in next new_messages_count request
+
+100) fix scroll page scroll after new comment
+     see scroll store and restore in JS post_ajax_add_new_comment_handler
+     new comment should always be within actual view
+
+101) entering new comment + click on menu link - no leave page yes/no dialog box
+     entering new gift + click on menu link - no leave page yes/no dialog box
+     maybe a generic solution - check solution for currency LOV
+
+102) ie8 problem - new comment with very large text
+     first click - resized to a smaller text area with scroll bars
+     second click - submitted ok
+     not a problem for new gift with very large text - what is the difference?
+     ( test: use windows xp on virtualbox http://10.0.2.2 )
+
+103) gofreerev.js - clear_ajax_errors(table_id) and clear_flash_and_ajax_errors
+     clear all ajax error messages in web page
+     add hidden timestamps to errors tables - ok
+     add class for error tables - ajax_errors added
+     add cleanup for old error messages
+     timestamp column is not copied from tasks_errors2 to tasks_errors table (retest - maybe it was a client side JS message)
+     timestamp column ok in show-more-rows-error table
+
+104) fix sort when creating new comments in gifts/index page
+     looks like character sort - must be number sort (gift id and comment id)
+     fixed when creating new comments
+     test ajax inject gifts and comments from other users into gifts/index page
+
+105) reject_new_deal: reject link was removed - accept link was not removed
+
+106) reject_new_deal: line with comment error message (proposal was rejected)
+     is not removed when comment is ajax replaced with new comment from util.new_messages_count
+
+108) controllers. add http/ajax comment to all relevant methods
+
+109) controllers. check format_response in end of all ajax methods
+
+110) ie8 - all tables must have a tbody and tbody must be used in ajax inject
+     ( test: use windows xp on virtualbox http://10.0.2.2 )
+
+112) check startup page size
+     http://www.version2.dk/artikel/mobilsiderne-bliver-stoerre-og-langsommere-56847
+     tools for faking a slow internet connection?
+     http://www.ginktage.com/2013/11/tools-for-the-developers-to-simulate-slow-internet-connection/
+     gifts/index - 20 kb
+     users/index - 27 kb
+     - long almost identical mail invite friends mailto texts.
+     - http://stackoverflow.com/questions/9014470/creating-email-link-with-dynamically-generated-body-with-html5-javascript
+
+114) cross server friends invite / friends search?
+     in a distributed server network different friends will use different servers and gofreerev apps
+
+115) add hide link for text/url?
+     "Gift was posted in here and on your facebook wall but picture cannot be displayed.
+      Allow Gofreerev to read posts on my facebook wall!"
+      one solution could be to set post on wall = N
+      but it is only a problem for post with pictures
+
+116) ie8 and ie9 - cross site forgery when starting gofreerev from apps.facebook.com/gofreerev-dev
+     ( test: use windows xp on virtualbox http://10.0.2.2 - but 10.0.2.2 is not allowed in facebook app setup )
+
+117) opera 12 errors:
+     page header:
+     Javascript fejl ved tjek for nye beskeder. NotFoundError: Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node. (4,3).
+     Javascript fejl ved indsættelse af nye kommentarer. NotFoundError: Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node. (5,54).
+     Fejl ved tjek for nye beskeder. error. Mere information i server log.
+     added some more JS outputs to client side debug log
+
+118) users/show balance tab.
+     should show post for relevant user combination.
+     but only if logged in for provider and friend with user
+     should display ... rows for hidden posts. Not logged in as provider / not friend with user for this provider.
+     should display "total row" if last post is hidden (not logged in as provider / not friend with user for this provider)
+
+119) problem with show-more-rows pages and back bottom on browsers.
+     last_row_id has been cleared. Error key shared.show_more_rows.last_row_id_invalid
+     could force page reload when using back bottom in browser.
+
+120) linkedin app invitation:
+     https://developer.linkedin.com/documents/invitation-api
+     but requires w_messages priv.
+
+121) allow friends find without user_combination
+     that will only work online and if other users have shared their accounts
+
+122) check if there is some problems with friends cache for instagram:
+     friend?: no friends cache was found for login user 1092213433/instagram gofreerev g
+
+123) allow friends find without combined accounts and buffer search result for other user
+     User A executes a friends find search with friends proposal B, C and D
+     Buffer A as friends proposal for B, C and D (only if B, C and D is active app users)
+     Include A in next friends find search for B, C and D
+     Could use some extra column(s) in friends table as buffer
+     There should also be a "not interested" or "read" link in friends find post
+     Could use
+
+124) first util.new_messages_count 1 minute after login (for friends find search)
+
+125) better "friends find no rows" message.
+     check last login date for shared accounts.
+     user should login to refresh friends lists for other login providers
+
+127) facebook grant write:
+     "Your popup is too small to display this page. Please enlarge it to proceed.
+     was displaying firebox console in bottom 1/3 of page
+     must be a problem on all mobile devices!
+     maybe it is only a problem in rest api - maybe JS api can be used
+     maybe fake a bigger screen before calling facebook dialog
+     check if there is a identical error messages on a smartphone
+
+128) different share accounts title for:
+     a) not logged in users
+     b) single account logged in users
+     c) multiple accounts logged in users
+
+129) maybe a friends find version of app
+     a) save access tokens for friend list refresh - maybe
+     b) notifications for facebook and emails for the other api's
+
+131) add share accounts options:
+     0) not shared = blank
+     1) share balance
+     2) 1) + share friend lists
+     3) 1) + 2) + save access token for offline friend list refresh
+     4) 1) + 2) + 3) + single sign-on
+     5) mixed sharing with 0), 1), 2), 3) and 4) user accounts
+     change share accounts checkbox to a share accounts LOV
+
+132) post_login_new_user: "Your friend list is ready. Please refresh page to see any posts from your friends."
+     ok for single login users and gifts/index page.
+     not ok for multi login users and auth/index page.
+
+133) logged in with 7 shared accounts and 1 not shared account.
+     should add not shared accounts to shared_accounts_list
+
+134) auth/index: show/hide share accounts spinner while changing share accounts status
+
+137) auth/index: share_level_lov and offline_access_checkbox are disabled after page refresh
+     testcase firefox 30.0 : 1) change LOV or checkbox, 2) refresh page, 3) LOV is disabled
+     tried a JS fix - save LOV disabled/readonly state at startup - restore LOV disabled/readonly state at reload - did not work
+
+138) cannot change share_level from 3 to 4 if access token was read from database
+     that is - only load access token from database if share level is 4
+
+139) share level 3 and 4 login
+     warning if one or more access tokens are about to expire
+     for example within one week
+
+141) add special single sign-on login message
+     a) first single sign-on login with no expired access token
+     b) first single sign-on login with one or more expired access tokens
+     c) secondary single sign-on login - renew expired access token - no other expired access tokens
+     d) secondary single sign-on login - renew expired access tokens - one or more expired access tokens
+     e) likewise for share level 3 logins
+
+142) could not get google+ login with online access to work (share level 0-2). offline access is always being used
+
+145) ajax: missing "please wait" message when checking post on wall checkbox and active ajax task
+     http: "please wait" (ajax_leave_page) is triggered by ajax event onbeforeunload and can not be used for checkboxes
+     maybe not a big problem but current message for running task is cleared in page header when clicking on checkbox
+     It could be nice if there is a to count number of running/pending ajax requests
+     See window.onbeforeunload (gofreerev.js) and JS error message js.general.ajax_leave_page
+
+148) auth/index. drop checkbox for offline_access_yn.
+     many users will forget to check checkbox
+     but is should be very clear that auth. information is saved on server for share level 3 and 4
+
+156) user/edit delete account.
+     ajax spinner ok at first delete account request (logical delete account)
+     ajax spinner is mising at second delete account request (physical delete account)
+
+157) check http://developer.sharethis.com/Web_Share_API
+     "Sharing is Caring. Get access to web services that provide comprehensive sharing capabilities to 120 social destinations"
+
+158) add better html title for gifts. Special important for shared gifts with deep link where html title maybe is used on API's
+
+159) add app.net as login provider.
+     http://en.wikipedia.org/wiki/App.net
+     https://github.com/phuu/omniauth-appnet
+     https://developers.app.net/reference/resources/app-stream/lifecycle/
+
+160) share gift lov
+     add scrollbar to LOV (http://www.codeproject.com/Questions/229885/how-to-make-scroll-bars-in-dropdown-list)
+
+163) Mixed Content warning in firefox 30.0 om dev1 server
+     problem is img http requests to image farms at api providers
+     https://developer.mozilla.org/en-US/docs/Security/MixedContent
+     could replace http with https if image farm supports https and has a valid ssl certificate
+
+164) gifts/index create post.
+     display field with providers where post on wall is selected and authorized so that user can see where gift is posted
+
+167) util.get_api_picture_url_vkontakte
+     better VK exception handling (now almost none)
+     a) deleted picture
+     b) authorization error
+     c) other errors
+
+168) util.get_api_picture_url_twitter
+     better twitter exception handling
+     a) deleted picture
+     b) authorization error
+     c) other errors
+
+169) how to handle mouse over texts on touch screens
+     http://www.paciellogroup.com/blog/2013/01/using-the-html-title-attribute-updated/
+     http://stackoverflow.com/questions/12539006/tooltips-for-mobile-browsers
+     http://jsfiddle.net/xaAN3/
+
+170) check responsive design frameworks
+     Se mails fra Jacob 2/10-2014
+     1) Emne: Responsive design frameworks
+     http://www.sitepoint.com/best-web-designing-frameworks-2014/
+     http://gridgum.com/6-great-responsive-frameworks-for-2014/
+     http://www.smashingmagazine.com/2014/02/19/responsive-design-frameworks-just-because-you-can-should-you/
+     http://gumbyframework.com
+     http://foundation.zurb.com
+     http://responsive.vermilion.com/compare.php
+     http://getbootstrap.com
+     2) Emne: Flere widgets til Bootstrap
+     http://exacttarget.github.io/fuelux/index.html
+     3) Emne: VS: RATCHET
+     Bootstraps eget mobil web site optimerede framework. Hvordan det passer med at Bootstrap kalder sig et mobil first responsive design framework ved jeg ikke.
+
+174) google refresh token and offline access
+     check if there is an issue with disconnected google+ accounts and renewal of access token
+     for logged in users google+ access token is renewed once every hour without problems
+     maybe there is a timeout issue for disconnected google+ users
+     add batch process to auth renewal of access token for disconnected google+ users with share level 3 and 4?
+     see application_controller.fetch_users
+
+175) auth/index share account lov performance problem
+     many user updates
+
+180) no exception mailer mail from ajax errors
+     for example exception in post login
+
+183) facebook is from oauth 2.0 a login only provider without friend list
+     add other "no friend list" login providers
+     can be used in single sign-on with providers with friend lists
+
+184) client login - create public/private key pair when new user account is created
+     encrypt private key with password
+     save under 1_pub_key and 1_prv_key
+     send public key to server before starting communication with other users
+
+185) each user account must have a unique user id (global sequence)
+     generated by server, added to rails session cookie and added to local storage 1_user_id
+
+186) a created post belongs to a uid+provider user account - should be app independent
+     allow post sync. between client user1 in app1 with client user2 in app2
+     sync posts if user1 and user2 are friends in app1 and user1 and user2 also are friends in app2
+
+187) opera 12.12 login with linkedin account fails with: Login from linkedin failed. Possible "Cross-site Request Forgery" problem.
+     Started GET "/auth/linkedin/callback?oauth_token=77--4754aa8e-83d9-4513-8225-ada63fb09f9e&oauth_verifier=22848" for 192.168.0.13 at 2014-12-28 08:06:26 +0100
+     I, [2014-12-28T08:06:26.511912 #9481]  INFO -- omniauth: (linkedin) Callback phase initiated.
+     Processing by AuthController#create as HTML
+       Parameters: {"oauth_token"=>"77--4754aa8e-83d9-4513-8225-ada63fb09f9e", "oauth_verifier"=>"22848", "provider"=>"linkedin"}
+     create: invalid state after omniauth login. omniauth_status = 3d5297e4d5b757e0b7e66d73da59e4a9f83d34ab53bd8b23, params[:state] =
+
+189) security problem with gift.description (inject html code into page).
+     use angular $sanitize when creating gift
+     and use $sanitize when fetching gift from other devices
+
+190) move create new gift into "gifts" table as first tbody section after thead and before gifts ng-repeat loop
+     offers/seeks radio group - move user div between first and second column
+     goal: "identical" layout for create new gift and old gifts in gifts table
+
+191) local authorization:
+     - local storage login => userid => access to local storage arrays for login userid:
+       1) authorization information for one or more login providers (maybe expired)
+       2) array with users
+       3) array with gifts
+     - allow user 1 to be connected in tab 1 and user2 to be connected in tab2
+     - rails. split session storage in userid/uid.
+     - client must send userid in all client to server requests. 0 if not logged in.
+     - server must include userid/uid in all page redirects
+     - client should verify that correct userid/uid is received from server
+     - device logout - send ajax request to server to remove authorization from session table (delete from sessions)
+     - device login - send not expired access tokens to server for check and friends download
+     - api logout - send ajax request to server to remove authorization for provider from session table
+     - after local login 1 (ajax request)
+       - check for expired api authorization
+       - copy not expired api authorization to session cookie
+       - get fresh user arrays (me and my friends)
+     - after local login 2 (ajax request) - check for online friends on other devices - en friend can be online on more than one device
+       - online friends on this gofreerev-lo app server (client to server communication)
+       - online friends on other gofreerev-lo app servers (server to server communication)
+       - server should select ping interval - client should ajust ping interval after server setting
+     - after local login 3 (ajax requests) - compare gift lists with other login friends
+       - get gifts from other online friends
+       - send gifts to other online friends
+     server must known online devices
+     server must known authorization for each online device
+     server must known friend lists (who is friend with who)
+     server must receive list with giftids from each device?
+
+192) picture upload allowed if logged in with one or more login provider
+     pictures stored on gofreerev-lo server with long random path
+     should delete all pictures uploaded by user when user account is closed
+     should delete mark all gifts created by user when user account is closed
+     should keep track of picture usages (var/log/apache/access.log) and removed old not used pictures
+     max number of pictures uploaded for user/device?
+
+193) trafic light should be red when returning from api provider
+     shift to yellow while fetching friends information
+     and shift to green after friends info has been downloaded
+
+196) check kattekryptering - could be a way to share encrypted pictures
+     http://www.version2.dk/artikel/cyberaktivists-chat-app-skal-holde-facebook-billeder-private-med-katte-kryptering-76685
+
+198) client <=> client communication - design
+     a messages can be send from one client on one server/app to an other client on an other server/app
+     a client should remember that a request has been sent to an other client
+     or server should only store last client to client message
+     communicate only with online users or allow batch communication with offline users?
+     push or pull changes to or from other clients?
+     the server knows who is the friend with whom
+     server should keep a gift list for each uid
+
+200) testcase
+     user 1 on uid 1 creates a gift a
+     msg1 : user 1 sends local gift id + relevant userids to server 1 and receives a gift id from server 1
+     user 2 on uid 2 receives message from server about gift a created by user 1 who is a friend
+     user 2 sends an request to user 1 asking for gift a
+     user 1 receives request from user 1 and sends an encrypted response to user 2
+     user 2 receives encrypted response from user 1, decrypts and inserts gift in list on uid 2
+     user 3 on uid 3 receives message from server about gift a created by user 1 who is a friend, location uid 1 or uid 2
+     user 3 can request gift from user 1 / uid 1 or user 2 / uid 2
+
+201) client <=> client communication - design 2
+     client a creates gift with a local gift id and gets a server gift id from server
+     server knowns friend lists and knowns witch uid/users that can can see witch gifts
+     server keeps track of gift changes (create, new comment(s), accept, reject, delete)
+     server returns after login a list with gift ids and last change timestamp to client a
+     client a checks list and ask server for updates
+     server waits for a online client b with gift and ask client b to sent gift to client a
+     or server waits for a other online client c with gift and ask client c to send gift to client a
+     client b (or client c) receives request and sent encrypted message to client a
+     client a reads encrypted message and create/updates gift
+
+208) x-server communication (x=cross)
+     enable/disable x-server communication on user/did level (did = one or more users)
+     disabled as default as most users only will use one gofreerev-lo app/server
+     ask user to enable if user is using more than one gofreerev-lo app/server (user knowns if it is correct or not)
+     x-server communication enabled - login on one server is also login on the other server(s)
+     enable/disable x-server communication on gofreerev-lo server level - enable for one gofreerev-lo server / disable for other gofreerev-lo servers
+
+210) design 3 - ping
+     return list of online/active devices
+     return devices with one or more shared login users or friend of login users
+     if requested include a list of mutual friends for each device
+     that gives user ids for gifts relevant for sync between devices
+     device to device sync:
+     - device a sends a list with a sha256 hash value for each gift to device b (login users and mutual friends)
+     - device b receives gifts list from device a and returns a corresponding gifts list
+     - device a and device b now have identified gifts relevant for sync between the two devices (create or update)
+     - list could be sorted with newest update first in list and oldest update in last of list (start with newest)
+     - sync must merge changes. liked by users a, b, c. unliked by users x, y, z
+     - shared login user: gift liked by user x on device a + gift unliked by user x on device b (compare )
+     - sync between devices can be done without gift meta-information on server
+
+211) security issue - users can change data in localStorage
+     how to prevent users from changing data in localStorage? (change hosts file and run js script updates from a fake host)
+     could send a sha256 hash value to server in setItem and check sha256 hash value in getItem but this does not work for offline devices
+     could cache sha256 hash values in js variable on offline devices but this does not work if user closes browser tab
+     could do some security checks when sync gifts between devices
+     giver_user_ids must be login user, friend or friend of friends
+     receiver_user_ids must be login user, friend or friend of friends
+     comment_user_ids must be login user, friend or friend of friends
+     some attributes are readonly and can not be changed (userids, description, comment, created_at_client etc)
+     user_id must be a valid gofreerev user - can not be user id for users that have never used gofreerev
+     add a "make a fake" link to gifts and comments - users can make a gift or a comment post as fake if they don't trust post
+     "marked as fake" can not be removed but owner can delete gift or comment
+     could keep sha256 signatures for gifts and comments on server
+     server create new gift/new comment - check authorization and save signature (gid => signature and cid => signature)
+     client ask server if signature for a new gift or comment is valid
+     sha256 signature with user ids and created_at_client timestamps - and maybe a short hash value for text (description/comment)?
+     gid - one sha256 signature when created (created_at_client, direction, userids)
+     gid - new sha256 signature when gift has been accepted by an other user (created_at_client and userids from giver and receiver)
+     that can cause problems if gift is being replicated between two users with old sha256 key (before accept)
+     and is there a security problem in changing sha256 signature?
+     could add sha256 signature for accepted proposal (comment) to gift
+     user lists: a) gift created by userids, b) proposal (comment) by userids, c) accepted by userids
+     handle log out / page closed for offline devices and create comment / gifts
+     - cannot verity new gift / new comment without correct login (userids)
+     - should reject new gift / new comment with invalid login (login changed between create action and send to server action)
+
+212) client ping loop
+     increase ping loop if server does not response
+     device could be offline and no need to use cpu for pings if device is offline (error response after 0 miliseconds)
+     or server could be overloaded and no need to send request to an already overloaded server (error response after x seconds)
+
+215) rejected gifts a:
+     - change new gift error message "Invalid authorization. Expected 2 users. Found 4 users."
+     - added better error messages in console log with provider name(s) for invalid og missing logins
+     rejected gifts b:
+     - remove rejected gifts from js array
+     rejected gifts c:
+     - an option could be a new gifts ng-repeat loop in top of gifts page with rejected gifts
+     - allow user to resubmit rejected gifts with current authorization
+     rejected gifts d:
+      - give the user the option to choose between b or c
+
+216) nice error messages if no internet connection (log in, log out, ping etc)
+
+217) nice error messages if rails is not running (log in, log out, ping etc)
+
+218) nice error messages after server timeout (log in, log out, ping etc)
+
+222) remove oauth fields from users table
+
+224) check how angularJS and tv4.js creates a JS stack dump. add better js exceptions with stack dump.
+     https://github.com/stacktracejs/stacktrace.js
+
+225) share gift - allow share gift - create new gift as copy and insert login user ids for current login
+
+226) default protection for new gifts is private - show only gift to friends
+     allow use to select public when creating a new gift.
+     show public gifts that friends has liked or commented in stream
+
+228) show selected console log error messages in inbox
+     1) could not create gift signature on server
+     2) device offline or no internet connection
+
+229) "faster" cross server client to client communication
+     use server to server communication to exchange dids and public keys
+     push request to url on current server and check response from client in http gets on url on other server
+     in that way users can communicate without server to server communication
+     faster communication and lower server load
+
+230) how to deauthorized an hacked api account or a unique device (did)
+     access tokens are valid for 3 months and are stored in localStorage
+     it would be a security problem forcing clients to sent access token to server for verification
+     allow friends can ask for a verification for a potentially hacked account (new expires_at timestamp)
+     allow friends to mark user, did or gift as spam. many spam mark => hacked account => dont replicate
+
+231) activity log?
+     - log in, log out, create gift, comment gift, new proposal, reject/accept proposal, replicate gift to/from xxx,
+     - filters: add/remove events from log
+     - inbox = log or seperate inbox and log?
+     - filter notifications - what events to receive notifications for
+
+234) routes.rb - new default root url (/main/auth)
+
+235) design 4 - online devices
+     ping returns a list with online devices
+     check mutual friend in online devices response. should also be friends in users array
+     new online device. initialise a full gifts sync for all mutual friends
+     compare list with sha256 for each gift, send or request gift with sha256 difference, merge differences
+     added mutual friend for existing online device. initialise a full gift sync for mutual friend userid
+
+236) message buffer for device
+     add an up-to-date of did for each userid
+     change in a gift => buffer a message for did
+     only send message in buffer if online and only for mutual friends
+     keep buffering messages when a device is offline or a mutual friend is removed from did
+     send messages next time device is online with did and mutual friends
+
+237) big gift sync. used for new device or added mutual friend to an existing device
+     send/request a full gift list for mutual friend
+     localStorage limit:
+     - only sync gifts with created_at/updated_at timestamp >= x
+     - gifts with created_at/updated_at timestamp < x can be stored offline in encrypted data blocks on server
+     - remove changed gifts from old data blocks and add to localStorage
+
+238) localStorage space management
+     add a oldest_gift_at timestamp to localStorage
+     start with 1 year ago
+     change timestamp if out of space and move older gifts to encrypted data storage on server
+     sync only gifts with created_at / updated_at timestamp >= oldest_gift_at
+     send oldest_gift_at timestamp in ping and return timestamp in list with online devices
+     so that other devices know time interval to send sha256 hash for
+
+239) add json schemas for client side gift and user objects
+     maybe a js version and a stored version - a few fields are not saved in local storage
+
+240) localStorage backup for development/test purpose
+     could be nice to take a backup before running/testing client side data migration scripts
+     http://stackoverflow.com/questions/17609198/how-to-backup-html-5-local-storage-data (see last post - code not complete)
+     or send a complete json to server
+
+241) menu: don't disable link in menu after click - page is no longer reloaded (share and login pages)
+
+242) replicate gift signature to other server when replicating gift to client on other server
+     gift signature on two servers should be 100% identical
+
+243) server side sha256 gift signature and giver/receiver user ids
+     now: using direction + user id list for a new gift. direction = giver or receiver
+     that is a problem when gift is received/closed, direction is changed to both and user ids for other user is added to gift
+     keep direction when deal is closed - will ensure unchanged sha256 server signature
+     add cid to server side gift when gift is closed ( validate gift signature, validate comment signature, validate loin users, add cid )
+
+244) replicate gift likes. replicate likes for all users or only for logged in users.
+     1) replicate device a => b => c. device c can receive likes from device a and cannot verify likes from device a
+     2) replicate only device a => b  and device a => c - that is between online friends
+     1) gives fastest likes replication. 2) gives must secure likes replication
+
+245) replicate gift follow between devices with identical logged in users
+     follow could be a device only field
+     follow could be a logged in user field
+     follow on one device - unfollow on an other device - merge and compare timestamps - last timestamp wins
+     multi-user login - follow with some login user ids - unfollow with other login user ids - follows wins
+
+247) add server side sha256 signature for comments
+     comment fields:
+     - gid               -
+     - user_ids          - comment created by user ids - must be logged in users - must be subset of gift providers
+     - price             - new proposal price.
+     - currency          - new proposal currency.
+     - comment           - comment text
+     - created_at_client - created at client unix timestamp
+     - created_at_server - created at server unix timestamp
+     - new_deal          - boolean: null or true. null: comment. true: new deal proposal
+     - deleted_at        - deleted at client timestamp
+     - accepted          - accepted boolean - true if accepted by creator of gift - false if rejected by creator of gift
+     - updated_by        - user id list for users that have accepted or rejected proposal - must be a subset of creators of gift
+
+250) routeprovider - don't redirect to gifts page for not logged in users
+
+253) better client side data protection
+     javascript: alert(Gofreerev.getItem('password')) and javascript: alert(JSON.stringify(sessionStorage))
+     could check calling function (name or sha256 signature) and return null for invalid calls
+     find a cross browser solution to find calling function
+     js variables are always available for debugger
+     encrypt password - moves the security problem to en other encryption key
+
+254) buffer communication for offline devices on server
+     send messages when device gets online
+     but only if sha256 signature in pings is unchanged (unchanged login users)
+
+255) add some kind of client message number to outbox.
+     used be sender, server and receiver to reject doublet messages
+     add sessionid to messages so that session reload (f5) can be detected
+     old messages with old sessionid + new messages with new sessionid (delete old messages from server)
+
+256) add other mailbox folders?
+     outbox => sending => send
+     inbox => processing => done
+
+257) send buffered message on leave page (new api login)
+     or buffer in localStorage - for example before login provider login (temporary leaving page doing omniauth login)
+
+258) add updated_at_client timestamp to gift
+     used when filtering out old gifts in gift sync between clients
+     set when gift or comment are updated by client
+     or set from other client in gift sync if gift has been updated by an other client
+
+259) check js elapsed time for ping
+     abort time consuming response processing before next ping starts
+     for example merging a large number of gifts received from an other device
+     also check elapsed time for pre ping request processing (should be fast)!
+     place incoming messages in inbox folder until message is processed
+     for example a large array with gifts where gift must be server side sha256 validated before gift is rejected or inserted into gifts array
+     or alternatively abort next ping if response processing takes to long time
+     maybe not a problem. javascript is single threaded in almost any usage
+     but a browser should not use 100% pct for more than a few seconds
+
+260) add json validation for client to client messages:
+     password: todo:
+     users_sha256: done
+     gifts_sha256: done
+     syn_gifts: done
+
+261) add mutual_login_user_ids to pings? (identical login on two different devices)
+     could be used to replicate a few gift properties between login users only
+     for example follow and hide gift. change follow to an array with follow/unfollow timestamps
+     hide and follow are not part of sha256 calculation and gifts with identical sha256 are not replicated!
+     add two sha256 values to gift? or a special message to be used between devices with identical logins?
+
+262) add api version in client to client messages.
+     not a big issue in client to client communication within one gofreerev server (reload and js data migration scripts for data in localStorage)
+     but could be a problem in cross server client to client communication
+     one server with version 1.0 software communicating with a server with version 1.1 software
+     server with version 1.1 must use protocol version 1.0 when communication with a version 1.0 server
+     server with version 1.1 must use protocol version 1.1 when communication with a version 1.1 server
+     for example an issue if new fields are added to gift or comment (new fields in messages and changed sha256 calc)
+     server with version 1.0 should reject version 1.1 messages from other servers
+
+263) add api version to json validation
+
+265) add device.ignore_invalid_gifts check to all ingoing messages with gids
+
+266) receipt for messages without a response
+     1) fatal error in message - no next message in sequence
+     2) ok receipt for final message in a sequence of messages
+     3) return message with ignored gifts and error messages
+
+269) add verify_comments request/response. new comments in send_gifts message must be server validated (old and new gifts)
+
+270) find doublets early in send_gifts processing. the same gifts and comments can be send from several other devices in same ping response
+     calculate sha256 when receiving gifts and avoid inserting copies of same gift/comment multiple times in msg.gifts, verify_gifts and verify_comments arrays
+     insert only object once and insert reference to object the following times
+
+271) split big messages in several smaller messages
+     for example big send_gifts messages with many gifts
+     a new user with many online friends will receive many very big messages after login
+     it could also be server that buffers messages so that one client dont get spammed with many big messages (saves memory on clients)
+     and maybe a client should not request the same gift and/or the same comments from many different online friends
+
+272) maybe a minor problem in gift sha256 signature
+     maybe giver and receiver user ids can be swapped without client sha256 signature or server sha256 signature changes
+     but direction can not be changed and client should send correct user ids to server for server side sha256 validation
+
+273) cross server gift and comment signature check (verify_gifts and verify_clients)
+     server could return response for own gifts and comments to client and place messages for other gofreerev servers in a message queue
+     send request message to other server(s) in next server to server ping and receive response message from other gofreerev server(s)
+     return response to client in next ping when verification request is ready for remote gifts and comments
+     how to identify that a gift or a comment is from an other gofreerev server?
+     the client should allow delay in gift and comment verification for remote gift and comments
+     seq in verify_gifts and verify_clients request should be a client sequence and not start from 1 in every new request
+     that will allow server to respond immediately for some requests and later for other requests.
+
+274) add server id to gifts and comments.
+     there is immediate response for within server ping request/response
+     there is delayed response for cross server ping request/response
+     an example is verify gifts request/response
+     server can verify own gift sha256 server signature immediately
+     server must place verification for gift on other gofreerev servers in a message queue and response later
+     client should know whether server response is immediate or delayed
+
+275) add a remote (integer) field to gifts and comments if gifts or comments is from an other web server
+     servers should agree about this integer
+
+276) add version number to client to client messages. For example send_gifts_1 for send_gifts version 1?
+     the receiving client should respond with a compatible message
+     after  password handshake two remote clients should tell each others witch message versions to use in communication
+
+277) some old gifts have been created with uppercase currency
+     all new gifts should be created with lowercase currency
+     add currency validation to angular view (regular expression)
+     add validation to create new gift and create new proposal
+
+279) delete gifts request
+     maybe return deleted_at_server as an integer?
+     a gift could have been created on one gofreerev server and have been deleted on an other gofreerev server!
+     created_at_server / deleted_at_server could always be 1 for current server
+     a server # <> 1 marks a gift as remote created or remote deleted and signature check must be done on an other server
+     there must be a server # translation table on every gofreerev server
+     server # can be 2 on one server, 3 on an other and 4 on a third server
+     js: add gift.deleted_at_server (integer=server number)
+
+281) add a server side last_validated_at / last_verified_at date stamp for deleted gifts only
+     server can physical delete delete marked gifts that have not been server validated for n months
+     that same applies for comments
+
+282) add a servers table. server # 1 = actual server. table with url and server #
+     server # for a url can be different on different gofreerev servers
+     server # must be an url or there must be a server # translation table when communicating with other gofreerev servers
+     server # must be included in some request/response operations (online, messages)
+
+283) user ids. problem with using internal user ids in encrypted client to client messages
+     server cannot change user ids in messages (gift giver, gift receiver and comment creator)
+     must use either full user id (uid/provider) or sender or receiver must translate user ids
+     there can be problems with internal user ids if user is unknown on one of the servers
+     for example a comment from a friend of a friend that is unknown on actual server
+     best to user uid/provider format in all client to client communication
+     ok to user internal user ids in client/server communication.
+
+284) refactor js gifts requests
+     buffering requests for remote gifts should also be identical
+     response for request with remote gifts can take some time and maybe come in a later response
+
+285) use crypt_keeper for sha256 signatures? for example sha256, sha256_accepted and sha256_deleted in gifts
+     maybe overkill - sha256 should be secure and crypt_keeper only protects database, not rails
+
+286) json schema - add title and description to json schema definitions
+
+287) new gift - check that giver user ids and receiver user ids are unique
+
+288) new comment - check that comment user ids are unique
+
+289) server sha256_accepted. include a "/" between giver user ids and receiver user ids
+     or place direction between givers and receivers in signature input
+
+291) json schema validation
+     add uniqueItems - true/false in v4 specification but could be extended to support a string, an array
+     for example validate unique gid in an array with gifts
+
+292) add a loop counter in users_sha256 and gifts_sha256 message.
+     ok with a few feedback loops until gifts are in sync but prevent endless loop if some update operations are rejected by one of the clients
+
+293) add a validate gift function
+     gift should be validated after all changes.
+     Never save a invalid gift in localStorage. Never accept a invalid gift from an other client. Never send invalid gifts to other clients.
+     compare old and changed gift when saving changed gifts in localStorage. Reject invalid updates.
+     two validate functions:
+     - invalid_gift(gift) - called when creating new gifts and before sending gifts to other clients
+     - invalid_changed_gift(old_gift,new_gift) - called when updating gifts - local updates and gift updates received from other clients
+     returns null (ok) or an error message
+
+294) split big gifts item in many gift_1, gift_2, gift_3 etc items. from a sequence
+
+295) add a big random key to be used between password and encrypted data in local storage
+     key - random string - saved password encrypted in local storage
+     other items - save key encrypted in local storage.
+
+296) gifts page with no api provider login
+     hide create new gift, disable create or redirect to auth page
+
+297) add a borrow checkbox to gift - giver expects to have the gift returned at some point in the future
+     add page where user can see what items that are borrowed from other users and what items that are borrowed to other users
+     allow a borrowed item to continue to a third or a fourth user. a borrowed gift must have owner_user_ids
+
+298) old messages in mailbox.sent that have not been moved to done
+     GiftService.receive_message_users_sha256: Wait. Old gifts_sha256 message is already in sent." gofreerev.js:3867
+     a) move old messages to error after x seconds or
+     b) resend
+
+299) invalid_gifts function - used when receiving gifts from other clients.
+     error=Giver is invalid. Unknown user id 920 in giver_user_ids 920, 790
+     from client A with a facebook+google login to B client with a google login
+     user 920 (facebook) is known on A but unknown on B
+     same issue if A and B er friends on google+ but not friends in facebook
+     same issue on A client after disconnect from google+ (user 920 er unknown)
+     user id could be server validated but not with the same method as for gifts and comments (user information can change)
+     and how to handle cross server gift replication with an unknown user id? Known on server A. Unknown on server B.
+
+300) change how users are stored in localStorage.
+     users in localStorage is an full list of friends information downloaded after login
+     that ok - preserves friend lists in omniauth login process where user temporary is redirected to an api provider
+     preserve users used in stored gifts and comments after api provider log out?
+     that will allow invalid_gifts to validate user ids for logged out providers
+     with a validated_at_client timestamp for last server validation
+     could include users array in sync_gifts/send_gifts sub message
+
+301) delete gift after confirm:
+     15:42:21.112 "Error: [$rootScope:inprog] $apply already in progress
+     http://errors.angularjs.org/1.3.0/$rootScope/inprog?p0=%24apply
+     minErr/<@http://laptop.gofreerev.com/assets/angular.js?body=1:81:12
+     beginPhase@http://laptop.gofreerev.com/assets/angular.js?body=1:14474:1
+     $RootScopeProvider/this.$get</Scope.prototype.$apply@http://laptop.gofreerev.com/assets/angular.js?body=1:14221:11
+     timeout/timeoutId<@http://laptop.gofreerev.com/assets/angular.js?body=1:15949:25
+     completeOutstandingRequest@http://laptop.gofreerev.com/assets/angular.js?body=1:4878:7
+     Browser/self.defer/timeoutId<@http://laptop.gofreerev.com/assets/angular.js?body=1:5251:7
+     self.delete_gift@http://laptop.gofreerev.com/assets/gofreerev.js?body=1:5706:18
+     $parseFunctionCall@http://laptop.gofreerev.com/assets/angular.js?body=1:12134:15
+     ngEventHandler/</callback@http://laptop.gofreerev.com/assets/angular.js?body=1:22519:17
+     $RootScopeProvider/this.$get</Scope.prototype.$eval@http://laptop.gofreerev.com/assets/angular.js?body=1:14124:16
+     $RootScopeProvider/this.$get</Scope.prototype.$apply@http://laptop.gofreerev.com/assets/angular.js?body=1:14222:18
+     ngEventHandler/<@http://laptop.gofreerev.com/assets/angular.js?body=1:22524:17
+     jQuery.event.dispatch@http://laptop.gofreerev.com/assets/jquery.js?body=1:4641:15
+     jQuery.event.add/elemData.handle@http://laptop.gofreerev.com/assets/jquery.js?body=1:4310:6
+     " angular.js:11359:17
+
+302) testcase: gift is deleted on client A and gift is accepted on client B
+     both accept and delete actions are server validated and first man wins
+     1) delete before accept.
+        A: delete signature from client A created with blank accepted_cid and accepted_at_client in signature
+        B: server should reject accept_gift transaction from client B as accept cannot come after delete
+        B: client must unaccept accepted gift and show error message from server
+        B: client B must wait for send_gifts transaction from A to B or send a request_gifts transaction to A
+     2) accept before delete
+        B: accept signature from client B
+        A: server should reject delete_gift transaction from client A without an accepted signature
+        A: client must undelete deleted gift and show error message from server
+        A: client A must wait for send_gifts transaction from B to A or send a request_gifts transaction to B
+
+303) send_gift message
+     should never include:
+     a) created_at_client gifts without created_at_server server number
+     b) accepted_at_client gifts without accepted_at_server = true
+     c) deleted_at_client gifts without deleted_at_server = true
+
+304) two kind of gofreerev servers?
+     1) gofreerev servers with api login methods and client to client communication - requires some setup
+     2) gofreerev servers with communication only (login/logout is done on other gofreerev servers) - no setup - plugin and run
+     find easiest way to implement 1) and 2)
+
+305) maybe a problem with cpu usage in firefox. standby cpu usage should be low (not sending or receiving messages)
+
+306) should use translations for notifications. English error message in log is ok but notifications should support language
+     no problem with within site messages.
+     there is an issue with cross site error message (msgtype=error)
+     cannot use translation key+options in cross site communication
+     server side undelete error :
+     - can use key+options if client-server request
+     - must use error if server-server request. gift.delete_gifts response must be translated before returning response to other server
+     - key=error, text=server translated error message
+
+307) add support for key+options in delete gifts response.
+     use key+options for within site error message. use error for cross site error messages
+     add delete_gifts wrapper for cross site delete gifts requests
+
+308) allow other servers to use "ping" to send and receive message
+     the cross server handshake could be implemented like client to client handshake
+
+309) handle "remote delete".
+     created by user A on server A, replicated to user A on server B. deleted by under A on server B.
+
+310) each server should have a "public" catalog over "active" users. Last connect within x days.
+     each server should search "public" catalogs for match and keep an ea
+
+311) did + client_secret + public keys are sent in login and do_tasks request
+     should only be send to server once for every session
+
+312) add server public/private keys
+     add servers table: server_id, url, public key, private key
+     this server: server_id = 1 and private key
+     schema load - load a initial list of gofreerev servers from db/seeds.db
+     server should at startup send handshake signal to a limited number of gofreerev servers
+     1) send/request public key
+     2) send/receive password for symmetric encrypted communication
+     3) ping once every ... seconds.
+
+
+
+select next issue to solve: (rand*311).floor+1

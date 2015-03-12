@@ -7,7 +7,7 @@ ENV_PREFIX = "#{ENV_APP_NAME}_#{ENV_RAILSENV}_" # GOFREEREV_LO_DEV_
 
 # name and url for this project
 APP_NAME     = 'Gofreerev'     # app name used in views and error messages
-SITE_URL     = ENV["#{ENV_PREFIX}SITE_URL"] # 'http://localhost/' # must end with /
+SITE_URL     = ENV["#{ENV_PREFIX}SITE_URL"] # 'http://localhost/' # must start with https? and end with /
 
 # max number of active users (last login within the last 24 hours)
 MAX_USERS     = ENV["#{ENV_PREFIX}MAX_USERS"].to_i # 100
@@ -133,3 +133,27 @@ COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd
                        "uy" => "uyu", "uz" => "uzs", "va" => "eur", "vc" => "xcd", "ve" => "vef", "vg" => "usd",
                        "vi" => "usd", "vn" => "vnd", "wf" => "xpf", "ws" => "usd", "ye" => "yer", "yt" => "eur",
                        "za" => "zar", "zm" => "zmk", "zw" => "zwd"};
+
+# server to server communication. setup private key protection. Use 1-4 of the following encryption options
+# be careful when before changing password protection. Easiest to generate a new public/private key pair.
+# no security if access to rails console on server
+PK_PASS_1_ENV = ENV["#{ENV_PREFIX}PK_PASS"]
+PK_PASS_2_RAILS = "rlKjLA1jgZNFQJ+z/WfNm2fID8k22y2IOi5c2mPtqlY=\n" # todo: please change string
+s = SystemParameter.find_by_name('private_key_password')
+if !s
+  s = SystemParameter.new
+  s.name = 'private_key_password'
+  s.value = String.generate_random_string(80)
+  s.save!
+end
+PK_PASS_3_DB = s.value
+text = nil
+begin
+  text = File.read(Rails.root.join('pk_pass.txt').to_s) # todo: please change path
+rescue Errno::ENOENT
+  text = nil
+end
+PK_PASS_4_FILE = text
+
+# abort if invalid private key
+SystemParameter.private_key

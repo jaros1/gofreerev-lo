@@ -29,5 +29,6 @@ Capfile.1
 # ignore private files
 *betatesters*
 todo-*
+pk_pass.txt
 
 

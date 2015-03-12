@@ -87,6 +87,7 @@ JSON_SCHEMA = {
     # oauth information is deleted from session cookie and from server session when login process is finished
     :login_request => {
         :type => 'object',
+        :title => 'Login request from client with optional oauth authorization from localStorage',
         :properties => {
             # client userid normally = 1. Allow up to 100 user accounts in localStorage
             :client_userid => client_userid_type,
@@ -98,7 +99,7 @@ JSON_SCHEMA = {
             :did => {:type => 'string', :pattern => uid_pattern},
             # pubkey key for unique device - used in encrypted client to client information replication
             :pubkey => {:type => 'string'},
-            # array with oauth authorization for zero, one or more social networks (from localStorage)
+            # array with oauth authorization for one or more social networks (from localStorage)
             :oauths => oauths_type
         },
         :required => %w(client_userid client_timestamp client_secret did pubkey),
@@ -361,7 +362,7 @@ JSON_SCHEMA = {
                       :properties => {
                           # unique device id for other online device available for information synchronization
                           :did => {:type => 'string', :pattern => uid_pattern},
-                          # sha256 signature for device generated from client secret and login user ids. used in client to client communication
+                          # sha256 signature for device generated from client secret and login user ids. used in client to client communication mailbox
                           :sha256 => {:type => 'string'},
                           # array with internal user ids for mutual friends - synchronize information for mutual friends between clients
                           :mutual_friends => {:type => 'array', :items => {:type => 'integer'}}

@@ -214,7 +214,9 @@ gem 'therubyracer'
 gem 'json-schema'
 
 # server public private key encryption
-gem 'sshkey'
+gem 'sshkey' # https://github.com/bensie/sshkey
+gem 'httpclient' # http://www.rubydoc.info/gems/httpclient/HTTPClient
+gem 'encrypted_strings' # https://github.com/pluginaweek/encrypted_strings
 
 # use when moving to an other db environment. See issue 12
 # https://github.com/ludicast/yaml_db

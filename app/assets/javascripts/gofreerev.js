@@ -455,9 +455,9 @@ var Gofreerev = (function() {
         oauth: {session: false, userid: true, compress: true, encrypt: true}, // login provider oauth authorization
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
         pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
-        secret: {session: false, userid: true, compress: true, encrypt: false}, // client secret - used in device.sha256 signature - 10 digits
+        secret: {session: false, userid: true, compress: true, encrypt: false}, // client secret - used as secret element in device.sha256 - 10 digits
         seq: {session: false, userid: true, compress: true, encrypt: false}, // sequence - for example used in verify_gifts request and response
-        sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id
+        sid: {session: true, userid: false, compress: false, encrypt: false}, // unique session id - changes for every new device login
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text
         users: {session: false, userid: true, compress: true, encrypt: true} // array with users used in gifts and comments
     };
@@ -869,7 +869,7 @@ var Gofreerev = (function() {
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();
-            // key for symmetric encryption in localStorage - 80-120 characters
+            // key for symmetric encryption in localStorage - 80-120 characters (avoid using human text in encryption)
             var key_lng = Math.round(Math.random()*40)+80 ;
             var key = Gofreerev.generate_random_password(key_lng) ;
             // save new user account

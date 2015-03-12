@@ -29,6 +29,9 @@ class Session < ActiveRecord::Base
   # timestamps are updated manual in ActionControllerExtensions
   self.record_timestamps = false
 
+  # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database
+  # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
+  # this is different encrypt for each attribute and each db row
   crypt_keeper :created, :expires_at, :flash_id, :language, :last_row_at, :last_row_id, :refresh_tokens, :state, :tokens,
                :user_ids, :did, :client_timestamp, :client_secret, :sha256, :encryptor => :aes, :key => ENCRYPT_KEYS[0]
 
@@ -310,6 +313,9 @@ class Session < ActiveRecord::Base
   end # client_secret_was
 
   # 16) sha256 - String in model - encrypted text in db - used together with did as an unique mailbox address in client to client communication
+  # sha256 changes for each client device login - sha256 changes for each client api provider login
+  # that ensures that messages only are send to and received by intended client
+  # see set_column_value method
   def sha256
     return nil unless (extended_sha256 = read_attribute(:sha256))
     encrypt_remove_pre_and_postfix(extended_sha256, 'sha256', 14)

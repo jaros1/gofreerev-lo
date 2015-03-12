@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150305090450) do
+ActiveRecord::Schema.define(version: 20150312075741) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -218,6 +218,13 @@ ActiveRecord::Schema.define(version: 20150305090450) do
   end
 
   add_index "share_accounts", ["share_account_id"], name: "index_share_accounts_accountid", unique: true, using: :btree
+
+  create_table "system_parameters", force: true do |t|
+    t.string   "name"
+    t.text     "value"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "tasks", force: true do |t|
     t.string   "session_id", limit: 32,               null: false

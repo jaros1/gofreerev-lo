@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150312075741) do
+ActiveRecord::Schema.define(version: 20150312102302) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -185,6 +185,14 @@ ActiveRecord::Schema.define(version: 20150312075741) do
 
   add_index "sequences", ["name"], name: "index_sequences_on_name", unique: true, using: :btree
 
+  create_table "servers", force: true do |t|
+    t.string   "url"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "servers", ["url"], name: "index_servers_url", unique: true, using: :btree
+
   create_table "sessions", force: true do |t|
     t.string   "session_id",       limit: 32
     t.integer  "client_userid",               default: 0
@@ -225,6 +233,8 @@ ActiveRecord::Schema.define(version: 20150312075741) do
     t.datetime "created_at"
     t.datetime "updated_at"
   end
+
+  add_index "system_parameters", ["name"], name: "index_system_parameters_name", unique: true, using: :btree
 
   create_table "tasks", force: true do |t|
     t.string   "session_id", limit: 32,               null: false

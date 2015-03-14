@@ -100,7 +100,9 @@ JSON_SCHEMA = {
             # pubkey key for unique device - used in encrypted client to client information replication
             :pubkey => {:type => 'string'},
             # array with oauth authorization for one or more social networks (from localStorage)
-            :oauths => oauths_type
+            :oauths => oauths_type,
+            # server site url for calling server - not used in client server communication - only used in server to server communication
+            :site_url => {:type => 'string', :pattern => '^https?:\/\/' }
         },
         :required => %w(client_userid client_timestamp client_secret did pubkey),
         :additionalProperties => false
@@ -114,6 +116,10 @@ JSON_SCHEMA = {
             :expired_tokens => expired_tokens_type,
             # optional array with new oauth authorization - for now only used for google+
             :oauths => oauths_type,
+            # server public key - only returned after server login request
+            :pubkey => {:type => 'string' },
+            # server did - unique device id - only returned after server login request
+            :did => {:type => 'string', :pattern => uid_pattern},
             # optional error message from login
             :error => {:type => 'string'}
         },

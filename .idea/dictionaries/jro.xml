@@ -1,11 +1,13 @@
 <component name="ProjectDictionaryState">
   <dictionary name="jro">
     <words>
+      <w>pubkey</w>
       <w>stringifyable</w>
       <w>unaccept</w>
       <w>undelete</w>
       <w>undeleted</w>
       <w>updateable</w>
+      <w>userid</w>
     </words>
   </dictionary>
 </component>

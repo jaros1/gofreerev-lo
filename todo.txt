@@ -1261,29 +1261,46 @@
      B: create session and returns response to client
      A: receives cookie with new session
 
+318) login request should return interval for first/next ping
 
-         :login_request => {
-             :type => 'object',
-             :title => 'Login request from client with optional oauth authorization from localStorage',
-             :properties => {
-                 # client userid normally = 1. Allow up to 100 user accounts in localStorage
-                 :client_userid => client_userid_type,
-                 # client unix timestamp (10) with milliseconds (3) - total 13 decimals - used together with server timestamp in check for expired tokens
-                 :client_timestamp => client_timestamp_type,
-                 # client secret - string with 10 decimals - used in device.sha256 signature
-                 :client_secret => {:type => 'string'},
-                 # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-                 :did => {:type => 'string', :pattern => uid_pattern},
-                 # pubkey key for unique device - used in encrypted client to client information replication
-                 :pubkey => {:type => 'string'},
-                 # array with oauth authorization for one or more social networks (from localStorage)
-                 :oauths => oauths_type
-             },
-             :required => %w(client_userid client_timestamp client_secret did pubkey),
-             :additionalProperties => false
-         },
+319) testcase:
+     user A 1705481075/facebook Jan Roslind logged in on server A laptop.gofreerev.com
+     user B 1563545817212684/facebook Jan Mobilos Roslind logged in on server B laptop2.gofreerev.com
 
+320) must server resources should go to real clients. not to server to server communication.
+     limit number of server clients. minimum 2.
+     limit number of server login on other gofreerev servers. minimum 2. select "best" servers to connect to.
+     maybe rotate between possible gofreerev servers.
+     few users - allow many server requests
+     many users - allow few server requests
 
+321) client pings are controlled with pings table and interval
+     must keep track of timestamps for next allowed server ping
 
+322) ping. reject ping request if ping request is too early
 
-select next issue to solve: (rand*317).floor+1
+323) server to server compare user lists
+     step 1: compare sha256(uid/provider+user_name) - return true for match
+     step 2: send sha256(uid/provider+user_name)+secret to other server and get sha256(uid/provider+user_name+secret) returned.
+             user match ok if returned sha256(uid/provider+user_name+secret) is correct
+
+324) server to server - new unknown online device
+     display token to client on this server and ask client on other server to enter token and vice versa
+     the two users must use some other communication chanel to exchange tokens
+     don't replicate gifts to/from other server before device has been human verified
+
+325) keep track of calling servers (under current server).
+     don't call a server that already is under current server.
+     maybe keep track of all levels of calling servers.
+     A calls B that calls C. C should know that A is calling B so that C does not call A and creates a "loop"
+     messages from C to A should pass through B
+
+326) change client server requests to messages?
+     for example change new_gifts request => new_gifts message with server did as receiver and client did as sender
+     server must check for incoming messages to server and send outgoing messages to client
+     add server_id to messages and online
+     allow one server to pass messages between other gofreerev servers
+     A => B => C. B receives message from A and send message to C
+     B can not read message as message is symmetric encrypted between A and C
+
+select next issue to solve: (rand*325).floor+1

@@ -44,14 +44,14 @@ class SystemParameter < ActiveRecord::Base
     s.name = 'private_key'
     s.value = x
     s.save!
-    # find/create did (unique device id)
+    # create/update did (unique device id) - new key pair = new did
     s = SystemParameter.find_by_name('did')
     if !s
       s = SystemParameter.new
       s.name = 'did'
-      s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
-      s.save!
     end
+    s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
+    s.save!
     # create/update client secret. used as secret part of device.sha256
     # did+sha256 is mailbox address in client to client communication
     s = SystemParameter.find_by_name('secret')
@@ -69,7 +69,6 @@ class SystemParameter < ActiveRecord::Base
     end
     s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
     s.save!
-
     nil
   end
 

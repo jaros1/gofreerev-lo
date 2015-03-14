@@ -65,9 +65,9 @@ class UtilController < ApplicationController
     json_request = params.clone
     %w(controller action format util).each { |key| json_request.delete(key) }
     logger.secret2 "#{json_schema} = #{json_request}"
-    do_tasks_request_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], json_request)
-    return true if do_tasks_request_errors.size == 0
-    @json[:error] = "Invalid #{params[:action]} request: #{do_tasks_request_errors.join(', ')}"
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], json_request)
+    return true if json_errors.size == 0
+    @json[:error] = "Invalid #{params[:action]} request: #{json_errors.join(', ')}"
     logger.error2 @json[:error]
     # stop or continue?
     if %w(do_tasks login).index(params[:action].to_s)
@@ -755,13 +755,14 @@ class UtilController < ApplicationController
   end
 
   # client login. receive oauth hash from client, insert oauth in server session and update/download friends information
+  # server login. receive did, client_secret and
   public
   def login
     begin
 
       # remember unique device uid and client secret - used in sync. data between devices
       if params[:did].to_s == ''
-        # did er required in login json. This error should have been detected in json validation
+        # debug. did is required in login json. This error should have been found in validate_json_request filter!
         @json[:error] = "login and did is empty"
         format_response
         return
@@ -769,15 +770,43 @@ class UtilController < ApplicationController
       set_session_value :did, params[:did]
       set_session_value :client_secret, params[:client_secret]
 
-      # save new public keys - used in client to client communication
-      # private key is saved password encrypted in client localStorage and is only known by client
-      p = Pubkey.find_by_did(params[:did])
-      if !p
-        logger.debug2 "did = #{params[:did]}, pubkey = #{params[:pubkey]}"
-        p = Pubkey.new
-        p.did = params[:did]
+      if params[:site_url].to_s == ''
+        # save new public key from browser client - used in client to client communication
+        # private key is saved key encrypted in browser localStorage and is only known by js client
+        # see private key security in /app/assets/javascript/gofreerev.js getItem and setItem functions
+        # private key in browser localStorage is encrypted with random key (80-120 characters)
+        p = Pubkey.find_by_did(params[:did])
+        if !p
+          logger.debug2 "did = #{params[:did]}, pubkey = #{params[:pubkey]}"
+          p = Pubkey.new
+          p.did = params[:did]
+        end
         p.pubkey = params[:pubkey]
-        p.save!
+        p.save! if p.new_record? or p.changed?
+      else
+        # save did and public key from other gofreerev server - used in server to server communication
+        # private key is saved in system_parameters table encrypted with 1-4 passwords
+        # see private key security setup in config/initializers/constants.rb (PK_PASS_*)
+        site_url = params[:site_url].to_s
+        site_url = site_url.gsub(/^https/, 'http')
+        s = Server.find_by_site_url(site_url)
+        if (!s)
+          s = Server.new
+          s.site_url = site_url
+          s.secure = true
+        end
+        s.save_new_did_and_public_key!(params[:did], params[:pubkey])
+        # return public key for this gofreerev to other gofreerev server
+        pubkey = SystemParameter.public_key
+        if !pubkey
+          # first server to server login - generate public/private key pair for rsa communication
+          SystemParameter.generate_key_pair
+          pubkey = SystemParameter.public_key
+        end
+        @json[:pubkey] = pubkey
+        # return did for this gofreerev to other gofreerev server
+        s = SystemParameter.find_by_name('did')
+        @json[:did] = s.value if s
       end
 
       if !params.has_key? :oauth
@@ -887,6 +916,7 @@ class UtilController < ApplicationController
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
+      @json[:friends] = [] unless @json[:friends]
       format_response_key '.exception', :error => e.message
     end
   end # login
@@ -975,7 +1005,7 @@ class UtilController < ApplicationController
       avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
 
       # keep track of pings. find/create ping. used when adjusting pings for individual sessions
-      # Ping - one row for each client browser tab windue
+      # Ping - one row for each client browser tab window
       Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
       sid = params[:sid]
       ping = Ping.find_by_session_id_and_client_userid_and_client_sid(get_sessionid, get_client_userid, sid)

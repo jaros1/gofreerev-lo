@@ -639,7 +639,7 @@ var Gofreerev = (function() {
         // if (key == 'password') console.log(pgm + 'caller: ' + arguments.callee.caller.toString()) ;
         var pseudo_key = key.match(/^gift_[0-9]+$/) ? 'gifts' : key ; // use gifts rule for gift_1, gift_1 etc
         var rule = get_local_storage_rule(pseudo_key) ;
-        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key') ;
+        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key') ; // key is as only variable encrypted with human password
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid') ;
@@ -700,7 +700,7 @@ var Gofreerev = (function() {
         var save_value = value ; // for optional lzma_compress0
         var pseudo_key = key.match(/^gift_[0-9]+$/) ? 'gifts' : key ; // use gifts rule for gift_1, gift_1 etc
         var rule = get_local_storage_rule(pseudo_key) ;
-        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key') ;
+        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key') ; // key is as only variable encrypted with human password
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid') ;
@@ -2919,6 +2919,12 @@ angular.module('gifts', ['ngRoute'])
                 //    migration = true ;
                 //    continue ;
                 //}
+
+                // datamigration - testcase data cleanup. delete new gift with invalid owner
+                //if (gift.gid == '14259160985531302471') {
+                //    Gofreerev.removeItem(keys[i]) ;
+                //    continue ;
+                //}
                 
                 // migration_user_ids - friends used in gifts and comments must be in users
                 add_user_ids_to_array(gift.giver_user_ids, migration_user_ids) ;
@@ -3260,7 +3266,7 @@ angular.module('gifts', ['ngRoute'])
                 }
                 if (!new_gift.created_at_server) {
                     // gift signature was not created
-                    console.log(pgm + 'gift + ' + gid + ' signature was not created on server. ' + new_gift.error);
+                    console.log(pgm + 'gift ' + gid + ' signature was not created on server. ' + new_gift.error);
                     // todo: delete gift and display error message in page header
                     continue;
                 }
@@ -3648,7 +3654,7 @@ angular.module('gifts', ['ngRoute'])
                 }
                 if (!new_comment.created_at_server) {
                     // comment signature was not created
-                    console.log(pgm + 'Comment + ' + cid + ' signature was not created on server. ' + new_comment.error);
+                    console.log(pgm + 'Comment ' + cid + ' signature was not created on server. ' + new_comment.error);
                     // todo: delete comment and display error message in page header or insert as an user notification
                     continue;
                 }

@@ -797,10 +797,13 @@ class UtilController < ApplicationController
           s.site_url = site_url
           s.secure = true
         end
-        # validate signature for incoming request
-        logger.debug "signature url = #{s.signature_url(params[:client_timestamp])}"
+        # validate signature for incoming login request
+        # - server must exists
+        # - signature file must exists
+        # - sha256 signature in signature file must match sha256 signature of incoming login request
+        # logger.debug "signature url = #{s.signature_url(params[:client_timestamp])}"
         signature = Server.login_signature(params)
-        logger.debug "signature = #{signature}"
+        # logger.debug "signature = #{signature}"
         if error = s.invalid_signature(params[:client_timestamp], signature)
           # server not responding or signature is invalid
           @json[:error] = error
@@ -808,8 +811,15 @@ class UtilController < ApplicationController
           format_response
           return
         end
+        # signature ok
+        if error = s.save_new_did_and_public_key(params[:did], params[:pubkey])
+          # invalid did change. cannot change did to an existing did
+          @json[:error] = error
+          @json[:friends] = []
+          format_response
+          return
+        end
 
-        s.save_new_did_and_public_key!(params[:did], params[:pubkey])
         # return public key for this gofreerev to other gofreerev server
         pubkey = SystemParameter.public_key
         if !pubkey

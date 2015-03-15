@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150314152135) do
+ActiveRecord::Schema.define(version: 20150315103539) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -196,6 +196,7 @@ ActiveRecord::Schema.define(version: 20150314152135) do
     t.string   "old_did",      limit: 20
     t.text     "old_pubkey"
     t.text     "new_pubkey"
+    t.text     "key"
   end
 
   add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree

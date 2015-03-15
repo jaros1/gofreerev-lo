@@ -35,9 +35,9 @@ class SystemParameter < ActiveRecord::Base
     s.name = 'public_key'
     s.value = k.public_key
     s.save!
-    # save private key - encrypted with 1-4 passwords - see config/initializers/constraints.rb
+    # save private key - encrypted with 1-5 passwords - see config/initializers/constraints.rb
     x = k.private_key
-    [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE].each do |password|
+    [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE, PK_PASS_5_MEM].each do |password|
       x = x.encrypt(:symmetric, :password => password) if password
     end
     s = SystemParameter.new
@@ -83,7 +83,7 @@ class SystemParameter < ActiveRecord::Base
     return nil unless s
     # decrypt
     x = s.value
-    [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE].reverse.each do |password|
+    [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE, PK_PASS_5_MEM].reverse.each do |password|
       x = x.decrypt(:symmetric, :password => password) if password
     end
     x

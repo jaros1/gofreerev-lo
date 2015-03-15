@@ -40,18 +40,51 @@ class Server < ActiveRecord::Base
 
   # 8: next_ping_at - next ping request to server
 
+  # password helpers. symmetric password stored in memory encrypted with key stored in database
+  # symmetric passwords used in server to server communication expires after one hour
+  def set_key
+    self.key = String.generate_random_string(80)
+  end
+  def new_password1=(password)
+    if password
+      self.set_key unless key
+      rails.cache.write "#{self.site_url}new_password1", password.encrypt(:symmetric, :password => self.key)
+    else
+      rails.cache.write "#{self.site_url}new_password1", nil
+    end
+  end
+  def new_password1
+    password = rails.cache.fetch "#{self.site_url}new_password1"
+    password ? password.decrypt(:symmetric, :password => self.key) : nil
+  end
+  def new_password1_at=(timestamp)
+    rails.cache.write "#{self.site_url}new_password1_at", timestamp
+  end
+  def new_password1_at
+    rails.cache.fetch "#{self.site_url}new_password1_at"
+  end
+
+  # symmetric password setup
+  protected
+  def set_new_password1
+    self.set_key
+    self.new_password1 = String.generate_random_string(40)
+    self.new_password1_at = (Time.now.to_f*1000).floor
+    logger.secret2 "key = #{self.key}, new_password1 = #{self.new_password1}, new_password1_at = #{self.new_password1_at}"
+  end
 
   # receive did and public key from other gofreerev server
   # saved in new_did and new_public if changed - must be validated before moved to old_did and old_pubkey
   # called from server.login (model) and util.login (controller)
   public
-  def save_new_did_and_public_key! (did, pubkey)
+  def save_new_did_and_public_key (did, pubkey)
     if ![self.old_did, self.new_did].index(did)
       # new did received. ok to change to a new did - not ok to change to a existing did
       return "#{site_url}: Cannot change did to #{did}. did #{did} already exists" if Pubkey.find_by_did(did)
       logger.warn2 "#{site_url}: changing did to #{did}"
       self.new_did = did
       self.new_pubkey = pubkey
+      self.set_new_password1
       self.save!
       return nil
     end
@@ -63,13 +96,16 @@ class Server < ActiveRecord::Base
       logger.warn2 "#{site_url}: received new public key for old did #{did}"
       self.new_did = did  # changed old public key
       self.new_pubkey = pubkey
+      self.set_new_password1
     end
     if did == self.new_did and pubkey != self.new_pubkey
       # changed new public key
       logger.debug2 "#{site_url}: received new public key for new did #{did}"
       self.new_pubkey = pubkey
+      self.set_new_password1
     end
     self.save! if self.changed?
+    nil
   end # save_new_did_and_public_key!
 
   # path to cookie file, signature file etc
@@ -224,7 +260,7 @@ class Server < ActiveRecord::Base
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], login_request)
     return "Invalid login json request: #{json_errors.join(', ')}" unless json_errors.size == 0
 
-    # sign login request - called gofreerev server should validate signature
+    # sign login request - called gofreerev server must validate signature for incoming login request
     signature_filename = self.signature_filename(login_request[:client_timestamp])
     signature = Server.login_signature(login_request)
     logger.debug2 "signature_filename = #{signature_filename}"
@@ -235,11 +271,13 @@ class Server < ActiveRecord::Base
     logger.warn2 "unsecure post #{url}" unless secure
     res = client.post(url, :body => login_request.to_json, :header => header)
     logger.debug2 "res = #{res}"
+    FileUtils.rm signature_filename
     if res.status != 200
       puts "post #{url.to_s} failed with status #{res.status}"
       return nil
     end
     client.cookie_manager.save_all_cookies(true, true, true)
+
     # json validate login response
     login_response = JSON.parse(res.body)
     logger.debug2 "login_response = #{login_response}"
@@ -250,8 +288,10 @@ class Server < ActiveRecord::Base
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], login_response)
     return "Invalid login json response: #{json_errors.join(', ')}" unless json_errors.size == 0
     return login_response['error'] if login_response['error']
+
     # check/save received did as new_did (new unvalidated unique device id)
-    save_new_did_and_public_key!(login_response['did'], login_response['pubkey'])
+    error = save_new_did_and_public_key(login_response['did'], login_response['pubkey'])
+    return error if error
 
     nil
 

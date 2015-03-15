@@ -77,6 +77,7 @@ GEM
       activerecord (>= 3.0, < 4.1)
       activesupport (>= 3.0, < 4.1)
     currencies (0.4.2)
+    dalli (2.7.3)
     debugger (1.6.8)
       columnize (>= 0.3.1)
       debugger-linecache (~> 1.2.0)
@@ -337,6 +338,7 @@ DEPENDENCIES
   countries
   crypt_keeper (~> 0.14.0.pre)
   currencies
+  dalli
   debugger
   encrypted_strings
   exception_notification

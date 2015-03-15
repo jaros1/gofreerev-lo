@@ -218,6 +218,8 @@ gem 'sshkey' # https://github.com/bensie/sshkey
 gem 'httpclient' # http://www.rubydoc.info/gems/httpclient/HTTPClient
 # gem 'http-cookie' # https://github.com/nahi/httpclient/issues/242 (tried to fix "Unknown key: max-age = 0")
 gem 'encrypted_strings' # https://github.com/pluginaweek/encrypted_strings
+# dalli memory cache - cache some server information temporary in memory
+gem 'dalli' # https://github.com/mperham/dalli
 
 # use when moving to an other db environment. See issue 12
 # https://github.com/ludicast/yaml_db

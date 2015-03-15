@@ -134,9 +134,9 @@ COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd
                        "vi" => "usd", "vn" => "vnd", "wf" => "xpf", "ws" => "usd", "ye" => "yer", "yt" => "eur",
                        "za" => "zar", "zm" => "zmk", "zw" => "zwd"};
 
-# server to server communication. setup private key protection. Use 1-4 of the following encryption options
+# server to server communication. setup private key protection. Use 1-5 of the following encryption options
 # be careful when before changing password protection. Easiest to generate a new public/private key pair.
-# no security if access to rails console on server
+# the keys offers no protection if unauthorized user has access to rails console
 PK_PASS_1_ENV = ENV["#{ENV_PREFIX}PK_PASS"]
 PK_PASS_2_RAILS = "rlKjLA1jgZNFQJ+z/WfNm2fID8k22y2IOi5c2mPtqlY=\n" # todo: please change string
 s = SystemParameter.find_by_name('private_key_password')
@@ -154,9 +154,17 @@ rescue Errno::ENOENT
   text = nil
 end
 PK_PASS_4_FILE = text
+Rails.cache.write('private_key_password', String.generate_random_string(80), :unless_exist => true)
+PK_PASS_5_MEM = Rails.cache.fetch('private_key_password')
 
-# abort if invalid private key
-SystemParameter.private_key
+# check/regenerate private key
+begin
+  SystemParameter.private_key
+rescue OpenSSL::Cipher::CipherError => e
+  puts "Error. SystemParameter.private_key failed with #{e.message}. Generating new public private key pair"
+  SystemParameter.generate_key_pair
+  SystemParameter.private_key
+end
 
 # server to server communication. path to signature files on other gofreerev servers.
 # used when validating incoming request from gofreerev servers. see Server.signature_filename and Server.signature_url

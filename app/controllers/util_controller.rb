@@ -771,6 +771,7 @@ class UtilController < ApplicationController
       set_session_value :client_secret, params[:client_secret]
 
       if params[:site_url].to_s == ''
+        # client request
         # save new public key from browser client - used in client to client communication
         # private key is saved key encrypted in browser localStorage and is only known by js client
         # see private key security in /app/assets/javascript/gofreerev.js getItem and setItem functions
@@ -784,6 +785,7 @@ class UtilController < ApplicationController
         p.pubkey = params[:pubkey]
         p.save! if p.new_record? or p.changed?
       else
+        # server request
         # save did and public key from other gofreerev server - used in server to server communication
         # private key is saved in system_parameters table encrypted with 1-4 passwords
         # see private key security setup in config/initializers/constants.rb (PK_PASS_*)
@@ -795,6 +797,18 @@ class UtilController < ApplicationController
           s.site_url = site_url
           s.secure = true
         end
+        # validate signature for incoming request
+        logger.debug "signature url = #{s.signature_url(params[:client_timestamp])}"
+        signature = Server.login_signature(params)
+        logger.debug "signature = #{signature}"
+        if error = s.invalid_signature(params[:client_timestamp], signature)
+          # server not responding or signature is invalid
+          @json[:error] = error
+          @json[:friends] = []
+          format_response
+          return
+        end
+
         s.save_new_did_and_public_key!(params[:did], params[:pubkey])
         # return public key for this gofreerev to other gofreerev server
         pubkey = SystemParameter.public_key

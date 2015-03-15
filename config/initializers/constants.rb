@@ -157,3 +157,7 @@ PK_PASS_4_FILE = text
 
 # abort if invalid private key
 SystemParameter.private_key
+
+# server to server communication. path to signature files on other gofreerev servers.
+# used when validating incoming request from gofreerev servers. see Server.signature_filename and Server.signature_url
+SITE_SIGNATURE_PATH = Digest::MD5.hexdigest(SITE_URL.gsub(/^https/, 'http')).scan(/.{2}/).join('/')

@@ -16,6 +16,7 @@
 /tmp
 /public/images/temp/*
 /public/images/perm/*
+/public/signatures
 
 # Ignore capistrano setup
 Capfile

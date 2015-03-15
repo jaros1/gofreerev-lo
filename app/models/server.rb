@@ -44,6 +44,7 @@ class Server < ActiveRecord::Base
   # receive did and public key from other gofreerev server
   # saved in new_did and new_public if changed - must be validated before moved to old_did and old_pubkey
   # called from server.login (model) and util.login (controller)
+  public
   def save_new_did_and_public_key! (did, pubkey)
     if ![self.old_did, self.new_did].index(did)
       # new did received. ok to change to a new did - not ok to change to a existing did
@@ -71,6 +72,81 @@ class Server < ActiveRecord::Base
     self.save! if self.changed?
   end # save_new_did_and_public_key!
 
+  # path to cookie file, signature file etc
+  # md5 chosen for shorter filename/path
+  # md5 may not be the best hash but cookie files are private and signature files also include a client timestamp
+  protected
+  def site_url_md5_path
+    Digest::MD5.hexdigest(self.site_url).scan(/.{2}/)
+  end
+
+  # get filename for cookie store used in httpclient - one file per gofreerev server
+  protected
+  def cookie_filename
+    site_url_md5_path = self.site_url_md5_path()
+    parent_dir = Rails.root.join('tmp/cookies/'+site_url_md5_path[0..-2].join('/')).to_s
+    FileUtils.mkdir_p parent_dir
+    parent_dir + '/' + site_url_md5_path.last + '.cookie'
+  end
+
+  # get signature filename - some requests are signed so that called server can verify the request
+  protected
+  def signature_filename (client_timestamp)
+    site_url_md5_path = self.site_url_md5_path()
+    parent_dir = Rails.root.join('public/signatures/'+site_url_md5_path.join('/')).to_s
+    FileUtils.mkdir_p parent_dir
+    parent_dir + '/' + client_timestamp.to_s + '.txt'
+  end
+  public
+  def signature_url (client_timestamp)
+    "#{self.site_url}signatures/#{SITE_SIGNATURE_PATH}/#{client_timestamp}.txt"
+  end
+
+  # signature used in server to server login request
+  # created in Server.login and validated in UtilController.login
+  public
+  def self.login_signature (hash)
+    Digest::SHA256.hexdigest([hash[:client_secret], hash[:did], hash[:pubkey]].join(','))
+  end
+
+  public
+  def invalid_signature(client_timestamp, signature)
+    # url to signature file on other gofreerev server
+    signature_url = self.signature_url(client_timestamp)
+    secure = self.secure
+    signature_url = 'https' + signature_url.from(4) if secure
+
+    # create http client
+    client = HTTPClient.new
+    client.set_cookie_store(self.cookie_filename()) # one cookie file per gofreerev server
+
+    # loop. fallback to http if https fails
+    res = nil
+    loop do
+      url = URI.parse("#{signature_url}")
+      begin
+        logger.warn2 "unsecure get #{url}" unless secure
+        res = client.get("#{url}")
+      rescue Errno::ECONNREFUSED => e
+        return "signature verification failed with: \"#{e.message}\""
+      rescue OpenSSL::SSL::SSLError => e
+        if secure
+          # https failed. retry with http
+          logger.debug "secure get #{url} failed with #{e.message}. Trying without ssl"
+          secure = false
+          signature_url = 'http' + signature_url.from(5)
+          next
+        end
+        return "signature verification failed with: \"#{e.message}\""
+      end
+      break
+    end
+    logger.debug2 "signature = #{signature}"
+    logger.debug2 "res.body  = #{res.body}"
+    signature == res.body ? nil : 'Invalid signature'
+
+  end # invalid_signature
+
 
   # login as client to on other gofreerev server (SITE_URL, did, public key, secret)
   # server validation and login process is completed with server to server messages:
@@ -79,20 +155,15 @@ class Server < ActiveRecord::Base
   # - compare meta information for users
   # - exchange information about online friends
   # - sync gifts information
+  public
   def login
     # always try with secure login if possible
     site_url = 'https' + self.site_url.from(4)
     secure = true
 
-    # set filename for cookie store (session cookie) - one cookie file per server
-    cookie_md5_path = Digest::MD5.hexdigest(site_url).scan(/.{2}/)
-    parent_dir = Rails.root.join('tmp/cookies/'+cookie_md5_path[0..-2].join('/')).to_s
-    FileUtils.mkdir_p parent_dir
-    cookie_store = parent_dir + '/' + cookie_md5_path.last + '.cookie'
-
     # create http client
     client = HTTPClient.new
-    client.set_cookie_store(cookie_store)
+    client.set_cookie_store(self.cookie_filename()) # one cookie file per gofreerev server
 
     # get session cookie and authenticity token (XSRF-TOKEN) from gofreerev server
     # loop. first loop with secure = true. second loop with secure = false
@@ -152,6 +223,14 @@ class Server < ActiveRecord::Base
     end
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], login_request)
     return "Invalid login json request: #{json_errors.join(', ')}" unless json_errors.size == 0
+
+    # sign login request - called gofreerev server should validate signature
+    signature_filename = self.signature_filename(login_request[:client_timestamp])
+    signature = Server.login_signature(login_request)
+    logger.debug2 "signature_filename = #{signature_filename}"
+    logger.debug2 "signature = #{signature}"
+    File.write(signature_filename, signature) ;
+
     # send login request
     logger.warn2 "unsecure post #{url}" unless secure
     res = client.post(url, :body => login_request.to_json, :header => header)

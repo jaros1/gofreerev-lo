@@ -3986,6 +3986,7 @@ angular.module('gifts', ['ngRoute'])
                     message_json = JSON.stringify(message);
                     // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
                     encrypt.setPublicKey(devices[did].pubkey);
+                    // RSA encrypt with default values - CBC and Pkcs7 (https://code.google.com/p/crypto-js/#Block_Modes_and_Padding)
                     message_json_rsa_enc = encrypt.encrypt(message_json);
                     // add envelope - used in rails message buffer - each message have sender, receiver, encryption and message
                     message_with_envelope = {

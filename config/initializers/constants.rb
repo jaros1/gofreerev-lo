@@ -135,8 +135,8 @@ COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd
                        "za" => "zar", "zm" => "zmk", "zw" => "zwd"};
 
 # server to server communication. setup private key protection. Use 1-5 of the following encryption options
-# be careful when before changing password protection. Easiest to generate a new public/private key pair.
-# the keys offers no protection if unauthorized user has access to rails console
+# the keys offers no protection if unauthorized user has access to rails console on server
+# public private key pair is regenerated if encryption password changes and old private key is lost
 PK_PASS_1_ENV = ENV["#{ENV_PREFIX}PK_PASS"]
 PK_PASS_2_RAILS = "rlKjLA1jgZNFQJ+z/WfNm2fID8k22y2IOi5c2mPtqlY=\n" # todo: please change string
 s = SystemParameter.find_by_name('private_key_password')

@@ -819,7 +819,9 @@ class UtilController < ApplicationController
           format_response
           return
         end
-
+        # dummy user id user for gofreerev servers
+        set_session_value :user_ids, ['server']
+        logger.debug2 "login user ids = #{login_user_ids}"
         # return public key for this gofreerev to other gofreerev server
         pubkey = SystemParameter.public_key
         if !pubkey
@@ -997,7 +999,9 @@ class UtilController < ApplicationController
       # abort ping if from a not logged in client
       login_user_ids = get_session_value(:user_ids)
       if login_user_ids.class != Array or login_user_ids.size == 0
+        logger.debug2 "login user ids = #{login_user_ids}"
         @json[:error] = 'Not logged in'
+        logger.debug2 "@json[:error] = #{@json[:error]}"
         @json[:interval] = 10000
         validate_json_response
         format_response

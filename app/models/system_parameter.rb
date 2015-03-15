@@ -35,7 +35,7 @@ class SystemParameter < ActiveRecord::Base
     s.name = 'public_key'
     s.value = k.public_key
     s.save!
-    # save private key - encrypted with 1-5 passwords - see config/initializers/constraints.rb
+    # save private key - encrypted with 1-5 passwords - see config/initializers/constants.rb
     x = k.private_key
     [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE, PK_PASS_5_MEM].each do |password|
       x = x.encrypt(:symmetric, :password => password) if password

@@ -42,36 +42,77 @@ class Server < ActiveRecord::Base
 
   # password helpers. symmetric password stored in memory encrypted with key stored in database
   # symmetric passwords used in server to server communication expires after one hour
+  
+  # key - symmetric password for password stored in shared memory
   def set_key
     self.key = String.generate_random_string(80)
+    logger.secret2 "old key = #{self.key_was}"
+    logger.secret2 "new key = #{self.key}"
   end
+  
+  # password1 - this servers part of symmetric password
   def new_password1=(password)
     if password
       self.set_key unless key
-      rails.cache.write "#{self.site_url}new_password1", password.encrypt(:symmetric, :password => self.key)
+      Rails.cache.write "#{self.site_url}new_password1", password.encrypt(:symmetric, :password => self.key)
     else
-      rails.cache.write "#{self.site_url}new_password1", nil
+      Rails.cache.write "#{self.site_url}new_password1", nil
     end
   end
   def new_password1
-    password = rails.cache.fetch "#{self.site_url}new_password1"
+    password = Rails.cache.fetch "#{self.site_url}new_password1"
     password ? password.decrypt(:symmetric, :password => self.key) : nil
   end
   def new_password1_at=(timestamp)
-    rails.cache.write "#{self.site_url}new_password1_at", timestamp
+    Rails.cache.write "#{self.site_url}new_password1_at", timestamp
   end
   def new_password1_at
-    rails.cache.fetch "#{self.site_url}new_password1_at"
+    Rails.cache.fetch "#{self.site_url}new_password1_at"
   end
 
   # symmetric password setup
-  protected
+  # protected
+  public # todo: change to protected
   def set_new_password1
     self.set_key
     self.new_password1 = String.generate_random_string(40)
     self.new_password1_at = (Time.now.to_f*1000).floor
     logger.secret2 "key = #{self.key}, new_password1 = #{self.new_password1}, new_password1_at = #{self.new_password1_at}"
   end
+  
+  # password 2 - other servers part of symmetric password
+  def new_password2=(password)
+    if password
+      Rails.cache.write "#{self.site_url}new_password2", password.encrypt(:symmetric, :password => self.key)
+    else
+      Rails.cache.write "#{self.site_url}new_password2", nil
+    end
+  end
+  def new_password2
+    password = Rails.cache.fetch "#{self.site_url}new_password2"
+    password ? password.decrypt(:symmetric, :password => self.key) : nil
+  end
+  def new_password2_at=(timestamp)
+    Rails.cache.write "#{self.site_url}new_password2_at", timestamp
+  end
+  def new_password2_at
+    Rails.cache.fetch "#{self.site_url}new_password2_at"
+  end
+
+  # new password (password1 from this server and password2 from other server)
+  def new_password
+    return nil unless self.new_password1 and self.new_password2
+    if self.new_password1_at <= self.new_password2_at
+      self.new_password1 + self.new_password2
+    else
+      self.new_password2 + self.new_password1
+    end
+  end
+  def new_password_md5
+    new_password = self.new_password
+    new_password ? Digest::MD5.digest(new_password) : nil
+  end
+  
 
   # receive did and public key from other gofreerev server
   # saved in new_did and new_public if changed - must be validated before moved to old_did and old_pubkey
@@ -143,6 +184,26 @@ class Server < ActiveRecord::Base
   public
   def self.login_signature (hash)
     Digest::SHA256.hexdigest([hash[:client_secret], hash[:did], hash[:pubkey]].join(','))
+  end
+
+  # signature used in server to server ping request
+  # created in Server.ping and validated in UtilController.ping
+  # ping_request = {
+  #     client_userid: 1,
+  #     sid: sid,
+  #     client_timestamp: new_client_timestamp,
+  #     # new_gifts: giftService.new_gifts_request(),
+  #     # verify_gifts: giftService.verify_gifts_request(),
+  #     # delete_gifts: giftService.delete_gifts_request(),
+  #     # new_comments: giftService.new_comments_request(),
+  #     # verify_comments: giftService.verify_comments_request(),
+  #     # pubkeys: giftService.pubkeys_request(),
+  #     # refresh_tokens: result.refresh_tokens_request,
+  #     messages: self.send_messages
+  # }
+  public
+  def self.ping_signature (hash)
+    Digest::SHA256.hexdigest(([hash[:sid]] + (hash[:messages] || [])).join(','))
   end
 
   public
@@ -265,7 +326,7 @@ class Server < ActiveRecord::Base
     signature = Server.login_signature(login_request)
     logger.debug2 "signature_filename = #{signature_filename}"
     logger.debug2 "signature = #{signature}"
-    File.write(signature_filename, signature) ;
+    File.write(signature_filename, signature)
 
     # send login request
     logger.warn2 "unsecure post #{url}" unless secure
@@ -296,5 +357,120 @@ class Server < ActiveRecord::Base
     nil
 
   end # login
+
+
+  # return array with messages to server or nil
+  protected
+  def send_messages
+
+    messages = []
+
+    # 1) rsa password message. Array with new_password1, new_password1 and new_password_md5
+    # password complete when my new_password_md5 matches with received new_password_md5
+    if !self.new_password
+      # message. array with 2-3 elements. 3 elements if ready for md5 check
+      if !self.new_password1 or !self.new_password1_at
+        logger.error2 "Error. new_password1 was not found"
+        self.set_new_password1
+        self.save!
+      end
+      message = [self.new_password1, self.new_password1_at]
+      message << new_password_md5 if new_password_md5 = self.new_password_md5
+      message_json = message.to_json
+      logger.secret2 "message_json = #{message_json}"
+      key = OpenSSL::PKey::RSA.new self.new_pubkey
+      message_json_rsa_enc = key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+      logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
+      # add envelope for encrypted rsa message
+      # receiver_sha256 is only used in client to client communication = sha256 (client_secret + login_user ids)
+      # client_secret is received in login request and saved in sessions table
+      # sha256 values changes when client changes api provider login
+      # ensures that messages are delivered to "correct" mailbox (did + authorization)
+      # messages and api provider authorization must match in client to client messages
+      # for now no usage in server to server messages
+      message_with_envelope = {
+          receiver_did: self.new_did,
+          receiver_sha256: self.new_did,
+          encryption: 'rsa',
+          message: message_json_rsa_enc
+      }
+      logger.debug2 "message_with_envelope = #{message_with_envelope}"
+      messages << message_with_envelope
+    end # if new_password
+
+    messages.length == 0 ? nil : messages
+  end # send_messages
+
+
+  # server ping - server to server messages - like js ping /util/ping (client server messages)
+  # 1) send "upstream" messages to other gofreerev server and receive "downstream" messages from other gofreerev server
+  #    a) rsa encrypted password message
+  public
+  def ping
+
+    site_url = self.site_url
+    site_url = 'https' + site_url.from(4) if secure
+
+    # create http client
+    client = HTTPClient.new
+    client.set_cookie_store(self.cookie_filename()) # one cookie file per gofreerev server
+
+    # check session
+    xsrf_token = nil
+    client.cookie_manager.cookies.each do |cookie|
+      # logger.debug2 "cookie = #{cookie.to_json}"
+      xsrf_token = cookie.value if cookie.name == 'XSRF-TOKEN'
+    end
+    return "No XSRF-TOKEN was found in session cookie" unless xsrf_token
+
+    # create ping request
+    url = URI.parse("#{site_url}util/ping.json")
+    new_client_timestamp = (Time.now.to_f*1000).floor
+    s = SystemParameter.find_by_name('sid'); sid = s.value
+    ping_request = {
+        client_userid: 1,
+        sid: sid,
+        client_timestamp: new_client_timestamp,
+        # new_gifts: giftService.new_gifts_request(),
+        # verify_gifts: giftService.verify_gifts_request(),
+        # delete_gifts: giftService.delete_gifts_request(),
+        # new_comments: giftService.new_comments_request(),
+        # verify_comments: giftService.verify_comments_request(),
+        # pubkeys: giftService.pubkeys_request(),
+        # refresh_tokens: result.refresh_tokens_request,
+        messages: self.send_messages
+    }
+    logger.debug2 "ping_request = #{ping_request}"
+    # X_XSRF_TOKEN - escaped in cookie - unescaped in request header
+    header = {'X_XSRF_TOKEN' => CGI::unescape(xsrf_token), 'Content-Type' =>'application/json' }
+
+    # json validate ping request before send
+    json_schema = :ping_request
+    if !JSON_SCHEMA.has_key? json_schema
+      return "Could not validate ping request. JSON schema definition #{json_schema.to_s} was not found."
+    end
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_request)
+    return "Invalid ping json request: #{json_errors.join(', ')}" unless json_errors.size == 0
+
+    # sign login request - called gofreerev server must validate signature for incoming ping request
+    signature_filename = self.signature_filename(ping_request[:client_timestamp])
+    signature = Server.ping_signature(ping_request)
+    logger.debug2 "signature_filename = #{signature_filename}"
+    logger.debug2 "signature = #{signature}"
+    File.write(signature_filename, signature)
+
+    # send ping request
+    logger.warn2 "unsecure post #{url}" unless secure
+    res = client.post(url, :body => ping_request.to_json, :header => header)
+    logger.debug2 "res = #{res}"
+    FileUtils.rm signature_filename
+    if res.status != 200
+      puts "post #{url.to_s} failed with status #{res.status}"
+      return nil
+    end
+    client.cookie_manager.save_all_cookies(true, true, true)
+    logger.debug2 "res.body = #{res.body}"
+
+  end # ping
 
 end

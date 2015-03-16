@@ -1009,6 +1009,10 @@ class UtilController < ApplicationController
         return ;
       end
 
+      # server or client login?
+      server = (login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//)
+      logger.debug2 "server = #{server}"
+
       # all client sessions should ping server once every server ping cycle
       # check server load average the last 5 minutes and increase/decrease server ping cycle
       s = Sequence.get_server_ping_cycle
@@ -1052,7 +1056,7 @@ class UtilController < ApplicationController
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token
-      expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens])
+      expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens]) unless server
       @json[:expired_tokens] = expired_providers if expired_providers
       @json[:oauths] = oauths if oauths # only google+
 
@@ -1099,8 +1103,6 @@ class UtilController < ApplicationController
       ping.last_ping_at = now
       ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
       ping.save!
-
-
 
       if !@json[:error]
 
@@ -1170,13 +1172,13 @@ class UtilController < ApplicationController
         # 2) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
         # sha256 signature should ensure that gift information is not unauthorized updated on client
         # logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
-        new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids)
+        new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids) unless server
         @json[:new_gifts] = new_gifts_response if new_gifts_response
 
         # 3) new comments. create comments (cid and sha256 signature) and return created_at_server timestamps to client
         # sha256 signature should ensure that comment information is not unauthorized updated on client
         # logger.debug2 "new_comments = #{params[:new_comments]} (#{params[:new_comments].class})"
-        new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids)
+        new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids) unless server
         @json[:new_comments] = new_comments_response if new_comments_response
 
         # 4) todo: add accept_gifts request and response
@@ -1184,7 +1186,7 @@ class UtilController < ApplicationController
         # 5) delete gifts. mark gifts as deleted with a server side sha256_deleted signature. Returns deleted_at_server = true or an error message for each gift
         # signatures (sha256 and sha256_deleted) should ensure that gift information is not unauthorized updated on client
         logger.debug2 "delete_gifts = #{params[:delete_gifts]} (#{params[:delete_gifts].class})"
-        delete_gifts_response = Gift.delete_gifts(params[:delete_gifts], login_user_ids)
+        delete_gifts_response = Gift.delete_gifts(params[:delete_gifts], login_user_ids) unless server
         @json[:delete_gifts] = delete_gifts_response if delete_gifts_response
 
         # 6) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client
@@ -1192,10 +1194,10 @@ class UtilController < ApplicationController
         # client must reject gift if created_at_server timestamp is null or does not match
         # sha256 signature should ensure that gift information is not unauthorized updated on client
         logger.debug2 "verify_gifts = #{params[:verify_gifts]} (#{params[:verify_gifts].class})"
-        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids)
+        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids) unless server
         @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
-        # 7) client to client messages
+        # 7) client to client messages or server or server messages
         # input: buffer messages from this client to other devices - return ok or error message for each input message
         # output: return messages to this client from other devices - todo: client should respond with ok/error for received messages!
         # return any messages from other devices to client

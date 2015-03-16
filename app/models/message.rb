@@ -2,13 +2,47 @@ class Message < ActiveRecord::Base
 
   # create_table "messages", force: true do |t|
   #   t.string   "from_did",    limit: 20,       null: false
-  #   t.string   "from_sha256", limit: 45,       null: false
+  #   t.string   "from_sha256", limit: 45
   #   t.string   "to_did",      limit: 20,       null: false
-  #   t.string   "to_sha256",   limit: 45,       null: false
+  #   t.string   "to_sha256",   limit: 45
+  #   t.string   "encryption",  limit: 3,        null: false
+  #   t.boolean  "server",                       null: false
+  #   t.text     "key"
   #   t.text     "message",     limit: 16777215, null: false
   #   t.datetime "created_at"
   #   t.datetime "updated_at"
   # end
+  # add_index "messages", ["from_did", "created_at"], name: "index_messages_from_did", using: :btree
+  # add_index "messages", ["to_did", "created_at"], name: "index_messages_to_did", using: :btree
+
+  # 1) from_did - from unique device id - client or server
+  validates_presence_of :from_did
+  validates_format_of :from_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
+
+  # 2) from_sha256 - from sha256 signature - only client - generated from client secret + user ids for logged in users
+
+  # 3) to_did - to unique devide id - client or server
+  validates_presence_of :to_did
+  validates_format_of :to_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
+
+  # 4) to_sha256 - to sha256 signature - only client - generated from client secret + user ids for logged in users
+
+  # 5) encryption - rsa, sym or mix
+  #    rsa - public private key encryption. key length should be minimum 2048 bits
+  #    sym - symmetric encryption - the 2 parts in communication must previous exchanged password for symmetric communication
+  #    mix - key is rsa encrypted and message is symmetric encrypted with key
+  validates_presence_of :encryption
+  validates_inclusion_of :encryption, :in => %w(rsa sym mix), :allow_blank => true
+
+  # 6) server - true: server to server communication - false: client to client communication
+  validates_inclusion_of :server, :in => [true, false]
+
+  # 7) key - only mix - rsa encrypted key used for symmetric encrypted message
+  validates_presence_of :key
+
+  # 8) message - rsa or sym encrypted message
+
+  # 9) timestamps
 
   def self.messages (sender_did, sender_sha256, input_messages)
 

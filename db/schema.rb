@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150316092310) do
+ActiveRecord::Schema.define(version: 20150316145659) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -131,6 +131,9 @@ ActiveRecord::Schema.define(version: 20150316092310) do
     t.boolean  "server",                       null: false
     t.text     "key"
   end
+
+  add_index "messages", ["from_did", "created_at"], name: "index_messages_from_did", using: :btree
+  add_index "messages", ["to_did", "created_at"], name: "index_messages_to_did", using: :btree
 
   create_table "notifications", force: true do |t|
     t.string   "noti_id",      limit: 20, null: false

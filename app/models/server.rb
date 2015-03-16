@@ -25,14 +25,11 @@ class Server < ActiveRecord::Base
   validates_inclusion_of :secure, :in => [true, false]
 
   # 3: new_did - new unvalidated did - unique device id - unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-  validates_presence_of :new_did
-  validates_format_of :new_did, :with => /\A[0-9]{20}\z/
+  validates_format_of :new_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
 
   # 4: new_pubkey - new unvalidated public key
 
   # 5: old_did - old validated did - unique device id - unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
-  validates_presence_of :new_did
-  validates_format_of :new_did, :with => /\A[0-9]{20}\z/
 
   # 6: old_pubkey - old validated public key
 
@@ -224,9 +221,7 @@ class Server < ActiveRecord::Base
       begin
         logger.warn2 "unsecure get #{url}" unless secure
         res = client.get("#{url}")
-      rescue Errno::ECONNREFUSED => e
-        return "signature verification failed with: \"#{e.message}\""
-      rescue OpenSSL::SSL::SSLError => e
+      rescue Errno::ECONNREFUSED, OpenSSL::SSL::SSLError => e
         if secure
           # https failed. retry with http
           logger.debug "secure get #{url} failed with #{e.message}. Trying without ssl"

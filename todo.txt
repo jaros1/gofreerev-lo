@@ -1359,4 +1359,12 @@
      faster and maybe more secure than symmetric password handshake
      but both clients should be party in securing communication (sending client could have used an insecure key)
 
+333) device login old laptop
+     showing register dialog but accounts already exists
+
+334) is CryptoJS being used or not
+     assets/javascript/cryptojs folder on old laptop from backup disk with 7 js scripts (1-core.js, 2-md5.js, 3-evpkdf.js, 4-enc-base64.js, 5-cipher-core.js, 6-aes.js, 7-sha256.js)
+     used in KJUR.asn1.ASN1Util function in jsencrypt.js but I don't think that this function is used
+     new laptop is working OK without CryptoJS
+
 select next issue to solve: (rand*332).floor+1

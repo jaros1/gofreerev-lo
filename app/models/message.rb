@@ -11,6 +11,9 @@ class Message < ActiveRecord::Base
   # end
 
   def self.messages (sender_did, sender_sha256, input_messages)
+
+    # todo: sender_sha256 is null in server to server messages
+
     logger.debug2 "sender_did = #{sender_did}"
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages = #{input_messages}"
@@ -25,12 +28,19 @@ class Message < ActiveRecord::Base
     # save any new messages received from client to other clients
     if input_messages.class == Array
       input_messages.each do |message|
+        # todo: validate record format
+        # 1) sender_sha256 and receiver_sha256 is blank in server to server messages (server=true)
+        # 2) sender_sha256 and receiver_sha256 is required in client to client messages (server=false)
+        # 3) allowed values for encryption is rsa, sym or mix
+        # 4) key is only allowed for encryption = mix
         m = Message.new
         m.from_did = sender_did
         m.from_sha256 = sender_sha256
         m.to_did = message['receiver_did']
         m.to_sha256 = message['receiver_sha256']
+        m.server = message['server']
         m.encryption = message['encryption']
+        m.key = message['key']
         m.message = message['message']
         m.save!
       end # each message

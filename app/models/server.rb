@@ -301,13 +301,11 @@ class Server < ActiveRecord::Base
 
     # post login request to other gofreerev server
     SystemParameter.generate_key_pair unless SystemParameter.public_key
-    s = SystemParameter.find_by_name('secret') ; secret = s.value
-    s = SystemParameter.find_by_name('did') ; did = s.value
     url = URI.parse("#{site_url}util/login.json")
     login_request = {:client_userid => 1,
                      :client_timestamp => (Time.now.to_f*1000).floor,
-                     :client_secret => secret,
-                     :did => did,
+                     :client_secret => SystemParameter.secret,
+                     :did => SystemParameter.did,
                      :pubkey => SystemParameter.public_key,
                      :site_url => SITE_URL}
     # X_XSRF_TOKEN - escaped in cookie - unescaped in request header
@@ -365,8 +363,8 @@ class Server < ActiveRecord::Base
 
     messages = []
 
-    # 1) rsa password message. Array with new_password1, new_password1 and new_password_md5
-    # password complete when my new_password_md5 matches with received new_password_md5
+    # 1) rsa password setup for gofreerev server. Array with new_password1, new_password1 and new_password_md5
+    # password setup complete when my new_password_md5 matches with received new_password_md5
     if !self.new_password
       # message. array with 2-3 elements. 3 elements if ready for md5 check
       if !self.new_password1 or !self.new_password1_at
@@ -389,8 +387,9 @@ class Server < ActiveRecord::Base
       # messages and api provider authorization must match in client to client messages
       # for now no usage in server to server messages
       message_with_envelope = {
+          sender_did: SystemParameter.did,
           receiver_did: self.new_did,
-          receiver_sha256: self.new_did,
+          server: true,
           encryption: 'rsa',
           message: message_json_rsa_enc
       }

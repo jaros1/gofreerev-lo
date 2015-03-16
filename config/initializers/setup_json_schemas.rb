@@ -329,20 +329,27 @@ JSON_SCHEMA = {
               # temporary buffer on server until message is delivered or message is expired/too old
               :messages => {
                   :type => 'array',
-                  :title => 'Request with messages from client to other clients',
+                  :title => 'Request with messages from child client or server',
+                  :description => 'Array with messages from child client (server=false) or child server (server=true). Sender_did is only used in server to server communication. Receiver_sha256 is only used in client to client communication. Encryption is rsa, sym or mix. key is only used for mix encrypted messages',
                   :items => {
                       :type => 'object',
                       :properties => {
+                          # sender did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :sender_did => {:type => 'string', :pattern => uid_pattern},
                           # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :receiver_did => {:type => 'string', :pattern => uid_pattern},
                           # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
                           :receiver_sha256 => {:type => 'string'},
+                          # server - true for server to server communication. false for client to client communication
+                          :server => {:type => 'boolean'},
                           # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
-                          :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
+                          :encryption => {:type => 'string', :pattern => '^(rsa|sym|mix)$'},
+                          # key is only used in mix encrypted message. key is rsa encrypted and message is symmetric encrypted with key
+                          :key => {:type => 'string'},
                           # message for receiver device encrypted with device public key
                           :message => {:type => 'string'}
                       },
-                      :required => %w(receiver_did receiver_sha256 encryption message),
+                      :required => %w(receiver_did server encryption message),
                       :additionalProperties => false
                   },
                   :minItems => 1
@@ -363,6 +370,8 @@ JSON_SCHEMA = {
               # array with online friends/devices - tells the client which devices are available for information synchronization
               :online => {
                   :type => 'array',
+                  :title => 'Array with online friends',
+                  :description => 'Did is unique device id. sha256 is signature with client secret and current logged in users. sha256 changes when api provider login changes for a device. Did+sha256 is used as unique mailbox address. Mutual_friends is an array with mutual friends between did and friend did. Synchronize only information for mutual friends. Server id used for communication with friends on other gofreerev servers',
                   :items => {
                       :type => 'object',
                       :properties => {
@@ -371,7 +380,9 @@ JSON_SCHEMA = {
                           # sha256 signature for device generated from client secret and login user ids. used in client to client communication mailbox
                           :sha256 => {:type => 'string'},
                           # array with internal user ids for mutual friends - synchronize information for mutual friends between clients
-                          :mutual_friends => {:type => 'array', :items => {:type => 'integer'}}
+                          :mutual_friends => {:type => 'array', :items => {:type => 'integer'}},
+                          # optional server id if online unique device on an other gofreerev server (server to server communication)
+                          :server_id => {:type => 'integer', :minimum => 1}
                       },
                       :required => %w(did sha256 mutual_friends),
                       :additionalProperties => false

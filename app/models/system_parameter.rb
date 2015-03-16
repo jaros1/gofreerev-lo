@@ -89,5 +89,19 @@ class SystemParameter < ActiveRecord::Base
     x
   end
 
+  def self.did
+    s = SystemParameter.find_by_name('did')
+    s ? s.value : nil
+  end
+
+  def self.sid
+    s = SystemParameter.find_by_name('sid')
+    s ? s.value : nil
+  end
+
+  def self.secret
+    s = SystemParameter.find_by_name('secret')
+    s ? s.value : nil
+  end
 
 end

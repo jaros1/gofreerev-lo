@@ -3976,6 +3976,7 @@ angular.module('gifts', ['ngRoute'])
                     if (!mailbox.online) continue; // wait - not online
                     // send password1 to other device using public/private key encryption (rsa)
                     if (!device.password1) {
+                        // todo: jsencrypt. check problems with max length for rsa message. Limit about 128 characters is not correct for a 2048 bit key
                         device.password1 = Gofreerev.generate_random_password(40); // 42 characters password to long for RSA
                         device.password1_at = (new Date).getTime();
                     }
@@ -3995,6 +3996,8 @@ angular.module('gifts', ['ngRoute'])
                         encryption: 'rsa',
                         message: message_json_rsa_enc
                     };
+                    // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
+                    if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
                     response.push(message_with_envelope);
                     // debug
                     // console.log(pgm + 'message_json = ' + message_json) ;
@@ -4058,6 +4061,8 @@ angular.module('gifts', ['ngRoute'])
                     encryption: 'sym',
                     message: Gofreerev.encrypt(JSON.stringify(message), password)
                 };
+                // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
+                if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
                 // send encrypted message
                 response.push(message_with_envelope);
                 // console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope));

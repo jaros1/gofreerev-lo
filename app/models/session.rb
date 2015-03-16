@@ -360,6 +360,7 @@ class Session < ActiveRecord::Base
       when :state then self.state = value
       when :tokens then self.tokens = value
       when :user_ids
+        logger.debug "#{key} = #{value}"
         self.user_ids = value
         # update sha256 signature (client_secret + user_ids) - used in ping - used in client to client communication
         if value.class == Array

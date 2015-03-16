@@ -1303,4 +1303,60 @@
      A => B => C. B receives message from A and send message to C
      B can not read message as message is symmetric encrypted between A and C
 
-select next issue to solve: (rand*325).floor+1
+327) add server register before first server login?
+     send password to server and store sha256 password hash on server
+     check password in login request
+     maybe use client secret as password? (received in login request)
+     register with client secret in clear text and login with sha256 secret check
+
+328) calculate distance between 2 gofreerev servers.
+     1 if direct connected (as child or as parent)
+     2 if indirect connected via a child or a parent
+     etc
+     statistic for elapsed time when sending and receiving message to other gofreerev server
+     select best elapsed time when forwarding a message to an other gofreerev server
+     also count number of unsecure and more or less secure connections in path to other gofreerev server
+     better to use a slow secure connection that a fast unsecure
+     use longer symmetric password over unsecure connections
+
+329) server to server messages must have a sender and a receiver did
+
+330) client to client message:
+                   :messages => {
+                       :type => 'array',
+                       :title => 'Request with messages from client',
+                       :description => '',
+                       :items => {
+                           :type => 'object',
+                           :properties => {
+                               # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                               :receiver_did => {:type => 'string', :pattern => uid_pattern},
+                               # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
+                               :receiver_sha256 => {:type => 'string'},
+                               # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
+                               :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
+                               # message for receiver device encrypted with device public key
+                               :message => {:type => 'string'}
+                           },
+                           :required => %w(receiver_did receiver_sha256 encryption message),
+                           :additionalProperties => false
+                       },
+                       :minItems => 1
+                   }
+     rsa encrypted or sym encrypted using client to client encryption keys
+     no information about gofreerev server
+     server could keep track of cross client communication and forward message to correct server
+     but client should know that friend is on an other gofreerev server and client should accept or reject communication with friend
+     could be in form of a verification token that one or both clients must enter before communication can start
+
+331) "42 characters password to long for RSA"
+     limit with about 128 characters in an RSA message with a 2048 bits key is not correct
+     check if jsencrypt has problems with 2048 rsa key
+
+332) change rsa/sym encryption setup?
+     drop symmetric password handshake between two clients
+     send message with a "small" rsa encrypted key and a big symmetric encrypted message
+     faster and maybe more secure than symmetric password handshake
+     but both clients should be party in securing communication (sending client could have used an insecure key)
+
+select next issue to solve: (rand*332).floor+1

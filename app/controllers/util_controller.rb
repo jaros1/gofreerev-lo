@@ -770,22 +770,9 @@ class UtilController < ApplicationController
       set_session_value :did, params[:did]
       set_session_value :client_secret, params[:client_secret]
 
-      if params[:site_url].to_s == ''
-        # client request
-        # save new public key from browser client - used in client to client communication
-        # private key is saved key encrypted in browser localStorage and is only known by js client
-        # see private key security in /app/assets/javascript/gofreerev.js getItem and setItem functions
-        # private key in browser localStorage is encrypted with random key (80-120 characters)
-        p = Pubkey.find_by_did(params[:did])
-        if !p
-          logger.debug2 "did = #{params[:did]}, pubkey = #{params[:pubkey]}"
-          p = Pubkey.new
-          p.did = params[:did]
-        end
-        p.pubkey = params[:pubkey]
-        p.save! if p.new_record? or p.changed?
-      else
-        # server request
+      if params[:site_url].to_s != ''
+        # server login request
+        @json[:friends] = [] # todo: change :friends to not required in login request json schema
         # save did and public key from other gofreerev server - used in server to server communication
         # private key is saved in system_parameters table encrypted with 1-4 passwords
         # see private key security setup in config/initializers/constants.rb (PK_PASS_*)
@@ -807,7 +794,6 @@ class UtilController < ApplicationController
         if error = s.invalid_signature(params[:client_timestamp], signature)
           # server not responding or signature is invalid
           @json[:error] = error
-          @json[:friends] = []
           format_response
           return
         end
@@ -815,12 +801,11 @@ class UtilController < ApplicationController
         if error = s.save_new_did_and_public_key(params[:did], params[:pubkey])
           # invalid did change. cannot change did to an existing did
           @json[:error] = error
-          @json[:friends] = []
           format_response
           return
         end
-        # dummy user id user for gofreerev servers
-        set_session_value :user_ids, ['server']
+        # use site_url as dummy user id user for gofreerev servers
+        set_session_value :user_ids, [site_url]
         logger.debug2 "login user ids = #{login_user_ids}"
         # return public key for this gofreerev to other gofreerev server
         pubkey = SystemParameter.public_key
@@ -831,9 +816,25 @@ class UtilController < ApplicationController
         end
         @json[:pubkey] = pubkey
         # return did for this gofreerev to other gofreerev server
-        s = SystemParameter.find_by_name('did')
-        @json[:did] = s.value if s
+        @json[:did] = SystemParameter.did
+        # ok
+        format_response
+        return
       end
+
+      # client request
+      # save new public key from browser client - used in client to client communication
+      # private key is saved key encrypted in browser localStorage and is only known by js client
+      # see private key security in /app/assets/javascript/gofreerev.js getItem and setItem functions
+      # private key in browser localStorage is encrypted with random key (80-120 characters)
+      p = Pubkey.find_by_did(params[:did])
+      if !p
+        logger.debug2 "did = #{params[:did]}, pubkey = #{params[:pubkey]}"
+        p = Pubkey.new
+        p.did = params[:did]
+      end
+      p.pubkey = params[:pubkey]
+      p.save! if p.new_record? or p.changed?
 
       if !params.has_key? :oauth
         # empty login
@@ -1108,6 +1109,10 @@ class UtilController < ApplicationController
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
         # get list of online devices - ignore current session(s) - only online devices with friends are relevant
+        # todo: add information about online devices/friends on other gofreerev servers to online array
+        # todo: don't include :server_id for online devices/friends on this gofreerev server
+        # todo: include server id for online devices/friends on other gofreerev servers
+        # todo: user must accept or reject communication with user on other gofreerev server
         pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
                            ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
         if pings.size > 0

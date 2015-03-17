@@ -60,9 +60,11 @@ class Message < ActiveRecord::Base
 
     # todo: sender_sha256 is null in server to server messages
 
-    logger.debug2 "sender_did = #{sender_did}"
+    logger.debug2 "sender_did    = #{sender_did}"
     logger.debug2 "sender_sha256 = #{sender_sha256}"
-    logger.debug2 "messages = #{input_messages}"
+    logger.debug2 "messages      = #{input_messages}"
+
+    server = (sender_sha256.to_s == '')
 
     if !sender_did
       return { :error => 'System error in message service. Did for actual client is unknown on server.'}
@@ -93,7 +95,16 @@ class Message < ActiveRecord::Base
     Message.where(:to_did => SystemParameter.did).order(:created_at).each { |m| m.read_message }
 
     # return any messages to client from other devices
-    ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256).order(:created_at)
+    if server
+      # todo: allow server to server allow messages to be routed through one or more gofreerev servers
+      # todo: select route to other gofreerev server with best encryption and best response time
+      # todo: take into account other server pings (ingoing or outgoing) within the next server ping cycle
+      # todo: forwarded messages returned in an response can be deleted - here - called be an other Gofreerev server
+      # todo: forwarded messages send to an other gofreerev server can be deleted after do response from other Gofreerev server
+      ms = Message.where(:to_did => sender_did).order(:created_at)
+    else
+      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256).order(:created_at)
+    end
     output_messages = ms.collect do |m|
       { :sender_did => m.from_did,
         :sender_sha256 => m.from_sha256,
@@ -104,6 +115,7 @@ class Message < ActiveRecord::Base
     ms.delete_all
 
     output_messages.size == 0 ? nil : { :messages => output_messages }
-  end
+  end # self.messages
+
 
 end

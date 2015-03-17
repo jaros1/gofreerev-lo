@@ -70,7 +70,7 @@ GEM
     coffee-script-source (1.9.1)
     colorize (0.7.5)
     columnize (0.9.0)
-    countries (0.11.0)
+    countries (0.11.2)
       currencies (~> 0.4.2)
       i18n_data (~> 0.6.0)
     crypt_keeper (0.14.0.pre)

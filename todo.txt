@@ -1367,4 +1367,10 @@
      used in KJUR.asn1.ASN1Util function in jsencrypt.js but I don't think that this function is used
      new laptop is working OK without CryptoJS
 
-select next issue to solve: (rand*332).floor+1
+335) rsa message - now only used for symmetric password setup
+     use first byte as msgtype. '0' = password setup
+     both js receive_messages and rails receive_messages
+
+336) change password message from json array to comma separated string. Don't used comma in passwords
+
+select next issue to solve: (rand*336).floor+1

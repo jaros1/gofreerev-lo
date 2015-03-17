@@ -4105,6 +4105,7 @@ angular.module('gifts', ['ngRoute'])
         };
 
         // communication step 1 - receive symmetric password (part 2) from other device
+        // rails: see Message.receive_message (server to server)
         var receive_message_password = function (device, msg) {
             var pgm = service + '.receive_message_password: ';
             // console.log(pgm + 'device = ' + JSON.stringify(device)) ;

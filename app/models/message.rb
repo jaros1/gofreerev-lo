@@ -50,21 +50,76 @@ class Message < ActiveRecord::Base
 
   # 9) timestamps
 
+  def receive_message_password
+    # setup password for symmetric communication
+    # gofreerev.js: see GiftService.receive_message_password (client to client)
+    key = OpenSSL::PKey::RSA.new SystemParameter.private_key
+    message_json_rsa_enc = Base64.decode64(self.message)
+    message_json = key.private_decrypt(message_json_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+    logger.secret2 "message_json = #{message_json}"
+    message = JSON.parse(message_json)
+
+    server = Server.find_by_new_did self.from_did
+    if !server
+      # todo: how to handle rsa message from unknown did. Should ask gofreerev network for information
+      logger.error2 "Received rsa message from unknown server #{self.from_did}"
+      return
+    end
+    if !server.new_pubkey
+      # todo: how to handle missing public key for server. Should ask other gofreerev server for public key
+      logger.error2 "Received rsa message from #{server.site_url} but public key is missing"
+      return
+    end
+    # save symmetric password part 2 received from other Gofreerev server
+    server.set_new_password1 unless server.new_password1
+    server.new_password2 = message[0]
+    server.new_password2_at = message[1]
+    server.save!
+    if message.size == 3 and message[2] == server.new_password_md5
+      logger.debug2 "symmetric password setup completed."
+    else
+      logger.debug2 "symmetric password setup in progress."
+    end
+    self.destroy!
+
+    if message.size == 2 or message[2] != server.new_password_md5
+      # todo: send/resend password part 1 to other server
+      hash = server.create_password_message
+      m = Message.new
+      m.from_did = hash[:sender_did]
+      m.to_did = hash[:receiver_did]
+      m.server = hash[:server]
+      m.encryption = hash[:encryption]
+      m.message = hash[:message]
+      m.save!
+    end
+
+  end # receive_message_password
+
+
   # read message for this server
-  def read_message
+  def receive_message
     logger.debug "new mail: #{self.to_json}"
-  end
+
+    if self.encryption == 'rsa'
+      # setup password for symmetric communication
+      # javascript: see GiftService.receive_message_password in gofreerev.js (client to client)
+      receive_message_password
+      return
+    end
+
+    logger.error2 "not implemented"
+
+  end # receive_message
 
 
-  def self.messages (sender_did, sender_sha256, input_messages)
+  def self.receive_messages (sender_did, sender_sha256, input_messages)
 
     # todo: sender_sha256 is null in server to server messages
 
     logger.debug2 "sender_did    = #{sender_did}"
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages      = #{input_messages}"
-
-    server = (sender_sha256.to_s == '')
 
     if !sender_did
       return { :error => 'System error in message service. Did for actual client is unknown on server.'}
@@ -92,29 +147,64 @@ class Message < ActiveRecord::Base
     end
 
     # check for any server messages to this server
-    Message.where(:to_did => SystemParameter.did).order(:created_at).each { |m| m.read_message }
+    Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each { |m| m.receive_message }
+
+    nil
+  end # self.receive_messages
+
+
+  def self.send_messages (sender_did, sender_sha256, input_messages)
+
+    logger.debug2 "sender_did    = #{sender_did}"
+    logger.debug2 "sender_sha256 = #{sender_sha256}"
+    logger.debug2 "messages      = #{input_messages}"
+
+    server = (sender_sha256.to_s == '')
+
+    if !sender_did
+      return { :error => 'System error in message service. Did for actual client is unknown on server.'}
+    end
 
     # return any messages to client from other devices
     if server
       # todo: allow server to server allow messages to be routed through one or more gofreerev servers
-      # todo: select route to other gofreerev server with best encryption and best response time
       # todo: take into account other server pings (ingoing or outgoing) within the next server ping cycle
-      # todo: forwarded messages returned in an response can be deleted - here - called be an other Gofreerev server
-      # todo: forwarded messages send to an other gofreerev server can be deleted after do response from other Gofreerev server
-      ms = Message.where(:to_did => sender_did).order(:created_at)
+      # todo: select route to other gofreerev server with best encryption and shortest response time
+      # todo: forwarded messages returned in an response to a gofreerev server can be deleted now (here)
+      # todo: forwarded messages send in an request to an other gofreerev server can be deleted after ok response
+      ms = Message.where(:to_did => sender_did, :server => true).order(:created_at)
     else
-      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256).order(:created_at)
+      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256, :server => false).order(:created_at)
     end
     output_messages = ms.collect do |m|
-      { :sender_did => m.from_did,
-        :sender_sha256 => m.from_sha256,
-        :encryption => m.encryption,
-        :created_at_server => m.created_at.to_i,
-        :message => m.message }
+      hash = {:sender_did => m.from_did,
+              :server => m.server,
+              :encryption => m.encryption,
+              :message => m.message,
+              :created_at_server => m.created_at.to_i}
+      hash[:sender_sha256] = m.from_sha256 if m.from_sha256
+      hash[:key] = m.key if m.key
+      hash
     end
     ms.delete_all
 
     output_messages.size == 0 ? nil : { :messages => output_messages }
+  end # self.send_messages
+
+
+  # receive messages from client (or server) and messages to client (or server)
+  def self.messages (sender_did, sender_sha256, input_messages)
+
+    # todo: sender_sha256 is null in server to server messages
+
+    logger.debug2 "sender_did    = #{sender_did}"
+    logger.debug2 "sender_sha256 = #{sender_sha256}"
+    logger.debug2 "messages      = #{input_messages}"
+
+    error = Message.receive_messages(sender_did, sender_sha256, input_messages)
+    return error if error
+    Message.send_messages(sender_did, sender_sha256, input_messages)
+
   end # self.messages
 
 

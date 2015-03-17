@@ -583,14 +583,18 @@ JSON_SCHEMA = {
                                   :sender_did => {:type => 'string', :pattern => uid_pattern},
                                   # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
                                   :sender_sha256 => {:type => 'string'},
+                                  # server - true for server to server communication. false for client to client communication
+                                  :server => {:type => 'boolean'},
                                   # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
-                                  :encryption => {:type => 'string', :pattern => '^(rsa|sym)$'},
-                                  # when was message received from other device - unix timestamp - todo: rename to received_on_server
-                                  :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i},
+                                  :encryption => {:type => 'string', :pattern => '^(rsa|sym|mix)$'},
+                                  # key is only used in mix encrypted message. key is rsa encrypted and message is symmetric encrypted with key
+                                  :key => {:type => 'string'},
                                   # message for receiver device encrypted with device public key
-                                  :message => {:type => 'string'}
+                                  :message => {:type => 'string'},
+                                  # when was message received from other device - unix timestamp - todo: rename to received_on_server
+                                  :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i}
                               },
-                              :required => %w(sender_did sender_sha256 created_at_server message),
+                              :required => %w(sender_did server encryption message created_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1

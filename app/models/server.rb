@@ -80,6 +80,7 @@ class Server < ActiveRecord::Base
   # password 2 - other servers part of symmetric password
   def new_password2=(password)
     if password
+      self.set_key unless key
       Rails.cache.write "#{self.site_url}new_password2", password.encrypt(:symmetric, :password => self.key)
     else
       Rails.cache.write "#{self.site_url}new_password2", nil
@@ -364,6 +365,39 @@ class Server < ActiveRecord::Base
 
   end # login
 
+  public
+  def create_password_message
+    # message. array with 2-3 elements. 3 elements if ready for md5 check
+    if !self.new_password1 or !self.new_password1_at
+      logger.error2 "Error. new_password1 was not found"
+      self.set_new_password1
+      self.save!
+    end
+    message = [self.new_password1, self.new_password1_at]
+    message << new_password_md5 if new_password_md5 = self.new_password_md5
+    message_json = message.to_json
+    logger.secret2 "message_json = #{message_json}"
+    key = OpenSSL::PKey::RSA.new self.new_pubkey
+    message_json_rsa_enc = Base64.encode64(key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
+    # add envelope for encrypted rsa message
+    # receiver_sha256 is only used in client to client communication = sha256 (client_secret + login_user ids)
+    # client_secret is received in login request and saved in sessions table
+    # sha256 values changes when client changes api provider login
+    # ensures that messages are delivered to "correct" mailbox (did + authorization)
+    # messages and api provider authorization must match in client to client messages
+    # for now no usage in server to server messages
+    message_with_envelope = {
+        sender_did: SystemParameter.did,
+        receiver_did: self.new_did,
+        server: true,
+        encryption: 'rsa',
+        message: message_json_rsa_enc
+    }
+    logger.debug2 "message_with_envelope = #{message_with_envelope}"
+    message_with_envelope
+  end # create_password_message
+
 
   # return array with messages to server or nil
   protected
@@ -374,35 +408,8 @@ class Server < ActiveRecord::Base
     # 1) rsa password setup for gofreerev server. Array with new_password1, new_password1 and new_password_md5
     # password setup complete when my new_password_md5 matches with received new_password_md5
     if !self.new_password
-      # message. array with 2-3 elements. 3 elements if ready for md5 check
-      if !self.new_password1 or !self.new_password1_at
-        logger.error2 "Error. new_password1 was not found"
-        self.set_new_password1
-        self.save!
-      end
-      message = [self.new_password1, self.new_password1_at]
-      message << new_password_md5 if new_password_md5 = self.new_password_md5
-      message_json = message.to_json
-      logger.secret2 "message_json = #{message_json}"
-      key = OpenSSL::PKey::RSA.new self.new_pubkey
-      message_json_rsa_enc = Base64.encode64(key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-      logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
-      # add envelope for encrypted rsa message
-      # receiver_sha256 is only used in client to client communication = sha256 (client_secret + login_user ids)
-      # client_secret is received in login request and saved in sessions table
-      # sha256 values changes when client changes api provider login
-      # ensures that messages are delivered to "correct" mailbox (did + authorization)
-      # messages and api provider authorization must match in client to client messages
-      # for now no usage in server to server messages
-      message_with_envelope = {
-          sender_did: SystemParameter.did,
-          receiver_did: self.new_did,
-          server: true,
-          encryption: 'rsa',
-          message: message_json_rsa_enc
-      }
-      logger.debug2 "message_with_envelope = #{message_with_envelope}"
-      messages << message_with_envelope
+      # send rsa password message. array with 2-3 elements. 3 elements if ready for md5 check
+      messages << create_password_message
     end # if new_password
 
     messages.length == 0 ? nil : messages
@@ -477,6 +484,23 @@ class Server < ActiveRecord::Base
     end
     client.cookie_manager.save_all_cookies(true, true, true)
     logger.debug2 "res.body = #{res.body}"
+    
+    # json validate ping response
+    ping_response = JSON.parse(res.body)
+    logger.debug2 "ping_response = #{ping_response}"
+    json_schema = :ping_response
+    if !JSON_SCHEMA.has_key? json_schema
+      return "Could not validate ping response. JSON schema definition #{json_schema.to_s} was not found."
+    end
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_response)
+    return "Invalid ping json response: #{json_errors.join(', ')}" unless json_errors.size == 0
+    return ping_response['error'] if ping_response['error']
+
+    # process ping response from other Gofreerev server
+    # 1) todo: get interval and calculate timestamp for next allowed ping
+    # 2) receive and process any messages
+    Message.receive_messages SystemParameter.did, nil, ping_response["messages"]
+    # 3) todo: etc
 
   end # ping
 

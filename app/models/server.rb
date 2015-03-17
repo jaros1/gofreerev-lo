@@ -198,10 +198,23 @@ class Server < ActiveRecord::Base
   #     # refresh_tokens: result.refresh_tokens_request,
   #     messages: self.send_messages
   # }
+  # todo: add client secret to ping signature? received in login request and stored in sessions table
   public
   def self.ping_signature (hash)
-    Digest::SHA256.hexdigest(([hash[:sid]] + (hash[:messages] || [])).join(','))
-  end
+    if hash[:messages]
+      messages = hash[:messages].collect do |m|
+        [m[:sender_did], m[:receiver_did], m[:receiver_sha256], m[:server], m[:encryption], m[:key], m[:message]].join(',')
+      end.join(',')
+    else
+      messages = ''
+    end
+    sha256_input = [hash[:sid], messages].join(',')
+    sha256 = Digest::SHA256.hexdigest(sha256_input)
+    # logger.secret2 "hash         = #{hash.to_json}"
+    logger.secret2 "sha256_input = #{sha256_input}"
+    logger.secret2 "sha256       = #{sha256}"
+    sha256
+  end # self.ping_signature
 
   public
   def invalid_signature(client_timestamp, signature)
@@ -372,7 +385,7 @@ class Server < ActiveRecord::Base
       message_json = message.to_json
       logger.secret2 "message_json = #{message_json}"
       key = OpenSSL::PKey::RSA.new self.new_pubkey
-      message_json_rsa_enc = key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+      message_json_rsa_enc = Base64.encode64(key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
       logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
       # add envelope for encrypted rsa message
       # receiver_sha256 is only used in client to client communication = sha256 (client_secret + login_user ids)
@@ -446,7 +459,7 @@ class Server < ActiveRecord::Base
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_request)
     return "Invalid ping json request: #{json_errors.join(', ')}" unless json_errors.size == 0
 
-    # sign login request - called gofreerev server must validate signature for incoming ping request
+    # sign ping request - called gofreerev server must validate signature for incoming ping request
     signature_filename = self.signature_filename(ping_request[:client_timestamp])
     signature = Server.ping_signature(ping_request)
     logger.debug2 "signature_filename = #{signature_filename}"

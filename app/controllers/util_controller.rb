@@ -997,6 +997,27 @@ class UtilController < ApplicationController
     begin
       now = Time.zone.now
 
+      # server or client ping
+      server = (login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//)
+      logger.debug2 "server = #{server}"
+
+      if server
+        logger.debug2 "validate ping signature"
+        site_url = login_user_ids.first
+        logger.debug2 "site_url = #{site_url}"
+        signature = Server.ping_signature(params)
+        logger.debug "signature = #{signature}"
+        s = Server.find_by_site_url(site_url)
+        if error = s.invalid_signature(params[:client_timestamp], signature)
+          # server not responding or signature is invalid
+          @json[:error] = error
+          format_response
+          return
+        end
+        # signature ok
+        logger.debug2 "signature is ok"
+      end
+
       # abort ping if from a not logged in client
       login_user_ids = get_session_value(:user_ids)
       if login_user_ids.class != Array or login_user_ids.size == 0
@@ -1008,10 +1029,6 @@ class UtilController < ApplicationController
         format_response
         return ;
       end
-
-      # server or client login?
-      server = (login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//)
-      logger.debug2 "server = #{server}"
 
       # all client sessions should ping server once every server ping cycle
       # check server load average the last 5 minutes and increase/decrease server ping cycle

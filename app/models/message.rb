@@ -20,12 +20,16 @@ class Message < ActiveRecord::Base
   validates_format_of :from_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
 
   # 2) from_sha256 - from sha256 signature - only client - generated from client secret + user ids for logged in users
+  validates_presence_of :from_sha256, :if => Proc.new { |rec| rec.server == false }
+  validates_absence_of :from_sha256, :if => Proc.new { |rec| rec.server == true }
 
-  # 3) to_did - to unique devide id - client or server
+  # 3) to_did - to unique device id - client or server
   validates_presence_of :to_did
   validates_format_of :to_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
 
   # 4) to_sha256 - to sha256 signature - only client - generated from client secret + user ids for logged in users
+  validates_presence_of :to_sha256, :if => Proc.new { |rec| rec.server == false }
+  validates_absence_of :to_sha256, :if => Proc.new { |rec| rec.server == true }
 
   # 5) encryption - rsa, sym or mix
   #    rsa - public private key encryption. key length should be minimum 2048 bits
@@ -38,11 +42,19 @@ class Message < ActiveRecord::Base
   validates_inclusion_of :server, :in => [true, false]
 
   # 7) key - only mix - rsa encrypted key used for symmetric encrypted message
-  validates_presence_of :key
+  validates_presence_of :key, :if => Proc.new { |rec| rec.encryption == 'mix' }
+  validates_absence_of :key, :if => Proc.new { |rec| %w(rsa sym).index(rec.encryption) }
 
   # 8) message - rsa or sym encrypted message
+  validates_presence_of :message
 
   # 9) timestamps
+
+  # read message for this server
+  def read_message
+    logger.debug "new mail: #{self.to_json}"
+  end
+
 
   def self.messages (sender_did, sender_sha256, input_messages)
 
@@ -54,9 +66,6 @@ class Message < ActiveRecord::Base
 
     if !sender_did
       return { :error => 'System error in message service. Did for actual client is unknown on server.'}
-    end
-    if !sender_sha256
-      return { :error => 'System error in message service. Sha256 for actual client is unknown on server.'}
     end
 
     # save any new messages received from client to other clients
@@ -79,6 +88,9 @@ class Message < ActiveRecord::Base
         m.save!
       end # each message
     end
+
+    # check for any server messages to this server
+    Message.where(:to_did => SystemParameter.did).order(:created_at).each { |m| m.read_message }
 
     # return any messages to client from other devices
     ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256).order(:created_at)

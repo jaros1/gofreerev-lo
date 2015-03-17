@@ -343,6 +343,10 @@ class Session < ActiveRecord::Base
   # secret from session cookie. encrypt/decrypt data in sessions table with secret from cookie
   attr_accessor :secret
 
+  def server
+    self.user_ids.class == Array and self.user_ids.size == 1 and self.user_ids.first =~ /^http:\/\//
+  end
+
   public
   def set_column_value (key, value)
     key = key.to_sym
@@ -363,7 +367,10 @@ class Session < ActiveRecord::Base
         logger.debug "#{key} = #{value}"
         self.user_ids = value
         # update sha256 signature (client_secret + user_ids) - used in ping - used in client to client communication
-        if value.class == Array
+        if self.server
+          # sha256 is not used in server to server communication
+          self.sha256 = nil
+        elsif value.class == Array
           sha256_input = ([self.client_secret]+value.sort).join(',')
           self.sha256 = Base64.encode64(Digest::SHA256.digest(sha256_input))
         else

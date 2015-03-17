@@ -580,8 +580,11 @@ JSON_SCHEMA = {
                               :type => 'object',
                               :properties => {
                                   # receiver did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                  # only used in server to server messages (server=true).
+                                  :receiver_did => {:type => 'string', :pattern => uid_pattern},
+                                  # sender did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                                   :sender_did => {:type => 'string', :pattern => uid_pattern},
-                                  # receiver sha256 signature for generated from client secret and login user ids. used in client to client communication
+                                  # sender sha256 signature for generated from client secret and login user ids. used in client to client communication
                                   :sender_sha256 => {:type => 'string'},
                                   # server - true for server to server communication. false for client to client communication
                                   :server => {:type => 'boolean'},

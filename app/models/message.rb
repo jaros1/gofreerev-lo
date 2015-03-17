@@ -26,7 +26,11 @@ class Message < ActiveRecord::Base
   # 3) to_did - to unique device id - client or server
   validates_presence_of :to_did
   validates_format_of :to_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
-
+  validates_each :to_did, :allow_blank => true do |record, attr, value|
+    if record.from_did and record.from_did =~ /\A[0-9]{20}\z/ and value =~ /\A[0-9]{20}\z/
+      record.errors.add attr, 'from_did must be different than to_did' if value == record.from_did
+    end
+  end
   # 4) to_sha256 - to sha256 signature - only client - generated from client secret + user ids for logged in users
   validates_presence_of :to_sha256, :if => Proc.new { |rec| rec.server == false }
   validates_absence_of :to_sha256, :if => Proc.new { |rec| rec.server == true }
@@ -121,6 +125,8 @@ class Message < ActiveRecord::Base
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages      = #{input_messages}"
 
+    server = (sender_sha256.to_s == '')
+
     if !sender_did
       return { :error => 'System error in message service. Did for actual client is unknown on server.'}
     end
@@ -133,6 +139,9 @@ class Message < ActiveRecord::Base
         # 2) sender_sha256 and receiver_sha256 is required in client to client messages (server=false)
         # 3) allowed values for encryption is rsa, sym or mix
         # 4) key is only allowed for encryption = mix
+        if server and message['receiver_did'] != SystemParameter.did
+          logger.warn2 "received message for other gofreerev server #{message['receiver_did']}. message = #{message.to_json}"
+        end
         m = Message.new
         m.from_did = sender_did
         m.from_sha256 = sender_sha256
@@ -143,6 +152,7 @@ class Message < ActiveRecord::Base
         m.key = message['key']
         m.message = message['message']
         m.save!
+
       end # each message
     end
 
@@ -153,11 +163,10 @@ class Message < ActiveRecord::Base
   end # self.receive_messages
 
 
-  def self.send_messages (sender_did, sender_sha256, input_messages)
+  def self.send_messages (sender_did, sender_sha256)
 
     logger.debug2 "sender_did    = #{sender_did}"
     logger.debug2 "sender_sha256 = #{sender_sha256}"
-    logger.debug2 "messages      = #{input_messages}"
 
     server = (sender_sha256.to_s == '')
 
@@ -167,7 +176,7 @@ class Message < ActiveRecord::Base
 
     # return any messages to client from other devices
     if server
-      # todo: allow server to server allow messages to be routed through one or more gofreerev servers
+      # todo: allow server to server allow messages to be routed through one or more gofreerev servers. receiver_did added to messages
       # todo: take into account other server pings (ingoing or outgoing) within the next server ping cycle
       # todo: select route to other gofreerev server with best encryption and shortest response time
       # todo: forwarded messages returned in an response to a gofreerev server can be deleted now (here)
@@ -182,6 +191,7 @@ class Message < ActiveRecord::Base
               :encryption => m.encryption,
               :message => m.message,
               :created_at_server => m.created_at.to_i}
+      hash[:receiver_did] = m.to_did if m.to_did
       hash[:sender_sha256] = m.from_sha256 if m.from_sha256
       hash[:key] = m.key if m.key
       hash
@@ -203,7 +213,7 @@ class Message < ActiveRecord::Base
 
     error = Message.receive_messages(sender_did, sender_sha256, input_messages)
     return error if error
-    Message.send_messages(sender_did, sender_sha256, input_messages)
+    Message.send_messages(sender_did, sender_sha256)
 
   end # self.messages
 

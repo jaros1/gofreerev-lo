@@ -3501,7 +3501,7 @@ angular.module('gifts', ['ngRoute'])
                 } // if
             } // for i
             return (request.length == 0 ? null : request);
-        }; // created_at_server_request
+        }; // delete_gifts_request
 
         var delete_gifts_response = function (response) {
             var pgm = service + '.delete_gifts_response: ';

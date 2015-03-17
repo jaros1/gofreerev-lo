@@ -403,16 +403,19 @@ class Server < ActiveRecord::Base
   protected
   def send_messages
 
-    messages = []
-
     # 1) rsa password setup for gofreerev server. Array with new_password1, new_password1 and new_password_md5
     # password setup complete when my new_password_md5 matches with received new_password_md5
     if !self.new_password
       # send rsa password message. array with 2-3 elements. 3 elements if ready for md5 check
-      messages << create_password_message
+      return [create_password_message]
     end # if new_password
 
-    messages.length == 0 ? nil : messages
+    # 2) add server to server messages from messages table
+    messages = Message.send_messages self.new_did, nil
+    return nil unless messages
+    raise messages[:error] if messages.has_key? :error
+    messages[:messages]
+
   end # send_messages
 
 
@@ -499,7 +502,10 @@ class Server < ActiveRecord::Base
     # process ping response from other Gofreerev server
     # 1) todo: get interval and calculate timestamp for next allowed ping
     # 2) receive and process any messages
-    Message.receive_messages SystemParameter.did, nil, ping_response["messages"]
+    if ping_response["messages"]
+      return ping_response["messages"]["error"] if ping_response["messages"].has_key? "error"
+      Message.receive_messages self.new_did, nil, ping_response["messages"]["messages"]
+    end
     # 3) todo: etc
 
   end # ping

@@ -62,16 +62,19 @@ class Message < ActiveRecord::Base
     message_json = key.private_decrypt(message_json_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
     logger.secret2 "message_json = #{message_json}"
     message = JSON.parse(message_json)
-
+    # todo: allow rsa symmetric password setup to be routed through other gofreerev servers?
+    #       must include did, site url and public key information - to big for rsa - must use sym or mix encryption
     server = Server.find_by_new_did self.from_did
     if !server
-      # todo: how to handle rsa message from unknown did. Should ask gofreerev network for information
-      logger.error2 "Received rsa message from unknown server #{self.from_did}"
+      # Unknown server! Cannot handle rsa message. Can be an old message from a server with new did
+      logger.error2 "Ignoring rsa message from unknown server #{self.from_did}"
+      self.destroy!
       return
     end
     if !server.new_pubkey
-      # todo: how to handle missing public key for server. Should ask other gofreerev server for public key
-      logger.error2 "Received rsa message from #{server.site_url} but public key is missing"
+      # Public keys are send and received in login request/response
+      logger.error2 "Ignoring rsa message from #{server.site_url} without a public key"
+      self.destroy!
       return
     end
     # save symmetric password part 2 received from other Gofreerev server
@@ -79,16 +82,20 @@ class Message < ActiveRecord::Base
     server.new_password2 = message[0]
     server.new_password2_at = message[1]
     server.save!
-    if message.size == 3 and message[2] == server.new_password_md5
+    client_md5 = message[2] if message.size == 3
+    md5_ok = (client_md5 == server.new_password_md5)
+    if md5_ok
       logger.debug2 "symmetric password setup completed."
     else
-      logger.debug2 "symmetric password setup in progress."
+      logger.debug2 "symmetric password setup in progress. md5_ok = #{md5_ok}, message.size = #{message.size}"
+      logger.debug2 "client_md5 = #{client_md5} - #{Base64.encode64(client_md5)}"
+      logger.debug2 "server_md5 = #{server.new_password_md5} - #{Base64.encode64(server.new_password_md5)}"
     end
     self.destroy!
 
-    if message.size == 2 or message[2] != server.new_password_md5
+    if !md5_ok
       # todo: send/resend password part 1 to other server
-      hash = server.create_password_message
+      hash = server.rsa_0_sym_password_setup
       m = Message.new
       m.from_did = hash[:sender_did]
       m.to_did = hash[:receiver_did]
@@ -132,14 +139,21 @@ class Message < ActiveRecord::Base
     end
 
     # save any new messages received from client to other clients
+    # todo: how to handle message from client on one server to client on an other client?
+    #       pings table should include online clients on other gofreerev servers
+    #       now ping.did is client did on this gofreerev server
+    #       add ping.server_did? rename ping.did to ping.client_did
+    did = SystemParameter.did
+    old_dids = SystemParameter.old_dids
     if input_messages.class == Array
       input_messages.each do |message|
-        # todo: validate record format
-        # 1) sender_sha256 and receiver_sha256 is blank in server to server messages (server=true)
-        # 2) sender_sha256 and receiver_sha256 is required in client to client messages (server=false)
-        # 3) allowed values for encryption is rsa, sym or mix
-        # 4) key is only allowed for encryption = mix
-        if server and message['receiver_did'] != SystemParameter.did
+        if old_dids.index(message['receiver_did'])
+          # todo: receiving rsa message with old did. Should a) return new did, b) return error, c) ask client to reconnect
+          logger.debug2 "ignoring incoming message to old did #{message['receiver_did']}. message = #{message.to_json}"
+          # send changed did rsa message to calling server
+          next
+        end
+        if server and message['receiver_did'] != did
           logger.warn2 "received message for other gofreerev server #{message['receiver_did']}. message = #{message.to_json}"
         end
         m = Message.new
@@ -152,7 +166,6 @@ class Message < ActiveRecord::Base
         m.key = message['key']
         m.message = message['message']
         m.save!
-
       end # each message
     end
 

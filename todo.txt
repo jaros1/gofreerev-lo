@@ -1352,6 +1352,7 @@
 331) "42 characters password to long for RSA"
      limit with about 128 characters in an RSA message with a 2048 bits key is not correct
      check if jsencrypt has problems with 2048 rsa key
+     test with longer passwords in server symmetric password handshake
 
 332) change rsa/sym encryption setup?
      drop symmetric password handshake between two clients
@@ -1373,6 +1374,28 @@
 
 336) change password message from json array to comma separated string. Don't used comma in passwords
 
-337) is created_at_server in messages array used for any thing in javascript?
+338) server must know if client to client messages must be forwarded to an other gofreerev server
+     did in pings table if client did on this gofreerev server
+     pings table must include information about online clients on other gofreerev servers
+     ping.server_did? rename ping.did to ping.client_did?
 
-select next issue to solve: (rand*336).floor+1
+339) must forward cross client to client messages to other Gofreerev Server
+     best to wrap cross server client to client messages in a server to server message
+     information about client and server did is in pings table on actual Gofreerev server
+     information about client and server did should also be in pings table on receiving server
+     but server to server message could be routed through one or more servers without this information
+     and remote client can go offline before message is read
+
+340) end server symmetric password setup with an ok response?
+     continue to send rsa password message until ok response is received from other Gofreerev server
+
+341) Ignoring rsa message from unknown server 14266574437477074062
+     should check list of known gofreerev servers and forward rsa message
+     should return error message to calling server if unknown server did
+     rsa encrypted messages (first byte):
+     - 0: symmetric password setup
+     - 1: symmetric password setup completed
+     - 2: unknown server <did>
+     - 3: old did. changed to <did>
+
+select next issue to solve: (rand*341).floor+1

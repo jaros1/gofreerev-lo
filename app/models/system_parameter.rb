@@ -45,15 +45,9 @@ class SystemParameter < ActiveRecord::Base
     s.value = x
     s.save!
 
-    # todo: change did, secret and/or sid
+    # todo: change did, secret and/or sid when key pair changes?
     # create/update did (unique device id) - new key pair = new did
-    s = SystemParameter.find_by_name('did')
-    if !s
-      s = SystemParameter.new
-      s.name = 'did'
-    end
-    s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
-    s.save!
+    SystemParameter.new_did
     # create/update client secret. used as secret part of device.sha256
     # did+sha256 is mailbox address in client to client communication
     s = SystemParameter.find_by_name('secret')
@@ -83,10 +77,20 @@ class SystemParameter < ActiveRecord::Base
   def self.private_key
     s = SystemParameter.find_by_name('private_key')
     return nil unless s
-    # decrypt
+    # decrypt private key
     x = s.value
-    [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE, PK_PASS_5_MEM].reverse.each do |password|
-      x = x.decrypt(:symmetric, :password => password) if password
+    passwords = [PK_PASS_1_ENV, PK_PASS_2_RAILS, PK_PASS_3_DB, PK_PASS_4_FILE, PK_PASS_5_MEM]
+    (passwords.length-1).downto(0) do |i|
+      password = passwords[i]
+      next unless password
+      # write debug information to identify where decrypt failed
+      begin
+        x = x.decrypt(:symmetric, :password => password)
+      rescue OpenSSL::Cipher::CipherError => e
+        # write debug information to identify where decrypt failed
+        logger.error2 "private key decrypt failed at step #{i} with error message #{e.message}"
+        raise
+      end
     end
     x
   end
@@ -94,6 +98,42 @@ class SystemParameter < ActiveRecord::Base
   def self.did
     s = SystemParameter.find_by_name('did')
     s ? s.value : nil
+  end
+
+  # create new did or update old did
+  def self.new_did
+    s = SystemParameter.find_by_name('did')
+    old_did = s.value if s
+    if !s
+      s = SystemParameter.new
+      s.name = 'did'
+    end
+    s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
+    s.save!
+    return unless old_did
+    # keep a list of old dids. Ignore messages to/from old dids
+    old_dids = SystemParameter.old_dids
+    old_dids << old_did
+    SystemParameter.old_dids = old_dids
+    # cleanup messages
+    messages = Message.where("server = ? and (from_did = ? or to_did = ?)", true, old_did, old_did)
+    return if messages.size == 0
+    logger.warn2 "deleting #{messages.size} messages to/from old did #{old_did}"
+  end
+
+  # keep a list of old dids. Ignore messages to/from old dids
+  def self.old_dids
+    s = SystemParameter.find_by_name('old_dids')
+    s ? JSON.parse(s.value) : []
+  end
+  def self.old_dids=(old_dids)
+    s = SystemParameter.find_by_name('old_dids')
+    if !s
+      s = SystemParameter.new
+      s.name = 'old_dids'
+    end
+    s.value = old_dids.to_json
+    s.save!
   end
 
   def self.sid

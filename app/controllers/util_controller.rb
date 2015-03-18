@@ -1059,7 +1059,7 @@ class UtilController < ApplicationController
       Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
       sid = params[:sid]
       pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
-      logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 0
+      logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 1
       ping = pings.first
       if !ping
         ping = Ping.new
@@ -1070,8 +1070,7 @@ class UtilController < ApplicationController
         ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
         ping.save!
       end
-      ping.did = get_session_value(:did) unless ping.did # from login - online devices
-      logger.error2 "Error: pind.pid = #{ping.did}, session did = #{get_session_value(:did)}" if ping.did != get_session_value(:did)
+      ping.did = get_session_value(:did) # from login - online devices
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token
@@ -1217,9 +1216,13 @@ class UtilController < ApplicationController
         @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
         # 7) client to client messages or server or server messages
-        # input: buffer messages from this client to other devices - return ok or error message for each input message
-        # output: return messages to this client from other devices - todo: client should respond with ok/error for received messages!
-        # return any messages from other devices to client
+        # client to client:
+        #   input: buffered messages (JS array) from actual client to other clients - saved in messages table
+        #   output: messages to actual client from other clients - from messages table - saved in a JS array
+        # server to server:
+        #   input: messages from client Gofreerev server - saved in messages table
+        #   process any messages to this Gofreerev server
+        #   output: messages to client Gofreerev server - from messages table
         messages_response = Message.messages ping.did, ping.sha256, params[:messages]
         @json[:messages] = messages_response if messages_response
 

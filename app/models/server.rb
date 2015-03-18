@@ -11,6 +11,7 @@ class Server < ActiveRecord::Base
   #   t.datetime "next_ping_at"
   #   t.datetime "created_at"
   #   t.datetime "updated_at"
+  #   t.text     "key"
   # end
   # add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
@@ -36,6 +37,11 @@ class Server < ActiveRecord::Base
   # 7: last_ping_at - last ping request to server
 
   # 8: next_ping_at - next ping request to server
+
+  # 9: key - encrypt symmetric password information in memory storage
+
+  # 10: old_dids - json array with old not used dids. discard any incoming messages for old dids
+
 
   # password helpers. symmetric password stored in memory encrypted with key stored in database
   # symmetric passwords used in server to server communication expires after one hour
@@ -71,7 +77,7 @@ class Server < ActiveRecord::Base
   # protected
   public # todo: change to protected
   def set_new_password1
-    self.set_key
+    self.set_key unless key
     self.new_password1 = String.generate_random_string(40)
     self.new_password1_at = (Time.now.to_f*1000).floor
     self.new_password2 = nil
@@ -220,6 +226,10 @@ class Server < ActiveRecord::Base
     sha256
   end # self.ping_signature
 
+
+  # verify that sha256 signature generated from incoming request matches signature file on sending server
+  # signature file must exists and sha256 signature must match
+  # used for login and ping request from other Gofreerev servers
   public
   def invalid_signature(client_timestamp, signature)
     # url to signature file on other gofreerev server
@@ -250,9 +260,18 @@ class Server < ActiveRecord::Base
       end
       break
     end
+    if !res
+      error = "signature #{signature_url} was not found"
+      logger.debug2 error
+      return error
+    end
+    return nil if signature == res.body
+
+    error = "signature #{signature_url} was not valid"
+    logger.debug2 error
     logger.debug2 "signature = #{signature}"
     logger.debug2 "res.body  = #{res.body}"
-    signature == res.body ? nil : 'Invalid signature'
+    return error
 
   end # invalid_signature
 
@@ -368,16 +387,22 @@ class Server < ActiveRecord::Base
 
   end # login
 
+
   public
-  def create_password_message
-    # message. array with 2-3 elements. 3 elements if ready for md5 check
+  def rsa_0_sym_password_setup
+    # create rsa symmetric password setup message. array with 3-4 elements. 4 elements if ready for md5 check
+    # [0, new_password1, new_password1_at, new_password_md5]
     if !self.new_password1 or !self.new_password1_at
       logger.error2 "Error. new_password1 was not found"
       self.set_new_password1
       self.save!
     end
-    message = [self.new_password1, self.new_password1_at]
-    message << new_password_md5 if new_password_md5 = self.new_password_md5
+    message = [0,self.new_password1, self.new_password1_at] # 0 = symmetric password setup
+    if new_password_md5 = self.new_password_md5
+      message << new_password_md5
+      logger.debug2 "md5 = #{Base64.encode64(new_password_md5)}"
+    end
+    # server.new_password_md5
     message_json = message.to_json
     logger.secret2 "message_json = #{message_json}"
     key = OpenSSL::PKey::RSA.new self.new_pubkey
@@ -402,7 +427,31 @@ class Server < ActiveRecord::Base
   end # create_password_message
 
 
-  # return array with messages to server or nil
+  # send symmetric password setup done message
+  # sent from message.receive_message_password (symmetric password setup completed)
+  public
+  def rsa_1_sym_password_done
+    raise "invalid call" unless self.password
+    message = [1, self.new_password1, self.new_password1_at, self.new_password_md5]
+    message_json = message.to_json
+    logger.secret2 "message_json = #{message_json}"
+    key = OpenSSL::PKey::RSA.new self.new_pubkey
+    message_json_rsa_enc = Base64.encode64(key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
+    message_with_envelope = {
+        sender_did: SystemParameter.did,
+        receiver_did: self.new_did,
+        server: true,
+        encryption: 'rsa',
+        message: message_json_rsa_enc
+    }
+    logger.debug2 "message_with_envelope = #{message_with_envelope}"
+    message_with_envelope
+  end # rsa_1_sym_password_done
+
+
+
+    # return array with messages to server or nil
   protected
   def send_messages
 
@@ -410,7 +459,7 @@ class Server < ActiveRecord::Base
     # password setup complete when my new_password_md5 matches with received new_password_md5
     if !self.new_password
       # send rsa password message. array with 2-3 elements. 3 elements if ready for md5 check
-      return [create_password_message]
+      return [rsa_0_sym_password_setup()]
     end # if new_password
 
     # 2) add server to server messages from messages table

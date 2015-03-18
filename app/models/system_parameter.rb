@@ -44,6 +44,8 @@ class SystemParameter < ActiveRecord::Base
     s.name = 'private_key'
     s.value = x
     s.save!
+
+    # todo: change did, secret and/or sid
     # create/update did (unique device id) - new key pair = new did
     s = SystemParameter.find_by_name('did')
     if !s
@@ -70,7 +72,7 @@ class SystemParameter < ActiveRecord::Base
     s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
     s.save!
     nil
-  end
+  end # self.generate_key_pair
 
   def self.public_key
     s = SystemParameter.find_by_name('public_key')

@@ -593,11 +593,9 @@ JSON_SCHEMA = {
                                   # key is only used in mix encrypted message. key is rsa encrypted and message is symmetric encrypted with key
                                   :key => {:type => 'string'},
                                   # message for receiver device encrypted with device public key
-                                  :message => {:type => 'string'},
-                                  # when was message received from other device - unix timestamp - todo: rename to received_on_server
-                                  :created_at_server => {:type => 'integer', :minimum => 1.month.ago.to_i, :maximum => 1.year.from_now.to_i}
+                                  :message => {:type => 'string'}
                               },
-                              :required => %w(sender_did server encryption message created_at_server),
+                              :required => %w(sender_did server encryption message),
                               :additionalProperties => false
                           },
                           :minItems => 1

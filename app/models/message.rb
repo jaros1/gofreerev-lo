@@ -189,8 +189,7 @@ class Message < ActiveRecord::Base
       hash = {:sender_did => m.from_did,
               :server => m.server,
               :encryption => m.encryption,
-              :message => m.message,
-              :created_at_server => m.created_at.to_i}
+              :message => m.message}
       hash[:receiver_did] = m.to_did if m.to_did
       hash[:sender_sha256] = m.from_sha256 if m.from_sha256
       hash[:key] = m.key if m.key

@@ -1058,7 +1058,9 @@ class UtilController < ApplicationController
       # Ping - one row for each client browser tab window
       Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
       sid = params[:sid]
-      ping = Ping.find_by_session_id_and_client_userid_and_client_sid(get_sessionid, get_client_userid, sid)
+      pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
+      logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 0
+      ping = pings.first
       if !ping
         ping = Ping.new
         ping.session_id = get_sessionid
@@ -1069,7 +1071,7 @@ class UtilController < ApplicationController
         ping.save!
       end
       ping.did = get_session_value(:did) unless ping.did # from login - online devices
-      logger.debug2 "pind.pid = #{ping.did}"
+      logger.error2 "Error: pind.pid = #{ping.did}, session did = #{get_session_value(:did)}" if ping.did != get_session_value(:did)
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token

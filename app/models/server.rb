@@ -74,6 +74,9 @@ class Server < ActiveRecord::Base
     self.set_key
     self.new_password1 = String.generate_random_string(40)
     self.new_password1_at = (Time.now.to_f*1000).floor
+    self.new_password2 = nil
+    self.new_password2_at = nil
+    self.save!
     logger.secret2 "key = #{self.key}, new_password1 = #{self.new_password1}, new_password1_at = #{self.new_password1_at}"
   end
   
@@ -443,7 +446,7 @@ class Server < ActiveRecord::Base
     # create ping request
     url = URI.parse("#{site_url}util/ping.json")
     new_client_timestamp = (Time.now.to_f*1000).floor
-    s = SystemParameter.find_by_name('sid'); sid = s.value
+    sid = SystemParameter.sid
     ping_request = {
         client_userid: 1,
         sid: sid,
@@ -457,6 +460,7 @@ class Server < ActiveRecord::Base
         # refresh_tokens: result.refresh_tokens_request,
         messages: self.send_messages
     }
+    ping_request.delete(:messages) if ping_request.has_key?(:messages) and ping_request[:messages].class == NilClass
     logger.debug2 "ping_request = #{ping_request}"
     # X_XSRF_TOKEN - escaped in cookie - unescaped in request header
     header = {'X_XSRF_TOKEN' => CGI::unescape(xsrf_token), 'Content-Type' =>'application/json' }

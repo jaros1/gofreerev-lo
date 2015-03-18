@@ -1398,4 +1398,12 @@
      - 2: unknown server <did>
      - 3: old did. changed to <did>
 
+342) server to server messages
+     add mid, request_mid and via_did to messages
+
+343) return response to an message through same route as request?
+
+344) must force new login if did is changed on gofreerev client
+     how to detect changed did in ping request
+
 select next issue to solve: (rand*341).floor+1

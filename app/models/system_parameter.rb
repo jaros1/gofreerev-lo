@@ -47,16 +47,7 @@ class SystemParameter < ActiveRecord::Base
 
     # todo: change did, secret and/or sid when key pair changes?
     # create/update did (unique device id) - new key pair = new did
-    SystemParameter.new_did
-    # create/update client secret. used as secret part of device.sha256
-    # did+sha256 is mailbox address in client to client communication
-    s = SystemParameter.find_by_name('secret')
-    if !s
-      s = SystemParameter.new
-      s.name = 'secret'
-    end
-    s.value = rand().to_s.last(10)
-    s.save!
+    SystemParameter.new_did # new_did also generates a new secret
     # create/update sid (unique session id). used in ping request
     s = SystemParameter.find_by_name('sid')
     if !s
@@ -110,8 +101,10 @@ class SystemParameter < ActiveRecord::Base
     end
     s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
     s.save!
-    return unless old_did
     # keep a list of old dids. Ignore messages to/from old dids
+    return unless old_did
+    # changed did
+    logger.warn2 "did was changed. new server login to gofreerev servers is required"
     old_dids = SystemParameter.old_dids
     old_dids << old_did
     SystemParameter.old_dids = old_dids
@@ -119,7 +112,8 @@ class SystemParameter < ActiveRecord::Base
     messages = Message.where("server = ? and (from_did = ? or to_did = ?)", true, old_did, old_did)
     return if messages.size == 0
     logger.warn2 "deleting #{messages.size} messages to/from old did #{old_did}"
-  end
+    messages.delete_all
+  end # self.new_did
 
   # keep a list of old dids. Ignore messages to/from old dids
   def self.old_dids
@@ -144,6 +138,18 @@ class SystemParameter < ActiveRecord::Base
   def self.secret
     s = SystemParameter.find_by_name('secret')
     s ? s.value : nil
+  end
+
+  # create/update client secret. used as secret part of device.sha256
+  # did+sha256 is mailbox address in client to client communication
+  def self.new_secret
+    s = SystemParameter.find_by_name('secret')
+    if !s
+      s = SystemParameter.new
+      s.name = 'secret'
+    end
+    s.value = rand().to_s.last(10)
+    s.save!
   end
 
 end

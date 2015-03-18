@@ -147,6 +147,7 @@ class Message < ActiveRecord::Base
     #       add ping.server_did? rename ping.did to ping.client_did
     did = SystemParameter.did
     old_dids = SystemParameter.old_dids
+    logger.debug2 "did = #{did}, old_dids = #{old_dids.join(', ')}"
     if input_messages.class == Array
       input_messages.each do |message|
 
@@ -161,7 +162,8 @@ class Message < ActiveRecord::Base
             logger.secret2 "message = #{message.to_json}"
             # todo: check that message['sender_did'] exists. Should not receive forwarded messages from unknown servers
             # todo: forwarding a message should being with message['sender_did'] == sender_did for first receiving Gofreerev server
-            # todo: how to prevent fake message['sender_did'] from being used be a Gofreerev server
+            # todo: add signature and check signature when forwarding messages
+            # todo: how to prevent fake message['sender_did'] from being used be a Gofreerev server. add signature and signature check for forwards
             raise "not implemented"
           end
         end

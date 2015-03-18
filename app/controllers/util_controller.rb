@@ -1005,12 +1005,14 @@ class UtilController < ApplicationController
         logger.debug2 "validate ping signature"
         site_url = login_user_ids.first
         logger.debug2 "site_url = #{site_url}"
-        signature = Server.ping_signature(params)
+        signature = Server.ping_signature(get_session_value(:did), params)
         logger.debug "signature = #{signature}"
         s = Server.find_by_site_url(site_url)
         if error = s.invalid_signature(params[:client_timestamp], signature)
           # server not responding or signature is invalid
+          # invalid signature error if client did has been changed without a new login
           @json[:error] = error
+          @json[:interval] = 10000
           format_response
           return
         end
@@ -1071,6 +1073,7 @@ class UtilController < ApplicationController
         ping.save!
       end
       ping.did = get_session_value(:did) # from login - online devices
+      logger.debug2 "session.did = ping.did = #{ping.did}"
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token

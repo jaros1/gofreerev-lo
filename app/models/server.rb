@@ -78,7 +78,7 @@ class Server < ActiveRecord::Base
   public # todo: change to protected
   def set_new_password1
     self.set_key unless key
-    self.new_password1 = String.generate_random_string(40)
+    self.new_password1 = String.generate_random_string(80)
     self.new_password1_at = (Time.now.to_f*1000).floor
     self.new_password2 = nil
     self.new_password2_at = nil
@@ -210,7 +210,7 @@ class Server < ActiveRecord::Base
   # }
   # todo: add client secret to ping signature? received in login request and stored in sessions table
   public
-  def self.ping_signature (hash)
+  def self.ping_signature (did, hash)
     if hash[:messages]
       messages = hash[:messages].collect do |m|
         [m[:sender_did], m[:receiver_did], m[:receiver_sha256], m[:server], m[:encryption], m[:key], m[:message]].join(',')
@@ -218,7 +218,7 @@ class Server < ActiveRecord::Base
     else
       messages = ''
     end
-    sha256_input = [hash[:sid], messages].join(',')
+    sha256_input = [did, hash[:sid], messages].join(',')
     sha256 = Digest::SHA256.hexdigest(sha256_input)
     # logger.secret2 "hash         = #{hash.to_json}"
     logger.secret2 "sha256_input = #{sha256_input}"
@@ -409,6 +409,7 @@ class Server < ActiveRecord::Base
     message_str = message.join(',')
     logger.secret2 "message_json = #{message_str}"
     key = OpenSSL::PKey::RSA.new self.new_pubkey
+    logger.debug2 "message_str.size = #{message_str.size}"
     message_str_rsa_enc = Base64.encode64(key.public_encrypt(message_str, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
     logger.debug2 "message_str_rsa_enc = #{message_str_rsa_enc}"
     # add envelope for encrypted rsa message
@@ -513,8 +514,9 @@ class Server < ActiveRecord::Base
     return "Invalid ping json request: #{json_errors.join(', ')}" unless json_errors.size == 0
 
     # sign ping request - called gofreerev server must validate signature for incoming ping request
+    # did is included in ping signature - error "signature ...  was not valid" is returned if did was changed without a new login
     signature_filename = self.signature_filename(ping_request[:client_timestamp])
-    signature = Server.ping_signature(ping_request)
+    signature = Server.ping_signature(SystemParameter.did, ping_request)
     logger.debug2 "signature_filename = #{signature_filename}"
     logger.debug2 "signature = #{signature}"
     File.write(signature_filename, signature)

@@ -54,14 +54,14 @@ class Message < ActiveRecord::Base
 
   # 9) timestamps
 
-  def receive_message_password
+  def receive_message_sym_password
     # setup password for symmetric communication
     # gofreerev.js: see GiftService.receive_message_password (client to client)
     key = OpenSSL::PKey::RSA.new SystemParameter.private_key
-    message_json_rsa_enc = Base64.decode64(self.message)
-    message_json = key.private_decrypt(message_json_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
-    logger.secret2 "message_json = #{message_json}"
-    message = JSON.parse(message_json)
+    message_str_rsa_enc = Base64.decode64(self.message)
+    message_str = key.private_decrypt(message_str_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+    logger.secret2 "message_json = #{message_str}"
+    message = message_str.split(',')
     # todo: allow rsa symmetric password setup to be routed through other gofreerev servers?
     #       must include did, site url and public key information - to big for rsa - must use sym or mix encryption
     server = Server.find_by_new_did self.from_did
@@ -79,31 +79,32 @@ class Message < ActiveRecord::Base
     end
     # save symmetric password part 2 received from other Gofreerev server
     server.set_new_password1 unless server.new_password1
-    server.new_password2 = message[0]
-    server.new_password2_at = message[1]
+    done = message[0]
+    server.new_password2 = message[1]
+    server.new_password2_at = message[2].to_i
     server.save!
-    client_md5 = message[2] if message.size == 3
+    client_md5 = Base64.decode64(message[3]) if message.size == 4
     md5_ok = (client_md5 == server.new_password_md5)
     if md5_ok
       logger.debug2 "symmetric password setup completed."
     else
       logger.debug2 "symmetric password setup in progress. md5_ok = #{md5_ok}, message.size = #{message.size}"
-      logger.debug2 "client_md5 = #{client_md5} - #{Base64.encode64(client_md5)}"
-      logger.debug2 "server_md5 = #{server.new_password_md5} - #{Base64.encode64(server.new_password_md5)}"
+      logger.debug2 "client_md5 = #{client_md5}"
+      logger.debug2 "server_md5 = #{server.new_password_md5}"
     end
     self.destroy!
 
-    if !md5_ok
-      # todo: send/resend password part 1 to other server
-      hash = server.rsa_0_sym_password_setup
-      m = Message.new
-      m.from_did = hash[:sender_did]
-      m.to_did = hash[:receiver_did]
-      m.server = hash[:server]
-      m.encryption = hash[:encryption]
-      m.message = hash[:message]
-      m.save!
-    end
+    return if done and md5_ok # password setup completed on both Gofreerev servers
+
+    # send/resend password part 1 to other server
+    hash = server.send_message_sym_password(md5_ok)
+    m = Message.new
+    m.from_did = hash[:sender_did]
+    m.to_did = hash[:receiver_did]
+    m.server = hash[:server]
+    m.encryption = hash[:encryption]
+    m.message = hash[:message]
+    m.save!
 
   end # receive_message_password
 
@@ -115,7 +116,7 @@ class Message < ActiveRecord::Base
     if self.encryption == 'rsa'
       # setup password for symmetric communication
       # javascript: see GiftService.receive_message_password in gofreerev.js (client to client)
-      receive_message_password
+      receive_message_sym_password
       return
     end
 

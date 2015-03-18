@@ -388,26 +388,29 @@ class Server < ActiveRecord::Base
   end # login
 
 
+  # send rsa message - symmetric password setup - send/resend until md5 check ok
+  # done: false: password setup in progress, true: password setup completed
   public
-  def rsa_0_sym_password_setup
-    # create rsa symmetric password setup message. array with 3-4 elements. 4 elements if ready for md5 check
+  def send_message_sym_password (done)
+    # rsa symmetric password setup message. array with 3-4 elements. 4 elements if md5 and ready for md5 check
     # [0, new_password1, new_password1_at, new_password_md5]
     if !self.new_password1 or !self.new_password1_at
       logger.error2 "Error. new_password1 was not found"
       self.set_new_password1
       self.save!
     end
-    message = [0,self.new_password1, self.new_password1_at] # 0 = symmetric password setup
+    message = [(done ? 1 : 0),self.new_password1, self.new_password1_at] # 0 = symmetric password setup
     if new_password_md5 = self.new_password_md5
+      new_password_md5 = Base64.encode64(new_password_md5)
       message << new_password_md5
-      logger.debug2 "md5 = #{Base64.encode64(new_password_md5)}"
+      logger.debug2 "md5 = #{new_password_md5}"
     end
     # server.new_password_md5
-    message_json = message.to_json
-    logger.secret2 "message_json = #{message_json}"
+    message_str = message.join(',')
+    logger.secret2 "message_json = #{message_str}"
     key = OpenSSL::PKey::RSA.new self.new_pubkey
-    message_json_rsa_enc = Base64.encode64(key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
+    message_str_rsa_enc = Base64.encode64(key.public_encrypt(message_str, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "message_str_rsa_enc = #{message_str_rsa_enc}"
     # add envelope for encrypted rsa message
     # receiver_sha256 is only used in client to client communication = sha256 (client_secret + login_user ids)
     # client_secret is received in login request and saved in sessions table
@@ -420,38 +423,17 @@ class Server < ActiveRecord::Base
         receiver_did: self.new_did,
         server: true,
         encryption: 'rsa',
-        message: message_json_rsa_enc
+        message: message_str_rsa_enc
     }
     logger.debug2 "message_with_envelope = #{message_with_envelope}"
     message_with_envelope
-  end # create_password_message
-
-
-  # send symmetric password setup done message
-  # sent from message.receive_message_password (symmetric password setup completed)
-  public
-  def rsa_1_sym_password_done
-    raise "invalid call" unless self.password
-    message = [1, self.new_password1, self.new_password1_at, self.new_password_md5]
-    message_json = message.to_json
-    logger.secret2 "message_json = #{message_json}"
-    key = OpenSSL::PKey::RSA.new self.new_pubkey
-    message_json_rsa_enc = Base64.encode64(key.public_encrypt(message_json, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "message_json_rsa_enc = #{message_json_rsa_enc}"
-    message_with_envelope = {
-        sender_did: SystemParameter.did,
-        receiver_did: self.new_did,
-        server: true,
-        encryption: 'rsa',
-        message: message_json_rsa_enc
-    }
-    logger.debug2 "message_with_envelope = #{message_with_envelope}"
-    message_with_envelope
-  end # rsa_1_sym_password_done
+  end # rsa_0_1_sym_password_setup
 
 
 
-    # return array with messages to server or nil
+
+
+  # return array with messages to server or nil
   protected
   def send_messages
 
@@ -459,7 +441,7 @@ class Server < ActiveRecord::Base
     # password setup complete when my new_password_md5 matches with received new_password_md5
     if !self.new_password
       # send rsa password message. array with 2-3 elements. 3 elements if ready for md5 check
-      return [rsa_0_sym_password_setup()]
+      return [send_message_sym_password(true)]
     end # if new_password
 
     # 2) add server to server messages from messages table

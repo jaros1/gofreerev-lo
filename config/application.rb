@@ -30,6 +30,7 @@ module GofreerevFb
     # config.middleware.use I18n::JS::Middleware
 
     # enable dalli memory cache - used for temporary passwords in server to server communication
-    config.cache_store = :mem_cache_store, 'localhost', {:namespace => config.root, :expires_in => 1.hour }
+    # config.cache_store = :mem_cache_store, 'localhost', {:namespace => config.root, :expires_in => 1.hour }
+    config.cache_store = :mem_cache_store, 'localhost', {:namespace => config.root }
   end
 end

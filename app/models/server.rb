@@ -388,10 +388,10 @@ class Server < ActiveRecord::Base
   end # login
 
 
-  # send rsa message - symmetric password setup - send/resend until md5 check ok
+  # create rsa message - symmetric password setup - send/resend until md5 check ok
   # done: false: password setup in progress, true: password setup completed
   public
-  def send_message_sym_password (done)
+  def sym_password_message (done)
     # rsa symmetric password setup message. array with 3-4 elements. 4 elements if md5 and ready for md5 check
     # [0, new_password1, new_password1_at, new_password_md5]
     if !self.new_password1 or !self.new_password1_at
@@ -430,6 +430,14 @@ class Server < ActiveRecord::Base
   end # rsa_0_1_sym_password_setup
 
 
+  # create rsa message - did changed - sent from Message.receive_messages (util_controller.ping)
+  # calling Gofreerev server must login to verify changed did information
+  public
+  def did_changed_message (old_did)
+
+  end
+
+
 
 
 
@@ -441,7 +449,7 @@ class Server < ActiveRecord::Base
     # password setup complete when my new_password_md5 matches with received new_password_md5
     if !self.new_password
       # send rsa password message. array with 2-3 elements. 3 elements if ready for md5 check
-      return [send_message_sym_password(true)]
+      return [sym_password_message(true)]
     end # if new_password
 
     # 2) add server to server messages from messages table

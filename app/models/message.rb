@@ -55,7 +55,8 @@ class Message < ActiveRecord::Base
   # 9) timestamps
 
   def receive_message_sym_password
-    # setup password for symmetric communication
+    # receive symmetric password setup message from other Gofreerev server
+    # rsa comma separated string with done, password2, password2_at and password_md5
     # gofreerev.js: see GiftService.receive_message_password (client to client)
     key = OpenSSL::PKey::RSA.new SystemParameter.private_key
     message_str_rsa_enc = Base64.decode64(self.message)
@@ -79,11 +80,11 @@ class Message < ActiveRecord::Base
     end
     # save symmetric password part 2 received from other Gofreerev server
     server.set_new_password1 unless server.new_password1
-    done = message[0]
+    done = message[0] # 0: password setup in progress, 1: password setup completed
     server.new_password2 = message[1]
     server.new_password2_at = message[2].to_i
     server.save!
-    client_md5 = Base64.decode64(message[3]) if message.size == 4
+    client_md5 = Base64.decode64(message[3]) if message.size == 4 # for md5 password check
     md5_ok = (client_md5 == server.new_password_md5)
     if md5_ok
       logger.debug2 "symmetric password setup completed."
@@ -97,7 +98,7 @@ class Message < ActiveRecord::Base
     return if done and md5_ok # password setup completed on both Gofreerev servers
 
     # send/resend password part 1 to other server
-    hash = server.send_message_sym_password(md5_ok)
+    hash = server.sym_password_message(md5_ok)
     m = Message.new
     m.from_did = hash[:sender_did]
     m.to_did = hash[:receiver_did]
@@ -148,17 +149,42 @@ class Message < ActiveRecord::Base
     old_dids = SystemParameter.old_dids
     if input_messages.class == Array
       input_messages.each do |message|
+
+        # sender_did is used in server and only in server to server messages
+        if message['sender_did']
+          # server to server message. check if incoming message has been forwarded from an other Gofreerev server
+          if !server
+            return { :error => 'System error in new message request. :sender_did must be blank. :sender_did is only used in server to server messages.'}
+          end
+          if message['sender_did'] != sender_did
+            logger.warn2 "received message forwarded from an other Gofreerev server. Sent from #{message['sender_did']} and forwarded by #{sender_did}."
+            logger.secret2 "message = #{message.to_json}"
+            # todo: check that message['sender_did'] exists. Should not receive forwarded messages from unknown servers
+            # todo: forwarding a message should being with message['sender_did'] == sender_did for first receiving Gofreerev server
+            # todo: how to prevent fake message['sender_did'] from being used be a Gofreerev server
+            raise "not implemented"
+          end
+        end
+        if server and !message['sender_did']
+          return { :error => 'System error in new message request. :sender_did is required in server to server messages.'}
+        end
+
         if old_dids.index(message['receiver_did'])
           # todo: receiving rsa message with old did. Should a) return new did, b) return error, c) ask client to reconnect
           logger.debug2 "ignoring incoming message to old did #{message['receiver_did']}. message = #{message.to_json}"
-          # send changed did rsa message to calling server
+          # send did changed rsa message to calling server
+          s = Server.find_by_new_did(m.from_did)
+
+
           next
         end
+
         if server and message['receiver_did'] != did
-          logger.warn2 "received message for other gofreerev server #{message['receiver_did']}. message = #{message.to_json}"
+          logger.warn2 "received message to be forwarded to gofreerev server #{message['receiver_did']}. message = #{message.to_json}"
         end
+
         m = Message.new
-        m.from_did = sender_did
+        m.from_did = message['sender_did'] || sender_did
         m.from_sha256 = sender_sha256
         m.to_did = message['receiver_did']
         m.to_sha256 = message['receiver_sha256']
@@ -216,6 +242,10 @@ class Message < ActiveRecord::Base
 
 
   # receive messages from client (or server) and messages to client (or server)
+  # params:
+  # - sender_did: did from calling client
+  # - sender_sha256: sha256 signature for calling client (only user in client to client communication)
+  # - input_messages: array with messages from calling client (browser or other Gofreerev server)
   def self.messages (sender_did, sender_sha256, input_messages)
 
     # todo: sender_sha256 is null in server to server messages

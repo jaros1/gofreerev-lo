@@ -47,16 +47,12 @@ class SystemParameter < ActiveRecord::Base
 
     # todo: change did, secret and/or sid when key pair changes?
     # create/update did (unique device id) - new key pair = new did
-    SystemParameter.new_did # new_did also generates a new secret
+    SystemParameter.new_did
+    # create/update client secret. used as secret part of device.sha256
+    # did+sha256 is mailbox address in client to client communication
+    SystemParameter.new_secret
     # create/update sid (unique session id). used in ping request
-    s = SystemParameter.find_by_name('sid')
-    if !s
-      s = SystemParameter.new
-      s.name = 'sid'
-    end
-    s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
-    s.save!
-    nil
+    SystemParameter.new_sid
   end # self.generate_key_pair
 
   def self.public_key
@@ -91,7 +87,10 @@ class SystemParameter < ActiveRecord::Base
     s ? s.value : nil
   end
 
-  # create new did or update old did
+  # create new did or update old did.
+  # all gofreerev servers must reconnect (login) after changed did
+  # calling gofreerev servers are automatic disconnected when changing did (Session.close_server_sessions)
+  # called gofreerev servers will return error message "signature http://... was not valid" until new reconnect
   def self.new_did
     s = SystemParameter.find_by_name('did')
     old_did = s.value if s
@@ -101,18 +100,26 @@ class SystemParameter < ActiveRecord::Base
     end
     s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
     s.save!
-    # keep a list of old dids. Ignore messages to/from old dids
     return unless old_did
-    # changed did
-    logger.warn2 "did was changed. new server login to gofreerev servers is required"
+
+    # changed did - new login is required for all server to server sessions
+    # todo: there must be a table with timestamp for next ping to other Gofreerev servers. use this table to force reconnect
+    # todo: fields last_ping_at and next_ping_at are already in servers table (outgoing pings)
+    # todo: fields last_ping_at and next_ping_at are already in pings table (ingoing pings)
+    logger.warn2 "Did was changed. Please reconnect (login) for all Gofreerev server sessions"
+    Session.close_server_sessions
+
+    # keep a list of old dids. Ignore messages to/from old dids
     old_dids = SystemParameter.old_dids
     old_dids << old_did
     SystemParameter.old_dids = old_dids
+
     # cleanup messages
     messages = Message.where("server = ? and (from_did = ? or to_did = ?)", true, old_did, old_did)
     return if messages.size == 0
     logger.warn2 "deleting #{messages.size} messages to/from old did #{old_did}"
     messages.delete_all
+    nil
   end # self.new_did
 
   # keep a list of old dids. Ignore messages to/from old dids
@@ -135,6 +142,17 @@ class SystemParameter < ActiveRecord::Base
     s ? s.value : nil
   end
 
+  def self.new_sid
+    s = SystemParameter.find_by_name('sid')
+    if !s
+      s = SystemParameter.new
+      s.name = 'sid'
+    end
+    s.value = (Time.now.to_f.to_s + rand().to_s.last(7)).gsub('.','').first(20)
+    s.save!
+    nil
+  end # self.new_sid
+  
   def self.secret
     s = SystemParameter.find_by_name('secret')
     s ? s.value : nil
@@ -150,6 +168,7 @@ class SystemParameter < ActiveRecord::Base
     end
     s.value = rand().to_s.last(10)
     s.save!
+    nil
   end
 
 end

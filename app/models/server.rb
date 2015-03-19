@@ -34,14 +34,54 @@ class Server < ActiveRecord::Base
 
   # 6: old_pubkey - old validated public key
 
-  # 7: last_ping_at - last ping request to server
+  # 7: last_ping_at - last ping request to server - last outgoing ping
+  # datetime with milliseconds in model - decimal(13,3) in database
+  def last_ping_at
+    return nil unless (temp_last_ping_at = read_attribute(:last_ping_at))
+    logger.debug2  "temp_user_ids = #{temp_last_ping_at}"
+    Time.at temp_last_ping_at
+  end
+  def last_ping_at=(new_last_ping_at)
+    if new_last_ping_at
+      check_type('last_ping_at', new_last_ping_at, 'ActiveSupport::TimeWithZone')
+      write_attribute :last_ping_at, new_last_ping_at.to_f
+    else
+      write_attribute :last_ping_at, nil
+    end
+  end # last_ping_at=
+  alias_method :last_ping_at_before_type_cast, :last_ping_at
+  def last_ping_at_was
+    return last_ping_at unless last_ping_at_changed?
+    return nil unless (temp_last_ping_at = attribute_was(:last_ping_at))
+    Time.at temp_last_ping_at
+  end # last_ping_at_was
 
-  # 8: next_ping_at - next ping request to server
+  # 8: next_ping_at - next ping request to server - next outgoing ping
+  # datetime with milliseconds in model - decimal(13,3) in database
+  def next_ping_at
+    return nil unless (temp_next_ping_at = read_attribute(:next_ping_at))
+    logger.debug2  "temp_user_ids = #{temp_next_ping_at}"
+    Time.at temp_next_ping_at
+  end
+  def next_ping_at=(new_next_ping_at)
+    if new_next_ping_at
+      check_type('next_ping_at', new_next_ping_at, 'ActiveSupport::TimeWithZone')
+      write_attribute :next_ping_at, new_next_ping_at.to_f
+    else
+      write_attribute :next_ping_at, nil
+    end
+  end # next_ping_at=
+  alias_method :next_ping_at_before_type_cast, :next_ping_at
+  def next_ping_at_was
+    return next_ping_at unless next_ping_at_changed?
+    return nil unless (temp_next_ping_at = attribute_was(:next_ping_at))
+    Time.at temp_next_ping_at
+  end # next_ping_at_was
 
   # 9: key - encrypt symmetric password information in memory storage
+  # symmetric passwords will be generated after server restart
 
   # 10: old_dids - json array with old not used dids. discard any incoming messages for old dids
-
 
   # password helpers. symmetric password stored in memory encrypted with key stored in database
   # symmetric passwords used in server to server communication expires after one hour
@@ -468,6 +508,15 @@ class Server < ActiveRecord::Base
   public
   def ping
 
+    now = Time.now
+
+    if self.next_ping_at and now < self.next_ping_at
+      seconds = (self.next_ping_at-now).ceil
+      return "Ping too early. Please wait #{seconds} seconds."
+    end
+    # todo: interval from ping response is in milliseconds. datetime timestamps in servers table is in seconds
+    old_interval = (self.next_ping_at - self.last_ping_at if self.last_ping_at and self.next_ping_at)
+
     site_url = self.site_url
     site_url = 'https' + site_url.from(4) if secure
 
@@ -512,6 +561,8 @@ class Server < ActiveRecord::Base
     end
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_request)
     return "Invalid ping json request: #{json_errors.join(', ')}" unless json_errors.size == 0
+
+
 
     # sign ping request - called gofreerev server must validate signature for incoming ping request
     # did is included in ping signature - error "signature ...  was not valid" is returned if did was changed without a new login

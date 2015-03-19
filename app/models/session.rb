@@ -17,8 +17,9 @@ class Session < ActiveRecord::Base
   # 14  t.text     "client_timestamp"
   # 15  t.text     "client_secret"
   # 16  t.text     "sha256"
-  # 17  t.datetime "created_at"
-  # 18  t.datetime "updated_at"
+  # 17  t.boolean  "server"
+  # 18  t.datetime "created_at"
+  # 19  t.datetime "updated_at"
   # end
   # add_index "sessions", ["session_id", "client_userid"], name: "index_session_session_id", unique: true, using: :btree
 
@@ -336,16 +337,17 @@ class Session < ActiveRecord::Base
     encrypt_remove_pre_and_postfix(extended_sha256, 'sha256', 14)
   end # sha256_was
 
-  # 17) created_at
+  # 17) server - boolean in model and db - not encrypted
+  # false: user/browser, true: other gofreerev server
+  # disconnect server sessions after server setup changes (did, public key etc)
+  validates_inclusion_of :server, :in => [true, false]
 
-  # 18) updated_at
+  # 18) created_at
+
+  # 19) updated_at
 
   # secret from session cookie. encrypt/decrypt data in sessions table with secret from cookie
   attr_accessor :secret
-
-  def server
-    self.user_ids.class == Array and self.user_ids.size == 1 and self.user_ids.first =~ /^http:\/\//
-  end
 
   public
   def set_column_value (key, value)
@@ -361,6 +363,7 @@ class Session < ActiveRecord::Base
       when :last_row_at then self.last_row_at = value
       when :last_row_id then self.last_row_id = value
       when :refresh_tokens then self.refresh_tokens = value
+      when :server then self.server = value
       when :state then self.state = value
       when :tokens then self.tokens = value
       when :user_ids
@@ -379,6 +382,12 @@ class Session < ActiveRecord::Base
       else raise "unknown key #{key}"
     end # case
   end
+
+
+  def self.close_server_sessions
+    Session.where(:server => true).delete_all
+  end
+
 
   ##############
   # encryption #

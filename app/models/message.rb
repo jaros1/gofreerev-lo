@@ -172,12 +172,24 @@ class Message < ActiveRecord::Base
         end
 
         if old_dids.index(message['receiver_did'])
-          # todo: receiving rsa message with old did. Should a) return new did, b) return error, c) ask client to reconnect
+          # todo: receiving message with old did. Should a) return new did, b) return error, c) ask client to reconnect
+          # todo: add mid to message and return mid in changed did message. calling server should resend message with correct did
           logger.debug2 "ignoring incoming message to old did #{message['receiver_did']}. message = #{message.to_json}"
-          # send did changed rsa message to calling server
-          s = Server.find_by_new_did(m.from_did)
-
-
+          # send did changed rsa message to calling server. format [2, old_did, new_did]
+          s = Server.find_by_new_did(message['sender_did'] || sender_did)
+          raise "Unknown server #{message['sender_did'] || sender_did}" unless s
+          m = Message.new
+          m.from_did = did
+          m.to_did = s.new_did
+          m.server = true
+          m.encryption = 'rsa'
+          message_str = [2, message['receiver_did'], did].join(',')
+          logger.debug2 "message_str.size = #{message_str.size}"
+          key = OpenSSL::PKey::RSA.new s.new_pubkey
+          message_str_rsa_enc = Base64.encode64(key.public_encrypt(message_str, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+          logger.debug2 "message_str_rsa_enc = #{message_str_rsa_enc}"
+          m.message = message_str_rsa_enc
+          m.save!
           next
         end
 

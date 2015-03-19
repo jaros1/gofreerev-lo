@@ -772,6 +772,7 @@ class UtilController < ApplicationController
 
       if params[:site_url].to_s != ''
         # server login request
+        set_session_value :server, true
         @json[:friends] = [] # todo: change :friends to not required in login request json schema
         # save did and public key from other gofreerev server - used in server to server communication
         # private key is saved in system_parameters table encrypted with 1-4 passwords
@@ -823,6 +824,8 @@ class UtilController < ApplicationController
       end
 
       # client request
+      set_session_value :server, false
+
       # save new public key from browser client - used in client to client communication
       # private key is saved key encrypted in browser localStorage and is only known by js client
       # see private key security in /app/assets/javascript/gofreerev.js getItem and setItem functions
@@ -1072,6 +1075,7 @@ class UtilController < ApplicationController
         ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
         ping.save!
       end
+      # todo: force logout if ping.did != sessions.did?
       ping.did = get_session_value(:did) # from login - online devices
       logger.debug2 "session.did = ping.did = #{ping.did}"
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did

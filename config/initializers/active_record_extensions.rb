@@ -25,10 +25,10 @@ module ActiveRecordExtensions
   protected
   def check_type (attributename, attributevalue, classname)
     return unless attributevalue
-    return if ((attributevalue.class.name == classname) or (classname == 'Bignum' and attributevalue.class.name == 'Fixnum'))
+    return if ((attributevalue.class.name == classname) or (classname == 'Bignum' and attributevalue.class.name == 'Fixnum') or (classname == 'Time' and attributevalue.class.name == 'ActiveSupport::TimeWithZone'))
     # logger.debug2 "attributename.class.name = #{attributename.class.name} (#{attributename.class.name.class})"
     # logger.debug2 "classname = #{classname} (#{classname.class})"
-    raise TypeError, "Invalid type #{attributename.class.name} for attribute #{attributename}. " +
+    raise TypeError, "Invalid type #{attributevalue.class.name} for attribute #{attributename}. " +
         "Allowed types are NilClass and #{classname}"
   end # check_type
 

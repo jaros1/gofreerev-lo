@@ -1410,4 +1410,6 @@
 
 346) util_controller.ping must check Time.now and pings.next_ping_at timestamps
 
+347) auth/index on old laptop - confirm field is displayed with password field for a device logged in browser
+
 select next issue to solve: (rand*346).floor+1

@@ -38,12 +38,12 @@ class Server < ActiveRecord::Base
   # datetime with milliseconds in model - decimal(13,3) in database
   def last_ping_at
     return nil unless (temp_last_ping_at = read_attribute(:last_ping_at))
-    logger.debug2  "temp_user_ids = #{temp_last_ping_at}"
+    # logger.debug2  "temp_last_ping_at = #{temp_last_ping_at}"
     Time.at temp_last_ping_at
   end
   def last_ping_at=(new_last_ping_at)
     if new_last_ping_at
-      check_type('last_ping_at', new_last_ping_at, 'ActiveSupport::TimeWithZone')
+      check_type('last_ping_at', new_last_ping_at, 'Time')
       write_attribute :last_ping_at, new_last_ping_at.to_f
     else
       write_attribute :last_ping_at, nil
@@ -60,12 +60,12 @@ class Server < ActiveRecord::Base
   # datetime with milliseconds in model - decimal(13,3) in database
   def next_ping_at
     return nil unless (temp_next_ping_at = read_attribute(:next_ping_at))
-    logger.debug2  "temp_user_ids = #{temp_next_ping_at}"
+    # logger.debug2  "temp_next_ping_at = #{temp_next_ping_at}"
     Time.at temp_next_ping_at
   end
   def next_ping_at=(new_next_ping_at)
     if new_next_ping_at
-      check_type('next_ping_at', new_next_ping_at, 'ActiveSupport::TimeWithZone')
+      check_type('next_ping_at', new_next_ping_at, 'Time')
       write_attribute :next_ping_at, new_next_ping_at.to_f
     else
       write_attribute :next_ping_at, nil
@@ -468,18 +468,7 @@ class Server < ActiveRecord::Base
     }
     logger.debug2 "message_with_envelope = #{message_with_envelope}"
     message_with_envelope
-  end # rsa_0_1_sym_password_setup
-
-
-  # create rsa message - did changed - sent from Message.receive_messages (util_controller.ping)
-  # calling Gofreerev server must login to verify changed did information
-  public
-  def did_changed_message (old_did)
-
-  end
-
-
-
+  end # sym_password_message
 
 
   # return array with messages to server or nil
@@ -508,14 +497,16 @@ class Server < ActiveRecord::Base
   public
   def ping
 
-    now = Time.now
-
+    # all time calc in time with milliseconds
+    now = Time.zone.now.round(3)
     if self.next_ping_at and now < self.next_ping_at
-      seconds = (self.next_ping_at-now).ceil
+      seconds = (self.next_ping_at-now)
       return "Ping too early. Please wait #{seconds} seconds."
     end
-    # todo: interval from ping response is in milliseconds. datetime timestamps in servers table is in seconds
-    old_interval = (self.next_ping_at - self.last_ping_at if self.last_ping_at and self.next_ping_at)
+    default_interval = 60 # default 60 seconds is used as start and fallback value for interval between pings
+    old_interval = self.next_ping_at - self.last_ping_at if self.last_ping_at and self.next_ping_at
+    old_interval = default_interval  unless old_interval
+    logger.debug "old interval = #{old_interval}"
 
     site_url = self.site_url
     site_url = 'https' + site_url.from(4) if secure
@@ -562,7 +553,11 @@ class Server < ActiveRecord::Base
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_request)
     return "Invalid ping json request: #{json_errors.join(', ')}" unless json_errors.size == 0
 
-
+    # update timestamp before ping
+    logger.debug2 "now = #{now} (#{now.class})"
+    self.last_ping_at = now
+    self.next_ping_at = now + default_interval
+    self.save!
 
     # sign ping request - called gofreerev server must validate signature for incoming ping request
     # did is included in ping signature - error "signature ...  was not valid" is returned if did was changed without a new login
@@ -596,7 +591,9 @@ class Server < ActiveRecord::Base
     return ping_response['error'] if ping_response['error']
 
     # process ping response from other Gofreerev server
-    # 1) todo: get interval and calculate timestamp for next allowed ping
+    # 1) interval in milliseconds between ping requests
+    self.next_ping_at = now + ping_response["interval"]/1000
+    self.save!
     # 2) receive and process any messages
     if ping_response["messages"]
       return ping_response["messages"]["error"] if ping_response["messages"].has_key? "error"

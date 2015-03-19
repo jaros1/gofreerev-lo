@@ -22,12 +22,12 @@ class Ping < ActiveRecord::Base
   # timestamp for last ping request from browser or other gofreerev server
   def last_ping_at
     return nil unless (temp_last_ping_at = read_attribute(:last_ping_at))
-    logger.debug2  "temp_user_ids = #{temp_last_ping_at}"
+    # logger.debug2  "temp_last_ping_at = #{temp_last_ping_at}"
     Time.at temp_last_ping_at
   end
   def last_ping_at=(new_last_ping_at)
     if new_last_ping_at
-      check_type('last_ping_at', new_last_ping_at, 'ActiveSupport::TimeWithZone')
+      check_type('last_ping_at', new_last_ping_at, 'Time')
       write_attribute :last_ping_at, new_last_ping_at.to_f
     else
       write_attribute :last_ping_at, nil
@@ -44,12 +44,12 @@ class Ping < ActiveRecord::Base
   # timestamp for next allowed ping request from browser or other gofreerev server
   def next_ping_at
     return nil unless (temp_next_ping_at = read_attribute(:next_ping_at))
-    logger.debug2  "temp_user_ids = #{temp_next_ping_at}"
+    # logger.debug2  "temp_next_ping_at = #{temp_next_ping_at}"
     Time.at temp_next_ping_at
   end
   def next_ping_at=(new_next_ping_at)
     if new_next_ping_at
-      check_type('next_ping_at', new_next_ping_at, 'ActiveSupport::TimeWithZone')
+      check_type('next_ping_at', new_next_ping_at, 'Time')
       write_attribute :next_ping_at, new_next_ping_at.to_f
     else
       write_attribute :next_ping_at, nil

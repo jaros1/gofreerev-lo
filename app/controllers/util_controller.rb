@@ -946,6 +946,7 @@ class UtilController < ApplicationController
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
+      @json[:interval] = 60000 unless @json[:interval]
       @json[:friends] = [] unless @json[:friends]
       format_response_key '.exception', :error => e.message
     end
@@ -1032,7 +1033,23 @@ class UtilController < ApplicationController
         @json[:interval] = 10000
         validate_json_response
         format_response
-        return ;
+        return
+      end
+
+      # check ping timestamps. all timestamps with milliseconds
+      sid = params[:sid]
+      pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
+      logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 1
+      ping = pings.first
+      now = Time.zone.now.round(3)
+      if ping and ping.next_ping_at > now
+        seconds = ping.next_ping_at - now
+        seconds = 1 if seconds < 1
+        @json[:error] = "Ping too early. Please wait #{seconds} seconds."
+        @json[:interval] = seconds*1000
+        validate_json_response
+        format_response
+        return
       end
 
       # all client sessions should ping server once every server ping cycle
@@ -1059,13 +1076,13 @@ class UtilController < ApplicationController
       no_active_sessions = 1 if no_active_sessions == 0
       avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
 
-      # keep track of pings. find/create ping. used when adjusting pings for individual sessions
+      # keep track of pings. used when adjusting pings for individual sessions
       # Ping - one row for each client browser tab window
-      Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all if (rand*100).floor == 0 # cleanup old sessions
-      sid = params[:sid]
-      pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
-      logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 1
-      ping = pings.first
+      if (rand*100).floor == 0
+        # cleanup old sessions
+        Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all
+        ping = Ping.find_by_id(ping.id)
+      end
       if !ping
         ping = Ping.new
         ping.session_id = get_sessionid

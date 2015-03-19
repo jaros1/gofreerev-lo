@@ -1036,7 +1036,7 @@ class UtilController < ApplicationController
         return
       end
 
-      # check ping timestamps. all timestamps with milliseconds
+      # check next_ping_at
       sid = params[:sid]
       pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
       logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 1
@@ -1044,7 +1044,7 @@ class UtilController < ApplicationController
       now = Time.zone.now.round(3)
       if ping and ping.next_ping_at > now
         seconds = ping.next_ping_at - now
-        seconds = 1 if seconds < 1
+        seconds = 1 if seconds < 1 # minimum 1000 milliseconds in json schema.
         @json[:error] = "Ping too early. Please wait #{seconds} seconds."
         @json[:interval] = seconds*1000
         validate_json_response
@@ -1053,10 +1053,11 @@ class UtilController < ApplicationController
       end
 
       # all client sessions should ping server once every server ping cycle
-      # check server load average the last 5 minutes and increase/decrease server ping cycle
+      # use server load average the last 5 minutes and increase/decrease server ping cycle
+      # MAX_AVG_LOAD = number of cores - minus a constant 0.4. That is 0.6, 1.6, 2.6, 3.6 etc
       s = Sequence.get_server_ping_cycle
       old_server_ping_cycle = s.value
-      avg5 = IO.read('/proc/loadavg').split[1].to_f # load average the last 5 minutes
+      avg5 = IO.read('/proc/loadavg').split[1].to_f # server average load the last 5 minutes
       if s.updated_at < 30.seconds.ago(now) and (((avg5 < MAX_AVG_LOAD - 0.1) and (s.value >= 3000)) or (avg5 > MAX_AVG_LOAD + 0.1))
         # only adjust server_ping_interval once every 30 seconds
         if avg5 < MAX_AVG_LOAD

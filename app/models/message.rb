@@ -111,7 +111,10 @@ class Message < ActiveRecord::Base
 
 
   # read message for this server
-  def receive_message
+  # client:
+  # - true if called from Server.ping (processing messages in response)
+  # - false if called from util_controller.ping (processing incomming messages in request)
+  def receive_message (client)
     logger.debug "new mail: #{self.to_json}"
 
     if self.encryption == 'rsa'
@@ -121,12 +124,52 @@ class Message < ActiveRecord::Base
       return
     end
 
+    server = Server.find_by_new_did(self.from_did)
+    if self.encryption == 'mix'
+      # mix encryption. rsa encrypted password in key
+      logger.debug2 "received mix encrypted message"
+      key = OpenSSL::PKey::RSA.new SystemParameter.private_key
+      password_rsa_enc = Base64.decode64(self.message)
+      password = key.private_decrypt(password_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+      logger.secret2 "password = #{password}"
+    else
+      # sym encryption. password has previously been received in password setup message
+      logger.debug2 "received sym encrypted message"
+      password = server.new_password
+      logger.secret2 "from_did = #{self.from_did}, password = #{password}"
+      if !password
+        logger.debug2 "password setup not complete. send rsa password setup message"
+        hash = server.sym_password_message(false)
+        m = Message.new
+        m.from_did = hash[:sender_did]
+        m.to_did = hash[:receiver_did]
+        m.server = hash[:server]
+        m.encryption = hash[:encryption]
+        m.message = hash[:message]
+        m.save!
+        # keep sym encrypted message in mailbox
+        return
+      end
+    end
+
+    message_json_enc_base64 = self.message
+    message_json_enc = Base64.decode64(message_json_enc_base64)
+    message_json = message_json_enc.decrypt(:symmetric, :password => password)
+
+    logger.secret2 "message_json = #{message_json}"
+    message = JSON.parse(message_json)
+
+    if message["msgtype"] == 'users'
+      server.receive_users_message(message["users"], client) # false: server side of communication
+      self.destroy
+    end
+
     logger.error2 "not implemented"
 
   end # receive_message
 
 
-  def self.receive_messages (sender_did, sender_sha256, input_messages)
+  def self.receive_messages (client, sender_did, sender_sha256, input_messages)
 
     # todo: sender_sha256 is null in server to server messages
 
@@ -183,6 +226,7 @@ class Message < ActiveRecord::Base
           m.to_did = s.new_did
           m.server = true
           m.encryption = 'rsa'
+          # todo: receive rsa rename did message not implemented
           message_str = [2, message['receiver_did'], did].join(',')
           logger.debug2 "message_str.size = #{message_str.size}"
           key = OpenSSL::PKey::RSA.new s.new_pubkey
@@ -211,7 +255,7 @@ class Message < ActiveRecord::Base
     end
 
     # check for any server messages to this server
-    Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each { |m| m.receive_message }
+    Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each { |m| m.receive_message(client) }
 
     nil
   end # self.receive_messages
@@ -255,7 +299,7 @@ class Message < ActiveRecord::Base
   end # self.send_messages
 
 
-  # receive messages from client (or server) and messages to client (or server)
+  # receive messages from client (or server) and return messages to client (or server)
   # params:
   # - sender_did: did from calling client
   # - sender_sha256: sha256 signature for calling client (only user in client to client communication)
@@ -268,7 +312,7 @@ class Message < ActiveRecord::Base
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages      = #{input_messages}"
 
-    error = Message.receive_messages(sender_did, sender_sha256, input_messages)
+    error = Message.receive_messages(false, sender_did, sender_sha256, input_messages) # false - called from server (util_controller.ping)
     return error if error
     Message.send_messages(sender_did, sender_sha256)
 

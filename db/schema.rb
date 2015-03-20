@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150320100635) do
+ActiveRecord::Schema.define(version: 20150320175203) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -195,7 +195,10 @@ ActiveRecord::Schema.define(version: 20150320100635) do
     t.string   "sha256",     limit: 45, null: false
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "server_id"
   end
+
+  add_index "server_user_requests", ["server_id", "user_id"], name: "index_server_user_requests_pk", unique: true, using: :btree
 
   create_table "server_users", force: true do |t|
     t.integer  "server_id"

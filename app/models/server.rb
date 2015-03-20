@@ -484,18 +484,18 @@ class Server < ActiveRecord::Base
   # user_id < 0 - user from other Gofreerev server - received in response - response in next request
   protected
   def create_users_message
-    users = []
+    request = []
     # reverse request/response cycle (request in response and response in request). user_id < 0
     # that is users with negative user_id and client user.sha256 received from server in last ping
-    surs = ServerUserRequest.all
+    surs = ServerUserRequest.where(:server_id => self.id)
     surs.all do |usr|
       u = User.find_by_sha256(usr.sha256)
       if !u
-        users << { :user_id => usr.user_id, :sha256 => nil}
+        request << { :user_id => usr.user_id, :sha256 => nil}
         next
       end
       # sha256 match
-      users << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
+      request << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
       # insert user match as not verified in server_users table
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
       next is su
@@ -507,16 +507,18 @@ class Server < ActiveRecord::Base
     surs.delete_all
     # normal request/response cycle. user_id > 0. send next 10 users for verification
     User.order(:id).limit(10).each do |u|
-      users << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
+      request << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
     end
-    return nil if users.size == 0
+    return nil if request.size == 0
 
     message = {
         :msgtype => 'users',
-        :users => users
+        :users => request
     }
     logger.debug2 "message = #{message.to_json}"
     sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    sym_enc_message = Base64.encode64(sym_enc_message)
     logger.debug2 "sym_enc_message = #{sym_enc_message}"
 
     # add envelope with symmetric encrypted users message
@@ -531,6 +533,136 @@ class Server < ActiveRecord::Base
     envelope
 
   end # create_users_message
+
+
+  # receice symmetric encrypted message on client or on server
+  # client:
+  # - true - server side of communication - called from Server.ping
+  # - false - server side of communication - called from util_controller.ping via Message.receive_messages
+  public
+  def receive_users_message (response, client)
+    logger.debug2 "users = #{response}"
+    if client
+      logger.debug2 "client = #{client} - called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)"
+    else
+      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+    end
+
+    users = [] unless client
+
+    response.each do |usr|
+      logger.debug2 "usr = #{usr}"
+      if client
+        # called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)
+        if usr["user_id"] > 0
+          # user_id > 0. My user in response to outgoing users message. todo: user_id must be in validate from to user_id range
+          logger.debug2 "#{usr["user_id"]} > 0. My user in response to outgoing users message"
+          u = User.find_by_id(usr["user_id"])
+          if !u
+            logger.error2 "user id #{usr["user_id"]} does not exists. Only ok if user was deleted between ping request and ping response"
+            next
+          end
+          if usr['sha256']
+            logger.debug2 "user id #{u.id} does not exists on other Gofreerev server"
+            next
+          elsif u.sha256 = usr['sha256']
+            logger.debug2 "confirmed match. user_id #{u.id} exists on other Gofreerev servers"
+            # insert user match as verified in server_users table
+            su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+            if !su
+              su = ServerUser.new
+              su.server_id = self.id
+              su.user_id = u.id
+            end
+            su.verified_at = Time.zone.now
+            su.save!
+          else
+            logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{u.id}"
+          end
+        else
+          # user_id < 0. User from other gofreerev server in response to outgoing users message. save for next outgoing users message
+          logger.debug2 "#{usr["user_id"]} < 0. User from other gofreerev server in response to outgoing users message. save for next outgoing users message"
+          sur = ServerUserRequest.new
+          sur.server_id = self.id
+          sur.user_id = usr['user_id']
+          sur.sha256 = usr['sha256']
+          sur.save!
+        end
+      else
+        # called from called from util_controller.ping via Message.receive_messages
+        if usr["user_id"] > 0
+          # user_id > 0. User from other gofreerev server in incoming users message
+          logger.debug2 "#{usr["user_id"]} > 0. User from other gofreerev server in incoming users message"
+          # receive_users_message: client = false - called from called from util_controller.ping via Message.receive_messages
+          # block in receive_users_message: usr = {"user_id"=>706, "sha256"=>"5v6FeCmN9PO0m0SLraD7aZlvvLIHFTeHvJkbQoS70jY=\n"}
+          # block in receive_users_message: 706 > 0. User from other gofreerev server in incoming users message
+          # todo: this is almost like reverse request/response cycle part of create_users_message
+          u = User.find_by_sha256(usr["sha256"])
+          if u
+            # todo: respond with client user.sha256
+            logger.debug2 "user exists. return client user.sha256 signature"
+            users << { :user_id => usr["user_id"], :sha256 => u.calc_sha256(self.secret) }
+          else
+            # todo: respond with sha2546 = nil
+            logger.debug2 "user does not exists. return null user.sha256 signature"
+            users << { :user_id => usr["user_id"] }
+          end
+        else
+          # user_id < 0. My user from response to a previously incoming users message. todo: user_id must be in validate from to user_id range
+          logger.debug2 "#{usr["user_id"]} < 0. My user from response to a previously incoming users message"
+          u = User.find_by_id(-usr["user_id"])
+          if !u
+            logger.error2 "user id #{-usr["user_id"]} does not exists. Only ok if user was deleted between two pings"
+            next
+          end
+          if !usr['sha256']
+            logger.debug2 "no match - user_id #{-usr["user_id"]} does not exist on other Gofreerev server"
+          elsif u.sha256 == usr['sha256']
+            logger.debug2 "confirmed match. user_id #{-usr["user_id"]} exists on other Gofreerev servers"
+            # insert user match as verified in server_users table
+            su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+            if !su
+              su = ServerUser.new
+              su.server_id = self.id
+              su.user_id = u.id
+            end
+            su.verified_at = Time.zone.now
+            su.save!
+          else
+            logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{-usr["user_id"]}"
+          end
+        end
+      end
+    end
+
+    return if client
+
+    logger.debug2 "add users to response users message. response will be sent in next ping request"
+    User.order(:id).limit(10).each do |u|
+      users << { :user_id => -u.id, :sha256 => u.calc_sha256(self.secret) }
+    end
+    logger.debug2 "users = #{users}"
+
+    message = {
+        :msgtype => 'users',
+        :users => users
+    }
+    logger.debug2 "message = #{message.to_json}"
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    sym_enc_message = Base64.encode64(sym_enc_message)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+
+    # insert message in messages table. will be returned in a moment in ping response
+    m = Message.new
+    m.from_did = SystemParameter.did
+    m.to_did = self.new_did
+    m.server = true
+    m.encryption = 'sym'
+    m.message = sym_enc_message
+    m.save!
+
+  end # receive_users_message
 
 
   # return array with messages to server or nil
@@ -709,7 +841,7 @@ class Server < ActiveRecord::Base
     # 2) receive and process any messages
     if ping_response["messages"]
       return ping_response["messages"]["error"] if ping_response["messages"].has_key? "error"
-      Message.receive_messages self.new_did, nil, ping_response["messages"]["messages"]
+      Message.receive_messages true, self.new_did, nil, ping_response["messages"]["messages"] # true: called from Server.ping
     end
     # 3) todo: etc
 

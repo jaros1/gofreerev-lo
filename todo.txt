@@ -1389,15 +1389,6 @@
 340) end server symmetric password setup with an ok response?
      continue to send rsa password message until ok response is received from other Gofreerev server
 
-341) Ignoring rsa message from unknown server 14266574437477074062
-     should check list of known gofreerev servers and forward rsa message
-     should return error message to calling server if unknown server did
-     rsa encrypted messages (first byte):
-     - 0: symmetric password setup
-     - 1: symmetric password setup completed
-     - 2: unknown server <did>
-     - 3: old did. changed to <did>
-
 342) server to server messages
      add mid, request_mid and via_did to messages
 
@@ -1405,10 +1396,14 @@
 
 347) auth/index on old laptop - confirm field is displayed with password field for a device logged in browser
 
-348) new user record. generate new secret if doublet sha256 signature
-     new users are added in client login with new user and update friends with new friends
-
 349) 60 seconds ping interval after login
      ping interval in login should be calculated like ping interval in ping
 
-select next issue to solve: (rand*349).floor+1
+350) change server to server password setup message from rsa to mix encryption?
+     could add more meta information to password setup message (sender, receiver, mid, via_did)
+     could allow forwarding a password setup message to an other Gofreerev server
+
+351) keep received server to server message in memory.
+     there is no reason to insert and delete incoming messages into/from messages table
+
+select next issue to solve: (rand*351).floor+1

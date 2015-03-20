@@ -12,6 +12,7 @@ class Server < ActiveRecord::Base
   #   t.datetime "created_at"
   #   t.datetime "updated_at"
   #   t.text     "key"
+  #   t.text     "secret"
   # end
   # add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
@@ -248,9 +249,8 @@ class Server < ActiveRecord::Base
   #     # refresh_tokens: result.refresh_tokens_request,
   #     messages: self.send_messages
   # }
-  # todo: add client secret to ping signature? received in login request and stored in sessions table
   public
-  def self.ping_signature (did, hash)
+  def self.ping_signature (did, secret, hash)
     if hash[:messages]
       messages = hash[:messages].collect do |m|
         [m[:sender_did], m[:receiver_did], m[:receiver_sha256], m[:server], m[:encryption], m[:key], m[:message]].join(',')
@@ -258,7 +258,7 @@ class Server < ActiveRecord::Base
     else
       messages = ''
     end
-    sha256_input = [did, hash[:sid], messages].join(',')
+    sha256_input = [did, secret, hash[:sid], messages].join(',')
     sha256 = Digest::SHA256.hexdigest(sha256_input)
     # logger.secret2 "hash         = #{hash.to_json}"
     logger.secret2 "sha256_input = #{sha256_input}"
@@ -422,6 +422,9 @@ class Server < ActiveRecord::Base
     # check/save received did as new_did (new unvalidated unique device id)
     error = save_new_did_and_public_key(login_response['did'], login_response['pubkey'])
     return error if error
+    # save secret from other gofreerev server. used when comparing users between two Gofreerev servers
+    self.secret = login_response['client_secret']
+    self.save!
 
     nil
 
@@ -471,6 +474,65 @@ class Server < ActiveRecord::Base
   end # sym_password_message
 
 
+  # create symmetric encrypted users message. return message or nil if no new users to check
+  # match user information with other Gofreerev server
+  # matching is done with user.sha256
+  # send user_id + server user.sha256 to other Gofreerev server
+  # receive user_id + client user.sha256 from other Gofreerev server
+  # comparing is done with sha256 signatures - no user information is exchanged
+  # user_id > 0 - user from Gofreerev server - complete verified in one request/response cycle
+  # user_id < 0 - user from other Gofreerev server - received in response - response in next request
+  protected
+  def create_users_message
+    users = []
+    # reverse request/response cycle (request in response and response in request). user_id < 0
+    # that is users with negative user_id and client user.sha256 received from server in last ping
+    surs = ServerUserRequest.all
+    surs.all do |usr|
+      u = User.find_by_sha256(usr.sha256)
+      if !u
+        users << { :user_id => usr.user_id, :sha256 => nil}
+        next
+      end
+      # sha256 match
+      users << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
+      # insert user match as not verified in server_users table
+      su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+      next is su
+      su = ServerUser.new
+      su.server_id = self.id
+      su.user_id = u.id
+      su.save!
+    end
+    surs.delete_all
+    # normal request/response cycle. user_id > 0. send next 10 users for verification
+    User.order(:id).limit(10).each do |u|
+      users << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
+    end
+    return nil if users.size == 0
+
+    message = {
+        :msgtype => 'users',
+        :users => users
+    }
+    logger.debug2 "message = #{message.to_json}"
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+
+    # add envelope with symmetric encrypted users message
+    envelope = {
+        :sender_did => SystemParameter.did,
+        :receiver_did => self.new_did,
+        :server => true,
+        :encryption => 'sym',
+        :message => sym_enc_message
+    }
+    logger.debug2 "envelope = #{envelope.to_json}"
+    envelope
+
+  end # create_users_message
+
+
   # return array with messages to server or nil
   protected
   def send_messages
@@ -483,12 +545,60 @@ class Server < ActiveRecord::Base
     end # if new_password
 
     # 2) add server to server messages from messages table
-    messages = Message.send_messages self.new_did, nil
-    return nil unless messages
-    raise messages[:error] if messages.has_key? :error
-    messages[:messages]
+    messages_from_mailbox = Message.send_messages self.new_did, nil
+    if messages_from_mailbox
+      raise messages_from_mailbox[:error] if messages_from_mailbox.has_key? :error
+      messages = messages_from_mailbox[:messages]
+    end
+    messages = [] unless messages
+
+    # 3) add users message
+    users_message = create_users_message()
+    messages << users_message if users_message
+
+    messages.size == 0 ? nil : messages
 
   end # send_messages
+
+
+  # match user information with other Gofreerev server
+  # matching is done with user.sha256
+  # send user_id + server user.sha256 to other Gofreerev server
+  # receive user_id + client user.sha256 from other Gofreerev server
+  # comparing is done with sha256 signatures - no user information is exchanged
+  # user_id > 0 - user from Gofreerev server - complete verified in one request/response cycle
+  # user_id < 0 - user from other Gofreerev server - received in response - response in next request
+  protected
+  def send_users
+    request = []
+    # reverse request/response cycle (request in response and response in request). user_id < 0
+    # that is users with negative user_id and client user.sha256 received from server in last ping
+    surs = ServerUserRequest.all
+    surs.all do |usr|
+      u = User.find_by_sha256(usr.sha256)
+      if !u
+        request << { :user_id => usr.user_id, :sha256 => nil}
+        next
+      end
+      # sha256 match
+      request << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
+      # insert user match as not verified in server_users table
+      su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+      next is su
+      su = ServerUser.new
+      su.server_id = self.id
+      su.user_id = u.id
+      su.save!
+    end
+    surs.delete_all
+    # normal request/response cycle. user_id > 0. send next 10 users for verification
+    User.order(:id).limit(10).each do |u|
+      request << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
+    end
+    request
+  end
+  def receive_users (users)
+  end
 
 
   # server ping - server to server messages - like js ping /util/ping (client server messages)
@@ -524,6 +634,7 @@ class Server < ActiveRecord::Base
     return "No XSRF-TOKEN was found in session cookie" unless xsrf_token
 
     # create ping request
+    # todo: users request must be symmetric encrypted. Move to send_messages and receive_messages
     url = URI.parse("#{site_url}util/ping.json")
     new_client_timestamp = (Time.now.to_f*1000).floor
     sid = SystemParameter.sid
@@ -537,10 +648,10 @@ class Server < ActiveRecord::Base
         # new_comments: giftService.new_comments_request(),
         # verify_comments: giftService.verify_comments_request(),
         # pubkeys: giftService.pubkeys_request(),
-        # refresh_tokens: result.refresh_tokens_request,
         messages: self.send_messages
     }
     ping_request.delete(:messages) if ping_request.has_key?(:messages) and ping_request[:messages].class == NilClass
+    ping_request.delete(:users) if ping_request.has_key?(:users) and ping_request[:users].class == NilClass
     logger.debug2 "ping_request = #{ping_request}"
     # X_XSRF_TOKEN - escaped in cookie - unescaped in request header
     header = {'X_XSRF_TOKEN' => CGI::unescape(xsrf_token), 'Content-Type' =>'application/json' }
@@ -561,8 +672,9 @@ class Server < ActiveRecord::Base
 
     # sign ping request - called gofreerev server must validate signature for incoming ping request
     # did is included in ping signature - error "signature ...  was not valid" is returned if did was changed without a new login
+    # secret is included in ping signature - error "signature ...  was not valid" is returned if secret was changed without a new login
     signature_filename = self.signature_filename(ping_request[:client_timestamp])
-    signature = Server.ping_signature(SystemParameter.did, ping_request)
+    signature = Server.ping_signature(SystemParameter.did, SystemParameter.secret, ping_request)
     logger.debug2 "signature_filename = #{signature_filename}"
     logger.debug2 "signature = #{signature}"
     File.write(signature_filename, signature)

@@ -158,16 +158,36 @@ class SystemParameter < ActiveRecord::Base
     s ? s.value : nil
   end
 
-  # create/update client secret. used as secret part of device.sha256
-  # did+sha256 is mailbox address in client to client communication
+  # create/update secret.
+  # client: used as secret part of device.sha256. did+sha256 is mailbox address in client to client communication
+  # server: used as secret part of user sha256 signature when comparing user lists with other Gofreerev servers
   def self.new_secret
     s = SystemParameter.find_by_name('secret')
     if !s
       s = SystemParameter.new
       s.name = 'secret'
     end
-    s.value = rand().to_s.last(10)
+    users = User.all
+    # generate new secret. loop until user.sha256 values are unique
+    secret = nil
+    loop do
+      secret = String.generate_random_string(10)
+      signatures = {}
+      users.each do |u|
+        sha256 = u.calc_sha256(secret)
+        break if signatures[sha256]
+        signatures[sha256] = true
+      end # each user
+      logger.debug2 "users.size = #{users.size}, signatures.size = #{signatures.size}"
+      break if users.size == signatures.size
+    end
+    s.value = secret
     s.save!
+    # force reconnect - servers must exchange secrets in new login - used when comparing users
+    logger.warn2 "Secret was changed. Please reconnect (login) for all Gofreerev server sessions"
+    Session.close_server_sessions
+    # update sha256 for all users - fast lookup when comparing users across Gofreerev servers
+    User.all.each { |u| u.update_attribute :sha256, u.calc_sha256(secret) }
     nil
   end
 

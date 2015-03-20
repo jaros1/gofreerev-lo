@@ -1403,13 +1403,12 @@
 
 343) return response to an message through same route as request?
 
-344) must force new login if did is changed on gofreerev client
-     how to detect changed did in ping request
-
-345) last_ping_at and next_ping_at in servers table must be with milliseconds
-
-346) util_controller.ping must check Time.now and pings.next_ping_at timestamps
-
 347) auth/index on old laptop - confirm field is displayed with password field for a device logged in browser
 
-select next issue to solve: (rand*346).floor+1
+348) new user record. generate new secret if doublet sha256 signature
+     new users are added in client login with new user and update friends with new friends
+
+349) 60 seconds ping interval after login
+     ping interval in login should be calculated like ping interval in ping
+
+select next issue to solve: (rand*349).floor+1

@@ -816,8 +816,12 @@ class UtilController < ApplicationController
           pubkey = SystemParameter.public_key
         end
         @json[:pubkey] = pubkey
-        # return did for this gofreerev to other gofreerev server
+        # return did for this gofreerev server to other gofreerev server
+        # used as mailbox address in server to server communication
         @json[:did] = SystemParameter.did
+        # return client secret for this gofreerev server to other gofreerev server
+        # used as secret when comparing user information between two gofreerev servers
+        @json[:client_secret] = SystemParameter.secret
         # ok
         format_response
         return
@@ -1009,12 +1013,13 @@ class UtilController < ApplicationController
         logger.debug2 "validate ping signature"
         site_url = login_user_ids.first
         logger.debug2 "site_url = #{site_url}"
-        signature = Server.ping_signature(get_session_value(:did), params)
+        signature = Server.ping_signature(get_session_value(:did), get_session_value(:client_secret), params)
         logger.debug "signature = #{signature}"
         s = Server.find_by_site_url(site_url)
         if error = s.invalid_signature(params[:client_timestamp], signature)
           # server not responding or signature is invalid
-          # invalid signature error if client did has been changed without a new login
+          # invalid signature error is returned if client did has been changed without a new login
+          # invalid signature error is returned if client secret has been changed without a new login
           @json[:error] = error
           @json[:interval] = 10000
           format_response
@@ -1036,7 +1041,7 @@ class UtilController < ApplicationController
         return
       end
 
-      # check next_ping_at
+      # check now >= ping.next_ping_at - force client to wait if server is called to early
       sid = params[:sid]
       pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
       logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 1

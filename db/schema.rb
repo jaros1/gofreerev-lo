@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150319082310) do
+ActiveRecord::Schema.define(version: 20150320100635) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -190,6 +190,23 @@ ActiveRecord::Schema.define(version: 20150319082310) do
 
   add_index "sequences", ["name"], name: "index_sequences_on_name", unique: true, using: :btree
 
+  create_table "server_user_requests", force: true do |t|
+    t.integer  "user_id",               null: false
+    t.string   "sha256",     limit: 45, null: false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "server_users", force: true do |t|
+    t.integer  "server_id"
+    t.integer  "user_id"
+    t.datetime "verified_at"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "server_users", ["server_id", "user_id"], name: "index_server_users_pk", unique: true, using: :btree
+
   create_table "servers", force: true do |t|
     t.string   "site_url"
     t.datetime "created_at"
@@ -202,6 +219,7 @@ ActiveRecord::Schema.define(version: 20150319082310) do
     t.text     "old_pubkey"
     t.text     "new_pubkey"
     t.text     "key"
+    t.string   "secret"
   end
 
   add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
@@ -291,8 +309,10 @@ ActiveRecord::Schema.define(version: 20150319082310) do
     t.text     "access_token_expires"
     t.text     "refresh_token"
     t.string   "share_account_id",        limit: 20
+    t.string   "sha256",                  limit: 45
   end
 
+  add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree
   add_index "users", ["share_account_id"], name: "index_users_share_account_id", using: :btree
   add_index "users", ["user_id"], name: "index_users_on_user_id", unique: true, using: :btree
 

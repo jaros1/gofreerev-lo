@@ -374,9 +374,7 @@ class User < ActiveRecord::Base
     return nil unless (temp_refresh_token = read_attribute(:refresh_token))
     # logger.debug2  "temp_refresh_token = #{temp_refresh_token}"
     encrypt_remove_pre_and_postfix(temp_refresh_token, 'refresh_token', 45)
-  end
-
-  # refresh_token
+  end # refresh_token
   def refresh_token=(new_refresh_token)
     if new_refresh_token
       check_type('refresh_token', new_refresh_token, 'String')
@@ -384,18 +382,17 @@ class User < ActiveRecord::Base
     else
       write_attribute :refresh_token, nil
     end
-  end
-
-  # refresh_token=
+  end # refresh_token=
   alias_method :refresh_token_before_type_cast, :refresh_token
-
   def refresh_token_was
     return refresh_token unless refresh_token_changed?
     return nil unless (temp_refresh_token = attribute_was(:refresh_token))
     encrypt_remove_pre_and_postfix(temp_refresh_token, 'refresh_token', 45)
-  end
+  end # refresh_token_was
 
-  # refresh_token_was
+  # 21) sha256. sha256 signature with secret, uid/provider and user_name
+  # used when comparing users across gofreerev servers
+  validates_uniqueness_of :sha256, :allow_blank => true
 
   # change currency in page header.
   attr_accessor :new_currency
@@ -547,6 +544,13 @@ class User < ActiveRecord::Base
     user.user_name = user_name
     user.permissions = permissions
     user.api_profile_url = profile_url if profile_url
+    # user.sha256 signature must be unique. generate new secret if doublet sha256 signatures is found
+    loop do
+      user.sha256 = user.calc_sha256(SystemParameter.secret)
+      break if !user.new_record? and !user.sha256_changed?
+      break unless User.find_by_sha256(user.sha256)
+      SystemParameter.new_secret # new login is required for all server to server sessions
+    end
     active_currencies = ExchangeRate.active_currencies
     if !user.currency or !active_currencies.index(user.currency)
       # initialize currency from country - for example google and twitter
@@ -2347,6 +2351,12 @@ class User < ActiveRecord::Base
     end
     login_users
   end # self.add_shared_accounts
+
+  # calc sha256 from SystemParameter.secret and user info
+  def calc_sha256 (secret)
+    sha256_input = "#{secret},#{self.uid}/#{self.provider},#{self.user_name}"
+    Base64.encode64(Digest::SHA256.digest(sha256_input))
+  end
 
 
   ##############

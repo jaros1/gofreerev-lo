@@ -318,6 +318,12 @@ class Friend < ActiveRecord::Base
       user.api_profile_url         = new_friends[user_id][:api_profile_url]
       user.api_profile_picture_url = new_friends[user_id][:api_profile_picture_url]
       user.no_api_friends          = new_friends[user_id][:no_api_friends]
+      # user.sha256 signature must be unique. generate new secret if doublet sha256 signatures is found
+      loop do
+        user.sha256 = user.calc_sha256(SystemParameter.secret)
+        break unless User.find_by_sha256(user.sha256)
+        SystemParameter.new_secret # new login is required for all server to server sessions
+      end
       user.save!
       new_users[user_id] = user
     end

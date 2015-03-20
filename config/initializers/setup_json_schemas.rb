@@ -93,7 +93,9 @@ JSON_SCHEMA = {
             :client_userid => client_userid_type,
             # client unix timestamp (10) with milliseconds (3) - total 13 decimals - used together with server timestamp in check for expired tokens
             :client_timestamp => client_timestamp_type,
-            # client secret - string with 10 decimals - used in device.sha256 signature
+            # client secret - 10 characters string
+            # client communication: used in device.sha256 signature - unique mailbox address - 10 digits
+            # server communication: used in user.sha256 signature - used when comparing user information - 10 random characters
             :client_secret => {:type => 'string'},
             # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :did => {:type => 'string', :pattern => uid_pattern},
@@ -120,6 +122,8 @@ JSON_SCHEMA = {
             :pubkey => {:type => 'string' },
             # server did - unique device id - only returned after server login request
             :did => {:type => 'string', :pattern => uid_pattern},
+            # client secret - only returned after server login request - used when comparing user information - 10 random characters
+            :client_secret => {:type => 'string'},
             # optional error message from login
             :error => {:type => 'string'}
         },

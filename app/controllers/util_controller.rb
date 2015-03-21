@@ -1003,7 +1003,11 @@ class UtilController < ApplicationController
   # client pings are distributed equally over each server ping cycle with mini adjustments
   def ping
     begin
-      now = Time.zone.now
+
+      # timestamp for ping adjustment. must that all timestamps are with milliseconds and
+      # that ping.last_ping_at and ping.next_ping_at are saved in database as decimal(13,3)
+      # ( unix timestamp with milliseconds )
+      now = Time.now.round(3)
 
       # server or client ping
       server = (login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//)
@@ -1078,7 +1082,7 @@ class UtilController < ApplicationController
 
       # find number of active sessions in pings table
       max_server_ping_cycle = [old_server_ping_cycle, new_server_ping_cycle].max + 2000;
-      no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_cycle/1000).seconds.ago(now)).count
+      no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_cycle/1000).seconds.ago(now).to_f).count
       no_active_sessions = 1 if no_active_sessions == 0
       avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
 
@@ -1086,7 +1090,7 @@ class UtilController < ApplicationController
       # Ping - one row for each client browser tab window
       if (rand*100).floor == 0
         # cleanup old sessions
-        Ping.where('next_ping_at < ?', 1.hour.ago(now)).delete_all
+        Ping.where('next_ping_at < ?', 1.hour.ago(now).to_f).delete_all
         ping = Ping.find_by_id(ping.id)
       end
       if !ping
@@ -1094,8 +1098,8 @@ class UtilController < ApplicationController
         ping.session_id = get_sessionid
         ping.client_userid = get_client_userid
         ping.client_sid = sid
-        ping.next_ping_at = now
-        ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
+        ping.next_ping_at = now.to_f
+        ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now).to_f
         ping.save!
       end
       # todo: force logout if ping.did != sessions.did?
@@ -1124,6 +1128,9 @@ class UtilController < ApplicationController
       logger.debug2 "avg5 = #{avg5}, MAX_AVG_LOAD = #{MAX_AVG_LOAD}"
       logger.debug2 "old server ping interval = #{old_server_ping_cycle}, new server ping interval = #{new_server_ping_cycle}"
       logger.debug2 "no_active_sessions = #{no_active_sessions}, avg_ping_interval = #{avg_ping_interval}"
+      # ping: avg5 = 0.88, MAX_AVG_LOAD = 3.6
+      # ping: old server ping interval = 2000, new server ping interval = 2000
+      # ping: no_active_sessions = 2, avg_ping_interval = 1.0
 
       # client timestamp - used by client to detect multiple logins with identical uid/user_clientid
       # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
@@ -1134,14 +1141,24 @@ class UtilController < ApplicationController
       set_session_value(:client_timestamp, new_timestamp)
       dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
 
-      # adjust next ping for this session (median of previous and next ping from other sessions)
-      previous_ping = Ping.where('id <> ? and last_ping_at < ?', ping.id, now).order('last_ping_at desc').first
+      # adjust next ping for this session
+      # (median of previous and next ping from other sessions - ignore old pings)
+      previous_ping = Ping.where('id <> ? and last_ping_at < ? and last_ping_at > ?',
+                                 ping.id, now.to_f, (old_server_ping_cycle*2/1000).seconds.ago.to_f).order('last_ping_at desc').first
+      logger.debug2 "no previous ping was found" unless previous_ping
       previous_ping_interval = now - previous_ping.last_ping_at if previous_ping
       previous_ping_interval = avg_ping_interval unless previous_ping_interval and previous_ping_interval <= 2 * avg_ping_interval
+
       # find next ping by other sessions - interval to next ping be should close to avg_ping_interval
-      next_ping = Ping.where('id <> ? and next_ping_at > ?', ping.id, now).order('next_ping_at').first
+      next_ping = Ping.where('id <> ? and next_ping_at > ?', ping.id, now.to_f).order('next_ping_at').first
+      logger.debug2 "next ping was not found" unless next_ping
       next_ping_interval = next_ping ? next_ping.next_ping_at - now : avg_ping_interval # seconds
-      # calc adjustment for this ping. Should be in midle between previous ping and next ping
+      logger.debug2 "next_ping_interval = #{next_ping_interval}"
+      logger.debug2 "next_ping.next_ping_at = #{next_ping.next_ping_at} (#{next_ping.next_ping_at.class}), now = #{now} (#{now.class})" if next_ping
+      logger.debug2 "avg_ping_interval = #{avg_ping_interval}"
+      # ping:  next_ping_interval = -748.469, next_ping.next_ping_at = 2015-03-21 08:10:49 +0100, now = 2015-03-21 07:23:18 UTC, avg_ping_interval = 1.0
+
+      # calc adjustment for this ping. Should be in middle between previous ping and next ping
       avg_ping_interval2 = (previous_ping_interval + next_ping_interval) / 2 # seconds
       adjust_this_ping = -previous_ping_interval + avg_ping_interval2 # seconds
       # next ping
@@ -1158,13 +1175,18 @@ class UtilController < ApplicationController
         logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
+        # todo: error: response returned big negative interval
+        # ping: old client timestamp = 1426916700715, new client timestamp = 1426919518478, dif = 2817763
+        # ping: previous_ping_interval = 1.0, next_ping_interval = -1407.332, avg_ping_interval2 = -703.166, adjust_this_ping = -704.166
+        # old_client_timestamp = 2015-03-21 06:45:00 +0100, new_client_timestamp 2015-03-21 07:31:58 +0100
+
         # get list of online devices - ignore current session(s) - only online devices with friends are relevant
         # todo: add information about online devices/friends on other gofreerev servers to online array
         # todo: don't include :server_id for online devices/friends on this gofreerev server
         # todo: include server id for online devices/friends on other gofreerev servers
         # todo: user must accept or reject communication with user on other gofreerev server
         pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
-                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago)
+                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f)
         if pings.size > 0
           # found other online devices
           login_users_friends = Friend.where(:user_id_giver => login_user_ids)

@@ -2354,7 +2354,13 @@ class User < ActiveRecord::Base
 
   # calc sha256 from SystemParameter.secret and user info
   def calc_sha256 (secret)
-    sha256_input = "#{secret},#{self.uid}/#{self.provider},#{self.user_name}"
+    return nil if dummy_user?
+    if provider == 'facebook'
+      # uid cannot be used as global id for fb users. different uid in different apps
+      sha256_input = "#{secret},#{self.api_profile_picture_url}/#{self.provider},#{self.user_name}"
+    else
+      sha256_input = "#{secret},#{self.uid}/#{self.provider},#{self.user_name}"
+    end
     Base64.encode64(Digest::SHA256.digest(sha256_input))
   end
 

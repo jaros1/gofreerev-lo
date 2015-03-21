@@ -113,8 +113,14 @@ class Message < ActiveRecord::Base
   # read message for this server
   # client:
   # - true if called from Server.ping (processing messages in response)
-  # - false if called from util_controller.ping (processing incomming messages in request)
-  def receive_message (client)
+  # - false if called from util_controller.ping (processing incoming messages in request)
+  # request_users:
+  # - only relevant for client==true. called from Server.ping
+  #   array with user ids in outgoing users message
+  #   user ids must be in response to outgoing users message
+  #   only relevant for direct server to server user compare
+  #   not relevant in forwarded users messages
+  def receive_message (client, request_users)
     logger.debug "new mail: #{self.to_json}"
 
     if self.encryption == 'rsa'
@@ -160,7 +166,7 @@ class Message < ActiveRecord::Base
     message = JSON.parse(message_json)
 
     if message["msgtype"] == 'users'
-      server.receive_users_message(message["users"], client) # false: server side of communication
+      server.receive_users_message(message["users"], client, request_users) # false: server side of communication
       self.destroy
     end
 
@@ -169,7 +175,16 @@ class Message < ActiveRecord::Base
   end # receive_message
 
 
-  def self.receive_messages (client, sender_did, sender_sha256, input_messages)
+  # params:
+  # - client        : true if called from Server.ping. false if called from util_controller.ping
+  # - sender_did    :
+  # - sender_sha256 :
+  # - request_users : array with user ids from outgoing users message (only client==true).
+  #                   users must be included in response to outgoing users message
+  #                   only relevant for direct server to server user compare
+  #                   not relevant in forwarded user messages
+  # - input_messages:
+  def self.receive_messages (client, sender_did, sender_sha256, request_users, input_messages)
 
     # todo: sender_sha256 is null in server to server messages
 
@@ -255,7 +270,9 @@ class Message < ActiveRecord::Base
     end
 
     # check for any server messages to this server
-    Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each { |m| m.receive_message(client) }
+    Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each do |m|
+      m.receive_message(client, request_users)
+    end
 
     nil
   end # self.receive_messages
@@ -312,7 +329,9 @@ class Message < ActiveRecord::Base
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages      = #{input_messages}"
 
-    error = Message.receive_messages(false, sender_did, sender_sha256, input_messages) # false - called from server (util_controller.ping)
+    # client==false - called from server (util_controller.ping)
+    request_users = [] # dummy array. only relevant when receive_messages is called from Server.ping
+    error = Message.receive_messages(false, sender_did, sender_sha256, request_users, input_messages)
     return error if error
     Message.send_messages(sender_did, sender_sha256)
 

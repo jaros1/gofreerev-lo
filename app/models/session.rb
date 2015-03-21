@@ -339,8 +339,8 @@ class Session < ActiveRecord::Base
 
   # 17) server - boolean in model and db - not encrypted
   # false: user/browser, true: other gofreerev server
-  # disconnect server sessions after server setup changes (did, public key etc)
-  validates_inclusion_of :server, :in => [true, false]
+  # is blank in a new session until login process is completed
+  validates_inclusion_of :server, :in => [true, false], :allow_blank => true
 
   # 18) created_at
 
@@ -367,7 +367,7 @@ class Session < ActiveRecord::Base
       when :state then self.state = value
       when :tokens then self.tokens = value
       when :user_ids
-        logger.debug "#{key} = #{value}"
+        # logger.debug "#{key} = #{value}"
         self.user_ids = value
         # update sha256 signature (client_secret + user_ids) - used in ping - used in client to client communication
         if self.server
@@ -379,6 +379,7 @@ class Session < ActiveRecord::Base
         else
           self.sha256 = nil
         end
+        # logger.debug "self.user_ids = #{self.user_ids}"
       else raise "unknown key #{key}"
     end # case
   end

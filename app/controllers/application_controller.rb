@@ -580,6 +580,7 @@ class ApplicationController < ActionController::Base
     tokens[provider] = token
     expires = get_session_value(:expires_at) || {}
     expires[provider] = expires_at.to_i # positive sign for current login user
+    logger.debug2 "set_session_value: user_ids = #{login_user_ids.join(', ')}"
     set_session_value(:user_ids, login_user_ids)
     set_session_value(:tokens, tokens)
     set_session_value(:expires_at, expires)

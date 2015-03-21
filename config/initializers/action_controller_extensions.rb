@@ -30,7 +30,7 @@ module ActionControllerExtensions
   def save_session
     if @s.new_record? or @s.changed?
       @s.updated_at = Time.zone.now
-      @s.save
+      @s.save!
     end
   end
 

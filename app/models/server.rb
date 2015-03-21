@@ -483,22 +483,22 @@ class Server < ActiveRecord::Base
   # user_id > 0 - user from Gofreerev server - complete verified in one request/response cycle
   # user_id < 0 - user from other Gofreerev server - received in response - response in next request
   # params:
-  # - request_users: array with user_ids from users message (if any). user_ids are checked in Server.ping
-  #                  when receiving response to users message
+  # - pseudo_user_ids: hash with user_ids in users message (if any). user_ids are checked in Server.ping
+  #                    when receiving response to users message
   protected
-  def create_users_message (request_users)
+  def create_users_message (pseudo_user_ids)
     request = []
     # 1) reverse request/response cycle (request in response and response in request). user_id < 0
-    #    that is users with negative user_id and client user.sha256 received from server in last ping
-    buffer = ServerUserRequest.where('server_id = ? and user_id < 0', self.id)
+    # that is users with negative user_id and client user.sha256 received from server in last ping
+    buffer = ServerUserRequest.where('server_id = ? and pseudo_user_id < 0', self.id)
     buffer.all.each do |usr|
       u = User.find_by_sha256(usr.sha256)
       if !u
-        request << { :user_id => usr.user_id, :sha256 => nil}
+        request << { :user_id => usr.pseudo_user_id, :sha256 => nil}
         next
       end
       # sha256 match
-      request << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
+      request << { :user_id => usr.pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
       # insert user match as not verified in server_users table
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
       next if su
@@ -510,11 +510,13 @@ class Server < ActiveRecord::Base
     logger.debug2 "request (1) = #{request.to_json}"
     buffer.delete_all
     # 2) normal request/response cycle. user_id > 0. send next 10 users for verification
-    #    exclude gofreerev dummy users (provider=gofreerev)
+    # exclude gofreerev dummy users (provider=gofreerev)
+    # using pseudo user ids in request
     User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
-      request << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
+      pseudo_user_id = Sequence.next_pseudo_user_id
+      request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
       # remember user ids from users request
-      request_users << u.id
+      pseudo_user_ids[pseudo_user_id] = u.id
     end
     logger.debug2 "request (2) = #{request.to_json}"
     return nil if request.size == 0
@@ -553,14 +555,14 @@ class Server < ActiveRecord::Base
   # client:
   # - true - server side of communication - called from Server.ping
   # - false - server side of communication - called from util_controller.ping via Message.receive_messages
-  # request_users:
+  # pseudo_user_ids:
   # - only relevant for client==true. called from Server.ping
-  #   array with user ids in outgoing users message
+  #   hash with user ids in outgoing users message
   #   user ids must be in response to outgoing users message
   #   only relevant for direct server to server user compare
   #   not relevant in forwarded users messages
   public
-  def receive_users_message (response, client, request_users)
+  def receive_users_message (response, client, pseudo_user_ids)
     logger.debug2 "users = #{response}"
     if client
       logger.debug2 "client = #{client} - called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)"
@@ -582,14 +584,15 @@ class Server < ActiveRecord::Base
         if usr["user_id"] > 0
           # user_id > 0. My user in response to outgoing users message.
           logger.debug2 "#{usr["user_id"]} > 0. My user in response to outgoing users message"
-          if !request_users.index(usr["user_id"])
+          if !pseudo_user_ids.has_key?(usr["user_id"])
             # todo: could be a buffered / old users message returned from server!
-            logger.error2 "Ignoring user id #{usr["user_id"]} that was not in outgoing users message"
+            logger.error2 "Ignoring pseudo user id #{usr["user_id"]} that was not in outgoing users message"
             next
           end
-          u = User.find_by_id(usr["user_id"])
+          user_id = pseudo_user_ids[usr["user_id"]]
+          u = User.find_by_id(user_id)
           if !u
-            logger.error2 "user id #{usr["user_id"]} does not exists. Only ok if user was deleted between ping request and ping response"
+            logger.error2 "user id #{user_id} (pseudo user id #{usr["user_id"]}) does not exists. Only ok if user was deleted between ping request and ping response"
             next
           end
           if !usr['sha256']
@@ -612,20 +615,20 @@ class Server < ActiveRecord::Base
         else
           # user_id < 0. User from other gofreerev server in response to outgoing users message. save for next outgoing users message
           logger.debug2 "#{usr["user_id"]} < 0. User from other gofreerev server in response to outgoing users message. save for next outgoing users message"
-          sur = ServerUserRequest.find_by_server_id_and_user_id(self.id, usr['user_id'])
+          sur = ServerUserRequest.find_by_server_id_and_pseudo_user_id(self.id, usr['user_id'])
           if sur
             if sur.sha256 == usr['sha256']
-              logger.warn2 "ignoring user id #{usr['user_id']} from server already in buffer for next outgoing users message."
+              logger.warn2 "ignoring pseudo user id #{usr['user_id']} from server already in buffer for next outgoing users message."
               next
             else
-              logger.error2 "user id #{usr['user_id']} is already in buffer with an other sha256 value. previous sha256 was #{sur.sha256}. new sha256 value is #{usr['sha256']}"
+              logger.error2 "pseudo user id #{usr['user_id']} is already in buffer with an other sha256 value. previous sha256 was #{sur.sha256}. new sha256 value is #{usr['sha256']}"
               sur.destroy!
               next
             end
           end
           sur = ServerUserRequest.new
           sur.server_id = self.id
-          sur.user_id = usr['user_id']
+          sur.pseudo_user_id = usr['user_id']
           sur.sha256 = usr['sha256']
           sur.save!
         end
@@ -643,6 +646,14 @@ class Server < ActiveRecord::Base
             # todo: respond with client user.sha256
             logger.debug2 "user exists. return client user.sha256 signature"
             request << { :user_id => usr["user_id"], :sha256 => u.calc_sha256(self.secret) }
+            # save match as not verified in server_users table
+            su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+            if !su
+              su = ServerUser.new
+              su.server_id = self.id
+              su.user_id = u.id
+              su.save!
+            end
           else
             # todo: respond with sha2546 = nil
             logger.debug2 "user does not exists. return null user.sha256 signature"
@@ -652,22 +663,22 @@ class Server < ActiveRecord::Base
           # user_id < 0. My user from response to a previously incoming users message.
           logger.debug2 "#{usr["user_id"]} < 0. My user from response to a previously incoming users message"
           # check that received user id is from previous response
-          sur = ServerUserRequest.find_by_server_id_and_user_id(self.id, -usr["user_id"])
+          sur = ServerUserRequest.find_by_server_id_and_pseudo_user_id(self.id, -usr["user_id"])
           if !sur
-            logger.error2 "ignoring user id #{-usr["user_id"]} not found in ServerUserRequest buffer"
+            logger.error2 "ignoring pseudo user id #{-usr["user_id"]} not found in ServerUserRequest buffer"
             next
           end
           sur.destroy!
           # recheck user - could have been deleted between two ping requests
-          u = User.find_by_id(-usr["user_id"])
+          u = User.find_by_id(sur.user_id)
           if !u
-            logger.error2 "user id #{-usr["user_id"]} does not exists. Only ok if user was deleted between two pings"
+            logger.error2 "user id #{sur.user_id} does not exists. Only ok if user was deleted between two pings"
             next
           end
           if !usr['sha256']
-            logger.debug2 "no match - user_id #{-usr["user_id"]} does not exist on other Gofreerev server"
+            logger.debug2 "no match - user_id #{u.id} does not exist on other Gofreerev server"
           elsif u.sha256 == usr['sha256']
-            logger.debug2 "confirmed match. user_id #{-usr["user_id"]} exists on other Gofreerev servers"
+            logger.debug2 "confirmed match. user_id #{u.id} exists on other Gofreerev servers"
             # insert user match as verified in server_users table
             su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
             if !su
@@ -678,7 +689,7 @@ class Server < ActiveRecord::Base
             su.verified_at = Time.zone.now
             su.save!
           else
-            logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{-usr["user_id"]}"
+            logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{u.id}"
           end
         end
       end
@@ -689,19 +700,19 @@ class Server < ActiveRecord::Base
     # server - called from util_controller.ping
     logger.debug2 "add users to response users message. response will be sent in next ping request"
     # exclude gofreerev dummy users (provider=gofreerev)
+    ServerUserRequest.where(:server_id => self.id).delete_all
     User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
-      request << { :user_id => -u.id, :sha256 => u.calc_sha256(self.secret) }
-      # insert into ServerUserRequest. User ids must be in next ping request. use positive user id
-      sur = ServerUserRequest.find_by_server_id_and_user_id(self.id, u.id)
-      if sur
-        logger.warn2 "Warning. user with id #{u.id} already in ServerUserRequest"
-      else
-        sur = ServerUserRequest.new
-        sur.server_id = self.id
-        sur.user_id = u.id
-        sur.save!
-      end
+      # use negative pseudo user id in response and positive pseudo user id in db
+      pseudo_user_id = Sequence.next_pseudo_user_id
+      request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+      # insert into ServerUserRequest. Pseudo user ids must be in next ping request from "client".
+      sur = ServerUserRequest.new
+      sur.server_id = self.id
+      sur.pseudo_user_id = pseudo_user_id
+      sur.user_id = u.id
+      sur.save!
     end # each u
+
     logger.debug2 "users = #{request}"
 
     message = {
@@ -729,10 +740,10 @@ class Server < ActiveRecord::Base
 
 
   # return array with messages to server or nil
-  # users: array with user_ids from users message (if any). user_ids is checked when receiving response to users message
-  #        todo: only relevant in direct server to server user messages. cannot be used in forwarded user messages
+  # pseudo_user_ids: hash with user_ids in users message (if any). user_ids is checked when receiving response to users message
+  # in memory hash only relevant in direct server to server user messages. cannot be used in forwarded user messages
   protected
-  def send_messages (request_users)
+  def send_messages (pseudo_user_ids)
 
     # 1) rsa password setup for gofreerev server. Array with new_password1, new_password1 and new_password_md5
     # password setup complete when my new_password_md5 matches with received new_password_md5
@@ -750,7 +761,7 @@ class Server < ActiveRecord::Base
     messages = [] unless messages
 
     # 3) add users message
-    users_message = create_users_message(request_users)
+    users_message = create_users_message(pseudo_user_ids)
     messages << users_message if users_message
 
     messages.size == 0 ? nil : messages
@@ -833,12 +844,14 @@ class Server < ActiveRecord::Base
     end
     return "No XSRF-TOKEN was found in session cookie" unless xsrf_token
 
+    # pseudo_user_ids used in users message. from pseudo_user_id to user_id. initialised in request. checked in response
+    pseudo_user_ids = {}
+
     # create ping request
     # todo: users request must be symmetric encrypted. Move to send_messages and receive_messages
     url = URI.parse("#{site_url}util/ping.json")
     new_client_timestamp = (Time.now.to_f*1000).floor
     sid = SystemParameter.sid
-    request_users = []
     ping_request = {
         client_userid: 1,
         sid: sid,
@@ -849,12 +862,12 @@ class Server < ActiveRecord::Base
         # new_comments: giftService.new_comments_request(),
         # verify_comments: giftService.verify_comments_request(),
         # pubkeys: giftService.pubkeys_request(),
-        messages: self.send_messages(request_users)
+        messages: self.send_messages(pseudo_user_ids)
     }
     ping_request.delete(:messages) if ping_request.has_key?(:messages) and ping_request[:messages].class == NilClass
     ping_request.delete(:users) if ping_request.has_key?(:users) and ping_request[:users].class == NilClass
     logger.debug2 "ping_request = #{ping_request}"
-    logger.debug2 "request_users = #{request_users.join(', ')}"
+    logger.debug2 "pseudo_user_ids = #{pseudo_user_ids.to_json}"
     # X_XSRF_TOKEN - escaped in cookie - unescaped in request header
     header = {'X_XSRF_TOKEN' => CGI::unescape(xsrf_token), 'Content-Type' =>'application/json' }
 
@@ -911,7 +924,7 @@ class Server < ActiveRecord::Base
     # 2) receive and process any messages
     if ping_response["messages"]
       return ping_response["messages"]["error"] if ping_response["messages"].has_key? "error"
-      Message.receive_messages true, self.new_did, nil, request_users, ping_response["messages"]["messages"] # true: called from Server.ping
+      Message.receive_messages true, self.new_did, nil, pseudo_user_ids, ping_response["messages"]["messages"] # true: called from Server.ping
     end
     # 3) todo: etc
 

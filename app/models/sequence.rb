@@ -31,6 +31,7 @@ class Sequence < ActiveRecord::Base
     end # do
   end # self.status_update_at
 
+  
   # get/set last_money_bank_request
   # used in ExchangeRate.fetch_exchange_rates
   # about 166
@@ -83,5 +84,37 @@ class Sequence < ActiveRecord::Base
     end
     s
   end
+
+
+  # pseudo user_id - used in users message in server to server communication
+
+  private
+  def self.get_pseudo_user_id
+    name = 'pseudo_user_id'
+    s = Sequence.find_by_name(name)
+    if !s
+      s = Sequence.new
+      s.name = name
+      s.value = 0
+      s.save!
+    end
+    s
+  end # self.get_pseudo_user_id
+
+  public
+  def self.pseudo_user_id
+    Sequence.get_pseudo_user_id.value
+  end # self.pseudo_user_id
+
+  public
+  def self.next_pseudo_user_id
+    transaction do
+      s = Sequence.get_pseudo_user_id
+      s.value = s.value + 1
+      s.save!
+      return s.value
+    end # do
+  end # self.pseudo_user_id
+  
 
 end

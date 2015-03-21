@@ -114,13 +114,13 @@ class Message < ActiveRecord::Base
   # client:
   # - true if called from Server.ping (processing messages in response)
   # - false if called from util_controller.ping (processing incoming messages in request)
-  # request_users:
+  # pseudo_user_ids:
   # - only relevant for client==true. called from Server.ping
-  #   array with user ids in outgoing users message
+  #   hash with user ids in outgoing users message
   #   user ids must be in response to outgoing users message
   #   only relevant for direct server to server user compare
   #   not relevant in forwarded users messages
-  def receive_message (client, request_users)
+  def receive_message (client, pseudo_user_ids)
     logger.debug "new mail: #{self.to_json}"
 
     if self.encryption == 'rsa'
@@ -167,7 +167,7 @@ class Message < ActiveRecord::Base
 
     if message["msgtype"] == 'users'
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
-      error = server.receive_users_message(message["users"], client, request_users) # false: server side of communication
+      error = server.receive_users_message(message["users"], client, pseudo_user_ids) # false: server side of communication
       return error if error
       self.destroy
       return nil
@@ -181,15 +181,15 @@ class Message < ActiveRecord::Base
 
 
   # params:
-  # - client        : true if called from Server.ping. false if called from util_controller.ping
-  # - sender_did    :
-  # - sender_sha256 :
-  # - request_users : array with user ids from outgoing users message (only client==true).
-  #                   users must be included in response to outgoing users message
-  #                   only relevant for direct server to server user compare
-  #                   not relevant in forwarded user messages
+  # - client          : true if called from Server.ping. false if called from util_controller.ping
+  # - sender_did      :
+  # - sender_sha256   :
+  # - pseudo_user_ids : hash with user ids from outgoing users message (only client==true).
+  #                     users must be included in response to outgoing users message
+  #                     only relevant for direct server to server user compare
+  #                     not relevant in forwarded user messages
   # - input_messages:
-  def self.receive_messages (client, sender_did, sender_sha256, request_users, input_messages)
+  def self.receive_messages (client, sender_did, sender_sha256, pseudo_user_ids, input_messages)
 
     # todo: sender_sha256 is null in server to server messages
 
@@ -276,7 +276,7 @@ class Message < ActiveRecord::Base
 
     # check for any server messages to this server
     Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each do |m|
-      error = m.receive_message(client, request_users)
+      error = m.receive_message(client, pseudo_user_ids)
       return { :error => error } if error
     end
 

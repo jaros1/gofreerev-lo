@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150321104240) do
+ActiveRecord::Schema.define(version: 20150321152610) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -119,6 +119,10 @@ ActiveRecord::Schema.define(version: 20150321104240) do
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
 
+  create_table "jan", id: false, force: true do |t|
+    t.decimal "a", precision: 13, scale: 3
+  end
+
   create_table "messages", force: true do |t|
     t.string   "from_did",    limit: 20,       null: false
     t.string   "from_sha256", limit: 45
@@ -191,14 +195,15 @@ ActiveRecord::Schema.define(version: 20150321104240) do
   add_index "sequences", ["name"], name: "index_sequences_on_name", unique: true, using: :btree
 
   create_table "server_user_requests", force: true do |t|
-    t.integer  "user_id",    null: false
+    t.integer  "pseudo_user_id", null: false
     t.string   "sha256"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.integer  "server_id",  null: false
+    t.integer  "server_id",      null: false
+    t.integer  "user_id"
   end
 
-  add_index "server_user_requests", ["server_id", "user_id"], name: "index_server_user_requests_pk", unique: true, using: :btree
+  add_index "server_user_requests", ["server_id", "pseudo_user_id"], name: "index_server_user_requests_pk", unique: true, using: :btree
 
   create_table "server_users", force: true do |t|
     t.integer  "server_id"

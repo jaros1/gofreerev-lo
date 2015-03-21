@@ -127,7 +127,7 @@ class Message < ActiveRecord::Base
       # setup password for symmetric communication
       # javascript: see GiftService.receive_message_password in gofreerev.js (client to client)
       receive_message_sym_password
-      return
+      return nil
     end
 
     server = Server.find_by_new_did(self.from_did)
@@ -154,7 +154,7 @@ class Message < ActiveRecord::Base
         m.message = hash[:message]
         m.save!
         # keep sym encrypted message in mailbox
-        return
+        return nil
       end
     end
 
@@ -166,11 +166,15 @@ class Message < ActiveRecord::Base
     message = JSON.parse(message_json)
 
     if message["msgtype"] == 'users'
+      return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
       server.receive_users_message(message["users"], client, request_users) # false: server side of communication
       self.destroy
+      return nil
     end
 
     logger.error2 "not implemented"
+
+    return nil
 
   end # receive_message
 
@@ -271,7 +275,8 @@ class Message < ActiveRecord::Base
 
     # check for any server messages to this server
     Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each do |m|
-      m.receive_message(client, request_users)
+      error = m.receive_message(client, request_users)
+      return { :error => error } if error
     end
 
     nil

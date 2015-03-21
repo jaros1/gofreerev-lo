@@ -501,7 +501,7 @@ class Server < ActiveRecord::Base
       request << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
       # insert user match as not verified in server_users table
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
-      next is su
+      next if su
       su = ServerUser.new
       su.server_id = self.id
       su.user_id = u.id
@@ -510,7 +510,8 @@ class Server < ActiveRecord::Base
     logger.debug2 "request (1) = #{request.to_json}"
     buffer.delete_all
     # 2) normal request/response cycle. user_id > 0. send next 10 users for verification
-    User.order(:id).limit(10).each do |u|
+    #    exclude gofreerev dummy users (provider=gofreerev)
+    User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
       request << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
       # remember user ids from users request
       request_users << u.id
@@ -673,7 +674,8 @@ class Server < ActiveRecord::Base
     return if client
 
     logger.debug2 "add users to response users message. response will be sent in next ping request"
-    User.order(:id).limit(10).each do |u|
+    # exclude gofreerev dummy users (provider=gofreerev)
+    User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
       users << { :user_id => -u.id, :sha256 => u.calc_sha256(self.secret) }
     end
     logger.debug2 "users = #{users}"
@@ -775,6 +777,9 @@ class Server < ActiveRecord::Base
   #    a) rsa encrypted password message
   public
   def ping
+
+    # secret must exists. Used in users sync between servers
+    return 'Cannot send ping request. No secret was found for server id #{self.id}. Please log in' unless self.secret
 
     # all time calc in time with milliseconds
     now = Time.zone.now.round(3)

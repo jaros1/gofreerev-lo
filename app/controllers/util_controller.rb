@@ -805,6 +805,9 @@ class UtilController < ApplicationController
           format_response
           return
         end
+        # save secret. used in user.sha256 signature when comparing users information between two gofreerev servers
+        s.secret = params[:client_secret]
+        s.save! if s.new_record? or s.changed?
         # use site_url as dummy user id user for gofreerev servers
         set_session_value :user_ids, [site_url]
         logger.debug2 "login user ids = #{login_user_ids}"

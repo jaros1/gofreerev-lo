@@ -2356,7 +2356,7 @@ class User < ActiveRecord::Base
   def calc_sha256 (secret)
     return nil if dummy_user?
     if provider == 'facebook'
-      # uid cannot be used as global id for fb users. different uid in different apps
+      # uid cannot be used as global id for fb users. different uid f
       sha256_input = "#{secret},#{self.api_profile_picture_url}/#{self.provider},#{self.user_name}"
     else
       sha256_input = "#{secret},#{self.uid}/#{self.provider},#{self.user_name}"

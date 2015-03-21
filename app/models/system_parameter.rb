@@ -167,7 +167,8 @@ class SystemParameter < ActiveRecord::Base
       s = SystemParameter.new
       s.name = 'secret'
     end
-    users = User.all
+    # no sha256 signature for gofreerev dummy users
+    users = User.where("user_id not like 'gofreerev/%'")
     # generate new secret. loop until user.sha256 values are unique
     secret = nil
     loop do
@@ -175,7 +176,10 @@ class SystemParameter < ActiveRecord::Base
       signatures = {}
       users.each do |u|
         sha256 = u.calc_sha256(secret)
-        break if signatures[sha256]
+        if signatures[sha256]
+          logger.debug2 "duoblet sha256 signature was found for #{u.debug_info}"
+          break
+        end
         signatures[sha256] = true
       end # each user
       logger.debug2 "users.size = #{users.size}, signatures.size = #{signatures.size}"
@@ -187,7 +191,7 @@ class SystemParameter < ActiveRecord::Base
     logger.warn2 "Secret was changed. Please reconnect (login) for all Gofreerev server sessions"
     Session.close_server_sessions
     # update sha256 for all users - fast lookup when comparing users across Gofreerev servers
-    User.all.each { |u| u.update_attribute :sha256, u.calc_sha256(secret) }
+    users.each { |u| u.update_attribute :sha256, u.calc_sha256(secret) }
     nil
   end
 

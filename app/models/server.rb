@@ -568,17 +568,22 @@ class Server < ActiveRecord::Base
       logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
-    users = [] unless client
+    # doublet check - no doublet user ids are allowed in response array
+    if response.size != response.collect { |usr| usr['user_id'] }.uniq.size
+      return 'users message with doublet user_ids was rejected'
+    end
+
+    request = [] unless client
 
     response.each do |usr|
       logger.debug2 "usr = #{usr}"
       if client
         # called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)
         if usr["user_id"] > 0
-          # user_id > 0. My user in response to outgoing users message. todo: user_id must be in validate from to user_id range
+          # user_id > 0. My user in response to outgoing users message.
           logger.debug2 "#{usr["user_id"]} > 0. My user in response to outgoing users message"
           if !request_users.index(usr["user_id"])
-            # todo: can be a buffered users message returned from server!
+            # todo: could be a buffered / old users message returned from server!
             logger.error2 "Ignoring user id #{usr["user_id"]} that was not in outgoing users message"
             next
           end
@@ -637,15 +642,23 @@ class Server < ActiveRecord::Base
           if u
             # todo: respond with client user.sha256
             logger.debug2 "user exists. return client user.sha256 signature"
-            users << { :user_id => usr["user_id"], :sha256 => u.calc_sha256(self.secret) }
+            request << { :user_id => usr["user_id"], :sha256 => u.calc_sha256(self.secret) }
           else
             # todo: respond with sha2546 = nil
             logger.debug2 "user does not exists. return null user.sha256 signature"
-            users << { :user_id => usr["user_id"] }
+            request << { :user_id => usr["user_id"] }
           end
         else
-          # user_id < 0. My user from response to a previously incoming users message. todo: user_id must be in validate from to user_id range
+          # user_id < 0. My user from response to a previously incoming users message.
           logger.debug2 "#{usr["user_id"]} < 0. My user from response to a previously incoming users message"
+          # check that received user id is from previous response
+          sur = ServerUserRequest.find_by_server_id_and_user_id(self.id, -usr["user_id"])
+          if !sur
+            logger.error2 "ignoring user id #{-usr["user_id"]} not found in ServerUserRequest buffer"
+            next
+          end
+          sur.destroy!
+          # recheck user - could have been deleted between two ping requests
           u = User.find_by_id(-usr["user_id"])
           if !u
             logger.error2 "user id #{-usr["user_id"]} does not exists. Only ok if user was deleted between two pings"
@@ -671,18 +684,29 @@ class Server < ActiveRecord::Base
       end
     end
 
-    return if client
+    return nil if client # client - called from Server.ping
 
+    # server - called from util_controller.ping
     logger.debug2 "add users to response users message. response will be sent in next ping request"
     # exclude gofreerev dummy users (provider=gofreerev)
     User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
-      users << { :user_id => -u.id, :sha256 => u.calc_sha256(self.secret) }
-    end
-    logger.debug2 "users = #{users}"
+      request << { :user_id => -u.id, :sha256 => u.calc_sha256(self.secret) }
+      # insert into ServerUserRequest. User ids must be in next ping request. use positive user id
+      sur = ServerUserRequest.find_by_server_id_and_user_id(self.id, u.id)
+      if sur
+        logger.warn2 "Warning. user with id #{u.id} already in ServerUserRequest"
+      else
+        sur = ServerUserRequest.new
+        sur.server_id = self.id
+        sur.user_id = u.id
+        sur.save!
+      end
+    end # each u
+    logger.debug2 "users = #{request}"
 
     message = {
         :msgtype => 'users',
-        :users => users
+        :users => request
     }
     logger.debug2 "message = #{message.to_json}"
     sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
@@ -698,6 +722,8 @@ class Server < ActiveRecord::Base
     m.encryption = 'sym'
     m.message = sym_enc_message
     m.save!
+
+    nil
 
   end # receive_users_message
 

@@ -1413,13 +1413,16 @@
      user_name identical, api_profile_picture_url identical, user_id NOT identical
      maybe use api_profile_picture_url when comparing fb accounts
      check other api providers:
-     - facebook: different user_id for identical fb users
-     - flickr: todo
-     - foursquare: todo
-     - google+: todo
-     - instagram: todo
-     - linkedin: todo
-     - twitter: todo
-     - vkontakte: todo
+     - facebook: different user_id for identical fb users. sha256 signature changed use api picture profile url instead of uid
+     - flickr: todo: check
+     - foursquare: todo: check
+     - google+: todo: check
+     - instagram: todo: check
+     - linkedin: todo: check
+     - twitter: todo: check
+     - vkontakte: todo: check
 
-select next issue to solve: (rand*353).floor+1
+354) change user_id to seq in server to server message
+     so that other user does not receive information about internal user_id
+
+select next issue to solve: (rand*354).floor+1

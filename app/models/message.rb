@@ -167,7 +167,8 @@ class Message < ActiveRecord::Base
 
     if message["msgtype"] == 'users'
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
-      server.receive_users_message(message["users"], client, request_users) # false: server side of communication
+      error = server.receive_users_message(message["users"], client, request_users) # false: server side of communication
+      return error if error
       self.destroy
       return nil
     end

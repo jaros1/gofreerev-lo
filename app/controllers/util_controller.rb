@@ -851,8 +851,9 @@ class UtilController < ApplicationController
       p.pubkey = params[:pubkey]
       p.save! if p.new_record? or p.changed?
 
-      if !params.has_key? :oauth
+      if !params.has_key? :oauths
         # empty login
+        logger.debug2 "empty device login without oauth"
         set_session_value :user_ids, []
         set_session_value :tokens, {}
         set_session_value :expires_at, {}
@@ -1182,11 +1183,6 @@ class UtilController < ApplicationController
         # ping stat
         logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
-
-        # todo: error: response returned big negative interval
-        # ping: old client timestamp = 1426916700715, new client timestamp = 1426919518478, dif = 2817763
-        # ping: previous_ping_interval = 1.0, next_ping_interval = -1407.332, avg_ping_interval2 = -703.166, adjust_this_ping = -704.166
-        # old_client_timestamp = 2015-03-21 06:45:00 +0100, new_client_timestamp 2015-03-21 07:31:58 +0100
 
         # get list of online devices - ignore current session(s) - only online devices with friends are relevant
         # todo: add information about online devices/friends on other gofreerev servers to online array

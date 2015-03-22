@@ -17,6 +17,8 @@ class Server < ActiveRecord::Base
   # end
   # add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
+  has_many :server_users
+
   # 1: site_url - other others SITE_URL but always http://...
   # secure is true if site supports ssl. secure is false if site doesn't support ssl
   validates_presence_of :site_url
@@ -495,7 +497,7 @@ class Server < ActiveRecord::Base
   # - pseudo_user_ids: hash with user_ids in users message (if any). user_ids are checked in Server.ping
   #                    when receiving response to users message
   protected
-  def create_users_message (pseudo_user_ids)
+  def create_compare_users_message (pseudo_user_ids)
     request = []
     # 1) reverse request/response cycle (request in response and response in request). user_id < 0
     # that is users with negative user_id and client user.sha256 received from server in last ping
@@ -759,6 +761,58 @@ class Server < ActiveRecord::Base
   end # receive_users_message
 
 
+  # send information about online mutual users to other gofreerev server
+  # merge information in pings table with verified matches in server_users table
+  # using user sha256 signatures. No real user information is exchanged
+  # todo: use pseudo session ids when communicating with other gofreerev servers
+  # todo: only include mutual_friends that is in server_users table
+  protected
+  def create_online_users_message
+
+    # find any online users in pings table
+    pings = Ping.all
+    ping_user_ids = []
+    pings.each do |p|
+      next if p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\// # ignore server pings
+      ping_user_ids += p.user_ids
+    end
+    ping_user_ids = ping_user_ids.uniq
+    logger.debug2 "ping_user_ids = #{ping_user_ids.join(', ')}"
+    return nil if ping_user_ids.size == 0
+
+    # initialize a hash with user_id and sha256 signature for verified users (identical users on both Gofreerev servers)
+    # from external user id (uid/provider) to sha256 signature for user on other gofreerev server
+    verified_users = {}
+    ServerUser.where('server_id = ? and verified_at is not null', self.id).includes(:user).where('users.user_id' => ping_user_ids).each do |su|
+      verified_users[su.user.user_id] = su.user.calc_sha256(self.secret)
+    end
+    logger.debug2 "verified_users = #{verified_users}"
+    return nil if verified_users.size == 0
+
+    # filter pings information using verified_users hash. Only pings from verified users are send to other Gofreerev server
+    request = []
+    pings.each do |p|
+      next if p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\// # ignore server pings
+      user_ids = []
+      p.user_ids.each do |user_id|
+        user_ids << verified_users[user_id] if verified_users.has_key? user_id
+      end
+      next if user_ids.size == 0
+      request << { :session_id => p.session_id, # todo: use pseudo session ids in server to server communication
+                   :client_userid => p.client_userid,
+                   :client_sid => p.client_sid,
+                   :last_ping_at => p.last_ping_at,
+                   :next_ping_at => p.next_ping_at, # remove - not relevant
+                   :did => p.did,
+                   :user_ids => user_ids, # user sha256 signatures
+                   :sha256 => p.sha256 }
+    end
+    logger.debug2 "request = #{request}"
+
+    nil
+  end # create_online_users_message
+
+
   # return array with messages to server or nil
   # pseudo_user_ids: hash with user_ids in users message (if any). user_ids is checked when receiving response to users message
   # in memory hash only relevant in direct server to server user messages. cannot be used in forwarded user messages
@@ -780,9 +834,15 @@ class Server < ActiveRecord::Base
     end
     messages = [] unless messages
 
-    # 3) add users message
-    users_message = create_users_message(pseudo_user_ids)
-    messages << users_message if users_message
+    # 3) add users message (compare user.sha256 signatures and insert matches in server_users table)
+    compare_users_message = create_compare_users_message(pseudo_user_ids)
+    messages << compare_users_message if compare_users_message
+
+    # 4) add online device message - send and receive information about online users
+    # information is inserted into pings table and is included in :online array to users (see /util/ping)
+    online_users_message = create_online_users_message()
+    messages << online_users_message if online_users_message
+
 
     messages.size == 0 ? nil : messages
 

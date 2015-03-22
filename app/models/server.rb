@@ -770,14 +770,17 @@ class Server < ActiveRecord::Base
   def create_online_users_message
 
     # find any online users in pings table
-    pings = Ping.all.order('session_id, client_userid, last_ping_at desc')
+    pings = Ping.where('server_id is null').order('session_id, client_userid, last_ping_at desc')
 
     # remove server pings and remove old pings. only last ping for each did is relevant
     old_key = 'x'
     pings.delete_if do |p|
       server = (p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\//)
       new_key = "#{p.session_id},#{p.client_userid}"
-      if server or (new_key == old_key) or !p.did
+      if server or (new_key == old_key)
+        true
+      elsif !p.did
+        logger.warn2 "ignoring ping without did: #{p.to_json}"
         true
       else
         old_key = new_key
@@ -788,12 +791,14 @@ class Server < ActiveRecord::Base
     # find online users
     online_user_ids = []
     pings.each do |p|
-      next if p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\// # ignore server pings
       online_user_ids += p.user_ids
     end
     online_user_ids = online_user_ids.uniq
     logger.debug2 "ping_user_ids = #{online_user_ids.join(', ')}"
-    return nil if online_user_ids.size == 0
+    if online_user_ids.size == 0
+      logger.debug2 "no online users was found in pings table"
+      return nil
+    end
 
     # initialize a hash with user_id and sha256 signature for verified users (identical users on both Gofreerev servers)
     # from external user id (uid/provider) to sha256 signature for user on other gofreerev server
@@ -802,7 +807,10 @@ class Server < ActiveRecord::Base
       verified_users[su.user.user_id] = su.user.calc_sha256(self.secret)
     end
     logger.debug2 "verified_users = #{verified_users}"
-    return nil if verified_users.size == 0
+    if verified_users.size == 0
+      logger.debug2 "no verified users was found for this server id #{self.id}"
+      return nil
+    end
 
     # filter pings information using verified_users hash. Only pings from verified users are send to other Gofreerev server
     request = []
@@ -838,6 +846,11 @@ class Server < ActiveRecord::Base
     # request = [{:session_id=>1, :last_ping_at=>1427037843.2940001, :did=>"14252356907464191530",
     #             :user_ids=>["QoTMDQkHpw7Gyjl9NBcuIHk6JwdK7THv2RKXVoTNWM0=\n"],
     #             :sha256=>"0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n"}]
+    if request.size == 0
+      logger.debug2 "no online users was found for server id #{self.id}"
+      return nil
+    end
+
     message = {
         :msgtype => 'online',
         :users => request
@@ -879,7 +892,7 @@ class Server < ActiveRecord::Base
 
       # check user_ids. sha256 signature must match and user must be in server_users table as verified user
       users = ServerUser.includes(:user).
-          where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping["user_ids"], self.id)
+          where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping["user_ids"], self.id).references(:users)
       user_ids = users.collect { |u| u.user.id }
       next unless user_ids.size > 0
 
@@ -909,7 +922,22 @@ class Server < ActiveRecord::Base
       p.save!
     end
 
-    "receive online_users message not implemented"
+    return nil if client
+
+    # return online users message to calling gofreerev server
+    message = create_online_users_message()
+    return nil unless message # no shared online users
+
+    # add online users message to messages table. response to calling gofreerev server in a moment
+    m = Message.new
+    m.from_did = message[:sender_did]
+    m.to_did = message[:receiver_did]
+    m.server = message[:server]
+    m.encryption = message[:encryption]
+    m.message = message[:message]
+    m.save!
+
+    nil
 
   end # receive_online_users_message
 

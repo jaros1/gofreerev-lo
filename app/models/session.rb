@@ -382,8 +382,6 @@ class Session < ActiveRecord::Base
         # logger.debug "self.user_ids = #{self.user_ids}"
       else raise "unknown key #{key}"
     end # case
-    logger.debug2 "did = #{did}"
-    logger.debug2 "user_ids = #{user_ids}"
     value
   end # set_column_value
 

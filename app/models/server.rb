@@ -553,10 +553,10 @@ class Server < ActiveRecord::Base
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
 
-  end # create_users_message
+  end # create_compare_users_message
 
 
-  # receive symmetric encrypted message on client or on server
+  # receive symmetric encrypted compare users message on "client" or on "server"
   # response:
   # - array with user_id and sha256. rules for user_id and client
   #   user_id>0 and client - My user in response to outgoing users message
@@ -573,10 +573,10 @@ class Server < ActiveRecord::Base
   #   only relevant for direct server to server user compare
   #   not relevant in forwarded users messages
   public
-  def receive_users_message (response, client, pseudo_user_ids)
+  def receive_compare_users_message (response, client, pseudo_user_ids)
     logger.debug2 "users = #{response}"
     if client
-      logger.debug2 "client = #{client} - called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)"
+      logger.debug2 "client = #{client} - called from Server.ping. received incoming compare users message. response to outgoing compare users message (create_compare_users_message)"
     else
       logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
     end
@@ -758,7 +758,7 @@ class Server < ActiveRecord::Base
 
     nil
 
-  end # receive_users_message
+  end # receive_compare_users_message
 
 
   # send information about online mutual users to other gofreerev server
@@ -770,20 +770,35 @@ class Server < ActiveRecord::Base
   def create_online_users_message
 
     # find any online users in pings table
-    pings = Ping.all
-    ping_user_ids = []
+    pings = Ping.all.order('session_id, client_userid, last_ping_at desc')
+
+    # remove server pings and remove old pings. only last ping for each did is relevant
+    old_key = 'x'
+    pings.delete_if do |p|
+      server = (p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\//)
+      new_key = "#{p.session_id},#{p.client_userid}"
+      if server or (new_key == old_key) or !p.did
+        true
+      else
+        old_key = new_key
+        false
+      end
+    end
+
+    # find online users
+    online_user_ids = []
     pings.each do |p|
       next if p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\// # ignore server pings
-      ping_user_ids += p.user_ids
+      online_user_ids += p.user_ids
     end
-    ping_user_ids = ping_user_ids.uniq
-    logger.debug2 "ping_user_ids = #{ping_user_ids.join(', ')}"
-    return nil if ping_user_ids.size == 0
+    online_user_ids = online_user_ids.uniq
+    logger.debug2 "ping_user_ids = #{online_user_ids.join(', ')}"
+    return nil if online_user_ids.size == 0
 
     # initialize a hash with user_id and sha256 signature for verified users (identical users on both Gofreerev servers)
     # from external user id (uid/provider) to sha256 signature for user on other gofreerev server
     verified_users = {}
-    ServerUser.where('server_id = ? and verified_at is not null', self.id).includes(:user).where('users.user_id' => ping_user_ids).each do |su|
+    ServerUser.where('server_id = ? and verified_at is not null', self.id).includes(:user).where('users.user_id' => online_user_ids).each do |su|
       verified_users[su.user.user_id] = su.user.calc_sha256(self.secret)
     end
     logger.debug2 "verified_users = #{verified_users}"
@@ -793,24 +808,110 @@ class Server < ActiveRecord::Base
     request = []
     pings.each do |p|
       next if p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\// # ignore server pings
+      if !p.did
+        logger.error2 "ignoring ping without did: #{p.to_json}"
+        next
+      end
       user_ids = []
       p.user_ids.each do |user_id|
         user_ids << verified_users[user_id] if verified_users.has_key? user_id
       end
       next if user_ids.size == 0
-      request << { :session_id => p.session_id, # todo: use pseudo session ids in server to server communication
+      # use pseudo session id when sending ping information to other Gofreerev servers
+      rs = RemoteSession.find_by_session_id(p.session_id)
+      if !rs
+        rs = RemoteSession.new
+        rs.session_id = p.session_id
+        rs.pseudo_session_id = Sequence.next_pseudo_session_id
+        rs.save!
+      end
+      request << { :session_id => rs.pseudo_session_id,
                    :client_userid => p.client_userid,
-                   :client_sid => p.client_sid,
-                   :last_ping_at => p.last_ping_at,
-                   :next_ping_at => p.next_ping_at, # remove - not relevant
+                   # :client_sid => p.client_sid,
+                   :last_ping_at => p.last_ping_at.to_f,
+                   # :next_ping_at => p.next_ping_at, # remove - not relevant
                    :did => p.did,
                    :user_ids => user_ids, # user sha256 signatures
                    :sha256 => p.sha256 }
     end
     logger.debug2 "request = #{request}"
+    # request = [{:session_id=>1, :last_ping_at=>1427037843.2940001, :did=>"14252356907464191530",
+    #             :user_ids=>["QoTMDQkHpw7Gyjl9NBcuIHk6JwdK7THv2RKXVoTNWM0=\n"],
+    #             :sha256=>"0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n"}]
+    message = {
+        :msgtype => 'online',
+        :users => request
+    }
+    logger.debug2 "message = #{message.to_json}"
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    sym_enc_message = Base64.encode64(sym_enc_message)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
 
-    nil
+    # add envelope with symmetric encrypted users message
+    envelope = {
+        :sender_did => SystemParameter.did,
+        :receiver_did => self.new_did,
+        :server => true,
+        :encryption => 'sym',
+        :message => sym_enc_message
+    }
+    logger.debug2 "envelope = #{envelope.to_json}"
+    envelope
+
   end # create_online_users_message
+
+
+  public
+  def receive_online_users_message (response, client)
+
+    logger.debug2 "users = #{response}"
+    # users = [{"session_id"=>"9c653cde5b1cd771756cf2dc49a1376d", "last_ping_at"=>1427021803.289,
+    #           "did"=>"14252356907464191530", "user_ids"=>["QoTMDQkHpw7Gyjl9NBcuIHk6JwdK7THv2RKXVoTNWM0=\n"],
+    #           "sha256"=>"0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n"}]
+
+    if client
+      logger.debug2 "client = #{client} - called from Server.ping. received incoming online users message. response to outgoing online users message (create_online_users_message)"
+    else
+      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+    end
+
+    response.each do |ping|
+
+      # check user_ids. sha256 signature must match and user must be in server_users table as verified user
+      users = ServerUser.includes(:user).
+          where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping["user_ids"], self.id)
+      user_ids = users.collect { |u| u.user.id }
+      next unless user_ids.size > 0
+
+      # translate pseudo session id received from other gofreerev server to pseudo session id used on this gofreerev server
+      ss = ServerSession.find_by_server_id_and_server_session_id(self.id, ping["session_id"])
+      if !ss
+        ss = ServerSession.new
+        ss.server_id = self.id
+        ss.server_session_id = ping["session_id"]
+        ss.session_id = Sequence.next_pseudo_session_id
+        ss.save!
+      end
+      # find/create ping
+      p = Ping.find_by_session_id_and_client_userid(ss.session_id, ping["client_userid"])
+      if !p
+        p = Ping.new
+        p.session_id = ss.session_id.to_s
+        p.client_userid = ping["client_userid"]
+        p.client_sid = ss.session_id.to_s
+        p.did = ping["did"]
+      end
+      p.last_ping_at = Time.at ping["last_ping_at"]
+      p.next_ping_at = 1.year.from_now.round(3)
+      p.user_ids = user_ids
+      p.sha256 = ping["sha256"]
+      p.server_id = self.id
+      p.save!
+    end
+
+    "receive online_users message not implemented"
+
+  end # receive_online_users_message
 
 
   # return array with messages to server or nil

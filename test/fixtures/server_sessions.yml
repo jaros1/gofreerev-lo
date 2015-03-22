@@ -1,0 +1,11 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  server_id: 1
+  session_id: 1
+  server_session_id: 1
+
+two:
+  server_id: 1
+  session_id: 1
+  server_session_id: 1

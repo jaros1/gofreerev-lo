@@ -167,13 +167,21 @@ class Message < ActiveRecord::Base
 
     if message["msgtype"] == 'users'
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
-      error = server.receive_users_message(message["users"], client, pseudo_user_ids) # false: server side of communication
+      error = server.receive_compare_users_message(message['users'], client, pseudo_user_ids) # false: server side of communication
       return error if error
       self.destroy
       return nil
     end
 
-    logger.error2 "not implemented"
+    if message["msgtype"] == 'online'
+      error = server.receive_online_users_message(message['users'], client) # false: server side of communication
+      return error if error
+      self.destroy
+      return nil
+    end
+
+
+    logger.error2 "mstype #{message["msgtype"]} not implemented"
 
     return nil
 

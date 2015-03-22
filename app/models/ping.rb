@@ -90,6 +90,8 @@ class Ping < ActiveRecord::Base
   # 8: sha256 - generated from client secret and user_ids.
   # stored encrypted sessions table and stored in clear text in pings
 
+  # 9: server_id - used for pings received in server to server online users message
+  # blank: session on this gofreerev server. not blank: session on other gofreerev server
 
   # array with internal user ids - used in ping response (online devices)
   # replicate gifts for mutual friends between online devices

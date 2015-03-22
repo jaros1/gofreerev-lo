@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150322065810) do
+ActiveRecord::Schema.define(version: 20150322161323) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -168,6 +168,7 @@ ActiveRecord::Schema.define(version: 20150322065810) do
     t.string  "did"
     t.text    "user_ids"
     t.string  "sha256",        limit: 45
+    t.integer "server_id"
   end
 
   add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree
@@ -181,6 +182,15 @@ ActiveRecord::Schema.define(version: 20150322065810) do
 
   add_index "pubkeys", ["did"], name: "index_pubkey_did", unique: true, using: :btree
 
+  create_table "remote_sessions", force: true do |t|
+    t.string   "session_id",        limit: 32, null: false
+    t.integer  "pseudo_session_id",            null: false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "remote_sessions", ["session_id"], name: "index_remote_session_pk", unique: true, using: :btree
+
   create_table "sequences", force: true do |t|
     t.string   "name",       null: false
     t.integer  "value",      null: false
@@ -189,6 +199,17 @@ ActiveRecord::Schema.define(version: 20150322065810) do
   end
 
   add_index "sequences", ["name"], name: "index_sequences_on_name", unique: true, using: :btree
+
+  create_table "server_sessions", force: true do |t|
+    t.integer  "server_id",         null: false
+    t.integer  "session_id",        null: false
+    t.integer  "server_session_id", null: false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "server_sessions", ["server_id", "server_session_id"], name: "index_server_session_pk", unique: true, using: :btree
+  add_index "server_sessions", ["session_id"], name: "index_server_session_uk", unique: true, using: :btree
 
   create_table "server_user_requests", force: true do |t|
     t.integer  "pseudo_user_id", null: false

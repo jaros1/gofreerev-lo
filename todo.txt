@@ -1466,4 +1466,8 @@
      use mid (unique message id) in all messages and include request_mid in response
      add folder field to messages table (outbox => sent => error or done)
 
-select next issue to solve: (rand*361).floor+1
+362) server to server communication
+     encrypt big ping message instead of each message in messages array?
+     ok to encrypt messages that is to be forwarded to other Gofreerev servers
+
+select next issue to solve: (rand*362).floor+1

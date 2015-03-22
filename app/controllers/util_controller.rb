@@ -1091,7 +1091,7 @@ class UtilController < ApplicationController
 
       # find number of active sessions in pings table
       max_server_ping_cycle = [old_server_ping_cycle, new_server_ping_cycle].max + 2000;
-      no_active_sessions = Ping.where('last_ping_at >= ?', (max_server_ping_cycle/1000).seconds.ago(now).to_f).count
+      no_active_sessions = Ping.where('last_ping_at >= ? and server_id is null', (max_server_ping_cycle/1000).seconds.ago(now).to_f).count
       no_active_sessions = 1 if no_active_sessions == 0
       avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_sessions
 
@@ -1151,15 +1151,15 @@ class UtilController < ApplicationController
       dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
 
       # adjust next ping for this session
-      # (median of previous and next ping from other sessions - ignore old pings)
-      previous_ping = Ping.where('id <> ? and last_ping_at < ? and last_ping_at > ?',
+      # (median of previous and next ping from other sessions - ignore old pings - ignore sessions on other servers)
+      previous_ping = Ping.where('id <> ? and last_ping_at < ? and last_ping_at > ? and server_id is null',
                                  ping.id, now.to_f, (old_server_ping_cycle*2/1000).seconds.ago.to_f).order('last_ping_at desc').first
       logger.debug2 "no previous ping was found" unless previous_ping
       previous_ping_interval = now - previous_ping.last_ping_at if previous_ping
       previous_ping_interval = avg_ping_interval unless previous_ping_interval and previous_ping_interval <= 2 * avg_ping_interval
 
       # find next ping by other sessions - interval to next ping be should close to avg_ping_interval
-      next_ping = Ping.where('id <> ? and next_ping_at > ?', ping.id, now.to_f).order('next_ping_at').first
+      next_ping = Ping.where('id <> ? and next_ping_at > ? and server_id is null', ping.id, now.to_f).order('next_ping_at').first
       logger.debug2 "next ping was not found" unless next_ping
       next_ping_interval = next_ping ? next_ping.next_ping_at - now : avg_ping_interval # seconds
       logger.debug2 "next_ping_interval = #{next_ping_interval}"

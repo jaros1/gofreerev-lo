@@ -1408,6 +1408,9 @@
 
 352) changed user name
      add user to user verification buffer for all servers where user is unknown
+     using api profile picture url for facebook
+     general: add user to user verification buffer when change in sha256 input for a user
+     insert user as not verified in server_users table
 
 353) no match for identical fb account on gofreerev-lo (app 1) and gofreerev-lo2 (app 2)
      user_name identical, api_profile_picture_url identical, user_id NOT identical
@@ -1422,7 +1425,45 @@
      - twitter: todo: check
      - vkontakte: todo: check
 
-354) change user_id to seq in server to server message
-     so that other user does not receive information about internal user_id
+355) users message
+     1) startup - loop for all users
+     2) check new users
+     3) change users with changed sha256 value (change in user_name or for FB change in api profile picture url)
+     see issue 352
 
-select next issue to solve: (rand*354).floor+1
+356) more encryption in initial server to server login request?
+     https should be used in all client<=>server and server<=>server communication
+     cookie hijacking is always possible in an unencrypted http connection
+     but no reason to make fake requests too easy
+
+357) add optional decrypt filter before /util/login
+     translate signature {:encryption => 'mix', key => xxx, :message => xxx}
+     to decrypted message {:client_userid => 1,
+                           :client_timestamp => (Time.now.to_f*1000).floor,
+                           :client_secret => SystemParameter.secret,
+                           :did => SystemParameter.did,
+                           :pubkey => SystemParameter.public_key,
+                           :site_url => SITE_URL}
+     and continue normal login process
+     can be used in http communication or for extra security in https communication
+     public key must be known to use this trick
+     response must also be encrypted if request was encrypted
+     for example with identical signature {:encryption => 'mix', key => xxx, :message => xxx}
+
+358) place a copy of public key in /public?
+
+359) symmetric encrypt cookie?
+     session cookie is only used by rails
+     could keep client part of symmetric password in client and send password rsa encrypted to rails in every request
+     server part of symmetric password on server
+     session can be stolen but session data cannot be read
+     almost all data is in localStorage or in sessions table on server
+
+360) code review / security review
+
+361) move pseudo user ids buffer (in memory array in client and server_user_requests db table on server) to messages.
+     this will allow messages to be forwarded through other gofreerev servers and messages to be returned "out of other"
+     use mid (unique message id) in all messages and include request_mid in response
+     add folder field to messages table (outbox => sent => error or done)
+
+select next issue to solve: (rand*361).floor+1

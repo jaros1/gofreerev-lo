@@ -1,18 +1,19 @@
 class Server < ActiveRecord::Base
 
   # create_table "servers", force: true do |t|
-  #   t.string   "site_url"
-  #   t.boolean  "secure"
-  #   t.string   "new_did",          limit: 20
-  #   t.text     "new_pubkey"
-  #   t.string   "old_did",          limit: 20
-  #   t.text     "old_pubkey"
-  #   t.datetime "last_ping_at"
-  #   t.datetime "next_ping_at"
-  #   t.datetime "created_at"
-  #   t.datetime "updated_at"
-  #   t.text     "key"
-  #   t.text     "secret"
+  #  1  t.string   "site_url"
+  #  2  t.boolean  "secure"
+  #  3  t.string   "new_did",              limit: 20
+  #  4  t.text     "new_pubkey"
+  #  5  t.string   "old_did",              limit: 20
+  #  6  t.text     "old_pubkey"
+  #  7  t.decimal  "last_ping_at",                    precision: 13, scale: 3
+  #  8  t.decimal  "next_ping_at",                    precision: 13, scale: 3
+  #  9  t.text     "key"
+  # 10  t.string   "secret"
+  # 11  t.integer  "last_checked_user_id"
+  #     t.datetime "created_at"
+  #     t.datetime "updated_at"
   # end
   # add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
@@ -82,7 +83,10 @@ class Server < ActiveRecord::Base
   # 9: key - encrypt symmetric password information in memory storage
   # symmetric passwords will be generated after server restart
 
-  # 10: old_dids - json array with old not used dids. discard any incoming messages for old dids
+  # 10: secret - secret from server used in user.sha256 signature. used in server to server users message
+
+  # 11: last_checked_user_id. last user id compared in users message. Compare starts with lowest user id
+
 
   # password helpers. symmetric password stored in memory encrypted with key stored in database
   # symmetric passwords used in server to server communication expires after one hour
@@ -371,6 +375,11 @@ class Server < ActiveRecord::Base
     client.cookie_manager.save_all_cookies(true, true, true)
 
     # post login request to other gofreerev server
+    # todo: more encryption in login request?
+    #       could use site_url + mix encrypted message
+    #       { :encryption => 'mix', key => xxx, :message => xxx }
+    #       add /util/login_mix action, decrypt message and redirect to /util/login
+    #       or decrypt filter before login
     SystemParameter.generate_key_pair unless SystemParameter.public_key
     url = URI.parse("#{site_url}util/login.json")
     login_request = {:client_userid => 1,
@@ -512,7 +521,7 @@ class Server < ActiveRecord::Base
     # 2) normal request/response cycle. user_id > 0. send next 10 users for verification
     # exclude gofreerev dummy users (provider=gofreerev)
     # using pseudo user ids in request
-    User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
+    User.where("id > ? and user_id not like 'gofreerev/%'", (self.last_checked_user_id || 0)).order(:id).limit(10).each do |u|
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
       # remember user ids from users request
@@ -575,12 +584,14 @@ class Server < ActiveRecord::Base
       return 'users message with doublet user_ids was rejected'
     end
 
+    max_checked_user_id = 0
+
     request = [] unless client
 
     response.each do |usr|
       logger.debug2 "usr = #{usr}"
       if client
-        # called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)
+        # client: called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)
         if usr["user_id"] > 0
           # user_id > 0. My user in response to outgoing users message.
           logger.debug2 "#{usr["user_id"]} > 0. My user in response to outgoing users message"
@@ -592,9 +603,11 @@ class Server < ActiveRecord::Base
           user_id = pseudo_user_ids[usr["user_id"]]
           u = User.find_by_id(user_id)
           if !u
+            # not very likely error
             logger.error2 "user id #{user_id} (pseudo user id #{usr["user_id"]}) does not exists. Only ok if user was deleted between ping request and ping response"
             next
           end
+          max_checked_user_id = u.id if u.id > max_checked_user_id
           if !usr['sha256']
             logger.debug2 "user id #{u.id} does not exists on other Gofreerev server"
             next
@@ -633,7 +646,7 @@ class Server < ActiveRecord::Base
           sur.save!
         end
       else
-        # called from called from util_controller.ping via Message.receive_messages
+        # server: called from called from util_controller.ping via Message.receive_messages
         if usr["user_id"] > 0
           # user_id > 0. User from other gofreerev server in incoming users message
           logger.debug2 "#{usr["user_id"]} > 0. User from other gofreerev server in incoming users message"
@@ -675,6 +688,7 @@ class Server < ActiveRecord::Base
             logger.error2 "user id #{sur.user_id} does not exists. Only ok if user was deleted between two pings"
             next
           end
+          max_checked_user_id = u.id if u.id > max_checked_user_id
           if !usr['sha256']
             logger.debug2 "no match - user_id #{u.id} does not exist on other Gofreerev server"
           elsif u.sha256 == usr['sha256']
@@ -695,13 +709,19 @@ class Server < ActiveRecord::Base
       end
     end
 
+    if max_checked_user_id > 0
+      logger.debug2 "max_checked_user_id = #{max_checked_user_id}"
+      self.last_checked_user_id = max_checked_user_id
+      self.save!
+    end
+
     return nil if client # client - called from Server.ping
 
     # server - called from util_controller.ping
     logger.debug2 "add users to response users message. response will be sent in next ping request"
     # exclude gofreerev dummy users (provider=gofreerev)
     ServerUserRequest.where(:server_id => self.id).delete_all
-    User.where("user_id not like 'gofreerev/%'").order(:id).limit(10).each do |u|
+    User.where("id > ? and user_id not like 'gofreerev/%'", (self.last_checked_user_id || 0)).order(:id).limit(10).each do |u|
       # use negative pseudo user id in response and positive pseudo user id in db
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }

@@ -1533,6 +1533,9 @@ class ApplicationController < ActionController::Base
             f.destroy
             set_session_value(:flash_id, nil)
           end
+          # todo: encrypt response using client public key
+          #       required for an insecure http connection. and could be used as extra security in a https connection
+          #       signature { encryption: 'mix', key: key, message: message } where key is an rsa encrypted random symmetric password
           format.json { render json: @json }
         else
           format.html

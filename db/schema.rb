@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150321152610) do
+ActiveRecord::Schema.define(version: 20150322065810) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -119,10 +119,6 @@ ActiveRecord::Schema.define(version: 20150321152610) do
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
 
-  create_table "jan", id: false, force: true do |t|
-    t.decimal "a", precision: 13, scale: 3
-  end
-
   create_table "messages", force: true do |t|
     t.string   "from_did",    limit: 20,       null: false
     t.string   "from_sha256", limit: 45
@@ -219,15 +215,16 @@ ActiveRecord::Schema.define(version: 20150321152610) do
     t.string   "site_url"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "new_did",      limit: 20
-    t.decimal  "last_ping_at",            precision: 13, scale: 3
-    t.decimal  "next_ping_at",            precision: 13, scale: 3
+    t.string   "new_did",              limit: 20
+    t.decimal  "last_ping_at",                    precision: 13, scale: 3
+    t.decimal  "next_ping_at",                    precision: 13, scale: 3
     t.boolean  "secure"
-    t.string   "old_did",      limit: 20
+    t.string   "old_did",              limit: 20
     t.text     "old_pubkey"
     t.text     "new_pubkey"
     t.text     "key"
     t.string   "secret"
+    t.integer  "last_checked_user_id"
   end
 
   add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree

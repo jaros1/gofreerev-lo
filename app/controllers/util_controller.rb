@@ -64,6 +64,11 @@ class UtilController < ApplicationController
     # validate request
     json_request = params.clone
     %w(controller action format util).each { |key| json_request.delete(key) }
+
+    # todo: decrypt encrypted rsa or mix request. signature {:encryption => 'rsa', :message => xxx} or
+    #       {:encryption => 'mix', key => xxx, :message => xxx}
+    #       use for insecure http or as extra security for https
+
     logger.secret2 "#{json_schema} = #{json_request}"
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], json_request)
     return true if json_errors.size == 0
@@ -1101,8 +1106,8 @@ class UtilController < ApplicationController
         ping.session_id = get_sessionid
         ping.client_userid = get_client_userid
         ping.client_sid = sid
-        ping.next_ping_at = now.to_f
-        ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now).to_f
+        ping.next_ping_at = now
+        ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
         ping.save!
       end
       # todo: force logout if ping.did != sessions.did?

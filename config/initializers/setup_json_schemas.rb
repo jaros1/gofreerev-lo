@@ -551,13 +551,15 @@ JSON_SCHEMA = {
               # array with did and public keys response for pubkeys request
               :pubkeys => {
                   :type => 'array',
+                  :title => 'Array with requested public keys to client',
+                  :description => 'Response for a remote device will be returned in a later pubkeys request. Blank pubkey is returned for unknown device',
                   :items => {
                       :type => 'object',
                       :properties => {
                           # unique device id from pubkeys request
                           :did => {:type => 'string', :pattern => uid_pattern},
                           # public key or null if unknown did
-                          :pubkey => {:type => 'string'}
+                          :pubkey => {:type => %w(NilClass null string)}
                       },
                       :required => %w(did),
                       :additionalProperties => false

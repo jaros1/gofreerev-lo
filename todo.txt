@@ -1470,4 +1470,20 @@
      encrypt big ping message instead of each message in messages array?
      ok to encrypt messages that is to be forwarded to other Gofreerev servers
 
-select next issue to solve: (rand*362).floor+1
+363) allow server to return a compare users message without an incoming compare users message
+     allow server to return a online users message without an incoming online users message
+
+364) server pings. must be external user id.
+     2.0.0-p598 :004 > pings[0]
+      => #<Ping id: 224, session_id: "9c653cde5b1cd771756cf2dc49a1376d", client_userid: 1, client_sid: "14270197126896206557", last_ping_at: #<BigDecimal:7c73e70,'0.1427055769 598E10',27(27)>, next_ping_at: #<BigDecimal:7c73df8,'0.1427055771 598E10',27(27)>, did: "14252356907464191530", user_ids: "---\n- 1705481075/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: nil>
+     2.0.0-p598 :005 > pings[1]
+      => #<Ping id: 225, session_id: "2", client_userid: 1, client_sid: "2", last_ping_at: #<BigDecimal:7c73c90,'0.1427055767 296E10',27(27)>, next_ping_at: #<BigDecimal:7c73c18,'0.1458678170 387E10',27(27)>, did: "14259151245218705856", user_ids: "---\n- 1126\n", sha256: "RFknrRnG4TL+zhBkoTc2dgNkdFoIRMLxrOYduv3CKvQ=\n", server_id: 1>
+
+365) ok send a login request to an secure https gofreerev server
+     not allowed for a secure https server to send a login request to an insecure http server
+     a secure https gofreerev server could invite insecure http server to login as a client
+
+366) add optional server_id to pubkeys table
+     used in client to client communication across gofreerev servers
+
+select next issue to solve: (rand*366).floor+1

@@ -106,14 +106,28 @@ class Ping < ActiveRecord::Base
   def self.pubkeys (pubkeys_request)
     return nil unless pubkeys_request.class == Array and pubkeys_request.size > 0
     pubkeys_request.uniq!
-    pubkeys_response = Pubkey.where(:did => pubkeys_request).collect { |p| {:did => p.did, :pubkey => p.pubkey} }
-    if pubkeys_request.size != pubkeys_response.size
-      # client request with invalid pid! add null response
-      (pubkeys_request - pubkeys_response.collect { |p| p[:did] }).each do |did|
-        pubkeys_response.push({:did => did, :pubkey => null})
+    pubkeys_response = Pubkey.where(:did => pubkeys_request)
+    # check for missing public keys for remote devices on other Gofreerev servers
+    # ignore did in request but set client_request_at timestamp
+    # public key will be requested in next server to server ping
+    # client will continue to request missing public key
+    pubkeys_response.delete_if do |p|
+      pubkeys_request.delete_if { |did| did == p.did }
+      if p.server_id and !p.pubkey
+        # remote dids
+        if !p.client_request_at
+          p.client_request_at = Time.zone.now
+          p.save!
+        end
+        true
+      else
+        # local dids
+        false
       end
     end
-    pubkeys_response
+    pubkeys_response = pubkeys_response.collect { |p| {:did => p.did, :pubkey => p.pubkey} }
+    pubkeys_response += pubkeys_request.collect { |did| {:did => did, :pubkey => nil} } # unknown dids
+    pubkeys_response.size == 0 ? nil : pubkeys_response
   end # self.pubkeys
 
 end

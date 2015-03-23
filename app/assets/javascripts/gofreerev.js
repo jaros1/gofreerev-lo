@@ -3818,6 +3818,10 @@ angular.module('gifts', ['ngRoute'])
         }; // update_mailboxes
 
         // get/set pubkey for unique device - called in ping - used in client to client communication
+        // note that public keys for remote devices sometimes are returned in a later pubkeys_response
+        // number of rows in response < number of rows in request
+        // public key has to be requested in a server to server pubkeys request
+        // client continues to request remote public key until it is returned
         var pubkeys_request = function () {
             var request = [];
             var mailbox, did;
@@ -3837,6 +3841,10 @@ angular.module('gifts', ['ngRoute'])
             var did;
             for (var i = 0; i < response.length; i++) {
                 did = response[i].did;
+                if (!response[i].pubkey) {
+                    console.log(pgm + 'Error. No public key was returned for unknown device ' + did) ;
+                    continue ;
+                }
                 if (devices[did] && devices[did].pubkey) console.log(pgm + 'invalid pubkeys response from ping. pubkey for device ' + did + ' has already been received from server');
                 else devices[did].pubkey = response[i].pubkey;
             } // for

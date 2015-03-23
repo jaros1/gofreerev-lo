@@ -18,6 +18,7 @@ class Server < ActiveRecord::Base
   # add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
   has_many :server_users
+  has_many :pubkeys
 
   # 1: site_url - other others SITE_URL but always http://...
   # secure is true if site supports ssl. secure is false if site doesn't support ssl
@@ -888,13 +889,27 @@ class Server < ActiveRecord::Base
       logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
+    errors = []
+
     response.each do |ping|
 
       # check user_ids. sha256 signature must match and user must be in server_users table as verified user
       users = ServerUser.includes(:user).
           where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping["user_ids"], self.id).references(:users)
-      user_ids = users.collect { |u| u.user.id }
+      user_ids = users.collect { |u| u.user.user_id }
       next unless user_ids.size > 0
+
+      # check did
+      pubkey = Pubkey.find_by_did(ping['did'])
+      if pubkey
+        if !pubkey.server_id
+          errors << "Invalid did #{ping['did']} in online users message. Did is already in use for a local user account"
+          next
+        elsif pubkey.server_id != self.id
+          errors << "Invalid did #{ping['did']} in online user message. Did is already used by an other Gofreerev server"
+          next
+        end
+      end
 
       # translate pseudo session id received from other gofreerev server to pseudo session id used on this gofreerev server
       ss = ServerSession.find_by_server_id_and_server_session_id(self.id, ping["session_id"])
@@ -904,6 +919,13 @@ class Server < ActiveRecord::Base
         ss.server_session_id = ping["session_id"]
         ss.session_id = Sequence.next_pseudo_session_id
         ss.save!
+      end
+      if !pubkey
+        # create empty public key. client(s) will request public key if needed in client to client communication
+        pubkey = Pubkey.new
+        pubkey.did = ping["did"]
+        pubkey.server_id = self.id
+        pubkey.save!
       end
       # find/create ping
       p = Ping.find_by_session_id_and_client_userid(ss.session_id, ping["client_userid"])
@@ -922,7 +944,9 @@ class Server < ActiveRecord::Base
       p.save!
     end
 
-    return nil if client
+    if client
+      return errors.size == 0 ? nil : errors.join(', ')
+    end
 
     # return online users message to calling gofreerev server
     message = create_online_users_message()
@@ -937,7 +961,7 @@ class Server < ActiveRecord::Base
     m.message = message[:message]
     m.save!
 
-    nil
+    return errors.size == 0 ? nil : errors.join(', ')
 
   end # receive_online_users_message
 

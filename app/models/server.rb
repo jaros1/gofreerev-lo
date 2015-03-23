@@ -966,6 +966,157 @@ class Server < ActiveRecord::Base
   end # receive_online_users_message
 
 
+  # send and receive client public keys to and from other gofreerev servers
+  # note difference between missing pubkey in request and null pubkey in error response
+  protected
+  def create_public_keys_message
+
+    request = []
+
+    # 1) reverse request/response. Send public keys required in last response from other gofreerev server
+    ServerPubkeyRequest.where(:server_id => self.id).each do |spr|
+      p = Pubkey.find_by_did(spr.did)
+      if !p or p.server_id
+        # invalid request. did does not exists or is not a local device
+        request << { :did => spr.did, :pubkey => nil } # error response
+      else
+        request << { :did => p.did, :pubkey => p.pubkey } # ok response
+      end
+    end
+
+    # 2) normal request. Request missing public keys from other gofreerev server
+    Pubkey.where('server_id = ? and pubkey is null and client_request_at is not null', self.id).each do |p|
+      request << { :did => p.did } # request. no pubkey
+    end
+
+    return nil if request.size == 0
+    logger.debug2 "request = #{request}"
+
+    message = {
+        :msgtype => 'pubkeys',
+        :users => request
+    }
+    logger.debug2 "message = #{message.to_json}"
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    sym_enc_message = Base64.encode64(sym_enc_message)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+
+    # add envelope with symmetric encrypted users message
+    envelope = {
+        :sender_did => SystemParameter.did,
+        :receiver_did => self.new_did,
+        :server => true,
+        :encryption => 'sym',
+        :message => sym_enc_message
+    }
+    logger.debug2 "envelope = #{envelope.to_json}"
+    envelope
+
+  end # create_public_keys_message
+
+
+  public
+  def receive_public_keys_message (response, client)
+
+    logger.debug2 "pubkeys = #{response}"
+
+    if client
+      logger.debug2 "client = #{client} - called from Server.ping. received incoming public keys message. response to outgoing public keys message (create_public_keys_message)"
+    else
+      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+    end
+
+    errors = []
+    request = []
+
+    response.each do |p|
+      if p.has_key? 'pubkey'
+        # response with public key or null (error)
+        # client, called from Server.ping, ingoing public keys response to outgoing public keys request
+        # server: called from util_controller via receive_message. ingoing public keys request with response to last outgoing public keys request in previous ping response
+        pubkey = Pubkey.find_by_did(p['did'])
+        if !pubkey
+          errors << "Unknown did #{p['did']} in public keys response from Gofreerev server id #{self.id}"
+        elsif !pubkey.server_id
+          errors << "Invalid local did #{p['did']} in public keys response from Gofreerev server id #{self.id}"
+        elsif pubkey.server_id != self.id
+          errors << "Invalid did #{p['did']} received in public keys response from Gofreerev server id #{self.id}. Did #{p['did']} belongs to Gofreeerv server #{pubkey.server_id}"
+        elsif !pubkey.client_request_at
+          errors << "Not requested did #{p['did']} received in response public keys from Gofreerev server id #{self.id}"
+        elsif !p['pubkey']
+          errors << "Public key request for did #{p['did']} was rejected by Gofreerev server #{self.id}"
+          pubkey.pubkey = nil
+          pubkey.server_response_at = Time.zone.now
+          pubkey.save!
+        elsif !pubkey.pubkey
+          # ok
+          pubkey.pubkey = p['pubkey']
+          pubkey.server_response_at = Time.zone.now
+          pubkey.save!
+        elsif pubkey.pubkey == p['pubkey']
+          logger.warn2 "public key for did #{p['did']} has been receive earlier"
+        else
+          errors << "Receive changed public key for did #{p['did']} in public keys response from Gofreerev server id #{self.id}"
+        end
+      elsif client
+        # client, called from Server.ping, request with did in ping response. save for next outgoing ping request
+        spr = ServerPubkeyRequest.find_by_server_id_and_did(self.id, p['did'])
+        if spr
+          logger.warn2 "request for public key for device #{p['did']} was already in ServerPubkeyRequest buffer"
+        else
+          spr = ServerPubkeyRequest.new
+          spr.server_id = self.id
+          spr.did = p['did']
+          spr.save!
+        end
+      else
+        # server, called from util_controller via receive messages. add to request array. message will be returned to calling client in ping response
+        p = Pubkey.find_by_did(p['did'])
+        if !p or p.server_id
+          # invalid request. did does not exists or is not a local device
+          request << { :did => spr.did, :pubkey => nil } # error response
+        else
+          request << { :did => p.did, :pubkey => p.pubkey } # ok response
+        end
+      end
+    end # each
+
+    if !client
+      # any public key requests from server to client. response in next ping request
+      Pubkey.where('server_id = ? and pubkey is null and client_request_at is not null', self.id).each do |p|
+        request << { :did => p.did } # request. no pubkey
+      end
+    end
+
+    if request.size > 0
+
+      # add public keys message to messages table with
+      # - response to ingoing public key requests
+      # - public keys request to client. response in next ping
+      message = {
+          :msgtype => 'pubkeys',
+          :users => request
+      }
+      logger.debug2 "message = #{message.to_json}"
+      sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+      sym_enc_message = Base64.encode64(sym_enc_message)
+      logger.debug2 "sym_enc_message = #{sym_enc_message}"
+
+      m = Message.new
+      m.from_did = SystemParameter.did
+      m.to_did = self.new_did
+      m.server = true
+      m.encryption = 'sym'
+      m.message = sym_enc_message
+      m.save!
+
+    end
+
+    errors.size == 0 ? nil : errors.join(', ')
+
+  end # receive_public_keys_message
+
+
   # return array with messages to server or nil
   # pseudo_user_ids: hash with user_ids in users message (if any). user_ids is checked when receiving response to users message
   # in memory hash only relevant in direct server to server user messages. cannot be used in forwarded user messages
@@ -993,53 +1144,17 @@ class Server < ActiveRecord::Base
 
     # 4) add online device message - send and receive information about online users
     # information is inserted into pings table and is included in :online array to users (see /util/ping)
+    # create empty public key for remote online devices. public keys are replicated in step 5
     online_users_message = create_online_users_message()
     messages << online_users_message if online_users_message
 
+    # 5) add public keys message - send and receive public keys used in client to client communication
+    public_keys_message = create_public_keys_message()
+    messages << public_keys_message if public_keys_message
 
     messages.size == 0 ? nil : messages
 
   end # send_messages
-
-
-  # match user information with other Gofreerev server
-  # matching is done with user.sha256
-  # send user_id + server user.sha256 to other Gofreerev server
-  # receive user_id + client user.sha256 from other Gofreerev server
-  # comparing is done with sha256 signatures - no user information is exchanged
-  # user_id > 0 - user from Gofreerev server - complete verified in one request/response cycle
-  # user_id < 0 - user from other Gofreerev server - received in response - response in next request
-  protected
-  def send_users
-    request = []
-    # reverse request/response cycle (request in response and response in request). user_id < 0
-    # that is users with negative user_id and client user.sha256 received from server in last ping
-    surs = ServerUserRequest.all
-    surs.all do |usr|
-      u = User.find_by_sha256(usr.sha256)
-      if !u
-        request << { :user_id => usr.user_id, :sha256 => nil}
-        next
-      end
-      # sha256 match
-      request << { :user_id => usr.user_id, :sha256 => u.calc_sha256(self.secret) }
-      # insert user match as not verified in server_users table
-      su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
-      next is su
-      su = ServerUser.new
-      su.server_id = self.id
-      su.user_id = u.id
-      su.save!
-    end
-    surs.delete_all
-    # normal request/response cycle. user_id > 0. send next 10 users for verification
-    User.order(:id).limit(10).each do |u|
-      request << { :user_id => u.id, :sha256 => u.calc_sha256(self.secret) }
-    end
-    request
-  end
-  def receive_users (users)
-  end
 
 
   # server ping - server to server messages - like js ping /util/ping (client server messages)

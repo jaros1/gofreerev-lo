@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150323074259) do
+ActiveRecord::Schema.define(version: 20150323112812) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -119,10 +119,6 @@ ActiveRecord::Schema.define(version: 20150323074259) do
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
 
-  create_table "jan", id: false, force: true do |t|
-    t.decimal "a", precision: 13, scale: 3
-  end
-
   create_table "messages", force: true do |t|
     t.string   "from_did",    limit: 20,       null: false
     t.string   "from_sha256", limit: 45
@@ -181,9 +177,10 @@ ActiveRecord::Schema.define(version: 20150323074259) do
     t.text     "pubkey"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "did",               limit: 20, null: false
+    t.string   "did",                limit: 20, null: false
     t.integer  "server_id"
     t.datetime "client_request_at"
+    t.datetime "server_response_at"
   end
 
   add_index "pubkeys", ["did"], name: "index_pubkey_did", unique: true, using: :btree
@@ -205,6 +202,13 @@ ActiveRecord::Schema.define(version: 20150323074259) do
   end
 
   add_index "sequences", ["name"], name: "index_sequences_on_name", unique: true, using: :btree
+
+  create_table "server_pubkey_requests", force: true do |t|
+    t.integer  "server_id"
+    t.string   "did"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "server_sessions", force: true do |t|
     t.integer  "server_id",         null: false

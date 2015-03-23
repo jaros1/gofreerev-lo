@@ -180,6 +180,12 @@ class Message < ActiveRecord::Base
       return nil
     end
 
+    if message["msgtype"] == 'pubkeys'
+      error = server.receive_public_keys_message(message['users'], client) # false: server side of communication
+      return error if error
+      self.destroy
+      return nil
+    end
 
     logger.error2 "mstype #{message["msgtype"]} not implemented"
 

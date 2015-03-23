@@ -4011,6 +4011,7 @@ angular.module('gifts', ['ngRoute'])
                     message_with_envelope = {
                         receiver_did: mailbox.did,
                         receiver_sha256: mailbox.sha256,
+                        server: false,
                         encryption: 'rsa',
                         message: message_json_rsa_enc
                     };

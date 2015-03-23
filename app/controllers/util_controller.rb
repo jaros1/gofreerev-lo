@@ -1019,7 +1019,11 @@ class UtilController < ApplicationController
       now = Time.now.round(3)
 
       # server or client ping
-      server = (login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//)
+      if login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//
+        server = true
+      else
+        server = false
+      end
       logger.debug2 "server = #{server}"
 
       if server
@@ -1279,8 +1283,23 @@ class UtilController < ApplicationController
         #   input: messages from client Gofreerev server - saved in messages table
         #   process any messages to this Gofreerev server
         #   output: messages to client Gofreerev server - from messages table
-        messages_response = Message.messages ping.did, ping.sha256, params[:messages]
-        @json[:messages] = messages_response if messages_response
+        if params[:messages].class == Array
+          # check: server to server or client to client communication
+          params[:messages].each do |message|
+            if message['server'] != server
+              if server
+                @json[:error] = "invalid message received from server. server must be true in server to server communication"
+              else
+                @json[:error] = "Invalid message received from client. server must be false in client to client communication"
+              end
+              break
+            end
+          end
+          if !@json[:error]
+            messages_response = Message.messages ping.did, ping.sha256, params[:messages]
+            @json[:messages] = messages_response if messages_response
+          end
+        end
 
       end
 

@@ -1444,7 +1444,8 @@ angular.module('gifts', ['ngRoute'])
 
         // friends - downloaded from api friend list and saved temporary in local storage
         var friends = [] ;
-        var friends_index_by_user_id = {} ;
+        var friends_index_by_user_id = {} ; // from internal user id to index in friends array
+        var friends_index_by_sha256 = {} ; // from friend.sha256 to to index in friends array (only friends on other Gofreerev servers)
 
         var provider_stat = function (friends) {
             if (typeof friends == 'undefined') return '' ;
@@ -1471,7 +1472,15 @@ angular.module('gifts', ['ngRoute'])
             // console.log(service + '.init_users: users = ' + JSON.stringify(array)) ;
             friends = array ;
             friends_index_by_user_id = {};
-            for (var i=0 ; i<friends.length ; i++) friends_index_by_user_id[friends[i].user_id] = i ;
+            friends_index_by_sha256 = {} ;
+            var i, friend ;
+            for (i=0 ; i<friends.length ; i++) {
+                friend = friends[i] ;
+                friends_index_by_user_id[friend.user_id] = i;
+                // only friends on other Gofreerev servers.
+                // sha256 signature is used when receiving messages from users on other Gofreerev servers
+                if (friend.hasOwnProperty('sha256')) friends_index_by_sha256[friend.sha256] = i ;
+            }
         };
         // update friends js array: replace: true: overwrite/replace old friends, false: add/keep old friends
         // called from do_tasks after api and device login. new friend lists downloaded from api provider
@@ -1486,7 +1495,7 @@ angular.module('gifts', ['ngRoute'])
                 if (extern_user_ids.indexOf(extern_user_id) != -1) console.log(pgm + 'Error. Doublet extern user id ' + extern_user_id + ' in friends array.') ;
                 else extern_user_ids.push(extern_user_id) ;
             }
-            // update friends array with minimal changes (friends info is used in filters)
+            // update friends array with minimal changes (friends info is used in angularJS filters)
             // insert or update
             var refresh_index = false ;
             var new_friend, j ;
@@ -1508,6 +1517,7 @@ angular.module('gifts', ['ngRoute'])
                     if (friends[j].user_name != new_friend.user_name) friends[j].user_name = new_friend.user_name;
                     if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) friends[j].api_profile_picture_url = new_friend.api_profile_picture_url;
                     if (friends[j].friend != new_friend.friend) friends[j].friend = new_friend.friend;
+                    if (friends[j].sha256 != new_friend.sha256) friends[j].sha256 = new_friend.sha256;
                     if (friends[j].verified_at != new_friend.verified_at) friends[j].verified_at = new_friend.verified_at;
                 }
                 else {
@@ -1623,20 +1633,39 @@ angular.module('gifts', ['ngRoute'])
             for (var i=0 ; i< friends.length ; i++ ) if (friends[i].friend == 2) return false ;
             return true ;
         };
+        // friend lookup with internal user id
         var get_friend = function (user_id) {
             if (typeof friends == 'undefined') return null ;
             if (typeof user_id == 'undefined') return null ;
             var i = friends_index_by_user_id[user_id] ;
             if (typeof i == 'undefined') return null ;
-            var user = friends[i] ;
-            if (!user.short_user_name) {
-                var user_name_a = user.user_name.split(' ') ;
-                if (user_name_a.length > 1) user.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
-                else user.short_user_name = user.user_name ;
+            var friend = friends[i] ;
+            if (!friend.short_user_name) {
+                var user_name_a = friend.user_name.split(' ') ;
+                if (user_name_a.length > 1) friend.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
+                else friend.short_user_name = friend.user_name ;
             }
             // if (user_id == 1016) console.log(service + '.get_friend: user = ' + JSON.stringify(user)) ;
-            return user ;
+            return friend ;
         };
+        // friend lookup with sha256 signature. used when receiving messages from clients on other Gofreerev servers
+        var get_friend_by_sha256 = function (sha256) {
+            var pgm = service + '.get_friend_by_sha256: ' ;
+            // console.log(pgm + 'friends_index_by_sha256 = ' + JSON.stringify(friends_index_by_sha256)) ;
+            // console.log(pgm + 'sha256 = ' + sha256) ;
+            if (typeof friends == 'undefined') return null ;
+            if (typeof sha256 == 'undefined') return null ;
+            var i = friends_index_by_sha256[sha256] ;
+            if (typeof i == 'undefined') return null ;
+            var friend = friends[i] ;
+            if (!friend.short_user_name) {
+                var user_name_a = friend.user_name.split(' ') ;
+                if (user_name_a.length > 1) friend.short_user_name = user_name_a[0] +  ' ' + user_name_a[1].substr(0,1) ;
+                else friend.short_user_name = friend.user_name ;
+            }
+            // if (user_id == 1016) console.log(service + '.get_friend: user = ' + JSON.stringify(user)) ;
+            return friend ;
+        } ;
         var get_closest_friend = function (user_ids) {
             var pgm = service + '.get_closest_friend: ' ;
             // console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
@@ -2245,6 +2274,7 @@ angular.module('gifts', ['ngRoute'])
             get_login_users: get_login_users,
             get_login_userids: get_login_userids,
             get_friend: get_friend,
+            get_friend_by_sha256: get_friend_by_sha256,
             get_currency: get_currency,
             get_closest_friend: get_closest_friend,
             get_userids_friend_status: get_userids_friend_status,
@@ -4240,23 +4270,40 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
 
+            var users_unknown_sha256 = [], i, user_id, index, friend ;
             if (mailbox.hasOwnProperty('server_id')) {
                 console.log(pgm + 'users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids') ;
-                console.log(pgm + 'msg.users = ' + JSON.stringify(msg.users)) ;
+                console.log(pgm + 'msg.users (1) = ' + JSON.stringify(msg.users)) ;
                 // todo: user.sha256 signatures changes when server secret changes
-                // a message received after secret change can be with old sha256 signature.
-                // should keep old sha256 signature as a fallback for one or two minutes for old messages
-            }
+                // todo: a message received after secret change can be with old sha256 signature.
+                // todo: keep old sha256 signature as a fallback for one or two minutes for old messages
+                for (i=msg.users.length-1 ; i>= 0 ; i--) {
+                    user_id = msg.users[i].user_id ;
+                    friend = userService.get_friend_by_sha256(user_id) ;
+                    if (friend) {
+                        console.log(pgm + 'translating sha256 user_id ' + user_id + ' to internal user_id ' + friend.user_id) ;
+                        msg.users[i].user_id = friend.user_id ;
+                    }
+                    else {
+                        console.log(pgm + 'unknown sha256 user_id ' + user_id) ;
+                        users_unknown_sha256.push(msg.users[i].user_id) ;
+                        msg.users.splice(i,1) ;
+                    }
+                }
+                console.log(pgm + 'msg.users (2) = ' + JSON.stringify(msg.users)) ;
+                console.log(pgm + 'users_unknown_sha256 = ' + JSON.stringify(users_unknown_sha256)) ;
+            } // if
 
             // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
             var my_mutual_friends = mailbox.mutual_friends ;
             var msg_users = [] ;
-            var i, user_id ;
+            var i ;
             for (i=0 ; i<msg.users.length ; i++) {
                 user_id = msg.users[i].user_id ;
                 msg_users.push(user_id) ;
             } // for i
             var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
+            for (i=0 ; i<users_unknown_sha256.length ; i++) invalid_user_ids.push(users_unknown_sha256[i]) ;
             console.log(pgm + 'msg_users = ' + JSON.stringify(msg_users) + ', my_mutual_friends = ' + JSON.stringify(my_mutual_friends) + ', invalid_user_ids = ' + JSON.stringify(invalid_user_ids));
             // msg_users = [2,3], my_mutual_friends = [920], invalid_user_ids  = [2,3]" gofreerev.js:4220:0
             if (invalid_user_ids.length > 0) {
@@ -4301,6 +4348,7 @@ angular.module('gifts', ['ngRoute'])
             } // for i
             for (i=0 ; i<msg.users.length ; i++) {
                 user_id = msg.users[i].user_id ;
+                if (invalid_user_ids.indexOf(user_id) != -1) continue ; // skip "invalid" users (devices on two different Gofreerev servers dont have to agree 100% about mutual friends)
                 // if (mutual_friends.indexOf(user_id) == -1) continue ;
                 sha256_hash[user_id].msg_sha256 = msg.users[i].sha256 ;
             } // for i

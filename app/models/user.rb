@@ -2363,7 +2363,7 @@ class User < ActiveRecord::Base
     else
       sha256_input = "#{secret},#{self.uid}/#{self.provider},#{self.user_name}"
     end
-    Base64.encode64(Digest::SHA256.digest(sha256_input))
+    Base64.encode64(Digest::SHA256.digest(sha256_input)).gsub(/\n$/,'')
   end
 
 

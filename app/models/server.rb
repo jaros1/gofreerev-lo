@@ -1117,6 +1117,200 @@ class Server < ActiveRecord::Base
   end # receive_public_keys_message
 
 
+  # send and receive across Gofreerev server client to client messages
+  # client message is already encrypted but is put in a encrypted server to server message
+  protected
+  def create_client_messages
+
+    messages = []
+
+    Message.includes(:from_pubkey, :to_pubkey).
+        where('server = ? and pubkeys.server_id is null and to_pubkeys_messages.server_id = ?', false, 1).
+        references(:from_pubkey, :to_pubkey).order(:id).each do |m|
+      messages << {:from_did => m.from_did,
+                   :from_sha256 => m.from_sha256,
+                   :to_did => m.to_did,
+                   :to_sha256 => m.to_sha256,
+                   :server => m.server,
+                   :encryption => m.encryption,
+                   :key => m.key,
+                   :message => m.message
+      }
+      # todo: should first destroy client messages after ok response from other gofreerev server
+      m.destroy!
+    end
+    return nil if messages.size == 0
+
+    logger.debug2 "messages = #{messages}"
+
+    message = {
+        :msgtype => 'client',
+        :messages => messages
+    }
+    logger.debug2 "message = #{message.to_json}"
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    sym_enc_message = Base64.encode64(sym_enc_message)
+    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+
+    # add envelope with symmetric encrypted users message
+    envelope = {
+        :sender_did => SystemParameter.did,
+        :receiver_did => self.new_did,
+        :server => true,
+        :encryption => 'sym',
+        :message => sym_enc_message
+    }
+    logger.debug2 "envelope = #{envelope.to_json}"
+    envelope
+
+  end # create_client_messages
+
+
+  public
+  def receive_client_messages (response, client)
+
+    logger.debug2 "client messages = #{response}"
+    # client messages = [{"from_did"=>"14252356907464191530", "from_sha256"=>"14252356907464191530",
+    #                     "to_did"=>"14259151245218705856", "to_sha256"=>"RFknrRnG4TL+zhBkoTc2dgNkdFoIRMLxrOYduv3CKvQ=\n",
+    #                     "server"=>false, "encryption"=>"rsa", "key"=>nil,
+    #                     "message"=>"WUp3RGeenbmmP7rELXrc/iAF9O82urRflJYnQhyjeR65XcLRMBBQp142OyO9SEL0D9q6YGUfCTnu863ElaxaVb8tgfJi3VZa+awN8M6VllWG3x1w+vWAejAMTlqDar8uh2H6YLu9BErLrt7lpiLJ4LNGcHoVqUfuHe1mn+k/XerzeOwpg/dgHz9k8OYblXfj/xKsW7+eiFUzDCy3uSvi/6nW7OCSF6x0oIn9fLsyJwD7+nzWQ1YdRcI9acJrOeYKOeVIpaTBeFbJOZmIMbStuNvJUvd7fgYx5VtMhLYUDuTMU54gU2nQNSB19ZfuPd3sBiibC9U0X0xsXi7OCUsb6g=="},
+    #                    {"from_did"=>"14252356907464191530", "from_sha256"=>"14252356907464191530",
+    #                     "to_did"=>"14259151245218705856", "to_sha256"=>"RFknrRnG4TL+zhBkoTc2dgNkdFoIRMLxrOYduv3CKvQ=\n",
+    #                     "server"=>false, "encryption"=>"rsa", "key"=>nil,
+    #                     "message"=>"GjqACV7ie1vnnabZ/6yP5XOfu2A6d+z0VhVXWlbzKGuSK0d2OsIgnrL+/QLFIgY2ltdlhLdd0/f96FPbKnvPA3+WLf5XDkoxRCjwqsc+1qMGPzI9+Cw54Hwk5Qj8XS44iSgWHIZFcd6PqjdF1zxV/IxsPMXZrJ655PjC2eiv+jCv7EWIHPPGVJxsjfSSEzpFHCDwEHBLUU7bkOananuHsH0CbUsIk4h5oTgYOslZzqxzOpNDC717Xo87L9TnrP83/fG+2m5SnIqyc6X8ESro+z8iUbvkTtkwVCu/UvIS5Vtp6movOQk8g4SrsbnQTHBfcusWqEdInRMumRhT5Vnq6A=="}
+    #                   ]
+
+    if client
+      logger.debug2 "client = #{client} - called from Server.ping. received incoming client messages. response to outgoing client messages (create_public_keys_message)"
+    else
+      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+    end
+
+    errors = []
+
+    response.each do |m|
+
+      # must be a client message from other Gofreerev server
+      if m["server"] != false
+        errors << "Client message with invalid server flag #{m['server']} was ignored"
+        next
+      end
+
+      # check sender. must be a remote did on other Gofreerev server
+      if m['from_did'].to_s == ''
+        errors << "Client message without from_did was ignored"
+        next
+      end
+      if m['from_did'].class != String or m['from_did'].to_s !~ /^[0-9]{20}$/
+        errors << "Client message with invalid from_did #{m['from_did']} was ignored. Must be a unique device id (20 digits) string"
+        next
+      end
+      from = Pubkey.find_by_did(m['from_did'])
+      if !from
+        errors << "Client message with unknown from_did #{m['from_did']} was ignored"
+        next
+      end
+      if !from.server_id
+        errors << "Client message with invalid from_did #{from.did} was ignored. Did is not a remote device."
+        next
+      end
+      if from.server_id != self.id
+        errors << "Client message with invalid from_did #{from.did} was ignored. Did belongs to an other Gofreerev server."
+      end
+      if m['from_sha256'].to_s == ''
+        errors << "Client message from did #{from.did} without from_sha256 was ignored"
+        next
+      end
+      from_sha256_decoded = Base64.decode64(m['from_sha256'])
+      if from_sha256_decoded.size != 32
+        logger.warn2 "invalid from_sha256 #{m['from_sha256']}"
+        errors << "Client message with invalid from_sha256 was ignored. Must be a base64 encoded sha256 signature. Expected length 32. Found length #{from_sha256_decoded.size}"
+        next
+      end
+      # check if sender is "online"
+      ping = Ping.where(:did => from.did, :sha256 => m['from_sha256']).order('last_ping_at desc').first
+      if !ping
+        logger.warn2 "remove session did #{from.did} and sha256 #{m['from_sha256']} was not found in pings"
+      elsif ping.server_id != self.id
+        errors << "Client message from did #{from.did} with inconsistent online users information ignored. Expected server id #{self.id}. Found server id #{ping.server_id}"
+        next
+      end
+      logger.debug "from did #{from.did} was last online #{ping.last_ping_at}" if ping
+
+      # check receiver. must be a local did on this Gofreerev server
+      if m['to_did'].to_s == ''
+        errors << "Client message without to_did was ignored"
+        next
+      end
+      if m['to_did'].class != String or m['to_did'].to_s !~ /^[0-9]{20}$/
+        errors << "Client message with invalid to_did #{m['to_did']} was ignored. Must be a unique device id (20 digits) string"
+        next
+      end
+      to = Pubkey.find_by_did(m['to_did'])
+      if !to
+        errors << "Client message with unknown to_did #{m['to_did']} was ignored"
+        next
+      end
+      if to.server_id
+        errors << "Client message with invalid to_did #{to.did} was ignored. Did is a remote device"
+        next
+      end
+      if m['to_sha256'].to_s == ''
+        errors << "Client message to did #{to.did} without to_sha256 was ignored"
+        next
+      end
+      to_sha256_decoded = Base64.decode64(m['to_sha256'])
+      if to_sha256_decoded.size != 32
+        logger.warn2 "invalid to_sha256 #{m['to_sha256']}"
+        errors << "Client message with invalid to_sha256 was ignored. Must be a base64 encoded sha256 signature. Expected length 32. Found length #{to_sha256_decoded.size}"
+        next
+      end
+      # check if receiver is "online"
+      ping = Ping.where(:did => to.did, :sha256 => m['to_sha256']).order('last_ping_at desc').first
+      if !ping
+        logger.warn2 "local session did #{to.did} and sha256 #{m['to_sha256']} was not found in pings"
+      elsif ping.server_id
+        errors << "Client message to did #{to.did} with inconsistent online users information ignored. Expected blank server id. Found server id #{ping.server_id}"
+        next
+      end
+      logger.debug "to did #{to.did} was last online #{ping.last_ping_at}" if ping
+
+      message = Message.new
+      message.from_did = from.did
+      message.from_sha256 = m['from_sha256']
+      message.to_did = to.did
+      message.to_sha256 = m['to_sha256']
+      message.server = false
+      message.encryption = m['encryption']
+      message.key = m['key']
+      message.message = m['message']
+      message.save!
+
+    end # each m
+
+    logger.debug2 "errors = #{errors.join(', ')}"
+
+    if !client
+      # called from receive_message via util_controller.ping
+      # any client messages to be returned to calling gofreerev server
+      # will be returned in ping response in Server.ping
+      client_message = create_client_messages()
+      if client_message
+        message = Message.new
+        message.from_did = client_message[:sender_did]
+        message.to_did = client_message[:receiver_did]
+        message.server = true
+        message.encryption = client_message[:encryption]
+        message.message = client_message[:message]
+        message.save!
+      end
+    end
+
+    errors.size == 0 ? nil : errors.join(', ')
+
+  end # receive_client_messages
+
+
   # return array with messages to server or nil
   # pseudo_user_ids: hash with user_ids in users message (if any). user_ids is checked when receiving response to users message
   # in memory hash only relevant in direct server to server user messages. cannot be used in forwarded user messages
@@ -1151,6 +1345,10 @@ class Server < ActiveRecord::Base
     # 5) add public keys message - send and receive public keys used in client to client communication
     public_keys_message = create_public_keys_message()
     messages << public_keys_message if public_keys_message
+
+    # 6) add client messages - messages from clients on this Gofreerev server to clients on other Gofreerev server
+    client_messages = create_client_messages()
+    messages << client_messages if client_messages
 
     messages.size == 0 ? nil : messages
 

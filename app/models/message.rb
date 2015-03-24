@@ -15,6 +15,11 @@ class Message < ActiveRecord::Base
   # add_index "messages", ["from_did", "created_at"], name: "index_messages_from_did", using: :btree
   # add_index "messages", ["to_did", "created_at"], name: "index_messages_to_did", using: :btree
 
+
+  belongs_to :from_pubkey, :class_name => 'Pubkey', :foreign_key => :from_did, :primary_key => :did
+  belongs_to :to_pubkey, :class_name => 'Pubkey', :foreign_key => :to_did, :primary_key => :did
+
+
   # 1) from_did - from unique device id - client or server
   validates_presence_of :from_did
   validates_format_of :from_did, :with => /\A[0-9]{20}\z/, :allow_blank => true
@@ -182,6 +187,13 @@ class Message < ActiveRecord::Base
 
     if message["msgtype"] == 'pubkeys'
       error = server.receive_public_keys_message(message['users'], client) # false: server side of communication
+      return error if error
+      self.destroy
+      return nil
+    end
+
+    if message["msgtype"] == 'client'
+      error = server.receive_client_messages(message['messages'], client) # false: server side of communication
       return error if error
       self.destroy
       return nil

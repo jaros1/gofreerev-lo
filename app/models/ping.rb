@@ -9,8 +9,11 @@ class Ping < ActiveRecord::Base
   # 6:  t.string   "did"
   # 7:  t.text     "user_ids"
   # 8:  t.string   "sha256",        limit: 45
+  # 9:  t.integer  "server_id"
   # end
   # add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree
+
+  belongs_to :server
 
   # 1: rails sessionid
 
@@ -97,7 +100,9 @@ class Ping < ActiveRecord::Base
   # replicate gifts for mutual friends between online devices
   attr_accessor :mutual_friends
 
-  # attr_accessor :internal_user_ids
+  # array with sha256 signatures for mutual_friends. only used for remove online devices (server_id is not null)
+  attr_accessor :mutual_friends_sha256
+
 
   # pubkeys request from ping. Return pubkeys for list of unique device ids. Used in client communication
   # json validated with pubkeys part of JSON_SCHEMA[:ping_request] / JSON_SCHEMA[:ping_response]

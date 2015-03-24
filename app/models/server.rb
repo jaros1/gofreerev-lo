@@ -1139,7 +1139,10 @@ class Server < ActiveRecord::Base
       # todo: should first destroy client messages after ok response from other gofreerev server
       m.destroy!
     end
-    return nil if messages.size == 0
+    if messages.size == 0
+      logger.debug2 "No client messages was found for server id #{self.id}"
+      return nil
+    end
 
     logger.debug2 "messages = #{messages}"
 

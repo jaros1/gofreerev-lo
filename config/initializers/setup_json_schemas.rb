@@ -387,7 +387,10 @@ JSON_SCHEMA = {
                           # array with internal user ids for mutual friends - synchronize information for mutual friends between clients
                           :mutual_friends => {:type => 'array', :items => {:type => 'integer'}},
                           # optional server id if online unique device on an other gofreerev server (server to server communication)
-                          :server_id => {:type => 'integer', :minimum => 1}
+                          :server_id => {:type => 'integer', :minimum => 1},
+                          # optional array with sha256 signatures for mutual friends if online device on an other Gofreerev server
+                          # (internal user ids cannot be used in client to client communication across Gofreerev servers)
+                          :mutual_friends_sha256 => {:type => 'array', :items => {:type => 'string'}}
                       },
                       :required => %w(did sha256 mutual_friends),
                       :additionalProperties => false
@@ -669,8 +672,8 @@ JSON_SCHEMA = {
                 :items => {
                     :type => 'object',
                     :properties => {
-                        # internal user id
-                        :user_id => { :type => 'integer'},
+                        # internal user id (within server communication) or user sha256 signature (cross server communication)
+                        :user_id => { :type => %w(integer string) },
                         # sha256 calc for user gifts
                         :sha256 => { :type => 'string', :maxLength => 32}
                     },

@@ -1194,7 +1194,8 @@ class UtilController < ApplicationController
         # todo: include server id for online devices/friends on other gofreerev servers
         # todo: user must accept or reject communication with user on other gofreerev server
         pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
-                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f)
+                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f).
+            includes(:server)
         if pings.size > 0
           # found other online devices
           login_users_friends = Friend.where(:user_id_giver => login_user_ids)
@@ -1219,19 +1220,30 @@ class UtilController < ApplicationController
               other_session_friends = Friend.where(:user_id_giver => p.user_ids)
                                           .find_all { |f| f.friend_status_code == 'Y' }
                                           .collect { |f| f.user_id_receiver }
-              p.mutual_friends = User.where(:user_id => login_users_friends & other_session_friends).collect { |u| u.id }
+              mutual_friends = User.where(:user_id => login_users_friends & other_session_friends)
+              p.mutual_friends = mutual_friends.collect { |u| u.id }
               logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
               logger.debug2 "login_users_friends = #{login_users_friends.join(', ')}"
               logger.debug2 "p.user_ids = #{p.user_ids.join(', ')}"
               logger.debug2 "p.friends = #{other_session_friends.join(', ')}"
               logger.debug2 "p.mutual_friends = #{p.mutual_friends.join(', ')}"
+              if p.server_id
+                # remote online device. must use user.sha256 signatures in client to client communication
+                logger.debug2 "remote online device. add mutual_friends_sha256 array"
+                p.mutual_friends_sha256 = mutual_friends.collect { |u| u.calc_sha256(p.server.secret) }
+              end
               # keep in list
               false
             end
           end.collect do |p|
-            {:did => p.did,
-             :sha256 => p.sha256,
-             :mutual_friends => p.mutual_friends}
+            hash = {:did => p.did,
+                    :sha256 => p.sha256,
+                    :mutual_friends => p.mutual_friends}
+            # only relevant for remote online devices. client must know that it is communication with user on an other server
+            # and internal user ids for mutual friends cannot be used in cross Gofreerev server communication
+            hash[:server_id] = p.server_id if p.server_id
+            hash[:mutual_friends_sha256] = p.mutual_friends_sha256 if p.server_id
+            hash
           end
         end
         # logger.debug2 "pings.size (after) = #{pings.size}"
@@ -1295,10 +1307,10 @@ class UtilController < ApplicationController
               break
             end
           end
-          if !@json[:error]
-            messages_response = Message.messages ping.did, ping.sha256, params[:messages]
-            @json[:messages] = messages_response if messages_response
-          end
+        end
+        if !@json[:error]
+          messages_response = Message.messages ping.did, ping.sha256, params[:messages]
+          @json[:messages] = messages_response if messages_response
         end
 
       end

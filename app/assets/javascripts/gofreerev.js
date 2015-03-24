@@ -3767,7 +3767,7 @@ angular.module('gifts', ['ngRoute'])
                 new_mailboxes_index[new_mailbox.key] = i;
             }
             // update old mailboxes
-            var j, new_mutual_friends, mailbox;
+            var j, new_mutual_friends, mailbox, hash, k;
             for (i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
                 mailbox.online = new_mailboxes_index.hasOwnProperty(mailbox.key);
@@ -3778,12 +3778,24 @@ angular.module('gifts', ['ngRoute'])
                 mailbox.mutual_friends = new_mailboxes[j].mutual_friends;
                 if (new_mutual_friends.length > 0) {
                     // communication step 2 - compare sha256 checksum for mutual friends
-                    mailbox.outbox.push({
+                    hash = {
                         mid: Gofreerev.get_new_uid(),
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(new_mutual_friends))
-                    });
+                    };
+                    if (mailbox.hasOwnProperty('server_id')) {
+                        // client comminucation with client on an other Gofreeerev server.
+                        // internal user ids cannot be used. add user.sha256 signatures to users_sha256 message
+                        hash.users_sha256 = [] ;
+                        for (j=0 ; j<new_mutual_friends.length ; j++) {
+                            k = mailbox.mutual_friends.indexOf(new_mutual_friends[j]) ;
+                            hash.users_sha256.push(mailbox.mutual_friends_sha256(k)) ;
+                        }
+                    }
+                    mailbox.outbox.push(hash);
                 }
+                // user sha256 signatures is only used for remote online devices (users on other Gofreerev users)
+                if (mailbox.hasOwnProperty('server_id')) mailbox.mutual_friends_sha256 = new_mailboxes[j].mutual_friends_sha256;
             }
             // add new mailboxes
             for (i = 0; i < new_mailboxes.length; i++) {
@@ -3802,11 +3814,13 @@ angular.module('gifts', ['ngRoute'])
                     mailbox.error = []; // messages sent - response error  received (request_mid)
                     // first outgoing message - sent when symmetric password is ready
                     // communication step 2 - compare sha256 checksum for mutual friends
-                    mailbox.outbox.push({
+                    hash = {
                         mid: Gofreerev.get_new_uid(),
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(mailbox.mutual_friends))
-                    });
+                    } ;
+                    if (mailbox.hasOwnProperty('server_id')) hash.users_sha256 = mailbox.mutual_friends_sha256 ;
+                    mailbox.outbox.push(hash);
                     mailboxes.push(mailbox);
                 }
             }
@@ -3924,7 +3938,7 @@ angular.module('gifts', ['ngRoute'])
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
         var send_message_users_sha256 = function (msg) {
             var pgm = service + '.send_message_users_sha256: ';
-            console.log(pgm + 'message = ' + JSON.stringify(msg));
+            console.log(pgm + 'msg = ' + JSON.stringify(msg));
             var oldest_gift_at = 0; // todo: set oldest_gift_at as max oldest_gift_at for this and other client
             var ignore_invalid_gifts = []; // todo: add gid ignore lists. Glocal list and/or a list for each device
             
@@ -3934,6 +3948,17 @@ angular.module('gifts', ['ngRoute'])
                 mid: msg.mid,
                 users: calc_sha256_for_users(msg.users, oldest_gift_at, ignore_invalid_gifts)
             };
+            console.log(pgm + 'users_sha256_message (1) = ' + JSON.stringify(users_sha256_message)) ;
+            if (msg.hasOwnProperty('users_sha256')) {
+                // message to client on an other Gofreerev server. replace internal user ids with sha256 signatures
+                var i, user_id, j ;
+                for (i=0 ; i<users_sha256_message.users.length ; i++) {
+                    user_id = users_sha256_message.users[i].user_id ;
+                    j = msg.users.indexOf(user_id) ;
+                    users_sha256_message.users[i].user_id = msg.users_sha256[j] ;
+                } // for i
+            } // if
+            console.log(pgm + 'users_sha256_message (2) = ' + JSON.stringify(users_sha256_message)) ;
             
             // validate users_sha256 message before sending to other device
             if (Gofreerev.is_json_message_invalid(pgm,users_sha256_message,'users_sha256','')) return  ;
@@ -4016,7 +4041,7 @@ angular.module('gifts', ['ngRoute'])
                         message: message_json_rsa_enc
                     };
                     // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
-                    if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
+                    // if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
                     response.push(message_with_envelope);
                     // debug
                     // console.log(pgm + 'message_json = ' + message_json) ;
@@ -4077,11 +4102,14 @@ angular.module('gifts', ['ngRoute'])
                 message_with_envelope = {
                     receiver_did: mailbox.did,
                     receiver_sha256: mailbox.sha256,
+                    server: false,
                     encryption: 'sym',
                     message: Gofreerev.encrypt(JSON.stringify(message), password)
                 };
                 // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
-                if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
+                // server_id not needed in client request. server knowns server id for each receiver_did
+                // if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
+                console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                 // send encrypted message
                 response.push(message_with_envelope);
                 // console.log(pgm + 'encrypted message = ' + JSON.stringify(message_with_envelope));
@@ -4214,11 +4242,18 @@ angular.module('gifts', ['ngRoute'])
                 msg_users.push(user_id) ;
             } // for i
             var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
+            console.log(pgm + 'msg_users = ' + JSON.stringify(msg_users) + ', my_mutual_friends = ' + JSON.stringify(my_mutual_friends) + ', invalid_user_ids = ' + JSON.stringify(invalid_user_ids));
+            // msg_users = [2,3], my_mutual_friends = [920], invalid_user_ids  = [2,3]" gofreerev.js:4220:0
             if (invalid_user_ids.length > 0) {
                 error = 'Not mutual user id ' + invalid_user_ids.join(', ') + ' was received in users_sha256 message. ' +
                         'Mutual friends ' + my_mutual_friends.join(', ') + '. Received userids ' + msg_users.join(', ') + '.' ;
+                //  Not mutual user id 2, 3 was received in users_sha256 message. Mutual friends 920. Received userids 2, 3." gofreerev.js:4224:16
                 console.log(pgm + error) ;
+                // continue if possible without invalid user ids
+                msg_users = $(msg_users).not(invalid_user_ids).get() ;
+                console.log(pgm + 'msg_users.length = ' + msg_users.length) ;
                 if (msg_users.length == 0) {
+                    console.log(pgm + 'Could not receive users_sha256 message. User ids in message and mutual users in mailbox does not match') ;
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
                         request_mid: msg.mid,
@@ -4227,8 +4262,6 @@ angular.module('gifts', ['ngRoute'])
                     }) ;
                     return ;
                 }
-                // continue without invalid user ids
-                msg_users = $(msg_users).not(invalid_user_ids).get() ;
             }
             //var missing_user_ids = $(my_mutual_friends).not(msg_users).get() ;
             //if (missing_user_ids.length > 0) {
@@ -5538,7 +5571,7 @@ angular.module('gifts', ['ngRoute'])
                     msg_client_envelope = JSON.parse(msg_json) ;
                     // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
                     // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
-                    // console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
+                    console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
                     if (!msg_client_envelope.messages || !msg_client_envelope.messages.length) {
                         console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
                         continue ;

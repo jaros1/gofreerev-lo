@@ -1486,4 +1486,14 @@
 366) add optional server_id to pubkeys table
      used in client to client communication across gofreerev servers
 
+367) client to client communication step 2 - :users_sha256 message
+     problem with internal user ids in cross gofreerev server messages
+     internal user id is ok in within server client to client communication
+     uid/provider cannot be used in cross gofreerev server communication (facebook)
+     must use user.sha256 signature in cross gofreerev server communication
+
+368) are rails Base64.encode64(Digest::SHA256.digest(x)) signature identical
+     with JS CryptoJS.SHA256(x).toString(CryptoJS.enc.Base64) signature?
+     compare rails and JS SHA256 calc for all users
+
 select next issue to solve: (rand*366).floor+1

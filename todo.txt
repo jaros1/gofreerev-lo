@@ -1495,5 +1495,24 @@
 368) are rails Base64.encode64(Digest::SHA256.digest(x)) signature identical
      with JS CryptoJS.SHA256(x).toString(CryptoJS.enc.Base64) signature?
      compare rails and JS SHA256 calc for all users
+     include sha256 signature in do_tasks/login friends array or calc user.sha256 in javascript (client must know secret).
+     best solution is to keep server secret on server and that clients does not know server secret
+     but server secret can be found with
 
-select next issue to solve: (rand*366).floor+1
+369) changed secret on other gofreerev server.
+     new server to server login is required for exchange of secrets.
+     new sha256 signatures for remote users will be returned in next ping (online) response to clients on this Gofreerev server
+     messages in transport will come with old now invalid sha256 signature.
+     maybe keep old sha256 signatures in mailbox for old messages in transport
+
+370) change secret on this gofreerev server
+     all sha256 signatures for friends must be recalculated or downloaded
+     all local users must download new sha256 signatures for all users
+     alternative. download sha256 signature in ping when needed like public keys.
+
+371) download friends with sha256 signatures (do tasks and login)
+     and send a secret changed signal to clients when server secret changes
+     client could blank all sha256 signatures and request sha256 signatures for all remote friends
+     a user.sha256 signature in friends array are only relevant for remote friends
+
+select next issue to solve: (rand*369).floor+1

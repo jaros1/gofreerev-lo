@@ -292,7 +292,7 @@ class UtilController < ApplicationController
 
       # return json object with relevant user info. see list with friends categories in User.cache_friend_info
       User.cache_friend_info([login_user])
-      users = User.where(:user_id => login_user.friends_hash.keys)
+      users = User.where(:user_id => login_user.friends_hash.keys).includes(:verified_server_users)
       @json[:friends] = [] unless @json[:friends]
       @json[:friends] += users.collect do |user|
         hash = { :user_id => user.id,
@@ -301,6 +301,9 @@ class UtilController < ApplicationController
                  :user_name => user.user_name,
                  :friend => login_user.friends_hash[user.user_id] }
         hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+        # only include sha256 signature for friends on other Gofreerev servers.
+        # used as user_id when receiving messages from online devices on other Gofreerev servers
+        hash[:sha256] = user.sha256 if user.verified_server_users.size > 0
         hash
       end
 
@@ -932,7 +935,7 @@ class UtilController < ApplicationController
         end
         # return json object with relevant user info. see list with friends categories in User.cache_friend_info
         User.cache_friend_info([login_user])
-        users = User.where(:user_id => login_user.friends_hash.keys)
+        users = User.where(:user_id => login_user.friends_hash.keys).includes(:verified_server_users)
         @json[:friends] += users.collect do |user|
           hash = {:user_id => user.id,
                   :uid => user.uid,
@@ -940,6 +943,9 @@ class UtilController < ApplicationController
                   :user_name => user.user_name,
                   :friend => login_user.friends_hash[user.user_id]}
           hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+          # only include sha256 signature for friends on other Gofreerev servers.
+          # used as user_id when receiving messages from online devices on other Gofreerev servers
+          hash[:sha256] = user.sha256 if user.verified_server_users.size > 0
           hash
         end
       end # each provider
@@ -1228,7 +1234,7 @@ class UtilController < ApplicationController
               logger.debug2 "p.friends = #{other_session_friends.join(', ')}"
               logger.debug2 "p.mutual_friends = #{p.mutual_friends.join(', ')}"
               if p.server_id
-                # remote online device. must use user.sha256 signatures in client to client communication
+                # remote online device. must use user.sha256 signature in client to client communication
                 logger.debug2 "remote online device. add mutual_friends_sha256 array"
                 p.mutual_friends_sha256 = mutual_friends.collect { |u| u.calc_sha256(p.server.secret) }
               end

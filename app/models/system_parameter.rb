@@ -187,11 +187,17 @@ class SystemParameter < ActiveRecord::Base
     end
     s.value = secret
     s.save!
-    # force reconnect - servers must exchange secrets in new login - used when comparing users
+    # force server reconnect - servers must exchange secrets in new login - used when comparing users
     logger.warn2 "Secret was changed. Please reconnect (login) for all Gofreerev server sessions"
     Session.close_server_sessions
     # update sha256 for all users - fast lookup when comparing users across Gofreerev servers
     users.each { |u| u.update_attribute :sha256, u.calc_sha256(secret) }
+    # sha256 signatures are used as user_id in client to client messages on other Gofreerev servers
+    # sha256 signatures used in outgoing messages can be found in ping/online response and is stored in JS mailboxes array (GiftService)
+    # sha256 signatures used in incoming messages can be found in JS friends array (UserService)
+    # todo: see warnings
+    logger.warn2 "todo: how to handle receiving messages with old sha256 user signature (secret on other gofreerev server was changed after message has been sent)"
+    logger.warn2 "todo: how to handle receiving messages with new sha245 user signature (secret on this gofreerev server has changed but sha256 signatures in friends JS array are old)"
     nil
   end
 

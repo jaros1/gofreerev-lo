@@ -25,6 +25,7 @@ class User < ActiveRecord::Base
   has_many :received_notifications, :class_name => 'Notification', :primary_key => :user_id, :foreign_key => :to_user_id, :dependent => :destroy
   has_many :api_comments, :class_name => 'ApiComment', :primary_key => :user_id, :foreign_key => :user_id, :dependent => :destroy
   has_many :server_users
+  has_many :verified_server_users, -> { where "verified_at is not null" }, :class_name => 'ServerUser'
   belongs_to :share_account, :class_name => 'ShareAccount', :primary_key => :share_account_id, :foreign_key => :share_account_id, :counter_cache => :no_users
 
   # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database

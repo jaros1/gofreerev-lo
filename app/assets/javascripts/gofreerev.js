@@ -3784,8 +3784,9 @@ angular.module('gifts', ['ngRoute'])
                         users: JSON.parse(JSON.stringify(new_mutual_friends))
                     };
                     if (mailbox.hasOwnProperty('server_id')) {
-                        // client comminucation with client on an other Gofreeerev server.
-                        // internal user ids cannot be used. add user.sha256 signatures to users_sha256 message
+                        // users_sha256 message to user on other Gofreerev server
+                        // add array with user.sha256 signatures mutual friends
+                        // internal user ids are translated to signatures before message is sent
                         hash.users_sha256 = [] ;
                         for (j=0 ; j<new_mutual_friends.length ; j++) {
                             k = mailbox.mutual_friends.indexOf(new_mutual_friends[j]) ;
@@ -3819,7 +3820,12 @@ angular.module('gifts', ['ngRoute'])
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(mailbox.mutual_friends))
                     } ;
-                    if (mailbox.hasOwnProperty('server_id')) hash.users_sha256 = mailbox.mutual_friends_sha256 ;
+                    if (mailbox.hasOwnProperty('server_id')) {
+                        // users_sha256 message to user on other Gofreerev server
+                        // add array with user.sha256 signatures mutual friends
+                        // internal user ids are translated to signatures before message is sent
+                        hash.users_sha256 = mailbox.mutual_friends_sha256 ;
+                    }
                     mailbox.outbox.push(hash);
                     mailboxes.push(mailbox);
                 }
@@ -3938,7 +3944,7 @@ angular.module('gifts', ['ngRoute'])
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
         var send_message_users_sha256 = function (msg) {
             var pgm = service + '.send_message_users_sha256: ';
-            console.log(pgm + 'msg = ' + JSON.stringify(msg));
+            // console.log(pgm + 'msg = ' + JSON.stringify(msg));
             var oldest_gift_at = 0; // todo: set oldest_gift_at as max oldest_gift_at for this and other client
             var ignore_invalid_gifts = []; // todo: add gid ignore lists. Glocal list and/or a list for each device
             
@@ -3948,9 +3954,10 @@ angular.module('gifts', ['ngRoute'])
                 mid: msg.mid,
                 users: calc_sha256_for_users(msg.users, oldest_gift_at, ignore_invalid_gifts)
             };
-            console.log(pgm + 'users_sha256_message (1) = ' + JSON.stringify(users_sha256_message)) ;
+            // console.log(pgm + 'users_sha256_message (1) = ' + JSON.stringify(users_sha256_message)) ;
             if (msg.hasOwnProperty('users_sha256')) {
-                // message to client on an other Gofreerev server. replace internal user ids with sha256 signatures
+                // users_sha256 message to user on other Gofreerev server
+                // replace internal user ids with user sha256 signatures
                 var i, user_id, j ;
                 for (i=0 ; i<users_sha256_message.users.length ; i++) {
                     user_id = users_sha256_message.users[i].user_id ;
@@ -3958,7 +3965,7 @@ angular.module('gifts', ['ngRoute'])
                     users_sha256_message.users[i].user_id = msg.users_sha256[j] ;
                 } // for i
             } // if
-            console.log(pgm + 'users_sha256_message (2) = ' + JSON.stringify(users_sha256_message)) ;
+            console.log(pgm + 'users_sha256_message = ' + JSON.stringify(users_sha256_message)) ;
             
             // validate users_sha256 message before sending to other device
             if (Gofreerev.is_json_message_invalid(pgm,users_sha256_message,'users_sha256','')) return  ;
@@ -4231,6 +4238,14 @@ angular.module('gifts', ['ngRoute'])
                     error: error
                 }) ;
                 return ;
+            }
+
+            if (mailbox.hasOwnProperty('server_id')) {
+                console.log(pgm + 'users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids') ;
+                console.log(pgm + 'msg.users = ' + JSON.stringify(msg.users)) ;
+                // todo: user.sha256 signatures changes when server secret changes
+                // a message received after secret change can be with old sha256 signature.
+                // should keep old sha256 signature as a fallback for one or two minutes for old messages
             }
 
             // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends

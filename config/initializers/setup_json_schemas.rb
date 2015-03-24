@@ -73,7 +73,11 @@ friends_array_type = {
             # friend:
             # - 1: logged in user, 2: mutual friends, 3: follows, 4: stalked by,
             # - 5: deselected api friends, 6: friends of friends, 7: friends proposals, 8: others
-            :friend => {:type => 'integer', :minimum => 1, :maximum => 8}
+            :friend => {:type => 'integer', :minimum => 1, :maximum => 8},
+            # optional user.sha256 signature on this Gofreerev server.
+            # used as user_id when receiving messages from Other gofreerev servers
+            # only relevant for friends that are using other Gofreerev servers.
+            :sha256 => { :type => 'string'}
         },
         :required => %w(user_id uid provider user_name friend),
         :additionalProperties => false

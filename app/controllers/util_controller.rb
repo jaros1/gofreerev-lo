@@ -292,6 +292,10 @@ class UtilController < ApplicationController
 
       # return json object with relevant user info. see list with friends categories in User.cache_friend_info
       User.cache_friend_info([login_user])
+      secret_just_changed = SystemParameter.where("name = 'secret' and updated_at > ?", 3.minutes.ago).first
+      if secret_just_changed
+        @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
+      end
       users = User.where(:user_id => login_user.friends_hash.keys).includes(:verified_server_users)
       @json[:friends] = [] unless @json[:friends]
       @json[:friends] += users.collect do |user|
@@ -303,7 +307,11 @@ class UtilController < ApplicationController
         hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
         # only include sha256 signature for friends on other Gofreerev servers.
         # used as user_id when receiving messages from online devices on other Gofreerev servers
-        hash[:sha256] = user.sha256 if user.verified_server_users.size > 0
+        if user.verified_server_users.size > 0
+          hash[:sha256] = user.sha256
+          # previous sha256 signature. valid 3 minutes after change of server secret and user sha256 signature updates
+          hash[:old_sha256] = user.old_sha256 if secret_just_changed
+        end
         hash
       end
 
@@ -775,8 +783,12 @@ class UtilController < ApplicationController
         format_response
         return
       end
+      # unique device id
       set_session_value :did, params[:did]
+      # client secret - used in pings.sha256 - with did a unique client mailbox address
       set_session_value :client_secret, params[:client_secret]
+      # timestamp for system secret. all clients must download updated sha256 signatures for friends on other gofreerev servers
+      set_session_value :system_secret_updated_at, SystemParameter.secret_at
 
       if params[:site_url].to_s != ''
         # server login request
@@ -935,6 +947,10 @@ class UtilController < ApplicationController
         end
         # return json object with relevant user info. see list with friends categories in User.cache_friend_info
         User.cache_friend_info([login_user])
+        secret_just_changed = SystemParameter.where("name = 'secret' and updated_at > ?", 3.minutes.ago).first
+        if secret_just_changed
+          @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
+        end
         users = User.where(:user_id => login_user.friends_hash.keys).includes(:verified_server_users)
         @json[:friends] += users.collect do |user|
           hash = {:user_id => user.id,
@@ -944,8 +960,12 @@ class UtilController < ApplicationController
                   :friend => login_user.friends_hash[user.user_id]}
           hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
           # only include sha256 signature for friends on other Gofreerev servers.
-          # used as user_id when receiving messages from online devices on other Gofreerev servers
-          hash[:sha256] = user.sha256 if user.verified_server_users.size > 0
+          # used as user_id when receiving messages from online users on other Gofreerev servers
+          if user.verified_server_users.size > 0
+            hash[:sha256] = user.sha256
+            # previous sha256 signature. valid for 3 minutes after change of server secret and user sha256 signature update
+            hash[:old_sha256] = user.old_sha256 if secret_just_changed
+          end
           hash
         end
       end # each provider
@@ -1024,6 +1044,18 @@ class UtilController < ApplicationController
       # ( unix timestamp with milliseconds )
       now = Time.now.round(3)
 
+      # abort ping if from a not logged in client
+      login_user_ids = get_session_value(:user_ids)
+      if login_user_ids.class != Array or login_user_ids.size == 0
+        logger.debug2 "login user ids = #{login_user_ids}"
+        @json[:error] = 'Not logged in'
+        logger.debug2 "@json[:error] = #{@json[:error]}"
+        @json[:interval] = 10000
+        validate_json_response
+        format_response
+        return
+      end
+
       # server or client ping
       if login_user_ids.size == 1 and login_user_ids.first =~ /http:\/\//
         server = true
@@ -1050,18 +1082,6 @@ class UtilController < ApplicationController
         end
         # signature ok
         logger.debug2 "signature is ok"
-      end
-
-      # abort ping if from a not logged in client
-      login_user_ids = get_session_value(:user_ids)
-      if login_user_ids.class != Array or login_user_ids.size == 0
-        logger.debug2 "login user ids = #{login_user_ids}"
-        @json[:error] = 'Not logged in'
-        logger.debug2 "@json[:error] = #{@json[:error]}"
-        @json[:interval] = 10000
-        validate_json_response
-        format_response
-        return
       end
 
       # check now >= ping.next_ping_at - force client to wait if server is called to early
@@ -1194,7 +1214,7 @@ class UtilController < ApplicationController
         logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
-        # get list of online devices - ignore current session(s) - only online devices with friends are relevant
+        # return list of online devices - ignore current session(s) - only online devices with friends are relevant
         # todo: add information about online devices/friends on other gofreerev servers to online array
         # todo: don't include :server_id for online devices/friends on this gofreerev server
         # todo: include server id for online devices/friends on other gofreerev servers
@@ -1259,10 +1279,41 @@ class UtilController < ApplicationController
           logger.debug2 "@json[:online] = #{@json[:online]}"
         end
 
-        # valid json request - process additional ping operations (new gifts, public keys, sync information between clients etc)
+        # check for changed system secret / changed user.sha256 values
+        system_secret_at = SystemParameter.secret_at
+        if !server and system_secret_at != get_session_value(:system_secret_updated_at)
+          # system secret and sha256 signatures for friends on other gofreerev servers changed since last client ping
+          # return short friend list (only friends om other gofreerev servers)
+          # used when receiving messages from clients on other gofreerev servers
+          login_users = User.where(:user_id => login_user_ids)
+          # cache friends info
+          User.cache_friend_info(login_users)
+          # find friends on other Gofreerev servers (must have minimum one verified user in server_users table)
+          friends_hash = {}
+          login_users.each { |login_user| friends_hash.merge!(login_user.friends_hash)}
+          users = User.where(:user_id => friends_hash.keys).
+              includes(:server_users).where('server_users.verified_at is not null').references(:server_users)
+          @json[:friends] = users.collect do |user|
+            hash = { :user_id => user.id,
+                     :uid => user.uid,
+                     :provider => user.provider,
+                     :user_name => user.user_name,
+                     :friend => friends_hash[user.user_id],
+                     :sha256 => user.sha256,
+                     :old_sha256 => user.old_sha256
+            }
+            hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+            hash
+          end
+          # old sha256 signatures are valid for 3 minutes after update of system secret
+          set_session_value :system_secret_updated_at, SystemParameter.secret_at
+          @json[:friends_sha256_update_at] = system_secret_at.to_i
+        end
+
+        # process additional ping operations (new gifts, public keys, sync gifts between clients etc)
 
         # 1) public keys. used in client to client communication (public/private key encryption) for short messages (symmetric password exchange)
-        pubkeys_response = Ping.pubkeys params[:pubkeys]
+        pubkeys_response = Ping.pubkeys params[:pubkeys] unless server
         @json[:pubkeys] = pubkeys_response if pubkeys_response
 
         # 2) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client

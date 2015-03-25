@@ -1515,4 +1515,15 @@
      client could blank all sha256 signatures and request sha256 signatures for all remote friends
      a user.sha256 signature in friends array are only relevant for remote friends
 
-select next issue to solve: (rand*369).floor+1
+372) session cookie. add some variables to detect session hijacking.
+
+373) /util/ping - first ping after secret change
+     return friends_sha256_update_at timestamp and friends list with (user id, sha256 and old_sha256)
+     only relevent for friends on other gofreerev servers
+
+374) client and server pings
+     server must send ping to other Gofreerev servers at requested interval / time
+     server must adjust client ping interval so that clients pings are between server pings
+     server must be able to disconnect and reject server logins
+
+select next issue to solve: (rand*374).floor+1

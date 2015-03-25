@@ -394,7 +394,11 @@ class User < ActiveRecord::Base
 
   # 21) sha256. sha256 signature with secret, uid/provider and user_name
   # used when comparing users across gofreerev servers
+  # and used as user_id when receiving messages from clients on other gofreerev servers
   validates_uniqueness_of :sha256, :allow_blank => true
+
+  # 22) old_sha256. sha256 signature with secret, uid/provider and user_name
+  # used as fallback option when receiving messages from clients on other gofreerev servers
 
   # change currency in page header.
   attr_accessor :new_currency

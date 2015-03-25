@@ -51,6 +51,7 @@ module ActionControllerExtensions
   #   :refresh_tokens - API refresh tokens - only used for Google+
   #   :sha256 - sha256 signature - generated from client_secret + user_ids - used in client to client communication
   #   :state - random string :state in oauth API requests. set before calling API and check after returning from API
+  #   :system_secret_updated_at - copy of SystemParameter.secret_at. all browser clients must download sha256 values for friend lists when system secret and user sha256 signatures are changed
   #   :timezone - timezone from JS or oauth login
   #   :tokens - API access tokens
   #   :user_ids - user_id array for logged in users

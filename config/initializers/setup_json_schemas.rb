@@ -77,7 +77,9 @@ friends_array_type = {
             # optional user.sha256 signature on this Gofreerev server.
             # used as user_id when receiving messages from Other gofreerev servers
             # only relevant for friends that are using other Gofreerev servers.
-            :sha256 => { :type => 'string'}
+            :sha256 => {:type => 'string'},
+            # previous sha256 signature. valid for 1-2 minutes after change of server secret
+            :old_sha256 => {:type => 'string'}
         },
         :required => %w(user_id uid provider user_name friend),
         :additionalProperties => false
@@ -118,6 +120,8 @@ JSON_SCHEMA = {
         :properties => {
             # array with login user and friends information (friends etc). from api friend lists
             :friends => friends_array_type,
+            # optional unix timestamp for last friends.sha256 update. old_sha256 is valid 3 minutes after friends_sha256_updated_at
+            :friends_sha256_update_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
             # optional array with providers with expired oauth authorization
             :expired_tokens => expired_tokens_type,
             # optional array with new oauth authorization - for now only used for google+
@@ -172,6 +176,8 @@ JSON_SCHEMA = {
             :oauths => oauths_type,
             # array with login user and friends information (friends etc). from api friend lists
             :friends => friends_array_type,
+            # optional unix timestamp for last friends.sha256 update. old_sha256 is valid 3 minutes after friends_sha256_update_at
+            :friends_sha256_update_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
             # optional error message from do_tasks
             :error => {:type => 'string'}
         },
@@ -376,7 +382,7 @@ JSON_SCHEMA = {
               :old_client_timestamp => client_timestamp_type,
               # interval in milliseconds before next ping request from client. used when distribution client pings equal over time
               :interval => {:type => 'integer', :minimum => 1000},
-              # array with online friends/devices - tells the client which devices are available for information synchronization
+              # array with online friends/devices - tells the client which devices are available for gift synchronization
               :online => {
                   :type => 'array',
                   :title => 'Array with online friends',
@@ -401,6 +407,14 @@ JSON_SCHEMA = {
                   },
                   :minItems => 1
               },
+
+              # optional array with sha256 signatures for friends on other Gofreerev servers.
+              # returned to client after change in server secret and updated sha256 signatures
+              :friends => friends_array_type,
+
+              # optional unix timestamp for server secret update / friends.sha256 updates. old_sha256 values are valid for 3 minutes after friends_sha256_update_at
+              :friends_sha256_update_at => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
+
               # optional - return fatal errors to client (invalid json request)
               :error => {:type => 'string'},
 

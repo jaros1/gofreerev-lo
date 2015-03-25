@@ -341,10 +341,14 @@ class Session < ActiveRecord::Base
   # false: user/browser, true: other gofreerev server
   # is blank in a new session until login process is completed
   validates_inclusion_of :server, :in => [true, false], :allow_blank => true
+  
+  # 18) system_secret_updated_at - copy of SystemParameter.updated_at timestamp for secret
+  # all sessions must download updated sha256 signatures after change in system secret / user sha256 signatures
+  # datetime in model and database
 
-  # 18) created_at
+  # 19) created_at
 
-  # 19) updated_at
+  # 20) updated_at
 
   # secret from session cookie. encrypt/decrypt data in sessions table with secret from cookie
   attr_accessor :secret
@@ -365,6 +369,7 @@ class Session < ActiveRecord::Base
       when :refresh_tokens then self.refresh_tokens = value
       when :server then self.server = value
       when :state then self.state = value
+      when :system_secret_updated_at then self.system_secret_updated_at = value
       when :tokens then self.tokens = value
       when :user_ids
         # logger.debug "#{key} = #{value}"

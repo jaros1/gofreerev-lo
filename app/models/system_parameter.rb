@@ -158,6 +158,11 @@ class SystemParameter < ActiveRecord::Base
     s ? s.value : nil
   end
 
+  def self.secret_at
+    s = SystemParameter.find_by_name('secret')
+    s ? s.updated_at : nil
+  end
+
   # create/update secret.
   # client: used as secret part of device.sha256. did+sha256 is mailbox address in client to client communication
   # server: used as secret part of user sha256 signature when comparing user lists with other Gofreerev servers
@@ -169,6 +174,12 @@ class SystemParameter < ActiveRecord::Base
     end
     # no sha256 signature for gofreerev dummy users
     users = User.where("user_id not like 'gofreerev/%'")
+    # prevent overlap between old sha256 signatures and new sha256 signatures
+    # ( old sha256 signature is used as fallback option when receiving messages with unknown sha256 signatures )
+    old_signatures = {}
+    users.each do |u|
+      old_signatures[u.sha256] = true if u.sha256 ;
+    end
     # generate new secret. loop until user.sha256 values are unique
     secret = nil
     loop do
@@ -176,8 +187,12 @@ class SystemParameter < ActiveRecord::Base
       signatures = {}
       users.each do |u|
         sha256 = u.calc_sha256(secret)
+        if old_signatures[sha256]
+          logger.debug2 "old sha256 signature was found for #{u.debug_info}"
+          break
+        end
         if signatures[sha256]
-          logger.debug2 "duoblet sha256 signature was found for #{u.debug_info}"
+          logger.debug2 "doublet sha256 signature was found for #{u.debug_info}"
           break
         end
         signatures[sha256] = true
@@ -185,19 +200,59 @@ class SystemParameter < ActiveRecord::Base
       logger.debug2 "users.size = #{users.size}, signatures.size = #{signatures.size}"
       break if users.size == signatures.size
     end
+    # found new system secret
+    # update sha256 for all users - fast lookup when comparing users across Gofreerev servers
+    # sha256 signature is also used is user id when receiving messages from clients on other gofreerev servers
+    # old_sha256 signature is used as fallback option when receiving messages with old sha256 signature from other Gofreerev servers
+    # timestamp for secret change is in updated_at for secret
+    # allow messages with old sha256 signatures to arrive 1-2 minutes after secret change
+    update_batch_size = 50 # todo: move to rails constant
+    if update_batch_size > 1
+      # update users in bundles with update_batch_size in each update statement (mysql)
+      update_batch = []
+      0.upto(users.length-1) do |i|
+        user = users[i]
+        update_batch << {:id => user.id,
+                         :sha256 => user.sha256,
+                         :old_sha256 => user.old_sha256
+        }
+        if update_batch.size == update_batch_size or i == users.length-1
+          update_sql = 'sha256 = case id ' ;
+          update_batch.each do |hash|
+            update_sql += "when #{hash[:id]} then '#{hash[:sha256]}' "
+          end
+          update_sql += 'end, old_sha256 = case id ' ;
+          update_batch.each do |hash|
+            update_sql += "when #{hash[:id]} then '#{hash[:old_sha256]}' "
+          end
+          update_sql += 'end where id in (' + update_batch.collect { |hash| hash[:id] }.join(',') + ')' ;
+          # logger.debug2 "update = #{update_sql}"
+          User.update_all(update_sql)
+          update_batch = []
+        end
+      end
+    else
+      # rails update loop. can take some time in a database with many users
+      users.each do |u|
+        u.update_attribute :old_sha256, u.sha256
+        u.update_attribute :sha256, u.calc_sha256(secret)
+      end
+    end
+    # update secret.
     s.value = secret
     s.save!
     # force server reconnect - servers must exchange secrets in new login - used when comparing users
     logger.warn2 "Secret was changed. Please reconnect (login) for all Gofreerev server sessions"
     Session.close_server_sessions
-    # update sha256 for all users - fast lookup when comparing users across Gofreerev servers
-    users.each { |u| u.update_attribute :sha256, u.calc_sha256(secret) }
+    # todo: there is a copy of secret.updated_at in all sessions browser sessions
+    # todo: next ping will download a list with new sha256 signatures for friend lists
+    #
     # sha256 signatures are used as user_id in client to client messages on other Gofreerev servers
     # sha256 signatures used in outgoing messages can be found in ping/online response and is stored in JS mailboxes array (GiftService)
     # sha256 signatures used in incoming messages can be found in JS friends array (UserService)
     # todo: see warnings
     logger.warn2 "todo: how to handle receiving messages with old sha256 user signature (secret on other gofreerev server was changed after message has been sent)"
-    logger.warn2 "todo: how to handle receiving messages with new sha245 user signature (secret on this gofreerev server has changed but sha256 signatures in friends JS array are old)"
+    logger.warn2 "todo: how to handle receiving messages with new sha256 user signature (secret on this gofreerev server has changed but sha256 signatures in friends JS array are old)"
     nil
   end
 

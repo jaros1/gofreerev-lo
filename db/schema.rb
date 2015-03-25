@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150323112812) do
+ActiveRecord::Schema.define(version: 20150325142835) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -261,8 +261,8 @@ ActiveRecord::Schema.define(version: 20150323112812) do
   add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
   create_table "sessions", force: true do |t|
-    t.string   "session_id",       limit: 32
-    t.integer  "client_userid",               default: 0
+    t.string   "session_id",               limit: 32
+    t.integer  "client_userid",                       default: 0
     t.text     "created"
     t.text     "expires_at"
     t.text     "flash_id"
@@ -280,6 +280,7 @@ ActiveRecord::Schema.define(version: 20150323112812) do
     t.text     "client_secret"
     t.text     "sha256"
     t.boolean  "server"
+    t.datetime "system_secret_updated_at"
   end
 
   add_index "sessions", ["session_id", "client_userid"], name: "index_session_session_id", unique: true, using: :btree
@@ -346,6 +347,7 @@ ActiveRecord::Schema.define(version: 20150323112812) do
     t.text     "refresh_token"
     t.string   "share_account_id",        limit: 20
     t.string   "sha256",                  limit: 45
+    t.string   "old_sha256",              limit: 45
   end
 
   add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree

@@ -653,13 +653,36 @@ class User < ActiveRecord::Base
         return ['.profile_image_invalid_type', {:provider => user.provider, :image => url, :image_type => image_type}]
       end
       # check image store for profile pictures (:api or :local)
-      picture_store = API_PROFILE_PICTURE_STORE[user.provider] || :api
+      if user.provider == 'facebook'
+        # API_PROFILE_PICTURE_STORE for facebook must be :api. user.api_profile_picture_url is used in user.sha256 signature
+        picture_store = :api
+      else
+        picture_store = API_PROFILE_PICTURE_STORE[user.provider] || :api
+      end
       if picture_store == :api
         # preferred choice - profile pictures not downloaded - use profile picture url from provider as it is
         Picture.delete_if_app_url(user.api_profile_picture_url)
         logger.debug2 "update profile picture: url = #{url}"
         user.api_profile_picture_url = url
+        # check changed user.sha256 signature (facebook only)
+        loop do
+          new_sha256 = user.calc_sha256(SystemParameter.secret)
+          break if user.sha256 == new_sha256
+          user2 = User.find_by_sha256(new_sha256)
+          if !user2
+            # new unique sha256 signature. keep old sha256 as fallback when receiving messages from clients on other gofreerev servers
+            user.old_sha256 = user.sha256
+            user.sha256 = new_sha256
+            user.sha256_updated_at = Time.zone.now
+            break
+          end
+          # doublet sha256 signature. must update system secret
+          SystemParameter.new_secret
+        end
         user.update_attribute('api_profile_picture_url', user.api_profile_picture_url) if user.api_profile_picture_url_changed?
+        user.update_attribute('sha256',                  user.sha256)                  if user.sha256_changed?
+        user.update_attribute('old_sha256',              user.old_sha256)              if user.old_sha256_changed?
+        user.update_attribute('sha256_updated_at',       user.sha256_updated_at)       if user.sha256_updated_at_changed?
         return nil
       end
       if picture_store != :local

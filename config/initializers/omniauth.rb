@@ -186,6 +186,7 @@ API_CAMELIZE_NAME = {:facebook => 'Facebook',
                      :vkontakte => 'VKontakte'}.with_indifferent_access
 
 # L) API profile pictures: :api or :local. Default is :api <=> Profile pictures are not downloaded from provider
+# API_PROFILE_PICTURE_STORE for facebook must be :api. user.api_profile_picture_url is used in user.sha256 signature
 API_PROFILE_PICTURE_STORE = {}.with_indifferent_access
 
 # M) gift pictures: nil (no picture/readonly api), :api (use api picture url) or :local (keep local copy of picture)

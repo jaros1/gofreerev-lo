@@ -897,6 +897,9 @@ class Server < ActiveRecord::Base
       users = ServerUser.includes(:user).
           where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping["user_ids"], self.id).references(:users)
       user_ids = users.collect { |u| u.user.user_id }
+      if ping["user_ids"].size != user_ids.size
+        logger.error2 "received unknown user signatures #{ping["user_ids"].join(', ')} in online users message"
+      end
       next unless user_ids.size > 0
 
       # check did

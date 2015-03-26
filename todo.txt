@@ -1526,4 +1526,12 @@
      server must adjust client ping interval so that clients pings are between server pings
      server must be able to disconnect and reject server logins
 
+375) facebook: old invalid api profile picture url
+     invalid url in app 1 - correct url in app 2 - online friends on other gofreerev server was not detected
+     new facebook login was required in app 1
+     must update user sha256 values when user info changes
+
+376) save sha256 signature for facebook profile pictures?
+     maybe picture sha256 signature is more stable than profile picture url
+
 select next issue to solve: (rand*374).floor+1

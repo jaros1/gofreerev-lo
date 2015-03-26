@@ -1679,6 +1679,11 @@ angular.module('gifts', ['ngRoute'])
             if (typeof friends == 'undefined') return null ;
             if (typeof sha256 == 'undefined') return null ;
             var i = friends_index_by_sha256[sha256] ;
+            if ((typeof i == 'undefined') && friends_sha256_last_updated && (friends_sha256_last_updated > Gofreerev.unix_timestamp()-300)) {
+                // fallback option 1: system secret and friends sha256 signatures changed within the last 3 minutes
+                // allow messages with old sha256 signatures to arrive with old signatures
+                var i = friends_index_by_old_sha256[sha256] ;
+            }
             if (typeof i == 'undefined') {
                 // add fallback actions for:
                 // todo: a) receiving expired sha256 signature. secret changed on this server within last 1-2 minutes.
@@ -4013,7 +4018,7 @@ angular.module('gifts', ['ngRoute'])
         // input msg is a small user_sha256 message without sha256 calculation
         // send_message_users_sha256 adds sha256 values for each mutual friend
         // send "users_sha256" message to mailbox/other device. one sha256 signature for each mutual friend
-        var send_message_users_sha256 = function (msg) {
+        var send_message_users_sha256 = function (mailbox, msg) {
             var pgm = service + '.send_message_users_sha256: ';
             // console.log(pgm + 'msg = ' + JSON.stringify(msg));
             var oldest_gift_at = 0; // todo: set oldest_gift_at as max oldest_gift_at for this and other client
@@ -4029,11 +4034,13 @@ angular.module('gifts', ['ngRoute'])
             if (msg.hasOwnProperty('users_sha256')) {
                 // users_sha256 message to user on other Gofreerev server
                 // replace internal user ids with user sha256 signatures
+                // internal user ids = mailbox.mutual_friends = ping.user_ids = mutual_friends from ping online users response
+                // sha256 signatures = mailbox.mutual_friends_sha256 = mutual_friends_sha256 from ping online users response
                 var i, user_id, j ;
                 for (i=0 ; i<users_sha256_message.users.length ; i++) {
                     user_id = users_sha256_message.users[i].user_id ;
-                    j = msg.users.indexOf(user_id) ;
-                    users_sha256_message.users[i].user_id = msg.users_sha256[j] ;
+                    j = mailbox.mutual_friends.indexOf(user_id) ;
+                    users_sha256_message.users[i].user_id = mailbox.mutual_friends_sha256[j] ;
                 } // for i
             } // if
             console.log(pgm + 'users_sha256_message = ' + JSON.stringify(users_sha256_message)) ;
@@ -4145,7 +4152,7 @@ angular.module('gifts', ['ngRoute'])
                     switch (msg.msgtype) {
                         case 'users_sha256':
                             // communication step 2 - send users sha256 signatures to other device
-                            users_sha256_message = send_message_users_sha256(msg) ;
+                            users_sha256_message = send_message_users_sha256(mailbox, msg) ;
                             if (users_sha256_message) messages.push(users_sha256_message);
                             break;
                         case 'gifts_sha256':
@@ -5856,6 +5863,7 @@ angular.module('gifts', ['ngRoute'])
                     }
 
                     // check online users/devices - create a mail box for each online device
+                    console.log(pgm + 'ok. online = ' + JSON.stringify(response.data.online)) ; // todo: remove
                     if (response.data.online) giftService.update_mailboxes(response.data.online) ;
 
                     if (response.data.friends) {

@@ -213,8 +213,8 @@ class SystemParameter < ActiveRecord::Base
       0.upto(users.length-1) do |i|
         user = users[i]
         update_batch << {:id => user.id,
-                         :sha256 => user.sha256,
-                         :old_sha256 => user.old_sha256
+                         :sha256 => user.calc_sha256(secret),
+                         :old_sha256 => user.sha256
         }
         if update_batch.size == update_batch_size or i == users.length-1
           update_sql = 'sha256 = case id ' ;

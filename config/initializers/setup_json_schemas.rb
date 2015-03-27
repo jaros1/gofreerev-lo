@@ -725,9 +725,10 @@ JSON_SCHEMA = {
                 :items => {:type => 'string', :pattern => uid_pattern}
             },
             # array with internal user ids - must be a sublist of mutual friends - from previous users_sha256 message
+            # use internal user ids for within server messages. use sha256 signatures for message between two gofreerev servers
             :users => {
                 :type => 'array',
-                :items => {:type => 'integer'},
+                :items => {:type => %w(integer string) },
                 :minItems => 1
             },
             # array with sha256 values for gifts for users - empty array if no gifts were found for requested users (mutual friends)

@@ -1534,4 +1534,8 @@
 376) save sha256 signature for facebook profile pictures?
      maybe picture sha256 signature is more stable than profile picture url
 
+377) add notification if logged in with a provider and no friends
+     UserService.init_friends and update_friends
+     ( error after failed friends download from server
+
 select next issue to solve: (rand*374).floor+1

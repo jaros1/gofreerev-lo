@@ -416,9 +416,8 @@ class Friend < ActiveRecord::Base
         # check/update sha256
         loop do
           new_sha256 = friend_user.calc_sha256(SystemParameter.secret)
-          break if user.sha256 == new_sha256
-          user2 = User.find_by_sha256(new_sha256)
-          if !user2
+          break if friend_user.sha256 == new_sha256
+          if !User.find_by_sha256(new_sha256)
             # new unique sha256
             friend_user.old_sha256 = friend_user.sha256
             friend_user.sha256 = new_sha256

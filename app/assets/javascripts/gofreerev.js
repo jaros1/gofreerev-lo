@@ -1471,12 +1471,32 @@ angular.module('gifts', ['ngRoute'])
             return stat ;
         }; // provider_stat
 
+        // there must be minimum one friend for each logged in provider (friendlist downlist error)
+        function check_friend_lists () {
+            var pgm = service + '.check_friend_lists: ' ;
+            var no_friends = get_oauth(), provider ;
+            for (provider in no_friends) if (no_friends.hasOwnProperty(provider)) no_friends[provider] = 0 ;
+            var i, friend ;
+            for (i=0 ; i<friends.length ; i++) {
+                friend = friends[i] ;
+                if (!no_friends.hasOwnProperty(friend.provider)) no_friends[friend.provider] = -1 ; // not logged in with this provider
+                else if (no_friends[friend.provider] >= 0) no_friends[friend.provider] += 1 ; // logged in
+                else no_friends[friend.provider] -= 1 ; // not logged in
+            }
+            // todo: add notification if logged in and no friends for one or more providers. there must be a friend list download problem
+            for (provider in no_friends) if (no_friends.hasOwnProperty(provider)) {
+                if (no_friends[provider] == 0) console.log(pgm + 'Warning. No friend list was found for ' + provider) ;
+                else if ((no_friends[provider] < 0) && (providers.indexOf(provider) == -1)) console.log(pgm + 'Error. Found friend list for unknown provider ' + provider) ;
+            }
+        } // check_friend_lists
+
         // init array with friends init.
         // initialized at page load and after device login with friend list for all login providers
         // params:
         // - array: friend list
         // - optional timestamp for last friend.sha256 update (server secret update). friend.old_sha256 is valid for 3 minutes after last friend.sha256 update
         var init_friends = function (array, friends_sha256_update_at) {
+            var pgm = service + '.init_friends: ' ;
             // console.log(service + '.init_users: users = ' + JSON.stringify(array)) ;
             friends = array ;
             if (friends_sha256_update_at) friends_sha256_last_updated = friends_sha256_update_at ;
@@ -1494,7 +1514,10 @@ angular.module('gifts', ['ngRoute'])
                 // only relevant if secret was changed just before page load or api provider login (friend list downloads)
                 if (friend.hasOwnProperty('old_sha256')) friends_index_by_sha256[friend.old_sha256] = i ;
             }
+            console.log(pgm + 'friends = ' + JSON.stringify(friends)) ;
+            check_friend_lists() ;
         };
+
         // update friends js array: replace: true: overwrite/replace old friends, false: add/keep old friends
         // called from do_tasks after api and device login. new friend lists downloaded from api provider
         var update_friends = function (new_friends, replace, friends_sha256_update_at) {
@@ -1577,6 +1600,8 @@ angular.module('gifts', ['ngRoute'])
                 for (var i=0 ; i<friends.length ; i++) friends_index_by_user_id[friends[i].user_id] = i ;
             }
             Gofreerev.setItem('friends', JSON.stringify(friends)) ;
+            console.log(pgm + 'friends = ' + JSON.stringify(friends)) ;
+            check_friend_lists() ;
         }; // update_friends
 
 
@@ -4318,11 +4343,32 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
 
+            // abort if response to request msg.mid is already in mailbox
+            for (i=0 ; i<mailbox.outbox.length ; i++) {
+                if (mailbox.outbox[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to users_sha256 message ' + msg.mid + ' is already in outbox.') ;
+                    return ;
+                }
+            } // for i
+            for (i=0 ; i<mailbox.done.length ; i++) {
+                if (mailbox.done[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to users_sha256 message ' + msg.mid + ' is already in done.') ;
+                    return ;
+                }
+            } // for i
+            for (i=0 ; i<mailbox.error.length ; i++) {
+                if (mailbox.error[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to users_sha256 message ' + msg.mid + ' is already in error.') ;
+                    return ;
+                }
+            } // for i
+
             // check for users_sha256 message from client on other Gofreerev server (using sha256 signature as user_id)
             var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
             if (mailbox.hasOwnProperty('server_id')) {
                 console.log(pgm + 'users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids') ;
                 console.log(pgm + 'msg.users (1) = ' + JSON.stringify(msg.users)) ;
+
                 // keep a copy of old sha256 user ids before translation (for debug and error messages)
                 var msg_users_sha256 = [] ;
                 var i ;
@@ -4330,6 +4376,15 @@ angular.module('gifts', ['ngRoute'])
                     user_id = msg.users[i].user_id ;
                     msg_users_sha256.push(user_id) ;
                 } // for i
+
+                // print debug information for user id 2, 3, 920, 1126. todo: remove
+                var debug_users = [2, 3, 920, 1126], debug_user ;
+                for (i=0 ; i<debug_users.length ; i++) {
+                    debug_user = userService.get_friend(debug_users[i]) ;
+                    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
+                    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
+                } // for i
+
                 // todo: user.sha256 signatures changes when server secret changes
                 // todo: a message received after secret change can be with old sha256 signature.
                 // todo: keep old sha256 signature as a fallback for one or two minutes for old messages
@@ -4348,7 +4403,7 @@ angular.module('gifts', ['ngRoute'])
                     }
                 }
                 console.log(pgm + 'msg.users (2) = ' + JSON.stringify(msg.users)) ;
-                console.log(pgm + 'unknown_sha256_user_ids = ' + JSON.stringify(unknown_sha256_user_ids)) ;
+                if (unknown_sha256_user_ids.length > 0) console.log(pgm + 'unknown_sha256_user_ids = ' + JSON.stringify(unknown_sha256_user_ids)) ;
             } // if
 
             // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
@@ -4489,7 +4544,18 @@ angular.module('gifts', ['ngRoute'])
 
             if (mailbox.hasOwnProperty('server_id')) {
                 // translate internal user ids to sha256 signatures before sending gifts_sha256 message
-                console.log(pgm + 'gifts_sha256_message = ' + JSON.stringify(gifts_sha256_message));
+                console.log(pgm + 'gifts_sha256_message (1) = ' + JSON.stringify(gifts_sha256_message));
+                //gifts_sha256_message =
+                //{"mid":"14273774200608483113","request_mid":"14273773969082891666","msgtype":"gifts_sha256",
+                //    "ignore_invalid_gifts":[],
+                //    "users":[920],
+                //    "gifts":[{"gid":"14253148989837740200","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253152345973353338","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253163835441202510","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253166119353097472","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253170024715544645","sha256":"gµï\u0015îé;;¯Æ'åéz²¦]^ý£ß½Rõl\"l\"ö"},{"gid":"14254791174816684686","sha256":"Çî\u0002t 31gõ¤7NÈªãÃÏ\u0018ÂØ\u0013 ×Ü*á\u0013ùÑ"},{"gid":"14255660363225768616","sha256":"·ï^ýEª0W\u0000Ê\u001cãC%âÝ=râ=p[rïYµ²¯¸"},{"gid":"14255663264284720316","sha256":"ÉÛ5}y­\u001cÓÙhuÂÈýËmêFÉê¥±\u0000ýÞ\\\u0015¦"},{"gid":"14255666249033078430","sha256":"yå·¾à¿ÒX\u0013¼\u0005þ8J|¼±¡`|Ýªy¨98ÉJ°"},{"gid":"14255715337351272927","sha256":":# ÅÚ¹Ì\u0015ûì\bJ{Ø\u000eø\u001e/\u001d\u000fÕý³U\u001d«"},{"gid":"14258782920140696549","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}" gofreerev.js:4504:0
+                for (i=0 ; i<gifts_sha256_message.users.length ; i++) {
+                    user_id = gifts_sha256_message.users[i] ;
+                    j = mailbox.mutual_friends.indexOf(user_id) ;
+                    gifts_sha256_message.users[i] = mailbox.mutual_friends_sha256[j];
+                }
+                console.log(pgm + 'gifts_sha256_message (2) = ' + JSON.stringify(gifts_sha256_message));
             }
 
             // validate gifts_sha256 message before adding to outbox
@@ -4626,17 +4692,85 @@ angular.module('gifts', ['ngRoute'])
                 }) ;
                 return ;
             }
+
+            // abort if response to request msg.mid is already in mailbox
+            for (i=0 ; i<mailbox.outbox.length ; i++) {
+                if (mailbox.outbox[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to gifts_sha256 message ' + msg.mid + ' is already in outbox.') ;
+                    return ;
+                }
+            } // for i
+            for (i=0 ; i<mailbox.done.length ; i++) {
+                if (mailbox.done[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to gifts_sha256 message ' + msg.mid + ' is already in done.') ;
+                    return ;
+                }
+            } // for i
+            for (i=0 ; i<mailbox.error.length ; i++) {
+                if (mailbox.error[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to gifts_sha256 message ' + msg.mid + ' is already in error.') ;
+                    return ;
+                }
+            } // for i
+
             // move previous users_sha256 message to done folder
             if (!move_previous_message(pgm, mailbox, msg.request_mid, 'users_sha256', true)) return ; // ignore - not found in mailbox
 
-            // todo: check that users in gifts_sha256 message is a sublist of mutual friends.
+            // check for gifts_sha256 message from client on other Gofreerev server (using sha256 signature as user_id)
+            var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
+            if (mailbox.hasOwnProperty('server_id')) {
+                console.log(pgm + 'gifts_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids') ;
+                console.log(pgm + 'msg.users (1) = ' + JSON.stringify(msg.users)) ;
+
+                // keep a copy of old sha256 user ids before translation (for debug and error messages)
+                var msg_users_sha256 = [] ;
+                var i ;
+                for (i=0 ; i<msg.users.length ; i++) msg_users_sha256.push(msg.users[i]) ;
+
+                // print debug information for user id 2, 3, 920, 1126. todo: remove
+                var debug_users = [2, 3, 920, 1126], debug_user ;
+                for (i=0 ; i<debug_users.length ; i++) {
+                    debug_user = userService.get_friend(debug_users[i]) ;
+                    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
+                    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
+                } // for i
+
+                // todo: user.sha256 signatures changes when server secret changes
+                // todo: a message received after secret change can be with old sha256 signature.
+                // todo: keep old sha256 signature as a fallback for one or two minutes for old messages
+                // todo: see more todos in userService.get_friend_by_sha256
+                for (i=msg.users.length-1 ; i>= 0 ; i--) {
+                    user_id = msg.users[i] ;
+                    friend = userService.get_friend_by_sha256(user_id) ;
+                    if (friend) {
+                        console.log(pgm + 'translating sha256 user_id ' + user_id + ' to internal user_id ' + friend.user_id) ;
+                        msg.users[i] = friend.user_id ;
+                    }
+                    else {
+                        console.log(pgm + 'unknown sha256 user_id ' + user_id) ;
+                        unknown_sha256_user_ids.push(user_id) ;
+                        msg.users.splice(i,1) ;
+                    }
+                }
+                console.log(pgm + 'msg.users (2) = ' + JSON.stringify(msg.users)) ;
+                if (unknown_sha256_user_ids.length > 0) console.log(pgm + 'unknown_sha256_user_ids = ' + JSON.stringify(unknown_sha256_user_ids)) ;
+            } // if
+
             // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
             var my_mutual_friends = mailbox.mutual_friends ;
             var msg_users = msg.users ;
             var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
-            if (invalid_user_ids.length > 0) {
-                error = 'Not mutual user id ' + invalid_user_ids.join(', ') + ' was received in gifts_sha256 message. ' +
-                'Mutual friends ' + my_mutual_friends.join(', ') + '. Received userids ' + msg_users.join(', ') + '.' ;
+
+            if (invalid_user_ids.length + unknown_sha256_user_ids.length > 0) {
+                // unknown or invalid user in users_sha256 message:
+                error = (invalid_user_ids.length + unknown_sha256_user_ids.length) + ' rejected users(s) in users_sha256 message' ;
+                if (msg_users_sha256) error += '. Received sha256 user signatures: ' + msg_users_sha256.join(', ') ;
+                if (unknown_sha256_user_ids.length > 0) error += '. Unknown sha256 user signatures: ' + unknown_sha256_user_ids.join(', ') ;
+                error += '. Received internal user ids: ' + msg_users.join(', ') ;
+                if (invalid_user_ids.length > 0) {
+                    error += '. Expected user ids: ' + my_mutual_friends.join(', ');
+                    error += '. Unknown mutual friends: ' + invalid_user_ids.join(', ');
+                }
                 console.log(pgm + error) ;
                 if (msg_users.length == 0) {
                     mailbox.outbox.push({

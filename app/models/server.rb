@@ -574,7 +574,7 @@ class Server < ActiveRecord::Base
   #   only relevant for direct server to server user compare
   #   not relevant in forwarded users messages
   public
-  def receive_compare_users_message (response, client, pseudo_user_ids)
+  def receive_compare_users_message (response, client, pseudo_user_ids, received_msgtype)
     logger.debug2 "users = #{response}"
     if client
       logger.debug2 "client = #{client} - called from Server.ping. received incoming compare users message. response to outgoing compare users message (create_compare_users_message)"
@@ -719,6 +719,11 @@ class Server < ActiveRecord::Base
     end
 
     return nil if client # client - called from Server.ping
+
+    # server
+
+    return nil if received_msgtype[:users] # more than one ingoing compare users message (response already in messages table)
+    received_msgtype[:users] = true
 
     # server - called from util_controller.ping
     logger.debug2 "add users to response users message. response will be sent in next ping request"
@@ -876,7 +881,7 @@ class Server < ActiveRecord::Base
 
 
   public
-  def receive_online_users_message (response, client)
+  def receive_online_users_message (response, client, received_msgtype)
 
     logger.debug2 "users = #{response}"
     # users = [{"session_id"=>"9c653cde5b1cd771756cf2dc49a1376d", "last_ping_at"=>1427021803.289,
@@ -951,6 +956,9 @@ class Server < ActiveRecord::Base
       return errors.size == 0 ? nil : errors.join(', ')
     end
 
+    return nil if received_msgtype[:online] # more than one ingoing online users message (response already in messages table)
+    received_msgtype[:online] = true
+
     # return online users message to calling gofreerev server
     message = create_online_users_message()
     return nil unless message # no shared online users
@@ -1019,7 +1027,7 @@ class Server < ActiveRecord::Base
 
 
   public
-  def receive_public_keys_message (response, client)
+  def receive_public_keys_message (response, client, received_msgtype)
 
     logger.debug2 "pubkeys = #{response}"
 
@@ -1085,10 +1093,17 @@ class Server < ActiveRecord::Base
     end # each
 
     if !client
-      # any public key requests from server to client. response in next ping request
-      Pubkey.where('server_id = ? and pubkey is null and client_request_at is not null', self.id).each do |p|
-        request << { :did => p.did } # request. no pubkey
+
+      if received_msgtype[:pubkeys]
+        # more than one ingoing public keys (response already in messages table)
+      else
+        # any public key requests from server to client. response in next ping request
+        Pubkey.where('server_id = ? and pubkey is null and client_request_at is not null', self.id).each do |p|
+          request << { :did => p.did } # request. no pubkey
+        end
+        received_msgtype[:pubkeys] = true
       end
+
     end
 
     if request.size > 0
@@ -1128,7 +1143,7 @@ class Server < ActiveRecord::Base
     messages = []
 
     Message.includes(:from_pubkey, :to_pubkey).
-        where('server = ? and pubkeys.server_id is null and to_pubkeys_messages.server_id = ?', false, 1).
+        where('server = ? and pubkeys.server_id is null and to_pubkeys_messages.server_id = ?', false, self.id).
         references(:from_pubkey, :to_pubkey).order(:id).each do |m|
       messages << {:from_did => m.from_did,
                    :from_sha256 => m.from_sha256,
@@ -1173,7 +1188,7 @@ class Server < ActiveRecord::Base
 
 
   public
-  def receive_client_messages (response, client)
+  def receive_client_messages (response, client, received_msgtype)
 
     logger.debug2 "client messages = #{response}"
     # client messages = [{"from_did"=>"14252356907464191530", "from_sha256"=>"14252356907464191530",
@@ -1295,6 +1310,13 @@ class Server < ActiveRecord::Base
     end # each m
 
     logger.debug2 "errors = #{errors.join(', ')}"
+    return errors.size == 0 ? nil : errors.join(', ') if client
+
+    # server
+
+    return nil if received_msgtype[:client] # more than one ingoing client message (response already in messages table)
+    received_msgtype[:client] = true
+
 
     if !client
       # called from receive_message via util_controller.ping
@@ -1312,7 +1334,7 @@ class Server < ActiveRecord::Base
       end
     end
 
-    errors.size == 0 ? nil : errors.join(', ')
+    nil
 
   end # receive_client_messages
 
@@ -1356,6 +1378,7 @@ class Server < ActiveRecord::Base
     client_messages = create_client_messages()
     messages << client_messages if client_messages
 
+    logger.debug2 "messages = #{messages}"
     messages.size == 0 ? nil : messages
 
   end # send_messages
@@ -1476,7 +1499,9 @@ class Server < ActiveRecord::Base
     # 2) receive and process any messages
     if ping_response["messages"]
       return ping_response["messages"]["error"] if ping_response["messages"].has_key? "error"
-      Message.receive_messages true, self.new_did, nil, pseudo_user_ids, ping_response["messages"]["messages"] # true: called from Server.ping
+      # client=true: called from Server.ping. received messages are server messages
+      error = Message.receive_messages true, self.new_did, nil, pseudo_user_ids, ping_response["messages"]["messages"]
+      return error if error
     end
     # 3) todo: etc
 

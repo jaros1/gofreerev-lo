@@ -4882,13 +4882,10 @@ angular.module('gifts', ['ngRoute'])
             if (check_gids.length   > 0) console.log(pgm + 'check_gids = ' + check_gids.join(', ')) ;
             if (ok_gids.length      > 0) console.log(pgm + 'ok_gids = ' + ok_gids.join(', ')) ;
             if (error_gids.length   > 0) console.log(pgm + 'error_gids = ' + error_gids.join(', ')) ;
-            if (ok_gids.length == msg.gifts.length) {
-                console.log(pgm + 'Gift replication finished. ' + ok_gids.length + ' identical gifts were found.') ;
-                return ;
-            }
-            if (ok_gids.length + error_gids.length == msg.gifts.length) {
-                console.log(pgm + 'Gift replication finished. ' + error_gids.length + ' errors and ' + ok_gids.length + ' identical gifts were found.') ;
-                console.log(pgm + 'Gifts with null sha256 values: ' + error_gids.join(', ')) ;
+            if (request_gids.length + send_gids.length + check_gids.length == 0) {
+                console.log(pgm + 'Gift replication finished. ' + ok_gids.length + ' identical gifts '+ error_gids.length + ' gifts with errors and were found' ) ;
+                if (error_gids.length > 0) console.log(pgm + 'Gifts with null sha256 values: ' + error_gids.join(', ')) ;
+                // todo: send error or done response to other client
                 return ;
             }
 
@@ -5019,6 +5016,9 @@ angular.module('gifts', ['ngRoute'])
                     user_id = gift_users[j] ;
                     if (mailbox.mutual_friends.indexOf(user_id) != -1) continue ; // dont include mutual friends in send_gifts.users array
                     user = userService.get_friend(user_id) ;
+                    if (!user) console.log(pgm + 'Warning. Unknown friend user_id ' + user_id) ;
+                    user = userService.get_user(user_id) ;
+                    if (!user) console.log(pgm + 'Error. Cannot add user info for unknown user_id ' + user_id) ;
                     send_gifts_message.users.push({
                         user_id: user.user_id,
                         uid: user.uid,
@@ -5102,6 +5102,17 @@ angular.module('gifts', ['ngRoute'])
                 return ;
             }
 
+            if (mailbox.hasOwnProperty('server_id')) {
+                // translate internal user ids to sha256 signatures before sending sync_gifts message
+                console.log(pgm + 'sync_gifts_message (1) = ' + JSON.stringify(sync_gifts_message));
+                for (i=0 ; i<sync_gifts_message.users.length ; i++) {
+                    user_id = sync_gifts_message.users[i] ;
+                    j = mailbox.mutual_friends.indexOf(user_id) ;
+                    sync_gifts_message.users[i] = mailbox.mutual_friends_sha256[j];
+                }
+                console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
+            }
+
             // JS validate sync_gifts message before placing message in outbox
             if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {
                 // error message has already been written to log
@@ -5123,7 +5134,7 @@ angular.module('gifts', ['ngRoute'])
 
             // check sync_gifts message for logical errors before placing message in outbox
 
-            // check sub message send_gifts for logical errors
+            // 1) check sub message send_gifts for logical errors
             if (sync_gifts_message.send_gifts) {
                 // logical validate send_gifts sub messsage before sending sync_gifts message
                 error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts) ;
@@ -5141,9 +5152,9 @@ angular.module('gifts', ['ngRoute'])
                 }
             }
 
-            // todo: check sub message request_gifts for logical errors
+            // todo: 2) check sub message request_gifts for logical errors
 
-            // todo: check sub message check_gifts for logical errors
+            // todo: 3) check sub message check_gifts for logical errors
 
             // send sync_gifts message
             mailbox.outbox.push(sync_gifts_message) ;
@@ -5183,22 +5194,117 @@ angular.module('gifts', ['ngRoute'])
                 }) ;
                 return ;
             }
+
+            // abort if response to request msg.mid is already in mailbox
+            for (i=0 ; i<mailbox.outbox.length ; i++) {
+                if (mailbox.outbox[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to gifts_sha256 message ' + msg.mid + ' is already in outbox.') ;
+                    return ;
+                }
+            } // for i
+            for (i=0 ; i<mailbox.done.length ; i++) {
+                if (mailbox.done[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to gifts_sha256 message ' + msg.mid + ' is already in done.') ;
+                    return ;
+                }
+            } // for i
+            for (i=0 ; i<mailbox.error.length ; i++) {
+                if (mailbox.error[i].request_mid == msg.mid) {
+                    console.log(pgm + 'Error. Response to gifts_sha256 message ' + msg.mid + ' is already in error.') ;
+                    return ;
+                }
+            } // for i
+
             // move previous gifts_sha256 message to done folder
             if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', true)) return ; // ignore - not found in mailbox
+
+            // check for sync_gifts message from client on other Gofreerev server (using sha256 signature as user_id)
+            var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
+            if (mailbox.hasOwnProperty('server_id')) {
+                console.log(pgm + 'sync_gifts message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids') ;
+                console.log(pgm + 'msg.users (1) = ' + JSON.stringify(msg.users)) ;
+
+                // keep a copy of old sha256 user ids before translation (for debug and error messages)
+                var msg_users_sha256 = [] ;
+                var i ;
+                for (i=0 ; i<msg.users.length ; i++) msg_users_sha256.push(msg.users[i]) ;
+
+                // print debug information for user id 2, 3, 920, 1126. todo: remove
+                var debug_users = [2, 3, 920, 1126], debug_user ;
+                for (i=0 ; i<debug_users.length ; i++) {
+                    debug_user = userService.get_friend(debug_users[i]) ;
+                    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
+                    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
+                } // for i
+
+                // todo: user.sha256 signatures changes when server secret changes
+                // todo: a message received after secret change can be with old sha256 signature.
+                // todo: keep old sha256 signature as a fallback for one or two minutes for old messages
+                // todo: see more todos in userService.get_friend_by_sha256
+                for (i=msg.users.length-1 ; i>= 0 ; i--) {
+                    user_id = msg.users[i] ;
+                    friend = userService.get_friend_by_sha256(user_id) ;
+                    if (friend) {
+                        console.log(pgm + 'translating sha256 user_id ' + user_id + ' to internal user_id ' + friend.user_id) ;
+                        msg.users[i] = friend.user_id ;
+                    }
+                    else {
+                        console.log(pgm + 'unknown sha256 user_id ' + user_id) ;
+                        unknown_sha256_user_ids.push(user_id) ;
+                        msg.users.splice(i,1) ;
+                    }
+                }
+                console.log(pgm + 'msg.users (2) = ' + JSON.stringify(msg.users)) ;
+                if (unknown_sha256_user_ids.length > 0) console.log(pgm + 'unknown_sha256_user_ids = ' + JSON.stringify(unknown_sha256_user_ids)) ;
+            } // if
+
+            // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
+            var my_mutual_friends = mailbox.mutual_friends ;
+            var msg_users = msg.users ;
+            var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
+
+            // todo: msg_users must also be a subset of users from previous gifts_sha256 message now in done folder
+
+            if (invalid_user_ids.length + unknown_sha256_user_ids.length > 0) {
+                // unknown or invalid user in users_sha256 message:
+                error = (invalid_user_ids.length + unknown_sha256_user_ids.length) + ' rejected users(s) in gifts_sync message' ;
+                if (msg_users_sha256) error += '. Received sha256 user signatures: ' + msg_users_sha256.join(', ') ;
+                if (unknown_sha256_user_ids.length > 0) error += '. Unknown sha256 user signatures: ' + unknown_sha256_user_ids.join(', ') ;
+                error += '. Received internal user ids: ' + msg_users.join(', ') ;
+                if (invalid_user_ids.length > 0) {
+                    error += '. Expected user ids: ' + my_mutual_friends.join(', ');
+                    error += '. Unknown mutual friends: ' + invalid_user_ids.join(', ');
+                }
+                console.log(pgm + error) ;
+                if (msg_users.length == 0) {
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        request_mid: msg.mid,
+                        msgtype: 'error',
+                        error: error
+                    }) ;
+                    return ;
+                }
+                // continue without invalid user ids
+                msg_users = $(msg_users).not(invalid_user_ids).get() ;
+            }
 
             // add sub messages (send_gifts, request_gifts and check_gifts) to inbox
             // keep reference to previous gifts_sha256 message - now in mailbox.done array
             if (msg.send_gifts) {
                 msg.send_gifts.request_mid = msg.request_mid ;
+                msg.send_gifts.users = msg_users ;
                 msg.send_gifts.pass = 0 ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
                 mailbox.inbox.push(msg.send_gifts);
             }
             if (msg.request_gifts) {
                 msg.request_gifts.request_mid = msg.request_mid ;
+                msg.request_gifts.users = msg_users ;
                 mailbox.inbox.push(msg.request_gifts) ;
             }
             if (msg.check_gifts) {
                 msg.check_gifts.request_mid = msg.request_mid ;
+                msg.check_gifts.users = msg_users ;
                 mailbox.inbox.push(msg.check_gifts) ;
             }
 

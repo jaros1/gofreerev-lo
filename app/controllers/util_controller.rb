@@ -1366,10 +1366,11 @@ class UtilController < ApplicationController
           end
         end
         if !@json[:error]
-          messages_response = Message.messages ping.did, ping.sha256, params[:messages]
+          error, messages_response = Message.messages ping.did, ping.sha256, params[:messages]
+          @json[:error] = error if error
           @json[:messages] = messages_response if messages_response
         end
-
+        logger.debug2 "@json = #{@json}"
       end
 
       validate_json_response

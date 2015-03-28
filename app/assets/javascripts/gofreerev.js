@@ -4377,13 +4377,13 @@ angular.module('gifts', ['ngRoute'])
                     msg_users_sha256.push(user_id) ;
                 } // for i
 
-                // print debug information for user id 2, 3, 920, 1126. todo: remove
-                var debug_users = [2, 3, 920, 1126], debug_user ;
-                for (i=0 ; i<debug_users.length ; i++) {
-                    debug_user = userService.get_friend(debug_users[i]) ;
-                    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
-                    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
-                } // for i
+                //// print debug information for user id 2, 3, 920, 1126. todo: remove
+                //var debug_users = [2, 3, 920, 1126], debug_user ;
+                //for (i=0 ; i<debug_users.length ; i++) {
+                //    debug_user = userService.get_friend(debug_users[i]) ;
+                //    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
+                //    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
+                //} // for i
 
                 // todo: user.sha256 signatures changes when server secret changes
                 // todo: a message received after secret change can be with old sha256 signature.
@@ -4727,13 +4727,13 @@ angular.module('gifts', ['ngRoute'])
                 var i ;
                 for (i=0 ; i<msg.users.length ; i++) msg_users_sha256.push(msg.users[i]) ;
 
-                // print debug information for user id 2, 3, 920, 1126. todo: remove
-                var debug_users = [2, 3, 920, 1126], debug_user ;
-                for (i=0 ; i<debug_users.length ; i++) {
-                    debug_user = userService.get_friend(debug_users[i]) ;
-                    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
-                    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
-                } // for i
+                //// print debug information for user id 2, 3, 920, 1126. todo: remove
+                //var debug_users = [2, 3, 920, 1126], debug_user ;
+                //for (i=0 ; i<debug_users.length ; i++) {
+                //    debug_user = userService.get_friend(debug_users[i]) ;
+                //    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
+                //    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
+                //} // for i
 
                 // todo: user.sha256 signatures changes when server secret changes
                 // todo: a message received after secret change can be with old sha256 signature.
@@ -5016,8 +5016,8 @@ angular.module('gifts', ['ngRoute'])
                     user_id = gift_users[j] ;
                     if (mailbox.mutual_friends.indexOf(user_id) != -1) continue ; // dont include mutual friends in send_gifts.users array
                     user = userService.get_friend(user_id) ;
-                    if (!user) console.log(pgm + 'Warning. Unknown friend user_id ' + user_id) ;
-                    user = userService.get_user(user_id) ;
+                    // if (!user) console.log(pgm + 'Warning. Unknown friend user_id ' + user_id) ;
+                    if (!user) user = userService.get_user(user_id) ; // fallback to "old" stored user info
                     if (!user) console.log(pgm + 'Error. Cannot add user info for unknown user_id ' + user_id) ;
                     send_gifts_message.users.push({
                         user_id: user.user_id,
@@ -5111,6 +5111,7 @@ angular.module('gifts', ['ngRoute'])
                     sync_gifts_message.users[i] = mailbox.mutual_friends_sha256[j];
                 }
                 console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
+                // todo:must replace
             }
 
             // JS validate sync_gifts message before placing message in outbox
@@ -5229,13 +5230,13 @@ angular.module('gifts', ['ngRoute'])
                 var i ;
                 for (i=0 ; i<msg.users.length ; i++) msg_users_sha256.push(msg.users[i]) ;
 
-                // print debug information for user id 2, 3, 920, 1126. todo: remove
-                var debug_users = [2, 3, 920, 1126], debug_user ;
-                for (i=0 ; i<debug_users.length ; i++) {
-                    debug_user = userService.get_friend(debug_users[i]) ;
-                    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
-                    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
-                } // for i
+                //// print debug information for user id 2, 3, 920, 1126. todo: remove
+                //var debug_users = [2, 3, 920, 1126], debug_user ;
+                //for (i=0 ; i<debug_users.length ; i++) {
+                //    debug_user = userService.get_friend(debug_users[i]) ;
+                //    if (debug_user) console.log(pgm + 'debug_users[' + debug_users[i] + '] = ' + JSON.stringify(debug_user)) ;
+                //    else console.log(pgm + 'debug_users[' + debug_users[i] + '] was not found');
+                //} // for i
 
                 // todo: user.sha256 signatures changes when server secret changes
                 // todo: a message received after secret change can be with old sha256 signature.
@@ -5293,18 +5294,15 @@ angular.module('gifts', ['ngRoute'])
             // keep reference to previous gifts_sha256 message - now in mailbox.done array
             if (msg.send_gifts) {
                 msg.send_gifts.request_mid = msg.request_mid ;
-                msg.send_gifts.users = msg_users ;
                 msg.send_gifts.pass = 0 ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
                 mailbox.inbox.push(msg.send_gifts);
             }
             if (msg.request_gifts) {
                 msg.request_gifts.request_mid = msg.request_mid ;
-                msg.request_gifts.users = msg_users ;
                 mailbox.inbox.push(msg.request_gifts) ;
             }
             if (msg.check_gifts) {
                 msg.check_gifts.request_mid = msg.request_mid ;
-                msg.check_gifts.users = msg_users ;
                 mailbox.inbox.push(msg.check_gifts) ;
             }
 
@@ -5941,7 +5939,7 @@ angular.module('gifts', ['ngRoute'])
                     msg_client_envelope = JSON.parse(msg_json) ;
                     // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
                     // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
-                    console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
+                    // console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
                     if (!msg_client_envelope.messages || !msg_client_envelope.messages.length) {
                         console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
                         continue ;

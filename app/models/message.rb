@@ -313,12 +313,13 @@ class Message < ActiveRecord::Base
       errors << error if error
     end
 
-    return errors.size == 0 ? nil : errors.join(', ') if sender_sha256 # browser client
+    return errors.size == 0 ? nil : errors.join(', ') if sender_sha256 # called from browser client
 
-    server = Server.find_by_new_did(sender_did)
+    # call from other gofreerev server
 
-    # check response for every message types. server must check and return relevant response for each msg type
+    # check response for each message types. server must check and return any response for each message type
     logger.debug2 "received_msgtype (1) = #{received_msgtype}"
+    server = Server.find_by_new_did(sender_did)
     if !received_msgtype[:users]
       # no ingoing compare users message. check for outgoing users message
       if server.secret

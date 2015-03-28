@@ -1526,11 +1526,6 @@
      server must adjust client ping interval so that clients pings are between server pings
      server must be able to disconnect and reject server logins
 
-375) facebook: old invalid api profile picture url
-     invalid url in app 1 - correct url in app 2 - online friends on other gofreerev server was not detected
-     new facebook login was required in app 1
-     must update user sha256 values when user info changes
-
 376) save sha256 signature for facebook profile pictures?
      maybe picture sha256 signature is more stable than profile picture url
 
@@ -1538,4 +1533,17 @@
      UserService.init_friends and update_friends
      ( error after failed friends download from server
 
-select next issue to solve: (rand*374).floor+1
+378) must sent mere user sha256 info to client.
+     sha256 signatures for mutual friends (ping/online) isn't enough
+     there can be user ids for not mutual friends in gifts or comments and only few of then have a user match on other gofreerev server
+     add sha256 signatures for other users.
+     a) in ping :online response
+     b) in friend list download (multiple servers for each user)
+     c) short friends list from ping :friends with changed sha256 signatures
+     best solution is b) + c).
+     but there will always be "unknown" users when receiving send_gifts message on other gofreerev server
+     how to handle unknown users from an other Gofreerev server (negative user id?)
+     handle update to old unknown user from an other Gofreerev server
+     handle change from unknown user to known user when receiving sha256 signature for a previously unknown user
+
+select next issue to solve: (rand*378).floor+1

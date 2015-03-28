@@ -296,7 +296,7 @@ class UtilController < ApplicationController
       if secret_just_changed
         @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
       end
-      users = User.where(:user_id => login_user.friends_hash.keys).includes(:verified_server_users)
+      users = User.where(:user_id => login_user.friends_hash.keys).includes(:server_users, :servers)
       @json[:friends] = [] unless @json[:friends]
       @json[:friends] += users.collect do |user|
         hash = { :user_id => user.id,
@@ -305,12 +305,17 @@ class UtilController < ApplicationController
                  :user_name => user.user_name,
                  :friend => login_user.friends_hash[user.user_id] }
         hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
-        # only include sha256 signature for friends on other Gofreerev servers.
-        # used as user_id when receiving messages from online devices on other Gofreerev servers
-        if user.verified_server_users.size > 0
+        # include sha256 signatures for friends on other Gofreerev servers.
+        # used as user_id when sending and receiving messages to/from other Gofreerev servers
+        verified_server_users = user.server_users.find_all { |su| su.verified_at }
+        if verified_server_users.size > 0
+          # friend on other Gofreerev server
           hash[:sha256] = user.sha256
-          # previous sha256 signature. valid 3 minutes after change of server secret and user sha256 signature updates
           hash[:old_sha256] = user.old_sha256 if secret_just_changed
+          hash[:remote_sha256] = verified_server_users.collect do |v|
+            { :server_id => v.server_id,
+              :sha256 => user.calc_sha256(v.server.secret) }
+          end
         end
         hash
       end
@@ -951,7 +956,7 @@ class UtilController < ApplicationController
         if secret_just_changed
           @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
         end
-        users = User.where(:user_id => login_user.friends_hash.keys).includes(:verified_server_users)
+        users = User.where(:user_id => login_user.friends_hash.keys).includes(:server_users, :servers)
         @json[:friends] += users.collect do |user|
           hash = {:user_id => user.id,
                   :uid => user.uid,
@@ -959,12 +964,16 @@ class UtilController < ApplicationController
                   :user_name => user.user_name,
                   :friend => login_user.friends_hash[user.user_id]}
           hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
-          # only include sha256 signature for friends on other Gofreerev servers.
+          # include sha256 signature for friends on other Gofreerev servers.
           # used as user_id when receiving messages from online users on other Gofreerev servers
-          if user.verified_server_users.size > 0
+          verified_server_users = user.server_users.find_all { |v| v.verified_at }
+          if verified_server_users.size > 0
             hash[:sha256] = user.sha256
-            # previous sha256 signature. valid for 3 minutes after change of server secret and user sha256 signature update
             hash[:old_sha256] = user.old_sha256 if secret_just_changed
+            hash[:remote_sha256] = verified_server_users.collect do |v|
+              { :server_id => v.server_id,
+                :sha256 => user.calc_sha256(v.server.secret) }
+            end
           end
           hash
         end
@@ -1215,10 +1224,7 @@ class UtilController < ApplicationController
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
         # return list of online devices - ignore current session(s) - only online devices with friends are relevant
-        # todo: add information about online devices/friends on other gofreerev servers to online array
-        # todo: don't include :server_id for online devices/friends on this gofreerev server
-        # todo: include server id for online devices/friends on other gofreerev servers
-        # todo: user must accept or reject communication with user on other gofreerev server
+        # todo: user must accept or reject communication with user on other gofreerev server before replicating gifts info
         pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
                            ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f).
             includes(:server)
@@ -1283,26 +1289,30 @@ class UtilController < ApplicationController
         system_secret_at = SystemParameter.secret_at
         if !server and system_secret_at != get_session_value(:system_secret_updated_at)
           # system secret and sha256 signatures for friends on other gofreerev servers changed since last client ping
-          # return short friend list (only friends om other gofreerev servers)
-          # used when receiving messages from clients on other gofreerev servers
+          # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)
+          # used when sending and receiving messages to/from clients on other gofreerev servers
           login_users = User.where(:user_id => login_user_ids)
-          # cache friends info
+          # cache friends info. for friends and people in network
           User.cache_friend_info(login_users)
           # find friends on other Gofreerev servers (must have minimum one verified user in server_users table)
           friends_hash = {}
           login_users.each { |login_user| friends_hash.merge!(login_user.friends_hash)}
-          users = User.where(:user_id => friends_hash.keys).
-              includes(:server_users).where('server_users.verified_at is not null').references(:server_users)
+          users = User.where(:user_id => friends_hash.keys).includes(:server_users, :servers).where('server_users.verified_at is not null').references(:server_users)
+          # return json
           @json[:friends] = users.collect do |user|
             hash = { :user_id => user.id,
                      :uid => user.uid,
                      :provider => user.provider,
                      :user_name => user.user_name,
                      :friend => friends_hash[user.user_id],
-                     :sha256 => user.sha256,
-                     :old_sha256 => user.old_sha256
-            }
+                     :sha256 => user.sha256, # signature on this Gofreerev server
+                     :old_sha256 => user.old_sha256 } # old signature on this gofreerev server
             hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+            # add array with signatures on other Gofreerev servers
+            hash[:remote_sha256] = user.server_users.collect do |v|
+              { :server_id => v.server_id,
+                :sha256 => user.calc_sha256(v.server.secret) }
+            end
             hash
           end
           # old sha256 signatures are valid for 3 minutes after update of system secret

@@ -74,12 +74,27 @@ friends_array_type = {
             # - 1: logged in user, 2: mutual friends, 3: follows, 4: stalked by,
             # - 5: deselected api friends, 6: friends of friends, 7: friends proposals, 8: others
             :friend => {:type => 'integer', :minimum => 1, :maximum => 8},
-            # optional user.sha256 signature on this Gofreerev server.
-            # used as user_id when receiving messages from Other gofreerev servers
-            # only relevant for friends that are using other Gofreerev servers.
+            # three sha256 signatures. included for friends that are using other Gofreerev servers
+            # used as user_id when sending and receiving messages to/from other Gofreerev servers
+            # sha256 signature on this Gofreerev server. used when receiving messages
             :sha256 => {:type => 'string'},
-            # previous sha256 signature. valid for 1-2 minutes after change of server secret
-            :old_sha256 => {:type => 'string'}
+            # previous sha256 signature on this Gofreerev server. valid for 3 minutes after change of server secret
+            :old_sha256 => {:type => 'string'},
+            # array with sha256 signatures on other Gofreerev servers. used when sending messages
+            :remote_sha256 => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        :server_id => { :type => 'integer' },
+                        :sha256 => { :type => 'string'}
+
+                    },
+                    :required => %w(server_id sha256),
+                    :additionalProperties => false
+                },
+                :minItems => 1
+            }
         },
         :required => %w(user_id uid provider user_name friend),
         :additionalProperties => false

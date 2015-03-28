@@ -1533,24 +1533,24 @@ angular.module('gifts', ['ngRoute'])
                 }
                 friends_sha256_last_updated = friends_sha256_update_at;
             }
-            var extern_user_ids = [] ; // format uid/provider - must be unique
+            var extern_user_ids = {} ; // format uid/provider - must be unique
             var extern_user_id ;
             for (i=0 ; i<friends.length ; i++) {
                 extern_user_id = friends[i].uid + '/' + friends[i].provider ;
-                if (extern_user_ids.indexOf(extern_user_id) != -1) console.log(pgm + 'Error. Doublet extern user id ' + extern_user_id + ' in friends array.') ;
-                else extern_user_ids.push(extern_user_id) ;
+                if (extern_user_ids.hasOwnProperty(extern_user_id)) console.log(pgm + 'Error. Doublet extern user id ' + extern_user_id + ' in friends array.') ;
+                else extern_user_ids[extern_user_id] = i ;
             }
             // update friends array with minimal changes (friends info is used in angularJS filters)
             // insert or update
             var refresh_index = false ;
-            var new_friend, j ;
+            var new_friend, j, old_friend ;
             for (i = 0; i < new_friends.length; i++) {
                 new_friend = new_friends[i];
                 // add download unix timestamp to friend info. not used in friends array but used in users array if friend user id is used in gifts or comments
                 if (!new_friend.hasOwnProperty('verified_at')) new_friend.verified_at = Gofreerev.unix_timestamp();
-                j = friends_index_by_user_id[new_friend.user_id];
-                if (j) {
+                if (friends_index_by_user_id.hasOwnProperty(new_friend.user_id)) {
                     // old friend - update changed fields
+                    j = friends_index_by_user_id[new_friend.user_id];
                     if ((friends[j].uid != new_friend.uid) || (friends[j].provider != new_friend.provider)) {
                         // error: unique extern user id cannot be updated (
                         console.log(
@@ -1569,11 +1569,14 @@ angular.module('gifts', ['ngRoute'])
                 else {
                     // insert new friend
                     extern_user_id = new_friend.uid + '/' + new_friend.provider;
-                    if (extern_user_ids.indexOf(extern_user_id) != -1) {
+                    if (extern_user_ids.hasOwnProperty(extern_user_id)) {
                         console.log(pgm + 'Error. Ignoring new friend with doublet extern user id ' + extern_user_id + '.') ;
+                        old_friend = friends[extern_user_ids[extern_user_id]] ;
+                        console.log(pgm + 'old friend = ' + JSON.stringify(old_friend));
+                        console.log(pgm + 'new friend = ' + JSON.stringify(new_friend));
                         continue ;
                     }
-                    extern_user_ids.push(extern_user_id) ;
+                    extern_user_ids[extern_user_id] = friends.length ;
                     friends_index_by_user_id[new_friend.user_id] = friends.length;
                     friends.push(new_friend);
                     refresh_index = true;

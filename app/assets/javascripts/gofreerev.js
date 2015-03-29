@@ -1562,8 +1562,11 @@ angular.module('gifts', ['ngRoute'])
                     if (friends[j].user_name != new_friend.user_name) friends[j].user_name = new_friend.user_name;
                     if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) friends[j].api_profile_picture_url = new_friend.api_profile_picture_url;
                     if (friends[j].friend != new_friend.friend) friends[j].friend = new_friend.friend;
+                    // sha256 & old_sha256 - used when receiving messages from other gofreerev servers
                     if (friends[j].sha256 != new_friend.sha256) friends[j].sha256 = new_friend.sha256;
                     if (friends[j].old_sha256 != new_friend.old_sha256) friends[j].old_sha256 = new_friend.old_sha256;
+                    // remote_256 - used when sending messages to other gofreerev servers
+                    if (JSON.stringify(friends[j].remote_sha256) != JSON.stringify(new_friend.remote_sha256)) friends[j].remote_sha256 = new_friend.remote_sha256;
                     if (friends[j].verified_at != new_friend.verified_at) friends[j].verified_at = new_friend.verified_at;
                 }
                 else {
@@ -3871,7 +3874,7 @@ angular.module('gifts', ['ngRoute'])
                 new_mailboxes_index[new_mailbox.key] = i;
             }
             // update old mailboxes
-            var j, new_mutual_friends, mailbox, hash, k;
+            var j, new_mutual_friends, mailbox, hash, k, friend ;
             for (i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
                 mailbox.online = new_mailboxes_index.hasOwnProperty(mailbox.key);
@@ -3900,8 +3903,19 @@ angular.module('gifts', ['ngRoute'])
                     mailbox.outbox.push(hash);
                 }
                 // user sha256 signatures is only used for remote online devices (users on other Gofreerev users)
-                if (mailbox.hasOwnProperty('server_id')) mailbox.mutual_friends_sha256 = new_mailboxes[j].mutual_friends_sha256;
-            }
+                if (mailbox.hasOwnProperty('server_id')) {
+                    mailbox.mutual_friends_sha256 = new_mailboxes[j].mutual_friends_sha256;
+                    // control. check friend.remote_sha256
+                    for (k=0 ; k<mailbox.mutual_friends.length ; k++) {
+                        friend = userService.get_friend(mailbox.mutual_friends[k]) ;
+                        if (friend) {
+                            console.log(pgm + 'mutual_friends_sha256[' + k + '] = ' + mailbox.mutual_friends_sha256[k]) ;
+                            console.log(pgm + 'friend.remote_sha256 = ' + JSON.stringify(friend.remote_sha256)) ;
+                        }
+                        else console.log(pgm + 'friend with user id ' + mailbox.mutual_friends[k] + ' was not found') ;
+                    } // for k
+                } // if
+            } // for i
             // add new mailboxes
             for (i = 0; i < new_mailboxes.length; i++) {
                 mailbox = new_mailboxes[i];

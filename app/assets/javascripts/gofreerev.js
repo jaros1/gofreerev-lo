@@ -1750,10 +1750,10 @@ angular.module('gifts', ['ngRoute'])
                 //          must know timestamp for secret change on this Gofreerev server
                 //          must request new friend.sha256 signature before processing incoming message
                 // todo: c) client could resend messages in outbox after detecting secret change for other Gofreerev server
-                //          ( changed mutual_friends_sha256 signatures in mailboxes (ping online response)
+                //          ( changed friends.remote_sha256 signatures in mailboxes (ping friends response)
                 //          messages in outbox have been sent but response have not yet been received
                 //          messages are moved from outbox to done or error when response to outgoing message are received
-                //          should also be a speciel error response with unknown sha256 signature flag
+                //          should also be a special error response with unknown sha256 signature flag
                 //          client checks timestamp for secret change and resents old message with new she256 signatures
                 return null ;
             }
@@ -2259,6 +2259,48 @@ angular.module('gifts', ['ngRoute'])
             return external_user_ids ;
         }; // get_external_user_ids ;
 
+        // before send msg to other Gofreerev server. replace internal user ids with remote sha256 signatures from friends
+        // internal user ids = mailbox.mutual_friends = ping.user_ids = mutual_friends from ping online users response
+        // remote sha256 signatures from friends.remote_sha256 hash (from short friends list returned from ping)
+        var user_ids_to_remote_sha256 = function (user_ids, server_id, msg) {
+            var pgm = service + '.user_ids_to_remote_sha256: ' ;
+            var remote_sha256_values = [] ;
+            var i, user_id, friend, remote_sha256 ;
+            for (i=0 ; i<user_ids.length ; i++) {
+                user_id = user_ids[i] ;
+                if (typeof user_id != 'number') {
+                    console.log(pgm + 'System error. Invalid call. User_ids must be an array of integers') ;
+                    console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
+                    console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                    return false ;
+                }
+                friend = get_friend(user_id) ;
+                if (!friend) {
+                    console.log(pgm + 'System error. Cannot send ' + msg.msgtype + ' to other Gofreerev server. Friend with user id ' + user_id + ' was not found') ;
+                    console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                    return false ;
+                }
+                if (!friend.remote_sha256) {
+                    console.log(pgm + 'System error. Cannot send ' + msg.msgtype + ' message to other Gofreerev server. No remote_sha256 hash was found for user id ' + user_id) ;
+                    console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                    console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
+                    return false;
+                }
+                remote_sha256 = friend.remote_sha256[server_id] ;
+                if (!remote_sha256) {
+                    console.log(pgm + 'System error. Cannot send ' + msg.msgtype + ' message to other Gofreerev server. Remote_sha256 was not found for user id ' + user_id + ' and server id ' + server_id) ;
+                    console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                    console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
+                    return false ;
+                }
+                remote_sha256_values.push(remote_sha256) ;
+            } // for i
+
+            // translate ok. overwrite values in input array
+            for (i=0 ; i<user_ids.length ; i++) user_ids[i] = remote_sha256_values[i] ;
+            return true ;
+        }; // user_ids_to_remote_sha256;
+
 
         // user functions (friends and other users used in gifts and comments) ==>
 
@@ -2362,7 +2404,7 @@ angular.module('gifts', ['ngRoute'])
         }; // add_friends_to_users
 
 
-        // <== user functions
+        // <== users functions
 
 
         return {
@@ -2396,7 +2438,8 @@ angular.module('gifts', ['ngRoute'])
             get_external_user_ids: get_external_user_ids,
             add_new_login_users: add_new_login_users,
             get_user: get_user,
-            add_friends_to_users: add_friends_to_users
+            add_friends_to_users: add_friends_to_users,
+            user_ids_to_remote_sha256: user_ids_to_remote_sha256
         };
         // end UserService
     }])
@@ -3916,19 +3959,6 @@ angular.module('gifts', ['ngRoute'])
                     };
                     mailbox.outbox.push(hash);
                 }
-                // user sha256 signatures is only used for remote online devices (users on other Gofreerev users)
-                if (mailbox.hasOwnProperty('server_id')) {
-                    mailbox.mutual_friends_sha256 = new_mailboxes[j].mutual_friends_sha256;
-                    // control. check friend.remote_sha256
-                    for (k=0 ; k<mailbox.mutual_friends.length ; k++) {
-                        friend = userService.get_friend(mailbox.mutual_friends[k]) ;
-                        if (friend) {
-                            // console.log(pgm + 'mutual_friends_sha256[' + k + '] = ' + mailbox.mutual_friends_sha256[k]) ;
-                            // console.log(pgm + 'friend.remote_sha256 = ' + JSON.stringify(friend.remote_sha256)) ;
-                        }
-                        else console.log(pgm + 'Error. friend with user id ' + mailbox.mutual_friends[k] + ' was not found') ;
-                    } // for k
-                } // if
             } // for i
             // add new mailboxes
             for (i = 0; i < new_mailboxes.length; i++) {
@@ -4081,37 +4111,15 @@ angular.module('gifts', ['ngRoute'])
                 users: calc_sha256_for_users(msg.users, oldest_gift_at, ignore_invalid_gifts)
             };
             // console.log(pgm + 'users_sha256_message (1) = ' + JSON.stringify(users_sha256_message)) ;
+
             if (mailbox.hasOwnProperty('server_id')) {
                 // users_sha256 message to user on other Gofreerev server
                 // replace internal user ids with remote sha256 signatures
-                // internal user ids = mailbox.mutual_friends = ping.user_ids = mutual_friends from ping online users response
-                // remote sha256 signatures from friends.remote_sha256 hash (from short friends list returned from ping)
-                var i, user_id, friend, remote_sha256 ;
-                for (i=0 ; i<users_sha256_message.users.length ; i++) {
-                    user_id = users_sha256_message.users[i].user_id ;
-                    friend = userService.get_friend(user_id) ;
-                    if (!friend) {
-                        console.log(pgm + 'System error. Cannot send users_sha256 message to other Gofreerev server. Friend with user id ' + user_id + ' was not found') ;
-                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
-                        console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
-                        return ;
-                    }
-                    if (!friend.remote_sha256) {
-                        console.log(pgm + 'System error. Cannot send users_sha256 message to other Gofreerev server. No remote_sha256 hash was found for user id ' + user_id) ;
-                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
-                        console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
-                        console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
-                        return ;
-                    }
-                    remote_sha256 = friend.remote_sha256[mailbox.server_id] ;
-                    if (!remote_sha256) {
-                        console.log(pgm + 'System error. Cannot send users_sha256 message to other Gofreerev server. Remote_sha256 was not found for user id ' + user_id + ' and server id ' + mailbox.server_id) ;
-                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
-                        console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
-                        console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
-                    }
-                    users_sha256_message.users[i].user_id = remote_sha256 ;
-                } // for i
+                var i, user_ids = [] ;
+                for (i=0 ; i<users_sha256_message.users.length ; i++) user_ids.push(users_sha256_message.users[i].user_id) ;
+                if (!userService.user_ids_to_remote_sha256(user_ids, mailbox.server_id, msg)) return ; // translate error. see log
+                // no errors. replace user ids
+                for (i=0 ; i<users_sha256_message.users.length ; i++) users_sha256_message.users[i].user_id = user_ids[i] ;
             } // if
             console.log(pgm + 'users_sha256_message = ' + JSON.stringify(users_sha256_message)) ;
             
@@ -4595,11 +4603,11 @@ angular.module('gifts', ['ngRoute'])
                 //    "ignore_invalid_gifts":[],
                 //    "users":[920],
                 //    "gifts":[{"gid":"14253148989837740200","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253152345973353338","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253163835441202510","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253166119353097472","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"},{"gid":"14253170024715544645","sha256":"gµï\u0015îé;;¯Æ'åéz²¦]^ý£ß½Rõl\"l\"ö"},{"gid":"14254791174816684686","sha256":"Çî\u0002t 31gõ¤7NÈªãÃÏ\u0018ÂØ\u0013 ×Ü*á\u0013ùÑ"},{"gid":"14255660363225768616","sha256":"·ï^ýEª0W\u0000Ê\u001cãC%âÝ=râ=p[rïYµ²¯¸"},{"gid":"14255663264284720316","sha256":"ÉÛ5}y­\u001cÓÙhuÂÈýËmêFÉê¥±\u0000ýÞ\\\u0015¦"},{"gid":"14255666249033078430","sha256":"yå·¾à¿ÒX\u0013¼\u0005þ8J|¼±¡`|Ýªy¨98ÉJ°"},{"gid":"14255715337351272927","sha256":":# ÅÚ¹Ì\u0015ûì\bJ{Ø\u000eø\u001e/\u001d\u000fÕý³U\u001d«"},{"gid":"14258782920140696549","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}" gofreerev.js:4504:0
-                for (i=0 ; i<gifts_sha256_message.users.length ; i++) {
-                    user_id = gifts_sha256_message.users[i] ;
-                    j = mailbox.mutual_friends.indexOf(user_id) ;
-                    gifts_sha256_message.users[i] = mailbox.mutual_friends_sha256[j];
-                }
+                if (!userService.user_ids_to_remote_sha256(gifts_sha256_message.users, mailbox.server_id, gifts_sha256_message)) {
+                    // todo: send error msg to client that sent users_sha256 message. user_ids_to_remote_sha256 should return error message
+                    return ;
+                } // translate error
+                // translate ok
                 console.log(pgm + 'gifts_sha256_message (2) = ' + JSON.stringify(gifts_sha256_message));
             }
 
@@ -5150,11 +5158,11 @@ angular.module('gifts', ['ngRoute'])
             if (mailbox.hasOwnProperty('server_id')) {
                 // translate internal user ids to sha256 signatures before sending sync_gifts message
                 console.log(pgm + 'sync_gifts_message (1) = ' + JSON.stringify(sync_gifts_message));
-                for (i=0 ; i<sync_gifts_message.users.length ; i++) {
-                    user_id = sync_gifts_message.users[i] ;
-                    j = mailbox.mutual_friends.indexOf(user_id) ;
-                    sync_gifts_message.users[i] = mailbox.mutual_friends_sha256[j];
-                }
+                if (!userService.user_ids_to_remote_sha256(sync_gifts_message.users, mailbox.server_id, sync_gifts_message)) {
+                    // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
+                    return ;
+                } // translate error
+                // translate ok
                 console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
                 // todo:must replace
             }

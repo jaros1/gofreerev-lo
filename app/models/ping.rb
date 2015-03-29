@@ -100,9 +100,6 @@ class Ping < ActiveRecord::Base
   # replicate gifts for mutual friends between online devices
   attr_accessor :mutual_friends
 
-  # array with sha256 signatures for mutual_friends. only used for remove online devices (server_id is not null)
-  attr_accessor :mutual_friends_sha256
-
 
   # pubkeys request from ping. Return pubkeys for list of unique device ids. Used in client communication
   # json validated with pubkeys part of JSON_SCHEMA[:ping_request] / JSON_SCHEMA[:ping_response]

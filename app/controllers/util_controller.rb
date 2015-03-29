@@ -1263,11 +1263,6 @@ class UtilController < ApplicationController
               logger.debug2 "p.user_ids = #{p.user_ids.join(', ')}"
               logger.debug2 "p.friends = #{other_session_friends.join(', ')}"
               logger.debug2 "p.mutual_friends = #{p.mutual_friends.join(', ')}"
-              if p.server_id
-                # remote online device. must use user.sha256 signature in client to client communication
-                logger.debug2 "remote online device. add mutual_friends_sha256 array"
-                p.mutual_friends_sha256 = mutual_friends.collect { |u| u.calc_sha256(p.server.secret) }
-              end
               # keep in list
               false
             end
@@ -1278,7 +1273,6 @@ class UtilController < ApplicationController
             # only relevant for remote online devices. client must know that it is communication with user on an other server
             # and internal user ids for mutual friends cannot be used in cross Gofreerev server communication
             hash[:server_id] = p.server_id if p.server_id
-            hash[:mutual_friends_sha256] = p.mutual_friends_sha256 if p.server_id
             hash
           end
         end

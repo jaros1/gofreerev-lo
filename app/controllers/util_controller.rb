@@ -1285,18 +1285,43 @@ class UtilController < ApplicationController
           logger.debug2 "@json[:online] = #{@json[:online]}"
         end
 
-        # check for changed system secret / changed user.sha256 values
-        system_secret_at = SystemParameter.secret_at
-        if !server and system_secret_at != get_session_value(:system_secret_updated_at)
-          # system secret and sha256 signatures for friends on other gofreerev servers changed since last client ping
+        # return short friends list with sha256 signatures (signatures for users on one or more other gofreerev servers)
+        # 1) return short friends list after changed system secret
+        # 2) return short friends list after changed sha256 values for login users, friends of login users or friend of friends of login users
+        system_secret_changed = false
+        users_sha256_values_changed = false
+        if !server
+          system_secret_at = SystemParameter.secret_at
+          system_secret_changed = (system_secret_at != get_session_value(:system_secret_updated_at))
+          if !system_secret_changed
+            # check if user sha256 signatures have changed since list short friends list download
+            last_short_friends_list_at = get_session_value(:last_short_friends_list_at)
+            if last_short_friends_list_at
+              login_users = User.where(:user_id => login_user_ids)
+              login_users.each do |user|
+                users_sha256_values_changed = true if user.sha256_updated_at and user.sha256_updated_at >= last_short_friends_list_at
+                users_sha256_values_changed = true if user.friend_sha256_updated_at and user.friend_sha256_updated_at >= last_short_friends_list_at
+                break if users_sha256_values_changed
+              end
+            else
+              users_sha256_values_changed = true
+            end
+          end
+        end
+        if system_secret_changed or users_sha256_values_changed
+          time1 = Time.zone.now
+          # system secret and/or sha256 signatures for users has changed since last client ping
           # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)
-          # used when sending and receiving messages to/from clients on other gofreerev servers
-          login_users = User.where(:user_id => login_user_ids)
+
+          # todo: should also return this short friend list when secret changes on other gofreerev servers
+
+          login_users = User.where(:user_id => login_user_ids) unless login_users
           # cache friends info. for friends and people in network
           User.cache_friend_info(login_users)
           # find friends on other Gofreerev servers (must have minimum one verified user in server_users table)
           friends_hash = {}
           login_users.each { |login_user| friends_hash.merge!(login_user.friends_hash)}
+          set_session_value(:last_short_friends_list_at, Time.zone.now)
           users = User.where(:user_id => friends_hash.keys).includes(:server_users, :servers).where('server_users.verified_at is not null').references(:server_users)
           # return json
           @json[:friends] = users.collect do |user|
@@ -1305,8 +1330,8 @@ class UtilController < ApplicationController
                      :provider => user.provider,
                      :user_name => user.user_name,
                      :friend => friends_hash[user.user_id],
-                     :sha256 => user.sha256, # signature on this Gofreerev server
-                     :old_sha256 => user.old_sha256 } # old signature on this gofreerev server
+                     :sha256 => user.sha256 } # signature on this Gofreerev server
+            hash[:old_sha256] = user.old_sha256 if user.old_sha256 # old signature on this gofreerev server
             hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
             # add array with signatures on other Gofreerev servers
             hash[:remote_sha256] = user.server_users.collect do |v|
@@ -1316,9 +1341,12 @@ class UtilController < ApplicationController
             hash
           end
           # old sha256 signatures are valid for 3 minutes after update of system secret
-          set_session_value :system_secret_updated_at, SystemParameter.secret_at
+          set_session_value :system_secret_updated_at, system_secret_at if system_secret_changed
           @json[:friends_sha256_update_at] = system_secret_at.to_i
-        end
+          time2 = Time.zone.now
+          elapsed = (time2-time1)
+          logger.debug2 "elapsed = #{elapsed}"
+        end # short friends list
 
         # process additional ping operations (new gifts, public keys, sync gifts between clients etc)
 

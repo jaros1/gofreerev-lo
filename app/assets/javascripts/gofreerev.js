@@ -1533,7 +1533,7 @@ angular.module('gifts', ['ngRoute'])
                 }
                 friends_sha256_last_updated = friends_sha256_update_at;
             }
-            var extern_user_ids = {} ; // format uid/provider - must be unique
+            var extern_user_ids = {} ; // extern user id uid/provider - must be unique
             var extern_user_id ;
             for (i=0 ; i<friends.length ; i++) {
                 extern_user_id = friends[i].uid + '/' + friends[i].provider ;
@@ -6103,10 +6103,6 @@ angular.module('gifts', ['ngRoute'])
                         if (response.data.error == 'Not logged in') userService.logout('*') ;
                     }
 
-                    // check online users/devices - create a mail box for each online device
-                    console.log(pgm + 'ok. online = ' + JSON.stringify(response.data.online)) ; // todo: remove
-                    if (response.data.online) giftService.update_mailboxes(response.data.online) ;
-
                     if (response.data.friends) {
                         // system secret and friends sha256 signatures has been changed. update friend with new information
                         // old sha256 signature is valid for 3 minutes after friends_sha256_update_at unix timestamp
@@ -6114,6 +6110,10 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'ok. friends_sha256_update_at = ' + JSON.stringify(response.data.friends_sha256_update_at)) ;
                         userService.update_friends(response.data.friends, false, response.data.friends_sha256_update_at) ; // replace=false - add new friends
                     }
+
+                    // check online users/devices - create a mail box for each online device
+                    console.log(pgm + 'ok. online = ' + JSON.stringify(response.data.online)) ; // todo: remove
+                    if (response.data.online) giftService.update_mailboxes(response.data.online) ;
 
                     // check for new public keys for online users/devices
                     if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;

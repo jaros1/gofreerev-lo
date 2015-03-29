@@ -346,9 +346,14 @@ class Session < ActiveRecord::Base
   # all sessions must download updated sha256 signatures after change in system secret / user sha256 signatures
   # datetime in model and database
 
-  # 19) created_at
+  # 19) last_short_friends_list_at - timestamp for last short friends list download in util_controller.ping
+  # relevant client sessions must download updated sha256 signatures after change in user information for login users,
+  # friends of login users and friend of friends of login users
+  # datetime in model and database
 
-  # 20) updated_at
+  # 20) created_at
+
+  # 21) updated_at
 
   # secret from session cookie. encrypt/decrypt data in sessions table with secret from cookie
   attr_accessor :secret
@@ -366,6 +371,7 @@ class Session < ActiveRecord::Base
       when :language then self.language = value
       when :last_row_at then self.last_row_at = value
       when :last_row_id then self.last_row_id = value
+      when :last_short_friends_list_at then self.last_short_friends_list_at = value
       when :refresh_tokens then self.refresh_tokens = value
       when :server then self.server = value
       when :state then self.state = value

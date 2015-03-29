@@ -402,6 +402,9 @@ class User < ActiveRecord::Base
   # 22) old_sha256. sha256 signature with secret, uid/provider and user_name
   # used as fallback option when receiving messages from clients on other gofreerev servers
 
+  # 23) friend_sha256_updated_at. timestamp for last sha256 signature update for friend or for friend of friend.
+  # clients must download and use newest sha256 signatures (short friend list returned from util_controller.ping)
+
   # change currency in page header.
   attr_accessor :new_currency
 
@@ -2394,6 +2397,48 @@ class User < ActiveRecord::Base
     end
     Base64.encode64(Digest::SHA256.digest(sha256_input)).gsub(/\n$/,'')
   end
+
+
+  # check/update sha256
+  # 1) update sha256 for user
+  # 2) mark sha256 as updated for online friends (must download new sha256 signatures - short friends list from ping response)
+  # 3) mark sha256 as updated for online friends of friends (must download new sha256 signatures - short friends list from ping response)
+  def update_sha256
+    old_sha256 = self.sha256
+    new_sha256 = self.calc_sha256(SystemParameter.secret)
+    return if old_sha256 == new_sha256
+    # loop - system secret may have to change to keep sha256 signatures unique
+    loop do
+      if !User.find_by_sha256(new_sha256)
+        # new unique sha256
+        # 1) update sha256 for user
+        self.old_sha256 = old_sha256
+        self.sha256 = new_sha256
+        self.sha256_updated_at = Time.zone.now
+        # 2) update sha256 timestamp for users that is a) friend of user. b) online user and c) verified user
+        online_user_ids = []
+        Ping.where(:server_id => nil).each { |p| online_user_ids += p.user_ids }
+        online_user_ids.uniq!
+        User.where(:user_id =>
+                       Friend.select(:user_id_receiver).
+                           where(:user_id_giver => self.user_id). # just updated user
+                       where(:user_id_receiver => online_user_ids). # online users
+                       where(:user_id_receiver => ServerUser.select(:user_id).where('verified_at is not null'))). # remote users
+        update_all(:friend_sha256_updated_at => Time.zone.now)
+        # 3) update sha256 timestamp for users that is a) friend of friend. b) online user and c) verified user
+        User.where(:user_id =>
+                       Friend.select(:user_id_receiver).
+                           where(:user_id_giver => Friend.select(:user_id_receiver).where(:user_id_giver => self.user_id)). # friend of just updated user
+                       where(:user_id_receiver => online_user_ids). # online users
+                       where(:user_id_receiver => ServerUser.select(:user_id).where('verified_at is not null'))). # remote users
+        update_all(:friend_sha256_updated_at => Time.zone.now)
+        break
+      end
+      # doublet sha256 signature. must generate new system secret
+      SystemParameter.new_secret
+      new_sha256 = self.calc_sha256(SystemParameter.secret)
+    end # loop
+  end # update_sha256
 
 
   ##############

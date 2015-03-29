@@ -1546,4 +1546,8 @@
      handle update to old unknown user from an other Gofreerev server
      handle change from unknown user to known user when receiving sha256 signature for a previously unknown user
 
-select next issue to solve: (rand*378).floor+1
+379) remote users not online
+     must allow for a longer interval for remote online users (
+     remote server must filter online users before returning rows
+
+select next issue to solve: (rand*379).floor+1

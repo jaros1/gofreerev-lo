@@ -318,13 +318,7 @@ class Friend < ActiveRecord::Base
       user.api_profile_url         = new_friends[user_id][:api_profile_url]
       user.api_profile_picture_url = new_friends[user_id][:api_profile_picture_url]
       user.no_api_friends          = new_friends[user_id][:no_api_friends]
-      # user.sha256 signature must be unique. generate new secret if doublet sha256 signatures is found
-      loop do
-        user.sha256 = user.calc_sha256(SystemParameter.secret)
-        break unless User.find_by_sha256(user.sha256)
-        SystemParameter.new_secret # new login is required for all server to server sessions
-      end
-      user.sha256_updated_at = Time.zone.now
+      user.update_sha256
       user.save!
       new_users[user_id] = user
     end
@@ -413,20 +407,7 @@ class Friend < ActiveRecord::Base
             friend_user.no_api_friends = hash[:no_api_friends]
           end
         end
-        # check/update sha256
-        loop do
-          new_sha256 = friend_user.calc_sha256(SystemParameter.secret)
-          break if friend_user.sha256 == new_sha256
-          if !User.find_by_sha256(new_sha256)
-            # new unique sha256
-            friend_user.old_sha256 = friend_user.sha256
-            friend_user.sha256 = new_sha256
-            friend_user.sha256_updated_at = Time.zone.now
-            break
-          end
-          # doublet sha256 signature. must generate new system secret
-          SystemParameter.new_secret
-        end # loop
+        friend_user.update_sha256
         friend_user.save! if friend_user.changed?
       end
 

@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150326093519) do
+ActiveRecord::Schema.define(version: 20150329063703) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -261,8 +261,8 @@ ActiveRecord::Schema.define(version: 20150326093519) do
   add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
 
   create_table "sessions", force: true do |t|
-    t.string   "session_id",               limit: 32
-    t.integer  "client_userid",                       default: 0
+    t.string   "session_id",                 limit: 32
+    t.integer  "client_userid",                         default: 0
     t.text     "created"
     t.text     "expires_at"
     t.text     "flash_id"
@@ -281,6 +281,7 @@ ActiveRecord::Schema.define(version: 20150326093519) do
     t.text     "sha256"
     t.boolean  "server"
     t.datetime "system_secret_updated_at"
+    t.datetime "last_short_friends_list_at"
   end
 
   add_index "sessions", ["session_id", "client_userid"], name: "index_session_session_id", unique: true, using: :btree
@@ -325,7 +326,7 @@ ActiveRecord::Schema.define(version: 20150326093519) do
   end
 
   create_table "users", force: true do |t|
-    t.string   "user_id",                 limit: 40
+    t.string   "user_id",                  limit: 40
     t.text     "user_name"
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -341,14 +342,15 @@ ActiveRecord::Schema.define(version: 20150326093519) do
     t.datetime "last_login_at"
     t.datetime "deauthorized_at"
     t.datetime "last_friends_find_at"
-    t.string   "language",                limit: 2
+    t.string   "language",                 limit: 2
     t.text     "access_token"
     t.text     "access_token_expires"
     t.text     "refresh_token"
-    t.string   "share_account_id",        limit: 20
-    t.string   "sha256",                  limit: 45
-    t.string   "old_sha256",              limit: 45
+    t.string   "share_account_id",         limit: 20
+    t.string   "sha256",                   limit: 45
+    t.string   "old_sha256",               limit: 45
     t.datetime "sha256_updated_at"
+    t.datetime "friend_sha256_updated_at"
   end
 
   add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree

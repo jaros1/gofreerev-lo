@@ -1074,7 +1074,7 @@ class UtilController < ApplicationController
       logger.debug2 "server = #{server}"
 
       if server
-        logger.debug2 "validate ping signature"
+        logger.debug2 "validate signature for ping request"
         site_url = login_user_ids.first
         logger.debug2 "site_url = #{site_url}"
         signature = Server.ping_signature(get_session_value(:did), get_session_value(:client_secret), params)
@@ -1223,10 +1223,14 @@ class UtilController < ApplicationController
         logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
-        # return list of online devices - ignore current session(s) - only online devices with friends are relevant
+        # return list of online devices - ignore current session(s) - only pings from friends are relevant
+        # note that pings from other gofreerev servers (server_id is not null) can be older than pings from local users
+        # local users must ping server once every server ping cycle ( *2 = allow delayed pings )
+        # pings from remote users must max be one minute old. received in online_users server to server message
         # todo: user must accept or reject communication with user on other gofreerev server before replicating gifts info
-        pings = Ping.where("(session_id <> ? or client_userid <> ?) and last_ping_at > ?",
-                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f).
+        pings = Ping.where('(session_id <> ? or client_userid <> ?) and ' +
+                           '(server_id is null and last_ping_at > ? or server_id is not null and last_ping_at > ?)',
+                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f, 1.minute.ago).
             includes(:server)
         if pings.size > 0
           # found other online devices

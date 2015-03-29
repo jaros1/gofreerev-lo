@@ -6096,25 +6096,20 @@ angular.module('gifts', ['ngRoute'])
                     // validate ping response received from server
                     // todo: report ping errors to inbox.
                     if (Gofreerev.is_json_response_invalid(pgm, response.data, 'ping', '')) return ;
-
                     // process ping response
                     if (response.data.error) {
                         console.log(pgm + 'error: ' + response.data.error) ;
                         if (response.data.error == 'Not logged in') userService.logout('*') ;
                     }
-
                     if (response.data.friends) {
                         // system secret and friends sha256 signatures has been changed. update friend with new information
                         // old sha256 signature is valid for 3 minutes after friends_sha256_update_at unix timestamp
-                        console.log(pgm + 'ok. friends = ' + JSON.stringify(response.data.friends)) ;
-                        console.log(pgm + 'ok. friends_sha256_update_at = ' + JSON.stringify(response.data.friends_sha256_update_at)) ;
+                        // console.log(pgm + 'ok. friends = ' + JSON.stringify(response.data.friends)) ;
+                        // console.log(pgm + 'ok. friends_sha256_update_at = ' + JSON.stringify(response.data.friends_sha256_update_at)) ;
                         userService.update_friends(response.data.friends, false, response.data.friends_sha256_update_at) ; // replace=false - add new friends
                     }
-
                     // check online users/devices - create a mail box for each online device
-                    console.log(pgm + 'ok. online = ' + JSON.stringify(response.data.online)) ; // todo: remove
                     if (response.data.online) giftService.update_mailboxes(response.data.online) ;
-
                     // check for new public keys for online users/devices
                     if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server

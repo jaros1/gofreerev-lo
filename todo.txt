@@ -1546,8 +1546,8 @@
      handle update to old unknown user from an other Gofreerev server
      handle change from unknown user to known user when receiving sha256 signature for a previously unknown user
 
-379) remote users not online
-     must allow for a longer interval for remote online users (
-     remote server must filter online users before returning rows
+380) js: add remote_sha256 to friends array
+     compare mailbox.mutual_friends_sha256 (ping/online) and remote_sha256 (ping/friends)
+     mutual_friends_sha256 should also be in friends.remote_sha256
 
-select next issue to solve: (rand*379).floor+1
+select next issue to solve: (rand*380).floor+1

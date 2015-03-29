@@ -769,16 +769,21 @@ class Server < ActiveRecord::Base
 
   # send information about online mutual users to other gofreerev server
   # merge information in pings table with verified matches in server_users table
-  # using user sha256 signatures. No real user information is exchanged
-  # todo: use pseudo session ids when communicating with other gofreerev servers
-  # todo: only include mutual_friends that is in server_users table
+  # using user remote sha256 signatures. No user information is exchanged
   protected
   def create_online_users_message
 
-    # find any online users in pings table
-    pings = Ping.where('server_id is null').order('session_id, client_userid, last_ping_at desc')
+    # get server ping cycle. each client should ping server once every server ping cycle (*2 = allow delayed pings)
+    s = Sequence.get_server_ping_cycle
+    return nil unless s
+    server_ping_cycle = s.value
 
-    # remove server pings and remove old pings. only last ping for each did is relevant
+    # find online users in pings table.
+    pings = Ping.where('last_ping_at <= ? and last_ping_at > ? and server_id is null',
+                       Time.zone.now.to_f, (server_ping_cycle*2/1000).seconds.ago.to_f).
+        order('session_id, client_userid, last_ping_at desc')
+
+    # remove server pings and remove "old" pings. only last ping for each did is relevant
     old_key = 'x'
     pings.delete_if do |p|
       server = (p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\//)

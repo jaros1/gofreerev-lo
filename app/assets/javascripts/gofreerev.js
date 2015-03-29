@@ -1490,6 +1490,12 @@ angular.module('gifts', ['ngRoute'])
             }
         } // check_friend_lists
 
+        var remote_sha256_array_to_hash = function(remote_sha256_array) {
+            var remote_sha256_hash = {}, i ;
+            for (i=0 ; i<remote_sha256_array.length ; i++) remote_sha256_hash[remote_sha256_array[i].server_id] = remote_sha256_array[i].sha256 ;
+            return remote_sha256_hash ;
+        } // remote_sha256_to_hash
+
         // init array with friends init.
         // initialized at page load and after device login with friend list for all login providers
         // params:
@@ -1503,20 +1509,25 @@ angular.module('gifts', ['ngRoute'])
             friends_index_by_user_id = {};
             friends_index_by_sha256 = {} ;
             friends_index_by_old_sha256 = {} ;
-            var i, friend ;
+            var i, friend, hash ;
             for (i=0 ; i<friends.length ; i++) {
                 friend = friends[i] ;
                 friends_index_by_user_id[friend.user_id] = i;
                 // only friends on other Gofreerev servers.
-                // sha256 signature is used when receiving messages from users on other Gofreerev servers
+                // sha256 and old_sha256 signatures is used when receiving messages from users on other Gofreerev servers
                 if (friend.hasOwnProperty('sha256')) friends_index_by_sha256[friend.sha256] = i ;
                 // old sha256 signatures. Valid for 1-2 minutes after changing server secret.
                 // only relevant if secret was changed just before page load or api provider login (friend list downloads)
                 if (friend.hasOwnProperty('old_sha256')) friends_index_by_sha256[friend.old_sha256] = i ;
+                // remote_sha256 - only friends on remote servers - used when sending messages to other Gofreerev servers
+                // make sure that remote_sha256 is a hash with server id as key
+                if (friend.hasOwnProperty('remote_sha256') && (friend.remote_sha256.constructor == Array)) {
+                    friend.remote_sha256 = remote_sha256_array_to_hash(friend.remote_sha256) ;
+                }
             }
             console.log(pgm + 'friends = ' + JSON.stringify(friends)) ;
             check_friend_lists() ;
-        };
+        }; // init_friends
 
         // update friends js array: replace: true: overwrite/replace old friends, false: add/keep old friends
         // called from do_tasks after api and device login. new friend lists downloaded from api provider
@@ -1543,7 +1554,7 @@ angular.module('gifts', ['ngRoute'])
             // update friends array with minimal changes (friends info is used in angularJS filters)
             // insert or update
             var refresh_index = false ;
-            var new_friend, j, old_friend ;
+            var new_friend, j, old_friend, remote_sha256 ;
             for (i = 0; i < new_friends.length; i++) {
                 new_friend = new_friends[i];
                 // add download unix timestamp to friend info. not used in friends array but used in users array if friend user id is used in gifts or comments
@@ -1560,13 +1571,22 @@ angular.module('gifts', ['ngRoute'])
                         continue;
                     }
                     if (friends[j].user_name != new_friend.user_name) friends[j].user_name = new_friend.user_name;
-                    if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) friends[j].api_profile_picture_url = new_friend.api_profile_picture_url;
+                    if (friends[j].api_profile_picture_url != new_friend.api_profile_picture_url) {
+                        friends[j].api_profile_picture_url = new_friend.api_profile_picture_url;
+                    }
                     if (friends[j].friend != new_friend.friend) friends[j].friend = new_friend.friend;
                     // sha256 & old_sha256 - used when receiving messages from other gofreerev servers
                     if (friends[j].sha256 != new_friend.sha256) friends[j].sha256 = new_friend.sha256;
                     if (friends[j].old_sha256 != new_friend.old_sha256) friends[j].old_sha256 = new_friend.old_sha256;
-                    // remote_256 - used when sending messages to other gofreerev servers
-                    if (JSON.stringify(friends[j].remote_sha256) != JSON.stringify(new_friend.remote_sha256)) friends[j].remote_sha256 = new_friend.remote_sha256;
+                    // remote_sha256 - used when sending messages to other gofreerev servers
+                    // make sure that remote_sha256 is a hash
+                    if (new_friend.hasOwnProperty('remote_sha256')) {
+                        remote_sha256 = new_friend.remote_sha256 ;
+                        if (remote_sha256.constructor == Array) remote_sha256 = remote_sha256_array_to_hash(remote_sha256) ;
+                        if (!friends[j].hasOwnProperty('remote_sha256')) friends[j].remote_sha256 = remote_sha256 ;
+                        else if (JSON.stringify(remote_sha256) != JSON.stringify(friends[j].remote_sha256)) friends[j].remote_sha256 = remote_sha256 ;
+                    }
+                    else if (friends[j].hasOwnProperty('remote_sha256')) delete friends[j].remote_sha256 ;
                     if (friends[j].verified_at != new_friend.verified_at) friends[j].verified_at = new_friend.verified_at;
                 }
                 else {
@@ -1578,6 +1598,9 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'old friend = ' + JSON.stringify(old_friend));
                         console.log(pgm + 'new friend = ' + JSON.stringify(new_friend));
                         continue ;
+                    }
+                    if (new_friend.hasOwnProperty('remote_sha256') && (new_friend.remote_sha256.constructor == Array)) {
+                        new_friend.remote_sha256 = remote_sha256_array_to_hash(new_friend.remote_sha256) ;
                     }
                     extern_user_ids[extern_user_id] = friends.length ;
                     friends_index_by_user_id[new_friend.user_id] = friends.length;
@@ -3856,6 +3879,7 @@ angular.module('gifts', ['ngRoute'])
             } // for did
         }; // post_symmetric_password_setup
 
+
         // mailbox actions:
         // - online => offline - continue to buffer messages in javascript arrays
         // - old offline => online - deliver old messages in next ping
@@ -3890,16 +3914,6 @@ angular.module('gifts', ['ngRoute'])
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(new_mutual_friends))
                     };
-                    if (mailbox.hasOwnProperty('server_id')) {
-                        // users_sha256 message to user on other Gofreerev server
-                        // add array with user.sha256 signatures mutual friends
-                        // internal user ids are translated to signatures before message is sent
-                        hash.users_sha256 = [] ;
-                        for (j=0 ; j<new_mutual_friends.length ; j++) {
-                            k = mailbox.mutual_friends.indexOf(new_mutual_friends[j]) ;
-                            hash.users_sha256.push(mailbox.mutual_friends_sha256(k)) ;
-                        }
-                    }
                     mailbox.outbox.push(hash);
                 }
                 // user sha256 signatures is only used for remote online devices (users on other Gofreerev users)
@@ -3909,10 +3923,10 @@ angular.module('gifts', ['ngRoute'])
                     for (k=0 ; k<mailbox.mutual_friends.length ; k++) {
                         friend = userService.get_friend(mailbox.mutual_friends[k]) ;
                         if (friend) {
-                            console.log(pgm + 'mutual_friends_sha256[' + k + '] = ' + mailbox.mutual_friends_sha256[k]) ;
-                            console.log(pgm + 'friend.remote_sha256 = ' + JSON.stringify(friend.remote_sha256)) ;
+                            // console.log(pgm + 'mutual_friends_sha256[' + k + '] = ' + mailbox.mutual_friends_sha256[k]) ;
+                            // console.log(pgm + 'friend.remote_sha256 = ' + JSON.stringify(friend.remote_sha256)) ;
                         }
-                        else console.log(pgm + 'friend with user id ' + mailbox.mutual_friends[k] + ' was not found') ;
+                        else console.log(pgm + 'Error. friend with user id ' + mailbox.mutual_friends[k] + ' was not found') ;
                     } // for k
                 } // if
             } // for i
@@ -3938,12 +3952,6 @@ angular.module('gifts', ['ngRoute'])
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(mailbox.mutual_friends))
                     } ;
-                    if (mailbox.hasOwnProperty('server_id')) {
-                        // users_sha256 message to user on other Gofreerev server
-                        // add array with user.sha256 signatures mutual friends
-                        // internal user ids are translated to signatures before message is sent
-                        hash.users_sha256 = mailbox.mutual_friends_sha256 ;
-                    }
                     mailbox.outbox.push(hash);
                     mailboxes.push(mailbox);
                 }
@@ -4073,16 +4081,36 @@ angular.module('gifts', ['ngRoute'])
                 users: calc_sha256_for_users(msg.users, oldest_gift_at, ignore_invalid_gifts)
             };
             // console.log(pgm + 'users_sha256_message (1) = ' + JSON.stringify(users_sha256_message)) ;
-            if (msg.hasOwnProperty('users_sha256')) {
+            if (mailbox.hasOwnProperty('server_id')) {
                 // users_sha256 message to user on other Gofreerev server
-                // replace internal user ids with user sha256 signatures
+                // replace internal user ids with remote sha256 signatures
                 // internal user ids = mailbox.mutual_friends = ping.user_ids = mutual_friends from ping online users response
-                // sha256 signatures = mailbox.mutual_friends_sha256 = mutual_friends_sha256 from ping online users response
-                var i, user_id, j ;
+                // remote sha256 signatures from friends.remote_sha256 hash (from short friends list returned from ping)
+                var i, user_id, friend, remote_sha256 ;
                 for (i=0 ; i<users_sha256_message.users.length ; i++) {
                     user_id = users_sha256_message.users[i].user_id ;
-                    j = mailbox.mutual_friends.indexOf(user_id) ;
-                    users_sha256_message.users[i].user_id = mailbox.mutual_friends_sha256[j] ;
+                    friend = userService.get_friend(user_id) ;
+                    if (!friend) {
+                        console.log(pgm + 'System error. Cannot send users_sha256 message to other Gofreerev server. Friend with user id ' + user_id + ' was not found') ;
+                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+                        console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                        return ;
+                    }
+                    if (!friend.remote_sha256) {
+                        console.log(pgm + 'System error. Cannot send users_sha256 message to other Gofreerev server. No remote_sha256 hash was found for user id ' + user_id) ;
+                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+                        console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                        console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
+                        return ;
+                    }
+                    remote_sha256 = friend.remote_sha256[mailbox.server_id] ;
+                    if (!remote_sha256) {
+                        console.log(pgm + 'System error. Cannot send users_sha256 message to other Gofreerev server. Remote_sha256 was not found for user id ' + user_id + ' and server id ' + mailbox.server_id) ;
+                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+                        console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
+                        console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
+                    }
+                    users_sha256_message.users[i].user_id = remote_sha256 ;
                 } // for i
             } // if
             console.log(pgm + 'users_sha256_message = ' + JSON.stringify(users_sha256_message)) ;
@@ -4293,8 +4321,8 @@ angular.module('gifts', ['ngRoute'])
             // check of the two devices agree about password
             if (device.password_md5 && msg.length == 3 && (device.password_md5 == msg[2])) {
                 console.log(pgm + 'symmetric password setup completed.');
-                return true; // continue with ...
                 // console.log(pgm + 'symmetric password setup completed. device = ' + JSON.stringify(device)) ;
+                return true; // continue with ...
             }
             else {
                 console.log(pgm + 'symmetric password setup in progress.');

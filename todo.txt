@@ -1550,4 +1550,8 @@
      compare mailbox.mutual_friends_sha256 (ping/online) and remote_sha256 (ping/friends)
      mutual_friends_sha256 should also be in friends.remote_sha256
 
-select next issue to solve: (rand*380).floor+1
+381) better to use mix encrypted messages than symmetric encrypted messages?
+     rsa encrypted messages different for identical content
+     sym encrypted messages identical for identical content
+
+select next issue to solve: (rand*381).floor+1

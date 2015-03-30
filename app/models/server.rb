@@ -899,6 +899,10 @@ class Server < ActiveRecord::Base
       logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
+    # delete old remote pings
+    # note - timestamps in pings table are decimal(13,3) - always use number timestamps in compare
+    Ping.where('server_id = ? and last_ping_at < ?', self.id, 2.minute.ago.to_f).delete_all
+
     errors = []
 
     response.each do |ping|

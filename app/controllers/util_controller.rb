@@ -1228,9 +1228,10 @@ class UtilController < ApplicationController
         # local users must ping server once every server ping cycle ( *2 = allow delayed pings )
         # pings from remote users must max be one minute old. received in online_users server to server message
         # todo: user must accept or reject communication with user on other gofreerev server before replicating gifts info
+        # note - timestamps in pings table are decimal(13,3) - always use number timestamps in compare
         pings = Ping.where('(session_id <> ? or client_userid <> ?) and ' +
                            '(server_id is null and last_ping_at > ? or server_id is not null and last_ping_at > ?)',
-                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f, 1.minute.ago).
+                           ping.session_id, ping.client_userid, (2*old_server_ping_cycle/1000).seconds.ago.to_f, 1.minute.ago.to_f).
             includes(:server)
         if pings.size > 0
           # found other online devices

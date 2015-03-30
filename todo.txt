@@ -1533,15 +1533,7 @@
      UserService.init_friends and update_friends
      ( error after failed friends download from server
 
-378) must sent mere user sha256 info to client.
-     sha256 signatures for mutual friends (ping/online) isn't enough
-     there can be user ids for not mutual friends in gifts or comments and only few of then have a user match on other gofreerev server
-     add sha256 signatures for other users.
-     a) in ping :online response
-     b) in friend list download (multiple servers for each user)
-     c) short friends list from ping :friends with changed sha256 signatures
-     best solution is b) + c).
-     but there will always be "unknown" users when receiving send_gifts message on other gofreerev server
+378) there will always be "unknown" users when receiving send_gifts message on other gofreerev server
      how to handle unknown users from an other Gofreerev server (negative user id?)
      handle update to old unknown user from an other Gofreerev server
      handle change from unknown user to known user when receiving sha256 signature for a previously unknown user
@@ -1550,4 +1542,72 @@
      rsa encrypted messages different for identical content
      sym encrypted messages identical for identical content
 
-select next issue to solve: (rand*381).floor+1
+382) symmetric password handshake between two clients only succeeds sometimes
+
+383) symmetric encrypt uploaded images with password and add password to gifts
+     http://alicebobandmallory.com/articles/2010/10/14/encrypt-images-in-javascript
+     http://plea.se/me/cryptimage3.html
+     http://tutorialzine.com/2013/11/javascript-file-encrypter/
+
+384) add http timeout to Server.ping
+     ping_signature: sha256       = 310b7cc09b26feff18e59acddd5f5d3ca694b6d0f15222fe3abcc23a60ed504e
+     ping: signature_filename = /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/public/signatures/d2/3e/c4/82/43/25/2b/32/43/19/07/e0/d0/f7/84/03/1427685795407.txt
+     ping: signature = 310b7cc09b26feff18e59acddd5f5d3ca694b6d0f15222fe3abcc23a60ed504e
+     ping: unsecure post http://laptop2.gofreerev.com:3000/util/ping.json
+     HTTPClient::ReceiveTimeoutError: execution expired
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient/session.rb:876:in `gets'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient/session.rb:876:in `block in parse_header'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient/session.rb:872:in `parse_header'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient/session.rb:855:in `read_header'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient/session.rb:662:in `get_header'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:1247:in `do_get_header'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:1194:in `do_get_block'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:974:in `block in do_request'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:1082:in `protect_keep_alive_disconnected'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:969:in `do_request'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:822:in `request'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/httpclient-2.6.0.1/lib/httpclient.rb:725:in `post'
+     	from /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1479:in `ping'
+     	from (irb):8:in `block in irb_binding'
+     	from (irb):8:in `loop'
+     	from (irb):8
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/railties-4.0.0/lib/rails/commands/console.rb:90:in `start'
+
+385) add http timeout to fetch_exchange_rates
+     block in do_tasks:
+     block in do_tasks: executing task fetch_exchange_rates
+          Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+          Sequence Load (0.1ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+          CACHE (0.0ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+           (0.1ms)  BEGIN
+          SQL (0.3ms)  UPDATE `sequences` SET `value` = 794763, `updated_at` = '2015-03-30 03:23:11' WHERE `sequences`.`id` = 2
+           (141.5ms)  COMMIT
+        rescue in fetch_exchange_rates: Exception: Network is unreachable - connect(2) (Errno::ENETUNREACH)
+        rescue in fetch_exchange_rates: Backtrace: /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/net/http.rb:878:in `initialize'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/net/http.rb:878:in `open'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/net/http.rb:878:in `block in connect'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/timeout.rb:52:in `timeout'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/net/http.rb:877:in `connect'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/net/http.rb:862:in `do_start'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/net/http.rb:851:in `start'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:313:in `open_http'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:709:in `buffer_open'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:210:in `block in open_loop'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:208:in `catch'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:208:in `open_loop'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:149:in `open_uri'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:689:in `open'
+        /home/jro/.rvm/rubies/ruby-2.0.0-p598/lib/ruby/2.0.0/open-uri.rb:697:in `read'
+        /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/google_currency-3.0.0/lib/money/bank/google_currency.rb:128:in `fetch_rate'
+        /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/google_currency-3.0.0/lib/money/bank/google_currency.rb:99:in `block in get_rate'
+        /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/google_currency-3.0.0/lib/money/bank/google_currency.rb:98:in `synchronize'
+        /home/jro/.rvm/gems/ruby-2.0.0-p598/gems/google_currency-3.0.0/lib/money/bank/google_currency.rb:98:in `get_rate'
+        /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:171:in `block in get_all_exchange_rates'
+        /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:168:in `each'
+        /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:168:in `get_all_exchange_rates'
+        /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:136:in `fetch_exchange_rates'
+
+387) faster symmetric password handshake or change to mix encryption!
+     takes almost a minute in test runs
+
+select next issue to solve: (rand*387).floor+1

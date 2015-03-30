@@ -3938,6 +3938,10 @@ angular.module('gifts', ['ngRoute'])
             for (i = 0; i < new_mailboxes.length; i++) {
                 new_mailbox = new_mailboxes[i];
                 new_mailbox.key = new_mailbox.did + new_mailbox.sha256; // unique mailbox index
+                if (new_mailboxes_index.hasOwnProperty(new_mailbox.key)) {
+                    console.log(pgm + 'System error. Doublet rows in ping[:online] response. new_mailboxes = ' + JSON.stringify(new_mailboxes)) ;
+                    return ;
+                }
                 new_mailboxes_index[new_mailbox.key] = i;
             }
             // update old mailboxes
@@ -3957,6 +3961,8 @@ angular.module('gifts', ['ngRoute'])
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(new_mutual_friends))
                     };
+                    // todo: debug why client is sending doublet users_sha256 to other client after page reload
+                    console.log(pgm + 'Found new mutual friends ' + new_mutual_friends.join(', ') + ' in old mailbox ' + JSON.stringify(mailbox) + '. Added message = ' + JSON.stringify(hash) + ' to outbox') ;
                     mailbox.outbox.push(hash);
                 }
             } // for i
@@ -3982,6 +3988,8 @@ angular.module('gifts', ['ngRoute'])
                         msgtype: 'users_sha256',
                         users: JSON.parse(JSON.stringify(mailbox.mutual_friends))
                     } ;
+                    // todo: debug why client is sending doublet users_sha256 to other client after page reload
+                    console.log(pgm + 'New online mailbox ' + JSON.stringify(mailbox) + ' with mutual friends ' + mailbox.mutual_friends.join(', ') + '. Added message = ' + JSON.stringify(hash) + ' to outbox') ;
                     mailbox.outbox.push(hash);
                     mailboxes.push(mailbox);
                 }
@@ -4168,7 +4176,6 @@ angular.module('gifts', ['ngRoute'])
             var mailbox, did, device, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope;
             var encrypt = new JSEncrypt();
             var password;
-            var users_sha256_message ;
             for (var i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
                 did = mailbox.did;
@@ -4223,15 +4230,17 @@ angular.module('gifts', ['ngRoute'])
                     console.log(pgm + 'found ' + mailbox.sending.length + ' old messages in sending for device ' + mailbox.did + ' with key ' + mailbox.key);
                 }
                 mailbox.sending.length = 0;
-                for (var j = 0; j < mailbox.outbox.length; j++) {
-                    msg = mailbox.outbox[j];
-                    console.log(pgm + 'mailbox.outbox[' + j + '] = ' + JSON.stringify(msg));
+                // move messages from outbox to sending
+                while (mailbox.outbox.length > 0) {
+                    msg = mailbox.outbox.shift();
+                    console.log(pgm + 'msg = ' + JSON.stringify(msg));
                     // outbox[0] = {"msgtype":"users_sha256","mutual_friends":[1126,920]}"
                     switch (msg.msgtype) {
                         case 'users_sha256':
                             // communication step 2 - send users sha256 signatures to other device
-                            users_sha256_message = send_message_users_sha256(mailbox, msg) ;
-                            if (users_sha256_message) messages.push(users_sha256_message);
+                            msg = send_message_users_sha256(mailbox, msg) ;
+                            if (!msg) continue ; // errors - skip message
+                            messages.push(msg);
                             break;
                         case 'gifts_sha256':
                             // communication step 3 - send gifts sha256 signatures to other device
@@ -4249,11 +4258,13 @@ angular.module('gifts', ['ngRoute'])
                             messages.push(msg);
                             break;
                         default:
-                            console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in ' + JSON.stringify(mailbox));
+                            // error. unknown msgtype!
+                            mailbox.error.push(msg) ;
+                            if (mailbox.error.length > 5) mailbox.error.shift();
+                            console.log(pgm + 'Not implemented msgtype ' + msg.msgtype + ' moved to error. mailbox ' + JSON.stringify(mailbox));
                     } // end msgtype switch
                     mailbox.sending.push(msg);
                 } // for j (mailbox.outbox)
-                mailbox.outbox.length = 0; // messages was moved to mailbox.sending
                 // todo: add more header fields in message?
                 message = {
                     sent_at_client: (new Date).getTime(),
@@ -4541,21 +4552,6 @@ angular.module('gifts', ['ngRoute'])
             user_ids.sort() ;
             console.log(pgm + 'user_ids = ' + user_ids.join(', ')) ;
 
-            // abort if gifts_sha256 message already is in output
-            for (i=0 ; i<mailbox.outbox.length ; i++) {
-                if (mailbox.outbox[i].msgtype == 'gifts_sha256') {
-                    console.log(pgm + 'Wait. Old gifts_sha256 message is already in outbox.') ;
-                    return ;
-                }
-            } // for i
-            // abort if gifts_sha256 message already is in sent
-            for (i=0 ; i<mailbox.sent.length ; i++) {
-                if (mailbox.sent[i].msgtype == 'gifts_sha256') {
-                    console.log(pgm + 'Wait. Old gifts_sha256 message is already in sent.') ;
-                    return ;
-                }
-            } // for i
-
             // find sha256 values for relevant gifts (msg.users)
             var gifts_sha256_hash = {}, j, gift ;
             for (i=0 ; i<user_ids.length ; i++) {
@@ -4633,6 +4629,36 @@ angular.module('gifts', ['ngRoute'])
                 }) ;
                 return ;
             }
+
+            // abort if identical gifts_sha256 message is already in outbox.
+            var folders = { outbox: mailbox.outbox, sent: mailbox.sent}, folder, old_msg ;
+            var sent_at, elapsed_time ;
+            for (folder in folders) {
+                for (i=0 ; i<folders[folder].length ; i++) {
+                    old_msg = folders[folder][i] ;
+                    if (old_msg.msgtype == 'gifts_sha256') {
+                        console.log(pgm + 'Warning. Found old gifts_sha256 message in ' + folder ) ;
+                        console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+                        console.log(pgm + 'gifts_sha256 message = ' + JSON.stringify(gifts_sha256_message)) ;
+                        sent_at = parseInt(old_msg.mid.substr(0,13)) ;
+                        elapsed_time = new Date().getTime() - sent_at ;
+                        console.log(pgm + 'sent_at = ' + sent_at + ', elapted_time = ' + elapsed_time) ;
+                        if ((elapsed_time < 60000) && (old_msg.users.join(',') == gifts_sha256_message.users.join(','))) {
+                            // new identical gifts_sha256 response less than 1 minute ago
+                            error = 'Ignoring doublet users_sha256 request ' + msg.mid + '. Gifts_sha256 response ' + old_msg.mid + ' has already been sent less than 1 minute ago' ;
+                            console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                            mailbox.outbox.push({
+                                mid: Gofreerev.get_new_uid(),
+                                request_mid: msg.mid,
+                                msgtype: 'error',
+                                request_mid: msg.mid,
+                                error: error
+                            }) ;
+                            return ;
+                        }
+                    }
+                } // for i
+            } // for folder (outbox, sent)
 
             mailbox.outbox.push(gifts_sha256_message) ;
 

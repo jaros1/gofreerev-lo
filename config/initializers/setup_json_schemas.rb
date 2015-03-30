@@ -798,8 +798,8 @@ JSON_SCHEMA = {
                                 # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                                 :gid => {:type => 'string', :pattern => uid_pattern},
                                 # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
-                                :giver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
-                                :receiver_user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                                :giver_user_ids => {:type => 'array', :items => {:type => %w(integer string) } },
+                                :receiver_user_ids => {:type => 'array', :items => {:type => %w(integer string) } },
                                 # created at client unix timestamp - 10 decimals - used in gift signature on server
                                 :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
                                 # created at server - server number - 1 for this server - todo: must be translated when sending cross server messages
@@ -835,7 +835,7 @@ JSON_SCHEMA = {
                                             # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                                             :cid => {:type => 'string', :pattern => uid_pattern},
                                             # internal user ids for creator of comment - todo: change to uid/provider format to support cross server replication?
-                                            :user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                                            :user_ids => {:type => 'array', :items => {:type => %w(integer string) } },
                                             # optional price - can be set when creation a proposal (special comment) for gift/offer
                                             :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01},
                                             # optional currency - can be set when creation a proposal (special comment) for gift/offer - iso4217 with restrictions
@@ -880,7 +880,7 @@ JSON_SCHEMA = {
                             # fields in user record (login user, friend etc)
                             :properties => {
                                 # internal user id (sequence) - used in internal arrays
-                                :user_id => {:type => 'integer', :minimum => 1},
+                                :user_id => {:type => %w(integer string) },
                                 # provider unique user id - used in signatures and in communication between clients
                                 :uid => {:type => 'string'},
                                 # login provider - facebook, foursquare etc

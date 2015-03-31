@@ -1039,8 +1039,9 @@ var Gofreerev = (function() {
     } // is_json_response_invalid
 
     // generate password - used in client to client communication (symmetric encryption)
+    // note: don't used comma "," in password. Comma is used as field seperator in rsa array
     function generate_random_password (length) {
-        var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789![]{}#%&/()=?+-:;_-.,@$|£' ;
+        var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789![]{}#%&/()=?+-:;_-.@$|£' ;
         var password = [], index, char ;
         for (var i=0 ; i<length ; i++) {
             index = Math.floor(Math.random()*character_set.length) ;
@@ -2321,6 +2322,34 @@ angular.module('gifts', ['ngRoute'])
         }; // user_ids_to_remote_sha256;
 
 
+        // after receiving msg from an other Gofreerev server. Translate known sha256 signatures to internal user ids
+        // user ids in msg are either sha256 signatures (remote users) or negative user ids (unknown users)
+        var sha256_to_user_ids = function (sha256_signatures, server_id, msg) {
+            var pgm = service + '.sha256_to_user_ids: ' ;
+            var user_ids = [];
+            var i, sha256, friend, translate = false ;
+            for (i=0 ; i<sha256_signatures.length ; i++) {
+                sha256 = sha256_signatures[i] ;
+                if (typeof sha256 == 'number') {
+                    // should be a negative integer for unknown user
+                    if (sha256 >= 0) return 'Invalid integer user id ' + sha256 + ' in ' + msg.msgtype + ' message' ;
+                    if (sha256 != Math.round(sha256)) return 'Invalid integer user id ' + sha256 + ' in ' + msg.msgtype + ' message' ;
+                    user_ids.push(sha256) ;
+                    continue ;
+                }
+                if (typeof sha256 != 'string') return 'Invalid user id ' + JSON.stringify(sha256) + ' in ' + msg.msgtype + ' message' ;
+                friend = get_friend_by_sha256(sha256) ;
+                if (!friend) return 'Unknown sha256 signature ' + sha256 + ' in ' + msg.msgtype + ' message' ;
+                translate = true ;
+                user_ids.push(friend.user_id) ;
+            } // for i
+            if (!translate) return null ; // no sha256 signatures found
+            // translate ok
+            for (i=0 ; i<sha256_signatures.length ; i++) sha256_signatures[i] = user_ids[i] ;
+            return null ;
+        }; // sha256_to_user_ids
+
+
         // user functions (friends and other users used in gifts and comments) ==>
 
         // js array with users in localStorage - that is users used in gifts and comments
@@ -2458,7 +2487,8 @@ angular.module('gifts', ['ngRoute'])
             add_new_login_users: add_new_login_users,
             get_user: get_user,
             add_friends_to_users: add_friends_to_users,
-            user_ids_to_remote_sha256: user_ids_to_remote_sha256
+            user_ids_to_remote_sha256: user_ids_to_remote_sha256,
+            sha256_to_user_ids: sha256_to_user_ids
         };
         // end UserService
     }])
@@ -2513,6 +2543,7 @@ angular.module('gifts', ['ngRoute'])
             // new_users from send_gifts sub message (sync_gifts) - fallback information used in case of unknown user
             var new_users_index = {} ;
             for (var i=0 ; i<new_users.length ; i++) new_users_index[new_users[i].user_id] = new_users[i] ;
+            console.log(pgm + 'new_users_index = ' + JSON.stringify(new_users_index)) ;
 
             //  1) gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             var from_unix_timestamp = Math.floor((new Date('2014-01-01')).getTime()/1000) ;
@@ -4193,7 +4224,7 @@ angular.module('gifts', ['ngRoute'])
         var send_messages = function () {
             var pgm = service + '.send_messages: ';
             var response = [];
-            var mailbox, did, device, messages, msg, message, message_json, message_json_com, message_json_rsa_enc, message_with_envelope;
+            var mailbox, did, device, messages, msg, message, message_csv, message_json_com, message_csv_rsa_enc, message_with_envelope;
             var encrypt = new JSEncrypt();
             var password;
             for (var i = 0; i < mailboxes.length; i++) {
@@ -4219,21 +4250,21 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'symmetric password setup: generated password1') ;
                     }
                     setup_device_password(device);
-                    message = [device.password1, device.password1_at];
+                    message = [0,device.password1, device.password1_at]; // 0: password setup in progress
                     if (device.password_md5) message.push(device.password_md5); // verify complete symmetric password (password1+password2) for device
                     // message => json => rsa encrypt
-                    message_json = JSON.stringify(message);
+                    message_csv = message.join(',');
                     // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
                     encrypt.setPublicKey(devices[did].pubkey);
                     // RSA encrypt with default values - CBC and Pkcs7 (https://code.google.com/p/crypto-js/#Block_Modes_and_Padding)
-                    message_json_rsa_enc = encrypt.encrypt(message_json);
+                    message_csv_rsa_enc = encrypt.encrypt(message_csv);
                     // add envelope - used in rails message buffer - each message have sender, receiver, encryption and message
                     message_with_envelope = {
                         receiver_did: mailbox.did,
                         receiver_sha256: mailbox.sha256,
                         server: false,
                         encryption: 'rsa',
-                        message: message_json_rsa_enc
+                        message: message_csv_rsa_enc
                     };
                     console.log(pgm + 'symmetric password setup: sending rsa message') ;
                     // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
@@ -4359,22 +4390,17 @@ angular.module('gifts', ['ngRoute'])
             // console.log(pgm + 'msg = ' + JSON.stringify(msg));
             // msg is an array with password, password_at and optional md5 for complete password
             // password setup is complete when received md5 in msg and password md5 for device are identical
-            device.password2 = msg[0];
-            device.password2_at = msg[1];
+            var done = msg[0] ; // password setup done on other client?
+            device.password2 = msg[1];
+            device.password2_at = msg[2];
             // calc password_md5 if possible
             setup_device_password(device);
             // check of the two devices agree about password
-            if (device.password_md5 && msg.length == 3 && (device.password_md5 == msg[2])) {
-                console.log(pgm + 'symmetric password setup completed.');
-                // console.log(pgm + 'symmetric password setup completed. device = ' + JSON.stringify(device)) ;
-                return true; // continue with ...
-            }
-            else {
-                console.log(pgm + 'symmetric password setup in progress.');
-                // console.log(pgm + 'symmetric password setup in progress. device = ' + JSON.stringify(device)) ;
-                delete device.password;
-                return false;
-            }
+            var md5_ok = (device.password_md5 && (msg.length == 4) && (device.password_md5 == msg[3]))
+            if (md5_ok) console.log(pgm + 'symmetric password setup completed.');
+            else console.log(pgm + 'symmetric password setup in progress.');
+            console.log(pgm + 'done = ' + done + ', md5_ok = ' + md5_ok) ;
+            if (!md5_ok || !done) delete device.password; // resend rsa password message to other client in next ping
         }; // receive_message_password;
 
 
@@ -4755,7 +4781,7 @@ angular.module('gifts', ['ngRoute'])
             // compare expected & received users
             var mutual_friends, friend ;
             if (mailbox.hasOwnProperty('server_id')) {
-                // send_gifts message to/from other Gofreerev server
+                // send_gifts message to/from other Gofreerev server using sha256 signatures instead of internal user ids
                 if (send) {
                     // sending send_gifts message using remote sha256 signatures for users
                     mutual_friends = JSON.parse(JSON.stringify(mailbox.mutual_friends)) ;
@@ -4791,6 +4817,8 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'send_gifts_expected_user_ids  = ' + send_gifts_expected_user_ids.join(', ')) ;
             console.log(pgm + 'send_gift_missing_user_ids    = ' + send_gift_missing_user_ids.join(', ')) ;
             console.log(pgm + 'send_gift_unexpected_user_ids = ' + send_gift_unexpected_user_ids.join(', ')) ;
+
+
 
         }; // validate_send_gifts_message
 
@@ -5243,6 +5271,7 @@ angular.module('gifts', ['ngRoute'])
                 }
                 if (sync_gifts_message.send_gifts) {
                     // translate user ids in giver_user_ids, receiver_user_ids and comment user_ids
+                    // use remote sha256 signatures for remote users and negative user id for "unknown" users
                     for (i=0 ; i<sync_gifts_message.send_gifts.gifts.length ; i++) {
                         gift = sync_gifts_message.send_gifts.gifts[i] ;
                         if (!userService.user_ids_to_remote_sha256(gift.giver_user_ids, mailbox.server_id, sync_gifts_message, true)) {
@@ -5511,8 +5540,7 @@ angular.module('gifts', ['ngRoute'])
 
                 // pass 0 - check for some fatal errors before processing send_gifts message
                 // 1) gid and cid must be unique
-                // 2) users in users array must be unique and be correct (all user ids in gifts array except mutual friends)
-
+                // 2) users in msg.users array must be unique and be correct (all user ids in msg.users array except mutual friends)
                 var error = validate_send_gifts_message(mailbox, msg, false) ; // false: receiving message
                 if (error) {
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
@@ -5526,11 +5554,45 @@ angular.module('gifts', ['ngRoute'])
                 } // if error (validate_send_gifts_message)
 
                 // validate received gifts
-                var errors = [], new_gift ;
+                var errors = [], new_gift, i, j, new_comment, comment_error ;
                 for (i = 0; i < msg.gifts.length; i++) {
                     new_gift = msg.gifts[i] ;
+
+                    if (mailbox.hasOwnProperty('server_id')) {
+                        // received gifts from an other Gofreerev server.
+                        // user ids have been validated in validate_send_gifts_message and are either
+                        // 1) sha256 signatures for remote users or
+                        // 2) negative user ids for "unknown" users
+                        // translate all received sha256 signatures to internal user ids
+                        error = userService.sha256_to_user_ids(new_gift.giver_user_ids, msg) ;
+                        if (error) {
+                            errors.push('gid=' + new_gift.gid + ', error=giver_user_ids: ' + error ) ;
+                            continue ; // next gift
+                        }
+                        error = userService.sha256_to_user_ids(new_gift.receiver_user_ids, msg) ;
+                        if (error) {
+                            errors.push('gid=' + new_gift.gid + ', error=receiver_user_ids' + error ) ;
+                            continue ; // next gift
+                        }
+                        comment_error = false ;
+                        if (new_gift.comments) {
+                            for (j=0 ; j<new_gift.comments.length ; j++) {
+                                new_comment = new_gift.comments[j] ;
+                                error = userService.sha256_to_user_ids(new_comment.user_ids, msg) ;
+                                if (error) {
+                                    errors.push('gid=' + new_gift.gid + ', cid=' + new_comment.cid + ', error=' + error ) ;
+                                    comment_error = true ;
+                                    break ;
+                                }
+                            } // for j
+                        } // if
+                        if (comment_error) continue ; // next gift
+                        // sha256 signatures were translated without errors
+                    } // if server_id
+
                     // note msg.users as second argument 2 to invalid_gift call
                     // allows gift validation to use msg.users as fallback information in case of unknown users in givers, receivers or comments
+                    // todo: error when receiving send_gifts from an other Gofreerev server (mutual friends not included in users array)
                     error = invalid_gift(new_gift, msg.users) ;
                     if (error) errors.push('gid=' + new_gift.gid + ', error=' + error ) ;
                 } // for i (gifts)
@@ -6055,7 +6117,7 @@ angular.module('gifts', ['ngRoute'])
             }
             messages_sent() ;
             var encrypt, prvkey ;
-            var msg_server_envelope, key, index, mailbox, did, device, msg, msg_json_rsa_enc, msg_json, msg_json_sym_enc, msg_client_envelope ;
+            var msg_server_envelope, key, index, mailbox, did, device, msg, msg_csv_rsa_enc, msg_csv, msg_json_sym_enc, msg_client_envelope ;
             for (var i=0 ; i<response.messages.length ; i++) {
                 msg_server_envelope = response.messages[i] ;
                 key = msg_server_envelope.sender_did + msg_server_envelope.sender_sha256 ;
@@ -6085,9 +6147,9 @@ angular.module('gifts', ['ngRoute'])
                         encrypt.setPrivateKey(prvkey);
                     }
                     // rsa => json
-                    msg_json_rsa_enc = msg_server_envelope.message ;
-                    msg_json = encrypt.decrypt(msg_json_rsa_enc) ;
-                    msg = JSON.parse(msg_json) ;
+                    msg_csv_rsa_enc = msg_server_envelope.message ;
+                    msg_csv = encrypt.decrypt(msg_csv_rsa_enc) ;
+                    msg = msg_csv.split(',') ;
                     // console.log(pgm + 'rsa decrypt: prvkey = ' + prvkey) ;
                     // console.log(pgm + 'rsa decrypt: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
                     // console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
@@ -6101,8 +6163,8 @@ angular.module('gifts', ['ngRoute'])
                         continue ;
                     }
                     msg_json_sym_enc = msg_server_envelope.message ;
-                    msg_json = Gofreerev.decrypt(msg_json_sym_enc, device.password) ;
-                    msg_client_envelope = JSON.parse(msg_json) ;
+                    msg_csv = Gofreerev.decrypt(msg_json_sym_enc, device.password) ;
+                    msg_client_envelope = JSON.parse(msg_csv) ;
                     // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
                     // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
                     // console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;

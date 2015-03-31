@@ -454,7 +454,7 @@ class Server < ActiveRecord::Base
       self.set_new_password1
       self.save!
     end
-    message = [(done ? 1 : 0),self.new_password1, self.new_password1_at] # 0 = symmetric password setup
+    message = [(done ? 1 : 0),self.new_password1, self.new_password1_at] # 0 = symmetric password setup, 1 = symmetric password setup completed
     if new_password_md5 = self.new_password_md5
       new_password_md5 = Base64.encode64(new_password_md5)
       message << new_password_md5

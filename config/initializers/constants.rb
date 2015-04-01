@@ -171,6 +171,9 @@ rescue OpenSSL::Cipher::CipherError => e
   puts "Error. SystemParameter.private_key failed with #{e.message}. Generating new public private key pair"
   SystemParameter.generate_key_pair
   SystemParameter.private_key
+rescue ActiveRecord::StatementInvalid => e
+  # ignore missing SystemParameter table doing first deploy
+  nil
 end
 
 # server to server communication. path to signature files on other gofreerev servers.

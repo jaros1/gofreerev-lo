@@ -139,14 +139,21 @@ COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd
 # public private key pair is regenerated if encryption password changes and old private key is lost
 PK_PASS_1_ENV = ENV["#{ENV_PREFIX}PK_PASS"]
 PK_PASS_2_RAILS = "rlKjLA1jgZNFQJ+z/WfNm2fID8k22y2IOi5c2mPtqlY=\n" # todo: please change string
-s = SystemParameter.find_by_name('private_key_password')
-if !s
-  s = SystemParameter.new
-  s.name = 'private_key_password'
-  s.value = String.generate_random_string(80)
-  s.save!
+pk_pass_3_db = nil
+begin
+  s = SystemParameter.find_by_name('private_key_password')
+  if !s
+    s = SystemParameter.new
+    s.name = 'private_key_password'
+    s.value = String.generate_random_string(80)
+    s.save!
+  end
+  pk_pass_3_db = s.value
+rescue ActiveRecord::StatementInvalid => e
+  # ignore missing SystemParameter table doing first deploy
+  pk_pass_3_db = nil
 end
-PK_PASS_3_DB = s.value
+PK_PASS_3_DB = pk_pass_3_db
 text = nil
 begin
   text = File.read(Rails.root.join('pk_pass.txt').to_s) # todo: please change path

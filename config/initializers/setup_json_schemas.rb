@@ -9,7 +9,10 @@ max_server_no = 10000
 # rgxg required - sudo apt-get install rgxg
 uid_from = (Time.zone.parse '2014-01-01').to_i
 uid_to = 1.year.from_now.to_i
-uid_short_pattern = `rgxg range -Z #{uid_from} #{uid_to}`.strip # 10 decimals
+cmd = "rgxg range -Z #{uid_from} #{uid_to}"
+uid_short_pattern = `#{cmd}`
+puts "OS commend \"#{cmd}\" failed. Please install rgxg. sudo apt-get install rgxg" unless uid_short_pattern
+uid_short_pattern = uid_short_pattern.strip # 10 decimals
 uid_pattern = "^#{uid_short_pattern}[0-9]{10}$" # 20 decimals
 
 # pattern with valid providers

@@ -116,6 +116,7 @@ end
 # Use Capistrano for deployment
 group :development do
   gem "capistrano-rails"
+  gem "capistrano-rvm"
 end
 
 # Use debugger

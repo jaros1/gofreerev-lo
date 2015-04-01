@@ -5875,7 +5875,12 @@ angular.module('gifts', ['ngRoute'])
                     // new gift from a mutual friend.
                     // server sha256 signature must be verified before continuing with pass 2
                     validate_new_gifts += 1;
-                    verify_gifts.push(new_gift); // todo: use a temporay array - move to verify_gifts at end of loop if no fatal errors were found
+                    if (mailbox.hasOwnProperty('server_id')) {
+                        // todo: how to validate gifts from client on other Gofreerev server? Not all user ids are known!
+                        // todo: add server_id to gift. reuse gift.created_at_server as server_id? Should use 0 for local server and >0 for remote servers
+                        console.log(pgm + 'verify remote gift ' + JSON.stringify(new_gift)) ;
+                    }
+                    verify_gifts.push(new_gift); // todo: use a temporary array - move to verify_gifts at end of loop if no fatal errors were found
                     if (new_gift.comments) {
                         // server validate new comments
                         for (j = 0; j < new_gift.comments.length; j++) {

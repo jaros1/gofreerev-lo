@@ -1609,5 +1609,57 @@
 
 387) faster symmetric password handshake or change to mix encryption!
      takes almost a minute in test runs
+     added done flag to rsa password array
+
+388) verify gifts from other servers
+     case 1 (two servers)
+     - gift a was created by user A on server X (ok)
+     - gift a is sent to user B on server Y (ok) - todo: what created_at_server number to uge?
+     - user B sends verification request to server Y (todo)
+
+     - server Y send gift verification message to server X
+     - X verifies gift a and sends result in a message to server Y
+     - server Y returns result of verification to user B
+     case 2 (three servers).
+     - continue case 1
+     - user B sends gift a to user C on server Z
+     - user C sends verification request to server Z
+     - server Z sends verification request to server X maybe through server Y
+     - server X verifies gift a and sendt response to server Z maybe through server Y
+     - server Z returns verification result to user C
+
+389) where was gift created 1
+     where to send gifts_verification message
+     server_id is pings / :online in ping response
+     blank for actual server - server id for clients on other servers
+     server_id 1 on server A <> 1 on server B <> 1 on server C!
+     gift a    0 on server a    1 on server B    2 on server C
+     servers must exchange servers information at login
+     send list of other servers - receive list of other servers
+
+390) where was gift created 2
+     gift created on server A (local verify) => client on server B (remote verify) => client on server C (remote verify)
+     A: gift.created_at_server = 0 (local gift)
+     B: gift was remote verified on B (A <=> B server to server communication)
+        A must be in servers table on B
+        A is not in servers table on C
+     send gift A from client b to client c:
+     1) send server id as it is from b to c
+        c gets site_url from server B
+        c cannot find site_url in site_url list on server C
+
+391) keep a public available list of connected servers.
+     for each server:
+     - server_id - integer
+     - http url
+     - child or parent side
+     - parent only - https - boolean
+     - parent only - public key length (httpclient.get(URI.parse(site_url)).peer_cert.public_key.n.num_bytes * 8)
+     - check for self signed certificate ( better than none )
+       error. OpenSSL::SSL::SSLError: SSL_connect returned=1 errno=0 state=SSLv3 read server certificate B: certificate verify failed
+       ok with httpclient.ssl_config.verify_mode = OpenSSL::SSL::VERIFY_NONE
+       todo: list open source CA
+     - domain validated or extended Validation
+
 
 select next issue to solve: (rand*387).floor+1

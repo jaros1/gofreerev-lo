@@ -151,7 +151,16 @@ begin
   pk_pass_3_db = s.value
 rescue ActiveRecord::StatementInvalid => e
   # ignore missing SystemParameter table doing first deploy
+  puts "Ignoring ActiveRecord::StatementInvalid: #{e.message} doing first deploy"
   pk_pass_3_db = nil
+rescue Mysql2::Error => e
+  if e.message =~ /^Access denied for user/
+    # fix capistrano deploy problem - some steps are executed without mysql authorization
+    puts "Ignoring Mysql2::Error: #{e.message} doing deploy"
+    pk_pass_3_db = nil
+  else
+    raise
+  end
 end
 PK_PASS_3_DB = pk_pass_3_db
 text = nil
@@ -172,8 +181,17 @@ rescue OpenSSL::Cipher::CipherError => e
   SystemParameter.generate_key_pair
   SystemParameter.private_key
 rescue ActiveRecord::StatementInvalid => e
+  puts "Ignoring ActiveRecord::StatementInvalid: #{e.message} doing first deploy"
   # ignore missing SystemParameter table doing first deploy
   nil
+rescue Mysql2::Error => e
+  if e.message =~ /^Access denied for user/
+    # fix capistrano deploy problem - some steps are executed without mysql authorization
+    puts "Ignoring Mysql2::Error: #{e.message} doing deploy"
+    pk_pass_3_db = nil
+  else
+    raise
+  end
 end
 
 # server to server communication. path to signature files on other gofreerev servers.

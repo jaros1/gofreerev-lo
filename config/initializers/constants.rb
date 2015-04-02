@@ -1,5 +1,7 @@
 # appname - used in views and messages
 
+puts "ENV = #{ENV.to_json}"
+
 # prefix for environment variables for this project
 ENV_APP_NAME = 'GOFREEREV_LO' # app name used in environment variables
 ENV_RAILSENV = case Rails.env when 'development' then 'DEV' when 'test' then 'TEST' when 'production' then 'PROD' end

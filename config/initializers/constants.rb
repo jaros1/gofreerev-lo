@@ -1,7 +1,5 @@
 # appname - used in views and messages
 
-puts "ENV = #{ENV.to_json}"
-
 # prefix for environment variables for this project
 ENV_APP_NAME = 'GOFREEREV_LO' # app name used in environment variables
 ENV_RAILSENV = case Rails.env when 'development' then 'DEV' when 'test' then 'TEST' when 'production' then 'PROD' end
@@ -155,14 +153,6 @@ rescue ActiveRecord::StatementInvalid => e
   # ignore missing SystemParameter table doing first deploy
   puts "Ignoring ActiveRecord::StatementInvalid: #{e.message} doing first deploy"
   pk_pass_3_db = nil
-rescue Mysql2::Error => e
-  if e.message =~ /^Access denied for user/
-    # fix capistrano deploy problem - some steps are executed without mysql authorization
-    puts "Ignoring Mysql2::Error: #{e.message} doing deploy"
-    pk_pass_3_db = nil
-  else
-    raise
-  end
 end
 PK_PASS_3_DB = pk_pass_3_db
 text = nil
@@ -186,14 +176,6 @@ rescue ActiveRecord::StatementInvalid => e
   puts "Ignoring ActiveRecord::StatementInvalid: #{e.message} doing first deploy"
   # ignore missing SystemParameter table doing first deploy
   nil
-rescue Mysql2::Error => e
-  if e.message =~ /^Access denied for user/
-    # fix capistrano deploy problem - some steps are executed without mysql authorization
-    puts "Ignoring Mysql2::Error: #{e.message} doing deploy"
-    pk_pass_3_db = nil
-  else
-    raise
-  end
 end
 
 # server to server communication. path to signature files on other gofreerev servers.

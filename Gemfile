@@ -21,7 +21,8 @@ gem 'omniauth-facebook' # https://github.com/mkdynamic/omniauth-facebook
 # gem 'koala', '1.9.0' # facebook API calls - https://github.com/arsduo/koala/wiki/Koala-on-Rails
 gem 'koala' # facebook API calls - https://github.com/arsduo/koala/wiki/Koala-on-Rails
 # gem 'rest_client'
-gem 'rest-client' # used in FB notifications. todo: drop notifications?
+# rest-client 1.8 is using http-cookie. prefer build-in cookie-manager in http-client!
+gem 'rest-client', '1.7.3' # used in FB notifications. todo: drop notifications?
 
 # 2) flickr
 # register : http://www.flickr.com/services/apps/create/

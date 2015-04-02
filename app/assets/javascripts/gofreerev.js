@@ -3167,6 +3167,19 @@ angular.module('gifts', ['ngRoute'])
                     add_user_ids_to_array(comment.user_ids, migration_user_ids) ;
                 }
 
+                // migration. change created_at_server from 1 to 0. gifts and comments. 0 = current serrver
+                if (gift.created_at_server == 1) {
+                    gift.created_at_server = 0 ;
+                    migration = true ;
+                }
+                if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
+                    comment = gift.comments[j] ;
+                    if (comment.created_at_server == 1) {
+                        comment.created_at_server = 0 ;
+                        migration = true ;
+                    }
+                }
+
                 // save migrated gift
                 if (migration) Gofreerev.setItem(keys[i], JSON.stringify(gift)) ;
 
@@ -3467,7 +3480,7 @@ angular.module('gifts', ['ngRoute'])
             var gift, hash, text_client, sha256_client, signature;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
-                if (!gift.created_at_server) {
+                if (!gift.hasOwnProperty('created_at_server')) {
                     signature = gift_signature_for_server(gift) ;
                     hash = {gid: gift.gid, sha256: signature.sha256};
                     if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids;
@@ -3526,11 +3539,11 @@ angular.module('gifts', ['ngRoute'])
                 refresh_gift(gift);
                 if (gift.hasOwnProperty('created_at_server')) {
                     // thats is ok if multiple browser sessions with identical login / identical client user id
-                    if (gift.created_at_server == 1) null; // ok - received in an other browser session
-                    else console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was setted to an invalid value between new gifts request and new gifts response. Expected created_at_server = 1. Found created_at_server = ' + gift.created_at_server + '.');
+                    if (gift.created_at_server == 0) null; // ok - received in an other browser session
+                    else console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was set to an invalid value between new gifts request and new gifts response. Expected created_at_server = 0. Found created_at_server = ' + gift.created_at_server + '.');
                     continue;
                 }
-                gift.created_at_server = 1; // always 1 for this server - remote gifts are received in client to client communication
+                gift.created_at_server = 0; // always 0 for current server - remote gifts are received in client to client communication
                 save_gift(gift) ;
             } // for i
         }; // new_gifts_response
@@ -3852,7 +3865,7 @@ angular.module('gifts', ['ngRoute'])
                 gift = gifts[i];
                 comments = gifts[i].comments;
                 for (var j = 0; j < comments.length; j++) {
-                    if (comments[j].created_at_server) continue;
+                    if (comments[j].hasOwnProperty('created_at_server')) continue;
                     comment = comments[j];
                     cid = comment.cid;
                     // send meta-data for new comment to server and generate a sha256 signature for comment on server
@@ -3878,6 +3891,7 @@ angular.module('gifts', ['ngRoute'])
                 new_comment = new_comments[i];
                 cid = new_comment.cid;
                 // check response. must be an ok response without error message or error response with an error message.
+                // created_at_server: boolean in server response. integer 0 in javascript (current server)
                 if (new_comment.hasOwnProperty('error') && new_comment.created_at_server) {
                     console.log(pgm + 'System error. Invalid new comments response. Comment ' + cid + ' signature created on server WITH an error message. error = ' + new_comment.error) ;
                     continue ;
@@ -3912,18 +3926,15 @@ angular.module('gifts', ['ngRoute'])
                 // refresh_comment(comment) ;
                 if (comment.hasOwnProperty('created_at_server')) {
                     // thats is ok if multiple browser sessions with identical login / identical client user id
-                    if (comment.created_at_server == 1) null; // ok - received in an other browser session
-                    else console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was setted to an invalid value between new comments request and new comments response. Expected created_at_server = 1. Found created_at_server = ' + comment.created_at_server + '.');
+                    if (comment.created_at_server == 0) null; // ok - received in an other browser session
+                    else console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was set to an invalid value between new comments request and new comments response. Expected created_at_server = 0. Found created_at_server = ' + comment.created_at_server + '.');
                     continue;
                 }
-                comment.created_at_server = 1;
+                comment.created_at_server = 0;
                 save_gift(gift) ;
             } // for i
             new_comments_request_index = {};
         }; // new_comments_response
-        
-        
-        
         
 
         // list of mailboxes for other devices (online and offline)
@@ -4818,11 +4829,16 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'send_gift_missing_user_ids    = ' + send_gift_missing_user_ids.join(', ')) ;
             console.log(pgm + 'send_gift_unexpected_user_ids = ' + send_gift_unexpected_user_ids.join(', ')) ;
 
-
-
         }; // validate_send_gifts_message
 
-
+        var servers = Gofreerev.rails['SERVERS'] ;
+        var server_id_to_sha256 = function (server_id) {
+            var pgm = service + '.server_id_to_sha256: ' ;
+            var server_idx = server_id.toString() ;
+            if (servers.hasOwnProperty(server_idx)) return servers[server_idx] ;
+            console.log(pgm + 'Cannot translate unknown server id ' + server_id) ;
+            return server_id ;
+        }; // server_id_to_sha256
 
         // communication step 3 - compare sha256 values for gifts (mutual friends)
         var receive_message_gifts_sha256 = function (device, mailbox, msg) {
@@ -5260,6 +5276,8 @@ angular.module('gifts', ['ngRoute'])
             }
 
             if (mailbox.hasOwnProperty('server_id')) {
+
+                // sync_gifts message to client on an other Gofreerev server
                 // translate internal user ids to sha256 signatures before sending sync_gifts message
                 // 1) translate users array in message header
                 // 2) send_gifts: translate user ids in giver_user_ids, receiver_user_ids, comment user ids and users
@@ -5267,47 +5285,66 @@ angular.module('gifts', ['ngRoute'])
                 if (!userService.user_ids_to_remote_sha256(sync_gifts_message.users, mailbox.server_id, sync_gifts_message, false)) {
                     // translate error
                     // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
-                    return ;
+                    return;
                 }
                 if (sync_gifts_message.send_gifts) {
                     // translate user ids in giver_user_ids, receiver_user_ids and comment user_ids
                     // use remote sha256 signatures for remote users and negative user id for "unknown" users
-                    for (i=0 ; i<sync_gifts_message.send_gifts.gifts.length ; i++) {
-                        gift = sync_gifts_message.send_gifts.gifts[i] ;
+                    for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
+                        gift = sync_gifts_message.send_gifts.gifts[i];
                         if (!userService.user_ids_to_remote_sha256(gift.giver_user_ids, mailbox.server_id, sync_gifts_message, true)) {
                             // translate error
                             // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
-                            return ;
-                        };
+                            return;
+                        }
+                        ;
                         if (!userService.user_ids_to_remote_sha256(gift.receiver_user_ids, mailbox.server_id, sync_gifts_message, true)) {
                             // translate error
                             // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
-                            return ;
-                        };
+                            return;
+                        }
+                        ;
                         if (gift.comments) {
-                            for (j=0 ; j<gift.comments.length ; j++) {
+                            for (j = 0; j < gift.comments.length; j++) {
                                 if (!userService.user_ids_to_remote_sha256(gift.comments[j].user_ids, mailbox.server_id, sync_gifts_message, true)) {
                                     // translate error
                                     // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
-                                    return ;
-                                };
+                                    return;
+                                }
+                                ;
                             }
                         }
                     }
                     // translate user ids in users array
-                    var user_ids = [] ;
-                    for (i=0 ; i<sync_gifts_message.send_gifts.users.length ; i++) user_ids.push(sync_gifts_message.send_gifts.users[i].user_id) ;
+                    var user_ids = [];
+                    for (i = 0; i < sync_gifts_message.send_gifts.users.length; i++) user_ids.push(sync_gifts_message.send_gifts.users[i].user_id);
                     if (!userService.user_ids_to_remote_sha256(user_ids, mailbox.server_id, sync_gifts_message, true)) {
                         // translate error
                         // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
-                        return ;
-                    };
+                        return;
+                    }
                     for (i=0 ; i<sync_gifts_message.send_gifts.users.length ; i++) sync_gifts_message.send_gifts.users[i].user_id = user_ids[i] ;
-                }
-                // translate ok
-                console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
-                // todo:must replace
-            }
+                    // user_id translate ok
+                    console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
+
+                    // translate internal created_at_server integer to server sha256 signature
+                    // created_at_server=0 : current gofreerev server
+                    // created_at_server>0 : gift/comment from an other gofreerev server
+                    for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
+                        gift = sync_gifts_message.send_gifts.gifts[i];
+                        gift.created_at_server = server_id_to_sha256(gift.created_at_server);
+                        if (!gift.comments) continue;
+                        for (j = 0; j < gift.comments.length; j++) {
+                            comment = gift.comments[j];
+                            comment.created_at_server = server_id_to_sha256(comment.created_at_server);
+                        } // for j (comments)
+                    } // for i (gifts)
+
+                } // if send_gifts
+
+                console.log(pgm + 'sync_gifts_message (3) = ' + JSON.stringify(sync_gifts_message));
+
+            } // if server_id
 
             // JS validate sync_gifts message before placing message in outbox
             if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {

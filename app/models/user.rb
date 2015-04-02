@@ -467,9 +467,7 @@ class User < ActiveRecord::Base
     stdin.close
     ignored, status = Process::waitpid2 pid
     return [stdout.read, stderr.read, status.exitstatus]
-  end
-
-  # open4
+  end # open4
 
 
   # list of valid providers from /config/initializers/omniauth.rb

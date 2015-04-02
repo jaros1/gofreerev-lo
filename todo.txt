@@ -1075,7 +1075,7 @@
 279) delete gifts request
      maybe return deleted_at_server as an integer?
      a gift could have been created on one gofreerev server and have been deleted on an other gofreerev server!
-     created_at_server / deleted_at_server could always be 1 for current server
+     created_at_server / deleted_at_server could always be 0 for current server
      a server # <> 1 marks a gift as remote created or remote deleted and signature check must be done on an other server
      there must be a server # translation table on every gofreerev server
      server # can be 2 on one server, 3 on an other and 4 on a third server
@@ -1498,6 +1498,8 @@
      include sha256 signature in do_tasks/login friends array or calc user.sha256 in javascript (client must know secret).
      best solution is to keep server secret on server and that clients does not know server secret
      but server secret can be found with
+     js  : javascript: alert(CryptoJS.SHA256('http://laptop.gofreerev.com/').toString(CryptoJS.enc.Base64)) = KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM=
+     RUBY: Base64.encode64(Digest::SHA256.digest(SITE_URL))                                                 = KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM=\n
 
 369) changed secret on other gofreerev server.
      new server to server login is required for exchange of secrets.

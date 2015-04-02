@@ -448,7 +448,7 @@ JSON_SCHEMA = {
                               :properties => {
                                   # required unique gift id from new_gifts request
                                   :gid => {:type => 'string', :pattern => uid_pattern},
-                                  # created_at_server - boolean here - integer in client (1=current gofreerev server)
+                                  # created_at_server - boolean here - integer in client (0=current gofreerev server)
                                   :created_at_server => {:type => 'boolean'},
                                   # error message if gift could not be created (created_at_server=false)
                                   :error => {:type => 'string'}

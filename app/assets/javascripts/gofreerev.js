@@ -4329,7 +4329,7 @@ angular.module('gifts', ['ngRoute'])
                             messages.push(msg);
                             break;
                         case 'error':
-                            // error notification to other device about errors in input message, processing errors or error in response
+                            // error notification to other device about errors in input message, processing errors or error in response x
                             messages.push(msg);
                             break;
                         default:

@@ -4288,6 +4288,7 @@ angular.module('gifts', ['ngRoute'])
                     // wait with any messages in outbox until symmetric password setup is complete
                     continue;
                 }
+                console.log(pgm + 'device.password = ' + device.password) ; // todo: remove
                 if (mailbox.outbox.length == 0) continue; // no new messages for this mailbox
 
                 // send continue with symmetric key communication
@@ -4737,6 +4738,7 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + '.validate_send_gifts_message: ' ;
             if (send) console.log(pgm + 'validating send_gifts message before send') ;
             else console.log(pgm + 'validating send_gifts message after received') ;
+
             // check missing gifts array
             if (!msg.gifts || !msg.gifts.length || msg.gifts.length == 0) return 'No gifts array or empty gifts array in send_gifts message.';
 
@@ -4745,6 +4747,12 @@ angular.module('gifts', ['ngRoute'])
             // in many situations an user id can be found in friends array
             // information in msg.users array is used as fallback if user is not found in friends array
             var send_gifts_expected_user_ids = [] ;
+
+            // collect server ids in send_gifts message.
+            // array with sha256 signatures for servers must be included in cross server messages
+            // internal server ids on this server => sha256 signatures => internal server ids on other server
+            var cross_server_message = mailbox.hasOwnProperty('server_id') ;
+            var expected_server_ids = [] ;
 
             // check doublet gifts
             var new_gids = [], i, j, new_gift, doublet_gids = 0;
@@ -4755,6 +4763,7 @@ angular.module('gifts', ['ngRoute'])
                     new_gids.push(new_gift.gid);
                     add_user_ids_to_array(new_gift.giver_user_ids, send_gifts_expected_user_ids) ;
                     add_user_ids_to_array(new_gift.receiver_user_ids, send_gifts_expected_user_ids) ;
+                    if (expected_server_ids.indexOf(new_gift.created_at_server) == -1) expected_server_ids.push(new_gift.created_at_server) ;
                 }
             } // for i
             if (doublet_gids > 0) return 'Found ' + doublet_gids + ' doublet gifts in sync_gifts/send_gifts sub message. gid must be unique.';
@@ -4771,6 +4780,7 @@ angular.module('gifts', ['ngRoute'])
                     else {
                         new_cids.push(new_comment.cid);
                         add_user_ids_to_array(new_comment.user_ids, send_gifts_expected_user_ids);
+                        if (expected_server_ids.indexOf(new_comment.created_at_server) == -1) expected_server_ids.push(new_comment.created_at_server) ;
                     }
                 } // for j (comments)
             } // for i (gifts)
@@ -4791,7 +4801,7 @@ angular.module('gifts', ['ngRoute'])
 
             // compare expected & received users
             var mutual_friends, friend ;
-            if (mailbox.hasOwnProperty('server_id')) {
+            if (cross_server_message) {
                 // send_gifts message to/from other Gofreerev server using sha256 signatures instead of internal user ids
                 if (send) {
                     // sending send_gifts message using remote sha256 signatures for users
@@ -4831,6 +4841,8 @@ angular.module('gifts', ['ngRoute'])
 
         }; // validate_send_gifts_message
 
+        // translate internal server ids to sha256 signatures
+        // used before sending gifts to clients on other gofreerev servers
         var servers = Gofreerev.rails['SERVERS'] ;
         var server_id_to_sha256 = function (server_id) {
             var pgm = service + '.server_id_to_sha256: ' ;
@@ -5287,6 +5299,7 @@ angular.module('gifts', ['ngRoute'])
                     // todo: send error msg to client that sent gifts_sha256 message. user_ids_to_remote_sha256 should return error message
                     return;
                 }
+
                 if (sync_gifts_message.send_gifts) {
                     // translate user ids in giver_user_ids, receiver_user_ids and comment user_ids
                     // use remote sha256 signatures for remote users and negative user id for "unknown" users
@@ -5327,18 +5340,29 @@ angular.module('gifts', ['ngRoute'])
                     // user_id translate ok
                     console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
 
-                    // translate internal created_at_server integer to server sha256 signature
+                    // add translation for internal created_at_server integer to server sha256 signature
                     // created_at_server=0 : current gofreerev server
                     // created_at_server>0 : gift/comment from an other gofreerev server
+                    var internal_server_ids = [] ;
                     for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
                         gift = sync_gifts_message.send_gifts.gifts[i];
-                        gift.created_at_server = server_id_to_sha256(gift.created_at_server);
+                        if (!internal_server_ids.indexOf(gift.created_at_server) == -1) internal_server_ids.push(gift.created_at_server) ;
+                        // gift.created_at_server = server_id_to_sha256(gift.created_at_server);
                         if (!gift.comments) continue;
                         for (j = 0; j < gift.comments.length; j++) {
                             comment = gift.comments[j];
-                            comment.created_at_server = server_id_to_sha256(comment.created_at_server);
+                            if (!internal_server_ids.indexOf(comment.created_at_server) == -1) internal_server_ids.push(comment.created_at_server) ;
+                            // comment.created_at_server = server_id_to_sha256(comment.created_at_server);
                         } // for j (comments)
                     } // for i (gifts)
+                    var servers = [] ;
+                    for (i=0 ; i<internal_server_ids.length ; i++) {
+                        servers.push({
+                            server_id: internal_server_ids[i],
+                            sha256: server_id_to_sha256(internal_server_ids[i])
+                        }) ;
+                    }
+                    sync_gifts_message.send_gifts.servers = servers ;
 
                 } // if send_gifts
 

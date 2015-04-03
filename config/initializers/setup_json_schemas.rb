@@ -218,7 +218,7 @@ JSON_SCHEMA = {
               :sid => {:type => 'string', :pattern => uid_pattern},
 
               # new_gifts - optional array with minimal meta-information for new gifts (gid, sha256 and user ids)
-              # login users and creators of gifts must be identical - gift is always created on this server with created_at_server = 1
+              # login users and creators of gifts must be identical - gift is always created on this server with created_at_server = 0
               :new_gifts => {
                   :type => 'array',
                   :title => 'Array with newly created gifts on client',
@@ -805,8 +805,8 @@ JSON_SCHEMA = {
                                 :receiver_user_ids => {:type => 'array', :items => {:type => %w(integer string) } },
                                 # created at client unix timestamp - 10 decimals - used in gift signature on server
                                 :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
-                                # created at server - server number - 1 for this server - todo: must be translated when sending cross server messages
-                                :created_at_server => {:type => 'integer', :minimum => 1, :maximum => max_server_no},
+                                # created at server - server number - 0 for this server - see also servers array for cross server messages
+                                :created_at_server => {:type => 'integer', :minimum => 0, :maximum => max_server_no},
                                 # optional price - set when gift is created or when gift is accepted by a friend
                                 :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
                                 # optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
@@ -847,8 +847,8 @@ JSON_SCHEMA = {
                                             :comment => {:type => 'string'},
                                             # created at client unix timestamp - 10 decimals - used in comment signature on server
                                             :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
-                                            # created at server - server number - 1 for current server - todo: must be translated when sending cross server messages
-                                            :created_at_server => {:type => 'integer', :minimum => 1, :maximum => max_server_no},
+                                            # created at server - server number - 0 for current server - see also servers array for cross server messages
+                                            :created_at_server => {:type => 'integer', :minimum => 0, :maximum => max_server_no},
                                             # optional new_deal boolean - true if new deal proposal - false if cancelled new deal proposal
                                             :new_deal => {:type => %w(undefined boolean) },
                                             # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter
@@ -896,6 +896,21 @@ JSON_SCHEMA = {
                             :required => %w(user_id uid provider user_name),
                             :additionalProperties => false
                         }
+                    },
+                    # array with server sha256 signatures. Used when sending gifts to client on an other gofreerev server
+                    # sha256 signatures added by sender - receiver must translate sha256 signatures to new internal server ids
+                    :servers => {
+                        :type => 'array',
+                        :title => 'Array with sha256 signatures for internal server ids in send_gifts message',
+                        :properties => {
+                            # internal server ids used in send_gifts message
+                            :server_id => { :type => 'integer', :minimum => 0},
+                            # sha256 signature for server site_url.
+                            :sha256 => { :type => 'string'}
+                        },
+                        :required => %w(server_id sha256),
+                        :additionalProperties => false
+
                     }
                 },
                 :required => %w(mid msgtype gifts),

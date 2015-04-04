@@ -31,5 +31,10 @@ Capfile.1
 *betatesters*
 todo-*
 pk_pass.txt
+/.idea
+/public/jQuery-File-Upload-master
+/public/jQuery-File-Upload-edited
+/public/assets
+
 
 

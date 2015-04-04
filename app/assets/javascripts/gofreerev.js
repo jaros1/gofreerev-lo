@@ -1731,8 +1731,14 @@ angular.module('gifts', ['ngRoute'])
             var pgm = service + '.get_friend_by_sha256: ' ;
             // console.log(pgm + 'friends_index_by_sha256 = ' + JSON.stringify(friends_index_by_sha256)) ;
             // console.log(pgm + 'sha256 = ' + sha256) ;
-            if (typeof friends == 'undefined') return null ;
-            if (typeof sha256 == 'undefined') return null ;
+            if (typeof friends == 'undefined') {
+                console.log(pgm + 'error: friends array is undefined') ;
+                return null ;
+            }
+            if (typeof sha256 == 'undefined') {
+                console.log(pgm + 'error. sha256 param is undefined') ;
+                return null ;
+            }
             var i = friends_index_by_sha256[sha256] ;
             if ((typeof i == 'undefined') && friends_sha256_last_updated && (friends_sha256_last_updated > Gofreerev.unix_timestamp()-300)) {
                 // fallback option 1: system secret and friends sha256 signatures changed within the last 3 minutes
@@ -1756,6 +1762,7 @@ angular.module('gifts', ['ngRoute'])
                 //          messages are moved from outbox to done or error when response to outgoing message are received
                 //          should also be a special error response with unknown sha256 signature flag
                 //          client checks timestamp for secret change and resents old message with new she256 signatures
+                console.log(pgm + 'friends_index_by_sha256 = ' + JSON.stringify(friends_index_by_sha256)) ;
                 return null ;
             }
             var friend = friends[i] ;
@@ -4854,7 +4861,7 @@ angular.module('gifts', ['ngRoute'])
                 }
                 var received_server_ids = [], doublet_server_ids = [], server_id ;
                 for (i=0 ; i<send_gifts.servers.length ; i++) {
-                    server_id = send_gifts.servers[i] ;
+                    server_id = send_gifts.servers[i].server_id ;
                     if (received_server_ids.indexOf(server_id) == -1) received_server_ids.push(server_id) ;
                     else if (doublet_server_ids.indexOf(server_id) == -1) doublet_server_ids.push(server_id) ;
                 }
@@ -5646,6 +5653,7 @@ angular.module('gifts', ['ngRoute'])
                 // pass 0 - check for some fatal errors before processing send_gifts message
                 // 1) gid and cid must be unique
                 // 2) users in msg.users array must be unique and be correct (all user ids in msg.users array except mutual friends)
+                // 3) sha256 signatures for servers must be in msg.servers array
                 var error = validate_send_gifts_message(mailbox, msg, false) ; // false: receiving message
                 if (error) {
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
@@ -5665,6 +5673,9 @@ angular.module('gifts', ['ngRoute'])
 
                     if (mailbox.hasOwnProperty('server_id')) {
                         // received gifts from an other Gofreerev server.
+
+                        // ?????
+
                         // user ids have been validated in validate_send_gifts_message and are either
                         // 1) sha256 signatures for remote users or
                         // 2) negative user ids for "unknown" users

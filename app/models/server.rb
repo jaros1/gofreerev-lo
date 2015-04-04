@@ -625,6 +625,9 @@ class Server < ActiveRecord::Base
             end
             su.verified_at = Time.zone.now
             su.save!
+            # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
+            u.update_sha256(true)
+            u.save!
           else
             logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{u.id}. Expected #{u.sha256}. Received #{usr['sha256']}"
           end
@@ -705,6 +708,9 @@ class Server < ActiveRecord::Base
             end
             su.verified_at = Time.zone.now
             su.save!
+            # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
+            u.update_sha256(true)
+            u.save!
           else
             logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{u.id}"
           end

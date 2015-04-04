@@ -4193,7 +4193,10 @@ angular.module('gifts', ['ngRoute'])
                 // replace internal user ids with remote sha256 signatures
                 var i, user_ids = [] ;
                 for (i=0 ; i<users_sha256_message.users.length ; i++) user_ids.push(users_sha256_message.users[i].user_id) ;
-                if (!userService.user_ids_to_remote_sha256(user_ids, mailbox.server_id, msg, false)) return ; // translate error. see log
+                if (!userService.user_ids_to_remote_sha256(user_ids, mailbox.server_id, msg, false)) {
+                    // translate error. see log
+                    return ;
+                }
                 // no errors. replace user ids
                 for (i=0 ; i<users_sha256_message.users.length ; i++) users_sha256_message.users[i].user_id = user_ids[i] ;
             } // if
@@ -4852,13 +4855,15 @@ angular.module('gifts', ['ngRoute'])
                 var received_server_ids = [], doublet_server_ids = [], server_id ;
                 for (i=0 ; i<send_gifts.servers.length ; i++) {
                     server_id = send_gifts.servers[i] ;
-                    if (received_server_ids.indexOf(server_id) == -1) received_server_ids.push(received_server_ids) ;
-                    else if (doublet_server_ids.indexOf(server_id) == -1) doublet_server_ids.push(received_server_ids) ;
+                    if (received_server_ids.indexOf(server_id) == -1) received_server_ids.push(server_id) ;
+                    else if (doublet_server_ids.indexOf(server_id) == -1) doublet_server_ids.push(server_id) ;
                 }
                 if (doublet_server_ids.length > 0) return 'Found doublet server ids ' + doublet_server_ids.join(', ') + ' in sync_gifts/send_gifts sub message. Server ids in servers array must be unique.' ;
                 // compare expected and received server ids. 
                 var missing_server_ids = $(expected_server_ids).not(received_server_ids).get() ;
                 if (missing_server_ids.length > 0) {
+                    console.log(pgm + 'expected_server_ids = ' + expected_server_ids.join(', ')) ;
+                    console.log(pgm + 'received_server_ids = ' + received_server_ids.join(', ')) ;
                     return 'Server ids ' + missing_server_ids.join(', ') + ' were missing in sync_gifts/send_gifts sub message. All server ids from created_at_server must be sent in servers array.' ;
                 }
                 var unexpected_server_ids = $(received_server_ids).not(expected_server_ids).get() ;
@@ -5380,29 +5385,28 @@ angular.module('gifts', ['ngRoute'])
                     // user_id translate ok
                     console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
 
-                    // add translation for internal created_at_server integer to server sha256 signature
+                    // add servers array with translation for internal created_at_server integer to server sha256 signature
                     // created_at_server=0 : current gofreerev server
                     // created_at_server>0 : gift/comment from an other gofreerev server
                     var internal_server_ids = [] ;
                     for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
                         gift = sync_gifts_message.send_gifts.gifts[i];
-                        if (!internal_server_ids.indexOf(gift.created_at_server) == -1) internal_server_ids.push(gift.created_at_server) ;
+                        if (internal_server_ids.indexOf(gift.created_at_server) == -1) internal_server_ids.push(gift.created_at_server) ;
                         // gift.created_at_server = server_id_to_sha256(gift.created_at_server);
                         if (!gift.comments) continue;
                         for (j = 0; j < gift.comments.length; j++) {
                             comment = gift.comments[j];
-                            if (!internal_server_ids.indexOf(comment.created_at_server) == -1) internal_server_ids.push(comment.created_at_server) ;
+                            if (internal_server_ids.indexOf(comment.created_at_server) == -1) internal_server_ids.push(comment.created_at_server) ;
                             // comment.created_at_server = server_id_to_sha256(comment.created_at_server);
                         } // for j (comments)
                     } // for i (gifts)
-                    var servers = [] ;
+                    sync_gifts_message.send_gifts.servers = [] ;
                     for (i=0 ; i<internal_server_ids.length ; i++) {
-                        servers.push({
+                        sync_gifts_message.send_gifts.servers.push({
                             server_id: internal_server_ids[i],
                             sha256: server_id_to_sha256(internal_server_ids[i])
                         }) ;
                     }
-                    sync_gifts_message.send_gifts.servers = servers ;
 
                 } // if send_gifts
 

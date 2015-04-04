@@ -2397,17 +2397,21 @@ class User < ActiveRecord::Base
   end
 
 
-  # check/update sha256
+  # check/update sha256 signatures. Used in cross server client communication
   # 1) update sha256 for user
   # 2) mark sha256 as updated for online friends (must download new sha256 signatures - short friends list from ping response)
   # 3) mark sha256 as updated for online friends of friends (must download new sha256 signatures - short friends list from ping response)
-  def update_sha256
+  # params:
+  # - force=false. normal update. skip update operation if unchanged sha256 signature
+  # - force=true.  true. set sha256_updated_at and friend_sha256_updated_at for user, friends and friend of friends.
+  #                update marked users will be included in next ping :friends response
+  def update_sha256 (force)
     old_sha256 = self.sha256
     new_sha256 = self.calc_sha256(SystemParameter.secret)
-    return if old_sha256 == new_sha256
+    return if !force and (old_sha256 == new_sha256)
     # loop - system secret may have to change to keep sha256 signatures unique
     loop do
-      if !User.find_by_sha256(new_sha256)
+      if !User.where('sha256 = ? and id <> ?', new_sha256, self.id).first
         # new unique sha256
         # 1) update sha256 for user
         self.old_sha256 = old_sha256
@@ -2432,7 +2436,7 @@ class User < ActiveRecord::Base
         update_all(:friend_sha256_updated_at => Time.zone.now)
         break
       end
-      # doublet sha256 signature. must generate new system secret
+      # doublet sha256 signature. sha256 signatures must be unique. generate new system secret
       SystemParameter.new_secret
       new_sha256 = self.calc_sha256(SystemParameter.secret)
     end # loop

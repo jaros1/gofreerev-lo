@@ -1522,4 +1522,40 @@ class Server < ActiveRecord::Base
 
   end # ping
 
+
+  public
+  def self.servers
+    ([[0, SITE_URL.gsub(/^https/,"http") ]] + Server.all.
+        collect { |s| [s.id, s.site_url] }).
+        collect { |array| { :server_id => array[0], :sha256 => Base64.encode64(Digest::SHA256.digest(array[1])).gsub(/\n$/,"") } }
+  end
+  def self.server_id_to_sha256_hash
+    Server.servers.collect { |hash| { hash[:server_id] => hash[:sha256] } }.reduce({}, :merge)
+  end
+  def self.sha256_to_server_id_hash
+    Server.servers.collect { |hash| { hash[:sha256] => hash[:server_id]  } }.reduce({}, :merge)
+  end
+
+
+  # new servers request from util_controller.ping
+  # servers hash Gofreerev.rails['SERVERS'] is downloaded to client at page load (/assets/ruby_to.js)
+  # this request is only used when client receives new unknown server sha256 signatures (new_gifts message)
+  public
+  def self.new_servers (request)
+    return if !request
+    return if request.size == 0
+    servers = Server.sha256_to_server_id_hash
+    response = []
+    request.each do |sha256|
+      if servers[sha256]
+        response << { :sha256 => sha256, :server_id => servers[sha256] }
+      else
+        # todo: check for new servers in extended server network
+        logger.errors "server with sha256 signature #{sha256} was not found. todo: search extended gofreerev network for new gofreerev servers"
+        response << { :sha256 => sha256 }
+      end
+    end
+    return response
+  end # new_servers
+
 end

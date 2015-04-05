@@ -1376,7 +1376,7 @@ class UtilController < ApplicationController
         # 6) new servers. Gofreerev.rails['SERVERS'] hash with known Gofreerev servers are downloaded at page start in /assets/ruby_to.js
         # new_servers request is used when receiving new gifts from unknown Gofreerev servers (first contact)
         logger.debug2 "new_servers = #{params[:new_servers]} (#{params[:new_servers].class})" unless server
-        new_servers_response = Server.new_servers(params[:new_servers], login_user_ids) unless server
+        new_servers_response = Server.new_servers(params[:new_servers]) unless server
         @json[:new_servers] = new_servers_response if new_servers_response
 
         # 7) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client

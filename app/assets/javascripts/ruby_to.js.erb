@@ -33,4 +33,4 @@ Gofreerev.rails['COUNTRY_TO_CURRENCY'] = JSON.parse('<%= COUNTRY_TO_CURRENCY.to_
   end
   "Gofreerev.rails['VALID_CURRENCIES'] = JSON.parse('#{valid_currencies.to_json}'); Gofreerev.rails['ACTIVE_CURRENCIES'] = JSON.parse('#{active_currencies.to_json}')"
 %> ;
-Gofreerev.rails['SERVERS'] = JSON.parse('<%= ([[0, SITE_URL.gsub(/^https/,"http") ]] + Server.all.collect { |s| [s.id, s.site_url] }).collect { |array| { array[0] => Base64.encode64(Digest::SHA256.digest(array[1])).gsub(/\n$/,"") } }.reduce({}, :merge).to_json %>') ;
+Gofreerev.rails['SERVERS'] = JSON.parse('<%= Server.server_id_to_sha256_hash.to_json %>') ;

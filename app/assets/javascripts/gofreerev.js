@@ -3557,27 +3557,47 @@ angular.module('gifts', ['ngRoute'])
 
 
 
-        // internal server id => server sha256 signature hash
-        // sha256 signature is used as server id in cross server communication
-        // translated to sha256 before send message and translated back to internal server id after received message
-        // loaded from /assets/ruby_to.js page at page load.
-        // new servers are added in /util/ping new_servers request and response
-        var servers = Gofreerev.rails['SERVERS'] ;
-        // sha256 signature => null (new request) or unix timestamp for last new_servers request/response (old request)
+        // internal server id <=> server sha256 signature hashes
+        // server sha256 signature is used in cross server communication (send_gifts messsage)
+        // translated to sha256 before sending message and translated back to server id after receving message
+        // loaded from /assets/ruby_to.js page at page start.
+        // new servers after page start are added in /util/ping new_servers request and response
+        var server_id_to_sha256_hash = {}, sha256_to_server_id_hash = {} ;
+        (function () {
+            server_id_to_sha256_hash = Gofreerev.rails['SERVERS'] ;
+            var server_id, sha256 ;
+            for (server_id in server_id_to_sha256_hash) {
+                if (!server_id_to_sha256_hash.hasOwnProperty(server_id)) continue ;
+                sha256 = server_id_to_sha256_hash[server_id] ;
+                sha256_to_server_id_hash[sha256] = parseInt(server_id) ;
+            }
+        })();
+
+        // hash with unknown server sha256 signatures:
+        // - null (new request)
+        // < 0 : unix timestamp for last request - waiting for response
+        // > 0 : unix timestamp for last response - also unknown by serber
         var unknown_servers = {} ;
 
         var new_servers_request = function () {
-            var request = [], sha256, last_request_at, now ;
+            var now = Gofreerev.unix_timestamp() ;
+            var request = [], sha256, last_request_at ;
             for (sha256 in unknown_servers) {
                 if (!unknown_servers.hasOwnProperty(server_id)) continue ;
                 if (typeof unknown_servers[sha256] == 'number') {
-                    // unknown server. timestamp for last new_servers request/response
+                    // unknown server. timestamp for last request / last response
                     last_request_at = unknown_servers[sha256] ;
-                    if (!now) now = Gofreerev.unix_timestamp() ;
-                    if (now-last_request_at > 600) unknown_servers[sha256] = null ; // recheck
-                    else continue ; // wait
+                    if (last_request_at < 0) {
+                        // waiting for response. resend request once every minute
+                        if (now + last_request_at < 60) continue ;
+                    }
+                    else {
+                        // unknown server response from server. resend request once every 10 minutes
+                        if (now - last_request_at < 600) continue ;
+                    }
                 }
                 request.push(sha256) ;
+                unknown_servers[sha256] = -now ; // timestamp for request
             } // for sha256
             return (request.length == 0 ? null : request) ;
         }; // new_servers_request
@@ -3588,38 +3608,42 @@ angular.module('gifts', ['ngRoute'])
             for (i=0 ; i<response.length ; i++) {
                 sha256 = response[i].sha256 ;
                 if ((typeof response[i].server_id == 'undefined') || (response[i].server_id == null)) {
-                    // unknown server sha256 signature response.
+                    // unknown server response.
                     if (!unknown_servers[sha256]) {
                         console.log(pgm + 'System error. Unexpected unknown server response. server sha256 signature ' + sha256 + ' was not found in unknown_servers hash') ;
                         continue ;
                     }
-                    unknown_servers[sha256] = Gofreerev.unix_timestamp() ;
+                    unknown_servers[sha256] = Gofreerev.unix_timestamp() ; // timestamp for response
                     continue ;
                 } // if
-                // known server
+                // new known server
                 server_id = response[i].server_id.toString ;
-                if (servers[server_id] && (servers[server_id] != sha256)) {
-                    // server sha256 signature never changes
-                    console.log(pgm + 'System error. Received changed sha256 signature for server id ' + server_id + '. old sha256 = ' + servers[server_id] + '. new sha256 = ' + sha256) ;
+                if (server_id_to_sha256_hash[server_id] && (server_id_to_sha256_hash[server_id] != sha256)) {
+                    // server sha256 signature never changes!
+                    console.log(pgm + 'System error. Received changed sha256 signature for server id ' + server_id + '. old sha256 = ' + server_id_to_sha256_hash[server_id] + '. new sha256 = ' + sha256) ;
                     unknown_servers[sha256] = Gofreerev.unix_timestamp() ;
                     continue ;
                 }
-                servers[server_id] = sha256 ;
+                server_id_to_sha256_hash[server_id] = sha256 ;
+                sha256_to_server_id_hash[sha256] = response[i].server_id ;
                 if (unknown_servers.hasOwnProperty(sha256)) delete unknown_servers[sha256] ;
             } // for i
         }; // new_servers_response
 
-
-        // translate internal server ids to sha256 signatures
-        // used before sending gifts to clients on other gofreerev servers
+        // before send - translate internal server ids to sha256 signatures
         var server_id_to_sha256 = function (server_id) {
             var pgm = service + '.server_id_to_sha256: ' ;
             var server_idx = server_id.toString() ;
-            if (servers.hasOwnProperty(server_idx)) return servers[server_idx] ;
+            if (server_id_to_sha256_hash.hasOwnProperty(server_idx)) return server_id_to_sha256_hash[server_idx] ;
             console.log(pgm + 'Cannot translate unknown server id ' + server_id) ;
-            return server_id ;
+            return null ;
         }; // server_id_to_sha256
 
+        // after receive - translate server sha256 signatures to internal server ids
+        var sha256_to_server_id = function (sha256) {
+            if (!sha256_to_server_id_hash.hasOwnProperty(sha256)) return null ;
+            return sha256_to_server_id_hash[sha256] ;
+        } // sha256_to_server_id
 
 
         // check sha256 server signature for gifts received from other clients before adding or merging gift on this client
@@ -5681,16 +5705,15 @@ angular.module('gifts', ['ngRoute'])
         } ; // identical_values
 
 
-
-
         // communication step 4 - sub message from receive_message_sync_gifts
         // password => users_sha256 => gifts_sha256 => sync_gifts
         // has already been json validated in receive_message_sync_gifts
         // receive missing gifts from other device
         // receive_message_send_gifts is called more than once when receiving gifts from other device
-        // first pass (msg.pass=0, 1) - do some initial gift verification without checking server sha256 signature
-        // insert new gifts in verify_gifts array for server sha256 signature check in next ping
-        // between first and second pass - ping - verify server sha256 signature for new gifts
+        // pass 0: do some initial gift verification without checking
+        // between pass 0 and pass 1 - check unknown server sha256 signatures in ping new_servers request/response
+        // pass 1: insert new gifts in verify_gifts array for server sha256 signature check in next ping
+        // between first and second pass - ping - find unknown servers and verify sha256 signature for new gifts
         // property verify_seq is set in verify_gifts_request and verified_at_server (true/false) is set in verify_gifts_response
         // note that response for remote gifts / remote verification can take some time
         // second pass (msg.pass=2) - finish gift verification including server sha256 signature check - can request additional gift and comment verifications
@@ -5703,7 +5726,6 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'msg.pass = ' + msg.pass); // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - reasy for pass 2, 3: done
 
             if (msg.pass == 0) {
-
 
                 // pass 0 - check for some fatal errors before processing send_gifts message
                 // 1) gid and cid must be unique
@@ -5768,7 +5790,6 @@ angular.module('gifts', ['ngRoute'])
 
                     // note msg.users as second argument 2 to invalid_gift call
                     // allows gift validation to use msg.users as fallback information in case of unknown users in givers, receivers or comments
-                    // todo: error when receiving send_gifts from an other Gofreerev server (mutual friends not included in users array)
                     error = invalid_gift(new_gift, msg.users) ;
                     if (error) errors.push('gid=' + new_gift.gid + ', error=' + error ) ;
                 } // for i (gifts)
@@ -5806,12 +5827,55 @@ angular.module('gifts', ['ngRoute'])
                     return;
                 } // if sha256 calc errors
 
+                if (mailbox.hasOwnProperty('server_id')) {
+
+                    // cross server message
+                    // check for any unknown server sha256 signatures
+                    // unknown server sha256 signatures must be validated between pass 0 and pass 1
+                    var no_unknown_servers = 0, sha256 ;
+                    for (i = 0; i < msg.servers.length; i++) {
+                        sha256 = msg.servers[i].sha256 ;
+                        if (sha256_to_server_id(sha256)) continue ; // known server
+                        no_unknown_servers += 1 ;
+                        if (!unknown_servers.hasOwnProperty(sha256)) unknown_servers[sha256] = null ;
+                        console.log(pgm + 'unknown_servers[' + sha256 + '] = ' + unknown_servers[sha256]) ;
+                    } // for i
+                    if (no_unknown_servers > 0) {
+                        console.log(pgm + no_unknown_servers + ' unknown servers. wait for new_servers request/response in ping') ;
+                        mailbox.read.push(msg);
+                        return ;
+                    }
+                    // no unknown servers. translate server sha256 signatures
+                    var other_server_id_to_sha256 = {} ; // from internal server id on other gofreerev server to sha256 signature
+                    var server ;
+                    for (i=0 ; i<msg.servers.length ; i++) {
+                        server = msg.servers[i] ;
+                        other_server_id_to_sha256[server.server_id] = server.sha256 ;
+                    }
+                    console.log(pgm + 'other_server_id_to_sha256 = ' + JSON.stringify(other_server_id_to_sha256)) ;
+                    for (i=0 ; i<msg.gifts.length ; i++) {
+                        new_gift = msg.gifts[i] ;
+                        sha256 = other_server_id_to_sha256[new_gift.created_at_server] ;
+                        new_gift.created_at_server = sha256_to_server_id(sha256) ;
+                        if (!new_gift.comments) continue ;
+                        for (j=0 ; j<new_gift.comments.length ; j++) {
+                            new_comment = new_gift.comments[j] ;
+                            sha256 = other_server_id_to_sha256[new_comment.created_at_server] ;
+                            new_comment.created_at_server = sha256_to_server_id(sha256) ;
+                        } // for j
+                    } // for i
+
+                } // if server_id
+
+
+
+
                 // ready for pass 1
                 msg.pass = 1;
             } // if pass 0
 
             // one loop for pass 1, 2 and 3 - logic is identical except for a few things
-            // pass 1: validation without server side sha256 check - find new gifts and comments that must be server side validated
+            // pass 1: validation without server side sha256 check - find new gifts and new comments that must be server side validated
             // between pass 1 and 2: server side sha256 check - see ping verify_gifts_request and verify_gifts_response
             // pass 2: validation with server side sha256 check
             // pass 3: do actions (create gifts, update gifts, merge comments etc)
@@ -5824,8 +5888,8 @@ angular.module('gifts', ['ngRoute'])
             var validate_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
             var verifying_old_gifts = 0; // number of old gifts already in queue for server validation (offline client, remote gifts or errors)
             var old_gifts_invalid_signature = []; // array with gids
-            var validate_comments = 0; // number of new comments that must be server validated
-            var verifying_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
+            var validate_new_comments = 0; // number of new comments that must be server validated
+            var verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
             var index_system_errors = []; // gid array with gift index system errors - fatal javascript errors - not communication errors
             var validation_system_errors = []; // gid array with
 
@@ -5846,8 +5910,8 @@ angular.module('gifts', ['ngRoute'])
                 validate_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
                 verifying_old_gifts = 0; // number of old gifts already in queue for server validation (offline client, remote gifts or errors)
                 old_gifts_invalid_signature = []; // array with gids
-                validate_comments = 0; // number of new comments that must be server validated
-                verifying_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
+                validate_new_comments = 0; // number of new comments that must be server validated
+                verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
                 index_system_errors = []; // gid array with gift index system errors - fatal javascript errors - not communication errors
                 validation_system_errors = []; // gid array with
                 counterpart_errors = [] ;
@@ -6031,8 +6095,8 @@ angular.module('gifts', ['ngRoute'])
                             new_comment = new_gift.comments[j];
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
                             if (old_cids.indexOf(new_comment.cid) == -1) {
-                                validate_comments += 1;
-                                validate_comments.push({gid: gid, comment: new_comment});
+                                validate_new_comments += 1;
+                                validate_new_comments.push({gid: gid, comment: new_comment});
                             }
                         }
                         continue;
@@ -6049,7 +6113,10 @@ angular.module('gifts', ['ngRoute'])
                     }
                     if (!is_mutual_gift) continue; // errors are reported after pass 2
                     // new gift from a mutual friend.
-                    // server sha256 signature must be verified before continuing with pass 2
+
+                    //
+                    // server id and server sha256 signature must be verified before continuing with pass 2
+
                     validate_new_gifts += 1;
                     if (mailbox.hasOwnProperty('server_id')) {
                         // todo: how to validate gifts from client on other Gofreerev server? Not all user ids are known!
@@ -6062,7 +6129,7 @@ angular.module('gifts', ['ngRoute'])
                         for (j = 0; j < new_gift.comments.length; j++) {
                             new_comment = new_gift.comments[j];
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
-                            validate_comments += 1;
+                            validate_new_comments += 1;
                             verify_comments.push({gid: gid, comment: new_comment});
                         } // for j (comments)
                     } // if
@@ -6108,9 +6175,9 @@ angular.module('gifts', ['ngRoute'])
 
             // ready for pass 2 - but wait for any server validation for new gift and new comments
             msg.pass = 2;
-            if (validate_new_gifts + verifying_new_gifts + validate_old_gifts + verifying_old_gifts + validate_comments + verifying_comments > 0) {
+            if (validate_new_gifts + verifying_new_gifts + validate_old_gifts + verifying_old_gifts + validate_new_comments + verifying_new_comments > 0) {
                 // wait. continue with pass 2 after next ping
-                console.log(pgm + 'Waiting for ' + (validate_new_gifts + verifying_new_gifts + validate_old_gifts + verifying_old_gifts) + ' gifts and ' + (validate_comments + verifying_comments) + ' comments to be server validated.');
+                console.log(pgm + 'Waiting for ' + (validate_new_gifts + verifying_new_gifts + validate_old_gifts + verifying_old_gifts) + ' gifts and ' + (validate_new_comments + verifying_new_comments) + ' comments to be server validated.');
                 mailbox.read.push(msg);
 
                 // debug

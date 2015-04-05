@@ -3555,7 +3555,72 @@ angular.module('gifts', ['ngRoute'])
             } // for i
         }; // new_gifts_response
 
-        
+
+
+        // internal server id => server sha256 signature hash
+        // sha256 signature is used as server id in cross server communication
+        // translated to sha256 before send message and translated back to internal server id after received message
+        // loaded from /assets/ruby_to.js page at page load.
+        // new servers are added in /util/ping new_servers request and response
+        var servers = Gofreerev.rails['SERVERS'] ;
+        // sha256 signature => null (new request) or unix timestamp for last new_servers request/response (old request)
+        var unknown_servers = {} ;
+
+        var new_servers_request = function () {
+            var request = [], sha256, last_request_at, now ;
+            for (sha256 in unknown_servers) {
+                if (!unknown_servers.hasOwnProperty(server_id)) continue ;
+                if (typeof unknown_servers[sha256] == 'number') {
+                    // unknown server. timestamp for last new_servers request/response
+                    last_request_at = unknown_servers[sha256] ;
+                    if (!now) now = Gofreerev.unix_timestamp() ;
+                    if (now-last_request_at > 600) unknown_servers[sha256] = null ; // recheck
+                    else continue ; // wait
+                }
+                request.push(sha256) ;
+            } // for sha256
+            return (request.length == 0 ? null : request) ;
+        }; // new_servers_request
+
+        var new_servers_response = function (response) {
+            var pgm = service + '.new_servers_response: ' ;
+            var i, sha256, server_id ;
+            for (i=0 ; i<response.length ; i++) {
+                sha256 = response[i].sha256 ;
+                if ((typeof response[i].server_id == 'undefined') || (response[i].server_id == null)) {
+                    // unknown server sha256 signature response.
+                    if (!unknown_servers[sha256]) {
+                        console.log(pgm + 'System error. Unexpected unknown server response. server sha256 signature ' + sha256 + ' was not found in unknown_servers hash') ;
+                        continue ;
+                    }
+                    unknown_servers[sha256] = Gofreerev.unix_timestamp() ;
+                    continue ;
+                } // if
+                // known server
+                server_id = response[i].server_id.toString ;
+                if (servers[server_id] && (servers[server_id] != sha256)) {
+                    // server sha256 signature never changes
+                    console.log(pgm + 'System error. Received changed sha256 signature for server id ' + server_id + '. old sha256 = ' + servers[server_id] + '. new sha256 = ' + sha256) ;
+                    unknown_servers[sha256] = Gofreerev.unix_timestamp() ;
+                    continue ;
+                }
+                servers[server_id] = sha256 ;
+                if (unknown_servers.hasOwnProperty(sha256)) delete unknown_servers[sha256] ;
+            } // for i
+        }; // new_servers_response
+
+
+        // translate internal server ids to sha256 signatures
+        // used before sending gifts to clients on other gofreerev servers
+        var server_id_to_sha256 = function (server_id) {
+            var pgm = service + '.server_id_to_sha256: ' ;
+            var server_idx = server_id.toString() ;
+            if (servers.hasOwnProperty(server_idx)) return servers[server_idx] ;
+            console.log(pgm + 'Cannot translate unknown server id ' + server_id) ;
+            return server_id ;
+        }; // server_id_to_sha256
+
+
 
         // check sha256 server signature for gifts received from other clients before adding or merging gift on this client
         // input is gifts in verify_gifts from send_gifts message pass 1 (receive_message_send_gifts)
@@ -4893,16 +4958,6 @@ angular.module('gifts', ['ngRoute'])
 
         }; // validate_send_gifts_message
 
-        // translate internal server ids to sha256 signatures
-        // used before sending gifts to clients on other gofreerev servers
-        var servers = Gofreerev.rails['SERVERS'] ;
-        var server_id_to_sha256 = function (server_id) {
-            var pgm = service + '.server_id_to_sha256: ' ;
-            var server_idx = server_id.toString() ;
-            if (servers.hasOwnProperty(server_idx)) return servers[server_idx] ;
-            console.log(pgm + 'Cannot translate unknown server id ' + server_id) ;
-            return server_id ;
-        }; // server_id_to_sha256
 
         // communication step 3 - compare sha256 values for gifts (mutual friends)
         var receive_message_gifts_sha256 = function (device, mailbox, msg) {
@@ -5674,7 +5729,12 @@ angular.module('gifts', ['ngRoute'])
                     if (mailbox.hasOwnProperty('server_id')) {
                         // received gifts from an other Gofreerev server.
 
-                        // ?????
+                        // todo: how to handle missing/unknown server sha256 signatures?
+                        // a) replace server id with sha256 signature and verify gift with sha256 signature.
+                        //    server must find server id before processing gifts verification request
+                        //    return false for unknown server
+                        // b) request missing server ids between pass1 and pass2
+                        //
 
                         // user ids have been validated in validate_send_gifts_message and are either
                         // 1) sha256 signatures for remote users or
@@ -6359,6 +6419,8 @@ angular.module('gifts', ['ngRoute'])
             remove_old_link_errors: remove_old_link_errors,
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response,
+            new_servers_request: new_servers_request,
+            new_servers_response: new_servers_response,
             verify_gifts_request: verify_gifts_request,
             verify_gifts_response: verify_gifts_response,
             delete_gifts_request: delete_gifts_request,
@@ -6417,6 +6479,7 @@ angular.module('gifts', ['ngRoute'])
                 sid: sid,
                 client_timestamp: new_client_timestamp,
                 new_gifts: giftService.new_gifts_request(),
+                new_servers: giftService.new_servers_request(),
                 verify_gifts: giftService.verify_gifts_request(),
                 delete_gifts: giftService.delete_gifts_request(),
                 new_comments: giftService.new_comments_request(),
@@ -6460,6 +6523,8 @@ angular.module('gifts', ['ngRoute'])
                     if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;
                     // get timestamps for newly created gifts from server
                     if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
+                    // get result of new servers request (unknown server sha256 signatures received from other devices (new gifts))
+                    if (response.data.new_servers) giftService.new_servers_response(response.data.new_servers) ;
                     // get result of gift verification (gifts received from other devices)
                     if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
                     // get result of delete gifts request

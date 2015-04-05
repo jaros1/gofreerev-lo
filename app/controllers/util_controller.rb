@@ -1369,11 +1369,17 @@ class UtilController < ApplicationController
 
         # 5) delete gifts. mark gifts as deleted with a server side sha256_deleted signature. Returns deleted_at_server = true or an error message for each gift
         # signatures (sha256 and sha256_deleted) should ensure that gift information is not unauthorized updated on client
-        logger.debug2 "delete_gifts = #{params[:delete_gifts]} (#{params[:delete_gifts].class})"
+        logger.debug2 "delete_gifts = #{params[:delete_gifts]} (#{params[:delete_gifts].class})" unless server
         delete_gifts_response = Gift.delete_gifts(params[:delete_gifts], login_user_ids) unless server
         @json[:delete_gifts] = delete_gifts_response if delete_gifts_response
 
-        # 6) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client
+        # 6) new servers. Gofreerev.rails['SERVERS'] hash with known Gofreerev servers are downloaded at page start in /assets/ruby_to.js
+        # new_servers request is used when receiving new gifts from unknown Gofreerev servers (first contact)
+        logger.debug2 "new_servers = #{params[:new_servers]} (#{params[:new_servers].class})" unless server
+        new_servers_response = Server.new_servers(params[:new_servers], login_user_ids) unless server
+        @json[:new_servers] = new_servers_response if new_servers_response
+
+        # 7) verify gifts. check server side signature for existing gifts. used when receiving gifts from other devices. Return created_at_server timestamps (or null) to client
         # login user must be friend with giver or receiver of gift
         # client must reject gift if created_at_server timestamp is null or does not match
         # sha256 signature should ensure that gift information is not unauthorized updated on client
@@ -1381,7 +1387,7 @@ class UtilController < ApplicationController
         verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids) unless server
         @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
-        # 7) client to client messages or server or server messages
+        # 8) client to client messages or server or server messages
         # client to client:
         #   input: buffered messages (JS array) from actual client to other clients - saved in messages table
         #   output: messages to actual client from other clients - from messages table - saved in a JS array

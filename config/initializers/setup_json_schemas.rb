@@ -240,6 +240,14 @@ JSON_SCHEMA = {
                   :minItems => 1
               },
 
+              # new_servers - array with sha256 signatures - request internal server id for new "unknown" Gofreerev servers
+              # ( known servers are downloaded from /assets/ruby_to.js page at page load - Gofreerev.rails['SERVERS'] )
+              :new_servers => {
+                  :type => 'array',
+                  :title => 'Array with sha256 signatures for unknown servers',
+                  :items => { :type => 'string'} # server sha256 signatures
+              },
+
               # verify_gifts - optional array used when verifying gifts received from other clients - check server sha256 signature created in a previous new_gifts request
               # gift must be from a friend - gift can be from an other gofreerev server
               :verify_gifts => {
@@ -436,7 +444,7 @@ JSON_SCHEMA = {
               # optional array with response for new_gifts request
               :new_gifts => {
                   :type => 'object',
-                  :title => 'Server new gifts response with created_at_server = true or an error message for each gift in new gifts request',
+                  :title => 'New gifts response with created_at_server = true or an error message for each gift in new gifts request',
                   :properties => {
                       # any generic error message when processing of new_gifts request. see also error property in gifts array
                       :error => {:type => 'string'},
@@ -462,6 +470,22 @@ JSON_SCHEMA = {
                       :no_errors => {:type => 'integer'}
                   },
                   :additionalProperties => false
+              },
+
+              # new_servers response - array with sha256 signature and internal server id - response to new_servers request
+              # blank server id = unknown server
+              :new_servers => {
+                  :type => 'array',
+                  :title => 'New servers response with internal server id and sha256 signature. Blank server_id for unknown servers',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          :sha256 => { :type => 'string'},
+                          :server_id => { :type => 'integer', :minimum => 0 }
+                      },
+                      :required => %w(sha256),
+                      :additionalProperties => false
+                  }
               },
 
               # optional array with created_at_server (boolean) response for verify_gifts request

@@ -1151,12 +1151,13 @@ class Server < ActiveRecord::Base
 
 
   # send and receive across Gofreerev server client to client messages
-  # client message is already encrypted but is put in a encrypted server to server message
+  # client messages are already encrypted but are put in a encrypted server to server message
   protected
   def create_client_messages
 
     messages = []
 
+    # get client to client messages from local clients to clients on Gofreerev server <self.id>
     Message.includes(:from_pubkey, :to_pubkey).
         where('server = ? and pubkeys.server_id is null and to_pubkeys_messages.server_id = ?', false, self.id).
         references(:from_pubkey, :to_pubkey).order(:id).each do |m|
@@ -1243,11 +1244,11 @@ class Server < ActiveRecord::Base
       end
       from = Pubkey.find_by_did(m['from_did'])
       if !from
-        errors << "Client message with unknown from_did #{m['from_did']} was ignored"
+        errors << "Client message with unknown from_did #{m['from_did']} was ignored. Did is not in pubkeys table."
         next
       end
       if !from.server_id
-        errors << "Client message with invalid from_did #{from.did} was ignored. Did is not a remote device."
+        errors << "Client message with invalid from_did #{from.did} was ignored. Did is not a remote client."
         next
       end
       if from.server_id != self.id

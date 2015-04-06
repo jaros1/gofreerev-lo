@@ -1,0 +1,51 @@
+test setup: new laptop - client 1 in firefox (old known did) - client 2 in chrome (new unknown did).
+UI: no console messages in client 1 - sending rsa message in client 2
+problem: server 1 cannot see client on server 2 - server 2 can see client on server 1
+
+console 1: Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table., Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table.
+error message in log ok. did is not in pubkeys and not in pings table.
+
+pubkeys table on server 1:
+14282510028835868148 is not in public keys table because 14282510028835868148 is not online and client 1 has not requested public key for 14282510028835868148
+
+pings table on server 1:
+block in receive_online_users_message: received unknown user signatures XbiQGZqcYBOJCdg+fkXGJCjYC4PORsgpFa2LmVUMS/Q= in online users message
+
+console 1:
+2.0.0-p598 :045 >   u
+ => #<User id: 1126, user_id: "1563545817212684/facebook", user_name: "lauftZwmw1qJan Mobilos RoslindWs3Z14ITsYCQvO", created_at: "2014-12-24 13:10:18", updated_at: "2015-03-25 17:24:52", currency: nil, balance: nil, balance_at: nil, permissions: nil, no_api_friends: nil, negative_interest: nil, api_profile_url: nil, api_profile_picture_url: "iJpAad7lDaijYhttps://fbcdn-profile-a.akamaihd.net/h...", deleted_at: nil, last_login_at: nil, deauthorized_at: nil, last_friends_find_at: nil, language: nil, access_token: nil, access_token_expires: nil, refresh_token: nil, share_account_id: nil, sha256: "6HqH0IJsUXcxXpAugqi8k02WiKNwcB2QIgA84s9Ti9Q=", old_sha256: "zjtlHiGiBFSnc196Qca7rVZGId/DgU9uY9kzRf9WeKY=", sha256_updated_at: "2015-03-28 16:52:49", friend_sha256_updated_at: nil>
+2.0.0-p598 :046 > u.api_profile_picture_url
+ => "https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xtf1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=700b18b5239fbbddf165c44b1c3ee9db&oe=557110F9&__gda__=1433528764_74979a33a3e6b2cfb6638b76fdcdce45"
+
+console 2:
+2.0.0-p598 :046 >   u
+ => #<User id: 3, user_id: "1616942831872982/facebook", user_name: "iFkOJan Mobilos RoslindsaiT1U3Gd", created_at: "2015-03-13 14:19:08", updated_at: "2015-04-06 06:05:07", currency: "jMRrKCqHSACUSDrNAOqDpJEwoFD", balance: "1TkAXb7C6N---\nBALANCE: 0.0\nn5BRx2GuqF67FIFGJ8u", balance_at: "2015-04-05", permissions: "tNGZI6FCi--- []\nxEF0rh", no_api_friends: "MCtc2v4Eun1WuOPku", negative_interest: "SUUa0yz5IUvEDxwOEzqu---\nBALANCE: 0.0\nDsOu3hD0yxJCz", api_profile_url: "CqZjCZeeShttps://www.facebook.com/1616942831872982l...", api_profile_picture_url: "iphDKVP3L3https://fbcdn-profile-a.akamaihd.net/hpro...", deleted_at: nil, last_login_at: "2015-04-05 16:25:02", deauthorized_at: nil, last_friends_find_at: "2015-04-05 16:25:06", language: "en", access_token: nil, access_token_expires: nil, refresh_token: nil, share_account_id: nil, sha256: "i64hVrV5tef5jy09tWmCWXBD721DFhWooe6xG3bf1S8=", old_sha256: "L6Y9X9fDOUcTOUc4DLegJAI13Bz4L3Bql8MndoGwm6Y=", sha256_updated_at: "2015-04-05 16:25:06", friend_sha256_updated_at: nil>
+2.0.0-p598 :047 > u.api_profile_picture_url
+ => "https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xtf1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=f6e1aa7b4cc86036b2046a8fb7d7f15b&oe=55989DF9&__gda__=1436120764_4b8e9beb971074cb5536eb6f4aead062"
+
+problem:
+api_profile_picture_url changed since compare users match
+
+console 2:
+2.0.0-p598 :050 >   u.calc_sha256(s.secret)
+ => "XbiQGZqcYBOJCdg+fkXGJCjYC4PORsgpFa2LmVUMS/Q="
+
+console 1:
+2.0.0-p598 :051 >   u.sha256
+ => "6HqH0IJsUXcxXpAugqi8k02WiKNwcB2QIgA84s9Ti9Q="
+2.0.0-p598 :052 > u.calc_sha256(SystemParameter.secret)
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+ => "6HqH0IJsUXcxXpAugqi8k02WiKNwcB2QIgA84s9Ti9Q="
+
+# different api_profile_picture_url but identical content
+2.0.0-p598 :058 >   u1 = s = IO.read('/home/jro/Pictures/u1.jpg') ; nil
+ => nil
+2.0.0-p598 :059 > u2 = s = IO.read('/home/jro/Pictures/u2.jpg') ; nil
+ => nil
+2.0.0-p598 :060 > u1.size
+ => 3650
+2.0.0-p598 :061 > u2.size
+ => 3650
+2.0.0-p598 :062 >
+2.0.0-p598 :063 >   puts true if u1 == u2
+true

@@ -1663,5 +1663,9 @@
        todo: list open source CA
      - domain validated or extended Validation
 
+392) all errors and warnings should be reported back as notifications in client
+     all errors should have a unique error id
+     all errors should have a english translation key
+
 
 select next issue to solve: (rand*387).floor+1

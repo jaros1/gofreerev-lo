@@ -517,6 +517,7 @@ class Server < ActiveRecord::Base
       su = ServerUser.new
       su.server_id = self.id
       su.user_id = u.id
+      su.remote_pseudo_user_id = -usr.pseudo_user_id
       su.save!
     end
     logger.debug2 "request (1) = #{request.to_json}"
@@ -606,7 +607,7 @@ class Server < ActiveRecord::Base
           user_id = pseudo_user_ids[usr["user_id"]]
           u = User.find_by_id(user_id)
           if !u
-            # not very likely error
+            # very unlikely error
             logger.error2 "user id #{user_id} (pseudo user id #{usr["user_id"]}) does not exists. Only ok if user was deleted between ping request and ping response"
             next
           end
@@ -624,6 +625,7 @@ class Server < ActiveRecord::Base
               su.user_id = u.id
             end
             su.verified_at = Time.zone.now
+            su.pseudo_user_id = usr["user_id"]
             su.save!
             # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
             u.update_sha256(true)
@@ -671,6 +673,7 @@ class Server < ActiveRecord::Base
               su = ServerUser.new
               su.server_id = self.id
               su.user_id = u.id
+              su.remote_pseudo_user_id = usr["user_id"]
               su.save!
             end
           else
@@ -707,6 +710,7 @@ class Server < ActiveRecord::Base
               su.user_id = u.id
             end
             su.verified_at = Time.zone.now
+            su.pseudo_user_id = sur.pseudo_user_id
             su.save!
             # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
             u.update_sha256(true)

@@ -2,13 +2,16 @@ test setup: new laptop - client 1 in firefox (old known did) - client 2 in chrom
 UI: no console messages in client 1 - sending rsa message in client 2
 problem: server 1 cannot see client on server 2 - server 2 can see client on server 1
 
-console 1: Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table., Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table.
+last error in console 1:
+Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table., Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table.
 error message in log ok. did is not in pubkeys and not in pings table.
 
 pubkeys table on server 1:
 14282510028835868148 is not in public keys table because 14282510028835868148 is not online and client 1 has not requested public key for 14282510028835868148
 
 pings table on server 1:
+
+previous error in console 1:
 block in receive_online_users_message: received unknown user signatures XbiQGZqcYBOJCdg+fkXGJCjYC4PORsgpFa2LmVUMS/Q= in online users message
 
 console 1:
@@ -23,12 +26,8 @@ console 2:
 2.0.0-p598 :047 > u.api_profile_picture_url
  => "https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xtf1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=f6e1aa7b4cc86036b2046a8fb7d7f15b&oe=55989DF9&__gda__=1436120764_4b8e9beb971074cb5536eb6f4aead062"
 
-problem:
+issue:
 api_profile_picture_url changed since compare users match
-
-console 2:
-2.0.0-p598 :050 >   u.calc_sha256(s.secret)
- => "XbiQGZqcYBOJCdg+fkXGJCjYC4PORsgpFa2LmVUMS/Q="
 
 console 1:
 2.0.0-p598 :051 >   u.sha256
@@ -36,8 +35,11 @@ console 1:
 2.0.0-p598 :052 > u.calc_sha256(SystemParameter.secret)
   SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
  => "6HqH0IJsUXcxXpAugqi8k02WiKNwcB2QIgA84s9Ti9Q="
+console 2:
+2.0.0-p598 :050 >   u.calc_sha256(s.secret)
+ => "XbiQGZqcYBOJCdg+fkXGJCjYC4PORsgpFa2LmVUMS/Q="
 
-# different api_profile_picture_url but identical content
+# different api_profile_picture_url's but identical content
 2.0.0-p598 :058 >   u1 = s = IO.read('/home/jro/Pictures/u1.jpg') ; nil
  => nil
 2.0.0-p598 :059 > u2 = s = IO.read('/home/jro/Pictures/u2.jpg') ; nil
@@ -46,6 +48,6 @@ console 1:
  => 3650
 2.0.0-p598 :061 > u2.size
  => 3650
-2.0.0-p598 :062 >
 2.0.0-p598 :063 >   puts true if u1 == u2
 true
+

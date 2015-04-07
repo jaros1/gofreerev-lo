@@ -1667,5 +1667,18 @@
      all errors should have a unique error id
      all errors should have a english translation key
 
+393) User.update_sha256
+     changed sha256 signature and verified server users (remote users)
+     should send changed sha256 signature to relevant servers using pseudo user id and sha256 signature.
+     remote user must ask a client to refresh friend list to update user info
 
-select next issue to solve: (rand*387).floor+1
+394) online users.
+     should send sha256 and pseudo user id in online users message
+     match with sha256.
+     if sha256 signature not found.
+     a) user info on this server could be out-of-date
+     b) user info on remote server could be out-of-date
+     c) discard old user match - user signature after update are no longer identical!
+
+
+select next issue to solve: (rand*394).floor+1

@@ -511,7 +511,7 @@ class Server < ActiveRecord::Base
       end
       # sha256 match
       request << { :user_id => usr.pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
-      # insert user match as not verified in server_users table
+      # insert user match as NOT verified in server_users table
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
       next if su
       su = ServerUser.new
@@ -525,7 +525,8 @@ class Server < ActiveRecord::Base
     # 2) normal request/response cycle. user_id > 0. send next 10 users for verification
     # exclude gofreerev dummy users (provider=gofreerev)
     # using pseudo user ids in request
-    User.where("id > ? and user_id not like 'gofreerev/%'", (self.last_checked_user_id || 0)).order(:id).limit(10).each do |u|
+    logger.debug2 "last_checked_user_id = #{last_checked_user_id }"
+    User.where("id > ? and user_id not like 'gofreerev/%'", (last_checked_user_id || 0)).order(:id).limit(10).each do |u|
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
       # remember user ids from users request
@@ -673,9 +674,9 @@ class Server < ActiveRecord::Base
               su = ServerUser.new
               su.server_id = self.id
               su.user_id = u.id
-              su.remote_pseudo_user_id = usr["user_id"]
-              su.save!
             end
+            su.remote_pseudo_user_id = usr["user_id"]
+            su.save!
           else
             # todo: respond with sha2546 = nil
             logger.debug2 "user does not exists. return null user.sha256 signature"
@@ -726,6 +727,8 @@ class Server < ActiveRecord::Base
       logger.debug2 "max_checked_user_id = #{max_checked_user_id}"
       self.last_checked_user_id = max_checked_user_id
       self.save!
+      self.reload
+      logger.debug2 "max_checked_user_id = #{max_checked_user_id}, self.last_checked_user_id = #{self.last_checked_user_id}"
     end
 
     return nil if client # client - called from Server.ping
@@ -1457,7 +1460,7 @@ class Server < ActiveRecord::Base
         # new_comments: giftService.new_comments_request(),
         # verify_comments: giftService.verify_comments_request(),
         # pubkeys: giftService.pubkeys_request(),
-        messages: self.send_messages(pseudo_user_ids)
+        messages: send_messages(pseudo_user_ids)
     }
     ping_request.delete(:messages) if ping_request.has_key?(:messages) and ping_request[:messages].class == NilClass
     ping_request.delete(:users) if ping_request.has_key?(:users) and ping_request[:users].class == NilClass
@@ -1523,6 +1526,7 @@ class Server < ActiveRecord::Base
       error = Message.receive_messages true, self.new_did, nil, pseudo_user_ids, ping_response["messages"]["messages"]
       return error if error
     end
+    self.reload
     # 3) todo: etc
 
   end # ping

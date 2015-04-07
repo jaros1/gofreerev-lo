@@ -48,9 +48,7 @@ class User < ActiveRecord::Base
   def user_id=(new_user_id)
     return self['user_id'] if self['user_id']
     self['user_id'] = new_user_id
-  end
-
-  # user_id=
+  end # user_id=
 
   # 2) user_name. User name. String in model. Encrypted text in db. required. is updated when the user logs in.
   validates_presence_of :user_name
@@ -2440,6 +2438,12 @@ class User < ActiveRecord::Base
       SystemParameter.new_secret
       new_sha256 = self.calc_sha256(SystemParameter.secret)
     end # loop
+    if old_sha256 != new_sha256
+      verified_server_users do |su|
+        # remote server should update user info. remote server must ask a client to update friend list with user
+        logger.warn2 "todo: sha256 signature changed for user id #{self.id}. send message to remote server #{su.to_json}"
+      end
+    end
   end # update_sha256
 
 

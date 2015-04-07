@@ -413,9 +413,9 @@ class Message < ActiveRecord::Base
     # client=false: called from util_controller.ping. received messages are client messages
     request_error = Message.receive_messages(false, sender_did, sender_sha256, request_users, input_messages)
     logger.error2 "request_error = #{request_error}" if request_error
-    messages = Message.send_messages(sender_did, sender_sha256)
-    logger.debug2 "messages = #{messages}"
-    [request_error, messages]
+    output_messages = Message.send_messages(sender_did, sender_sha256)
+    logger.debug2 "output_messages = #{output_messages}"
+    [request_error, output_messages]
   end # self.messages
 
 

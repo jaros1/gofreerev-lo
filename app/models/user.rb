@@ -2415,6 +2415,7 @@ class User < ActiveRecord::Base
         self.old_sha256 = old_sha256
         self.sha256 = new_sha256
         self.sha256_updated_at = Time.zone.now
+        self.save!
         # 2) update sha256 timestamp for users that is a) friend of user. b) online user and c) verified user
         online_user_ids = []
         Ping.where(:server_id => nil).each { |p| online_user_ids += p.user_ids }
@@ -2439,10 +2440,10 @@ class User < ActiveRecord::Base
       new_sha256 = self.calc_sha256(SystemParameter.secret)
     end # loop
     if old_sha256 != new_sha256
-      verified_server_users do |su|
-        # remote server should update user info. remote server must ask a client to update friend list with user
-        logger.warn2 "todo: sha256 signature changed for user id #{self.id}. send message to remote server #{su.to_json}"
-      end
+      # send user sha256 signature changed message to other Gofreerev servers
+      # other server must check sha256 signature and sha256_updated_at timestamp and optional ask a client to download new user info from login provider
+      server_users = verified_server_users.includes(:server, :user).order(:server_id)
+      Server.save_sha256_changed_message(2, server_users)
     end
   end # update_sha256
 

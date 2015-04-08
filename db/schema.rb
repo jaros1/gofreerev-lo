@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150406094933) do
+ActiveRecord::Schema.define(version: 20150408055643) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -248,16 +248,17 @@ ActiveRecord::Schema.define(version: 20150406094933) do
     t.string   "site_url"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "new_did",              limit: 20
-    t.decimal  "last_ping_at",                    precision: 13, scale: 3
-    t.decimal  "next_ping_at",                    precision: 13, scale: 3
+    t.string   "new_did",                     limit: 20
+    t.decimal  "last_ping_at",                           precision: 13, scale: 3
+    t.decimal  "next_ping_at",                           precision: 13, scale: 3
     t.boolean  "secure"
-    t.string   "old_did",              limit: 20
+    t.string   "old_did",                     limit: 20
     t.text     "old_pubkey"
     t.text     "new_pubkey"
     t.text     "key"
     t.string   "secret"
     t.integer  "last_checked_user_id"
+    t.datetime "last_changed_user_sha256_at"
   end
 
   add_index "servers", ["site_url"], name: "index_servers_url", unique: true, using: :btree
@@ -356,6 +357,7 @@ ActiveRecord::Schema.define(version: 20150406094933) do
   end
 
   add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree
+  add_index "users", ["sha256_updated_at"], name: "index_users_on_sha256_updated", using: :btree
   add_index "users", ["share_account_id"], name: "index_users_share_account_id", using: :btree
   add_index "users", ["user_id"], name: "index_users_on_user_id", unique: true, using: :btree
 

@@ -1,0 +1,58 @@
+test setup: new laptop - client 1 in firefox (old known did) - client 2 in chrome (new unknown did).
+UI: no console messages in client 1 - sending rsa message in client 2
+issue: server 1 cannot see client on server 2 - server 2 can see client on server 1
+
+client 1: logged in as 1705481075/facebook       - Jan Roslind         - in server_users as verified match
+client 2: logged in as 1616942831872982/facebook - Jan Mobilos Roslind - not in server_users
+
+console 1:
+receive_client_messages: errors = Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table., Client message with unknown from_did 14282510028835868148 was ignored. Did is not in pubkeys table.
+
+console 1:
+empty receive_online_users_message: users = []
+
+server 2:
+receive_message: message_json = {"msgtype":"online","users":[{"session_id":7,"client_userid":1,"last_ping_at":1428465722.542,"did":"14252356907464191530","user_ids":[{"sha256":"tOQKlOPmDt7mvgrbAlG/b2Z/+8kpjXPp+KttUMo0b3o=","pseudo_user_id":49}],"sha256":"0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n"}]}
+receive_online_users_message: users = [{"session_id"=>7, "client_userid"=>1, "last_ping_at"=>1428465722.542, "did"=>"14252356907464191530", "user_ids"=>[{"sha256"=>"tOQKlOPmDt7mvgrbAlG/b2Z/+8kpjXPp+KttUMo0b3o=", "pseudo_user_id"=>49}], "sha256"=>"0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n"}]
+receive_online_users_message: client = false - called from called from util_controller.ping via Message.receive_messages
+  SQL (0.2ms)  DELETE FROM `pings` WHERE (server_id = 1 and last_ping_at < 1428465603.7959316)
+  SQL (0.2ms)  SELECT `server_users`.`id` AS t0_r0, `server_users`.`server_id` AS t0_r1, `server_users`.`user_id` AS t0_r2, `server_users`.`verified_at` AS t0_r3, `server_users`.`created_at` AS t0_r4, `server_users`.`updated_at` AS t0_r5, `server_users`.`pseudo_user_id` AS t0_r6, `server_users`.`remote_pseudo_user_id` AS t0_r7, `users`.`id` AS t1_r0, `users`.`user_id` AS t1_r1, `users`.`user_name` AS t1_r2, `users`.`created_at` AS t1_r3, `users`.`updated_at` AS t1_r4, `users`.`currency` AS t1_r5, `users`.`balance` AS t1_r6, `users`.`balance_at` AS t1_r7, `users`.`permissions` AS t1_r8, `users`.`no_api_friends` AS t1_r9, `users`.`negative_interest` AS t1_r10, `users`.`api_profile_url` AS t1_r11, `users`.`api_profile_picture_url` AS t1_r12, `users`.`deleted_at` AS t1_r13, `users`.`last_login_at` AS t1_r14, `users`.`deauthorized_at` AS t1_r15, `users`.`last_friends_find_at` AS t1_r16, `users`.`language` AS t1_r17, `users`.`access_token` AS t1_r18, `users`.`access_token_expires` AS t1_r19, `users`.`refresh_token` AS t1_r20, `users`.`share_account_id` AS t1_r21, `users`.`sha256` AS t1_r22, `users`.`old_sha256` AS t1_r23, `users`.`sha256_updated_at` AS t1_r24, `users`.`friend_sha256_updated_at` AS t1_r25 FROM `server_users` LEFT OUTER JOIN `users` ON `users`.`id` = `server_users`.`user_id` WHERE (users.sha256 in ('tOQKlOPmDt7mvgrbAlG/b2Z/+8kpjXPp+KttUMo0b3o=') and server_id = 1 and verified_at is not null)
+  Pubkey Load (0.1ms)  SELECT `pubkeys`.* FROM `pubkeys` WHERE `pubkeys`.`did` = '14252356907464191530' LIMIT 1
+  ServerSession Load (0.2ms)  SELECT `server_sessions`.* FROM `server_sessions` WHERE `server_sessions`.`server_id` = 1 AND `server_sessions`.`server_session_id` = 7 LIMIT 1
+  Ping Load (0.3ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = 8 AND `pings`.`client_userid` = 1 LIMIT 1
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  UPDATE `pings` SET `last_ping_at` = 1428465722.542, `next_ping_at` = 1460088123.804 WHERE `pings`.`id` = 101
+   (52.7ms)  COMMIT
+  Sequence Load (0.1ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_ping_cycle' LIMIT 1
+  Ping Load (0.3ms)  SELECT `pings`.* FROM `pings` WHERE (last_ping_at <= 1428465723.859537 and last_ping_at > 1428465719.8595583 and server_id is null) ORDER BY session_id, client_userid, last_ping_at desc
+create_online_users_message: ping_user_ids = 1616942831872982/facebook
+  SQL (0.1ms)  SELECT `server_users`.`id` AS t0_r0, `server_users`.`server_id` AS t0_r1, `server_users`.`user_id` AS t0_r2, `server_users`.`verified_at` AS t0_r3, `server_users`.`created_at` AS t0_r4, `server_users`.`updated_at` AS t0_r5, `server_users`.`pseudo_user_id` AS t0_r6, `server_users`.`remote_pseudo_user_id` AS t0_r7, `users`.`id` AS t1_r0, `users`.`user_id` AS t1_r1, `users`.`user_name` AS t1_r2, `users`.`created_at` AS t1_r3, `users`.`updated_at` AS t1_r4, `users`.`currency` AS t1_r5, `users`.`balance` AS t1_r6, `users`.`balance_at` AS t1_r7, `users`.`permissions` AS t1_r8, `users`.`no_api_friends` AS t1_r9, `users`.`negative_interest` AS t1_r10, `users`.`api_profile_url` AS t1_r11, `users`.`api_profile_picture_url` AS t1_r12, `users`.`deleted_at` AS t1_r13, `users`.`last_login_at` AS t1_r14, `users`.`deauthorized_at` AS t1_r15, `users`.`last_friends_find_at` AS t1_r16, `users`.`language` AS t1_r17, `users`.`access_token` AS t1_r18, `users`.`access_token_expires` AS t1_r19, `users`.`refresh_token` AS t1_r20, `users`.`share_account_id` AS t1_r21, `users`.`sha256` AS t1_r22, `users`.`old_sha256` AS t1_r23, `users`.`sha256_updated_at` AS t1_r24, `users`.`friend_sha256_updated_at` AS t1_r25 FROM `server_users` LEFT OUTER JOIN `users` ON `users`.`id` = `server_users`.`user_id` WHERE `users`.`user_id` IN ('1616942831872982/facebook') AND (server_id = 1 and verified_at is not null)
+create_online_users_message: verified_users = {}
+create_online_users_message: no verified users was found for this server id 1
+
+console 2:
+2.0.0-p598 :014 >   ServerUser.count
+   (0.2ms)  SELECT COUNT(*) FROM `server_users`
+ => 1
+2.0.0-p598 :015 > su = ServerUser.first
+  ServerUser Load (0.4ms)  SELECT `server_users`.* FROM `server_users` ORDER BY `server_users`.`id` ASC LIMIT 1
+ => #<ServerUser id: 7, server_id: 1, user_id: 2, verified_at: "2015-04-07 07:32:55", created_at: "2015-04-07 07:32:55", updated_at: "2015-04-07 07:33:49", pseudo_user_id: 49, remote_pseudo_user_id: 3463>
+2.0.0-p598 :016 > su.user
+  User Load (0.3ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` = 2 ORDER BY `users`.`id` ASC LIMIT 1
+ => #<User id: 2, user_id: "4878645699741/facebook", user_name: "awNKlV7275BI5wfUJan Roslindqi221EliyTTkeWw", created_at: "2015-03-09 15:47:01", updated_at: "2015-04-07 07:32:55", currency: "EW38Ib4Agx6GUSD1xrOieJgfaOvhpI", balance: "ngKy---\nBALANCE: 0.0\nObJvee", balance_at: "2015-03-12", permissions: "ZjwHCgbrGf6L--- []\noIKSFJ", no_api_friends: "bl21vQf0xK2S08kPuQNqHqMQR5z7", negative_interest: "iwR15xH7oZ03v2yn---\nBALANCE: 0.0\n58T62H3OcaGIBUxSCB...", api_profile_url: "eZVhttps://www.facebook.com/4878645699741ILseHBKH", api_profile_picture_url: "UfaJjMpMkdUphttps://fbcdn-profile-a.akamaihd.net/hp...", deleted_at: nil, last_login_at: "2015-03-11 07:51:30", deauthorized_at: nil, last_friends_find_at: "2015-04-05 16:25:06", language: "en", access_token: nil, access_token_expires: nil, refresh_token: nil, share_account_id: nil, sha256: "tOQKlOPmDt7mvgrbAlG/b2Z/+8kpjXPp+KttUMo0b3o=", old_sha256: "tOQKlOPmDt7mvgrbAlG/b2Z/+8kpjXPp+KttUMo0b3o=", sha256_updated_at: "2015-04-07 07:32:55", friend_sha256_updated_at: nil>
+
+problem is in create_online_users_message
+now only checking for server users match for login user
+must check for server users matches for login user and friends
+but cannot send online users message without sha256 signatures for logged in users
+
+sha256 signatures for Jan Mobilos Roslind didn't match in previuous compare users run
+sha256 signatures for Jan Mobilos Roslind match after new login and friend list update from login provider
+
+there should have been send a user sha256 signature changed message when updating user and friends information
+no "send sha256 message" in testrun-2 logs
+sha256 signatures updated:
+ console 1: Tue, 07 Apr 2015 16:13:41 UTC +00:00
+ console 2: Sun, 05 Apr 2015 16:25:06 UTC +00:00
+
+solution: added server.last_changed_user_sha256_at timestamp and send changed users in compare users message

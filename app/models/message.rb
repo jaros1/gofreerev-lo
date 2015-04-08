@@ -187,6 +187,13 @@ class Message < ActiveRecord::Base
       return nil
     end
 
+    if message["msgtype"] == 'sha256'
+      error = server.receive_sha256_changed_message(message['seq'], message['users'])
+      return error if error
+      self.destroy
+      return nil
+    end
+
     if message["msgtype"] == 'pubkeys'
       error = server.receive_public_keys_message(message['users'], client, received_msgtype) # false: server side of communication
       return error if error

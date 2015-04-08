@@ -522,17 +522,47 @@ class Server < ActiveRecord::Base
     end
     logger.debug2 "request (1) = #{request.to_json}"
     buffer.delete_all
+
     # 2) normal request/response cycle. user_id > 0. send next 10 users for verification
     # exclude gofreerev dummy users (provider=gofreerev)
     # using pseudo user ids in request
-    logger.debug2 "last_checked_user_id = #{last_checked_user_id }"
+    logger.debug2 "last_checked_user_id = #{last_checked_user_id}"
+    new_users = 0
     User.where("id > ? and user_id not like 'gofreerev/%'", (last_checked_user_id || 0)).order(:id).limit(10).each do |u|
+      new_users += 1
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
       # remember user ids from users request
       pseudo_user_ids[pseudo_user_id] = u.id
     end
     logger.debug2 "request (2) = #{request.to_json}"
+    if new_users < 10
+      # less than 10 new users. check for any changed sha256 signatures.
+      limit = 10 - new_users
+      from_timestamp = last_changed_user_sha256_at
+      from_timestamp = 1.year.ago unless from_timestamp
+      user = User.where("sha256_updated_at is not null and sha256_updated_at > ?", from_timestamp).order(:sha256_updated_at).limit(limit).last
+      if user
+        # found users with changed sha256 signature since last compare users check
+        to_timestamp = user.sha256_updated_at
+        User.where("sha256_updated_at is not null and sha256_updated_at > ? and sha256_updated_at <= ?", from_timestamp, to_timestamp).each do |u|
+          su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+          if su and su.pseudo_user_id
+            logger.warn2 "reusing pseudo_user_id from old match #{su.to_json}"
+            pseudo_user_id = su.pseudo_user_id
+          else
+            pseudo_user_id = Sequence.next_pseudo_user_id
+          end
+          request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+          # remember user ids from users request
+          pseudo_user_ids[pseudo_user_id] = u.id
+        end
+        logger.debug2 "request (2) = #{request.to_json}"
+        self.last_changed_user_sha256_at = to_timestamp
+        self.save!
+      end # if
+    end # if
+
     return nil if request.size == 0
 
     message = {
@@ -589,7 +619,7 @@ class Server < ActiveRecord::Base
       return 'users message with doublet user_ids was rejected'
     end
 
-    max_checked_user_id = 0
+    max_checked_user_id = last_checked_user_id || 0
 
     request = [] unless client
 
@@ -616,7 +646,7 @@ class Server < ActiveRecord::Base
           if !usr['sha256']
             logger.debug2 "user id #{u.id} does not exists on other Gofreerev server"
             next
-          elsif u.sha256 = usr['sha256']
+          elsif u.sha256 == usr['sha256']
             logger.debug2 "confirmed match. user_id #{u.id} exists on other Gofreerev servers"
             # insert user match as verified in server_users table
             su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
@@ -625,12 +655,17 @@ class Server < ActiveRecord::Base
               su.server_id = self.id
               su.user_id = u.id
             end
-            su.verified_at = Time.zone.now
-            su.pseudo_user_id = usr["user_id"]
-            su.save!
-            # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
-            u.update_sha256(true)
-            u.save!
+            old_match = (su.verified_at and su.pseudo_user_id == usr["user_id"])
+            if old_match
+              logger.debug "ignoring old unchanged match #{su.to_json}"
+            else
+              su.verified_at = Time.zone.now
+              su.pseudo_user_id = usr["user_id"]
+              su.save!
+              # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
+              u.update_sha256(true)
+              u.save!
+            end
           else
             logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{u.id}. Expected #{u.sha256}. Received #{usr['sha256']}"
           end
@@ -710,12 +745,18 @@ class Server < ActiveRecord::Base
               su.server_id = self.id
               su.user_id = u.id
             end
-            su.verified_at = Time.zone.now
-            su.pseudo_user_id = sur.pseudo_user_id
-            su.save!
-            # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
-            u.update_sha256(true)
-            u.save!
+            old_match = (su.verified_at and su.pseudo_user_id == sur.pseudo_user_id)
+            if old_match
+              logger.debug "ignoring old unchanged match #{su.to_json}"
+            else
+              su.verified_at = Time.zone.now
+              su.pseudo_user_id = sur.pseudo_user_id
+              logger.warn2 "old pseudo_user_id = #{su.pseudo_user_id_was}, new pseudo_user_id = #{su.pseudo_user_id}" if !su.new_record? and su.pseudo_user_id_changed?
+              su.save!
+              # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
+              u.update_sha256(true)
+              u.save!
+            end
           else
             logger.warn2 "ignore user match. invalid sha256 signature was returned for user_id #{u.id}"
           end
@@ -742,7 +783,10 @@ class Server < ActiveRecord::Base
     logger.debug2 "add users to response users message. response will be sent in next ping request"
     # exclude gofreerev dummy users (provider=gofreerev)
     ServerUserRequest.where(:server_id => self.id).delete_all
+
+    new_users = 0
     User.where("id > ? and user_id not like 'gofreerev/%'", (self.last_checked_user_id || 0)).order(:id).limit(10).each do |u|
+      new_users += 1
       # use negative pseudo user id in response and positive pseudo user id in db
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
@@ -753,8 +797,39 @@ class Server < ActiveRecord::Base
       sur.user_id = u.id
       sur.save!
     end # each u
+    logger.debug2 "users (2) = #{request}"
 
-    logger.debug2 "users = #{request}"
+    if new_users < 10
+      # less than 10 new users. check for any changed sha256 signatures.
+      limit = 10 - new_users
+      from_timestamp = last_changed_user_sha256_at
+      from_timestamp = 1.year.ago unless from_timestamp
+      user = User.where("sha256_updated_at is not null and sha256_updated_at > ?", from_timestamp).order(:sha256_updated_at).limit(limit).last
+      if user
+        # found users with changed sha256 signature since last compare users check
+        to_timestamp = user.sha256_updated_at
+        User.where("sha256_updated_at is not null and sha256_updated_at > ? and sha256_updated_at <= ?", from_timestamp, to_timestamp).each do |u|
+          # use negative pseudo user id in response and positive pseudo user id in db
+          su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
+          if su and su.pseudo_user_id
+            logger.warn2 "reusing pseudo_user_id from old match #{su.to_json}"
+            pseudo_user_id = su.pseudo_user_id
+          else
+            pseudo_user_id = Sequence.next_pseudo_user_id
+          end
+          request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+          # insert into ServerUserRequest. Pseudo user ids must be in next ping request from "client".
+          sur = ServerUserRequest.new
+          sur.server_id = self.id
+          sur.pseudo_user_id = pseudo_user_id
+          sur.user_id = u.id
+          sur.save!
+        end
+        logger.debug2 "users (3) = #{request}"
+        self.last_changed_user_sha256_at = to_timestamp
+        self.save!
+      end # if
+    end # if
 
     message = {
         :msgtype => 'users',
@@ -824,11 +899,15 @@ class Server < ActiveRecord::Base
       return nil
     end
 
-    # initialize a hash with user_id and sha256 signature for verified users (identical users on both Gofreerev servers)
-    # from external user id (uid/provider) to sha256 signature for user on other gofreerev server
+    # initialize a hash with sha256 signature and pseudo user ids for verified users (identical users on both Gofreerev servers)
+    # sha256 signature is used when :user ids array in message to internal user ids
+    # pseudo user id is used as user id in message after invalid or changed user sha256 (see receive_online_users_message)
     verified_users = {}
     ServerUser.where('server_id = ? and verified_at is not null', self.id).includes(:user).where('users.user_id' => online_user_ids).each do |su|
-      verified_users[su.user.user_id] = su.user.calc_sha256(self.secret)
+      verified_users[su.user.user_id] = {
+          :sha256 => su.user.calc_sha256(self.secret),
+          :pseudo_user_id => su.remote_pseudo_user_id
+      }
     end
     logger.debug2 "verified_users = #{verified_users}"
     if verified_users.size == 0
@@ -921,11 +1000,26 @@ class Server < ActiveRecord::Base
     response.each do |ping|
 
       # check user_ids. sha256 signature must match and user must be in server_users table as verified user
+      ping_sha256_user_ids = ping["user_ids"].collect { |hash| hash["sha256"] }
       users = ServerUser.includes(:user).
-          where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping["user_ids"], self.id).references(:users)
+          where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping_sha256_user_ids, self.id).references(:users)
       user_ids = users.collect { |u| u.user.user_id }
       if ping["user_ids"].size != user_ids.size
-        logger.error2 "received unknown user signatures #{ping["user_ids"].join(', ')} in online users message"
+
+        found_sha256_user_ids = users.collect { |u| u.sha256 }
+        unknown_sha256_user_ids = ping_sha256_user_ids - found_sha256_user_ids
+        logger.warn2 "received unknown user signatures #{unknown_sha256_user_ids.join(', ')} in online users message"
+        unknown_users = ping["user_ids"].find_all { |hash| unknown_sha256_user_ids.index(hash['sha256']) }
+        logger.debug2 "unknown_users = #{unknown_users.to_json}"
+        unknown_pseudo_user_ids = unknown_users.collect { |hash| hash["pseudo_user_id"]}
+        logger.debug2 "unknown_pseudo_user_ids = #{unknown_pseudo_user_ids.join(', ')}"
+        server_users = ServerUser.where('server_id = ? and verified_at is not null and pseudo_user_id in (?)', self.id, unknown_pseudo_user_ids).includes(:user)
+        if server_users.size != found_sha256_user_ids
+          # "fallback" to pseudo user ids failed!
+          logger.error2 "received unknown user signatures #{unknown_sha256_user_ids.join(', ')} AND unknown pseudo_user_ids #{unknown_pseudo_user_ids.join(', ')} in online users message"
+          next
+        end
+        Server.save_sha256_changed_message(1, server_users)
       end
       next unless user_ids.size > 0
 
@@ -997,6 +1091,54 @@ class Server < ActiveRecord::Base
     return errors.size == 0 ? nil : errors.join(', ')
 
   end # receive_online_users_message
+
+
+  # create and save user sha256 signature changed message
+  # after (seq):
+  # - 1: invalid user sha256 signature in receive_online_users_message
+  # - 2: user sha256 signature changed (User.update_sha256)
+  # - 3:
+  public
+  def self.save_sha256_changed_message (seq, server_users)
+
+    server_users = server_users.sort_by { |su| su.server_id }
+
+    users = []
+    0.upto(server_users.size-1) do |i|
+      su = server_users[i]
+      users.push({ :sha256 => su.user.calc_sha256(su.server.secret),
+                   :pseudo_user_id => su.remote_pseudo_user_id,
+                   :sha256_updated_at => su.user.sha256_updated_at.to_i
+                 })
+      if i == server_users.size-1 or su.server_id != server_users[i+1].server_id
+        # save message
+        message = {
+            :msgtype => 'sha256',
+            :seq => seq,
+            :users => users
+        }
+        logger.debug2 "send sha256 message #{message}"
+        sym_enc_message = message.to_json.encrypt(:symmetric, :password => su.server.new_password)
+        sym_enc_message = Base64.encode64(sym_enc_message)
+        m = Message.new
+        m.from_did = SystemParameter.did
+        m.to_did = su.server.new_did
+        m.server = true
+        m.encryption = 'sym'
+        m.message = sym_enc_message
+        m.save!
+
+      end # if
+    end # do  i
+  end # save_sha256_changed_message
+
+
+  public
+  def receive_sha256_changed_message (seq, users)
+    logger.error2 "seq = #{seq}"
+    logger.error2 "users = #{users}"
+    return 'not implemented'
+  end # receive_sha256_changed_message
 
 
   # send and receive client public keys to and from other gofreerev servers

@@ -513,12 +513,16 @@ class Server < ActiveRecord::Base
       request << { :user_id => usr.pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
       # insert user match as NOT verified in server_users table
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
-      next if su
+      if su
+        logger.debug2 "old su #{su.to_json} already exists"
+        next
+      end
       su = ServerUser.new
       su.server_id = self.id
       su.user_id = u.id
       su.remote_pseudo_user_id = -usr.pseudo_user_id
       su.save!
+      logger.debug2 "new su #{su.to_json}"
     end
     logger.debug2 "request (1) = #{request.to_json}"
     buffer.delete_all
@@ -614,10 +618,12 @@ class Server < ActiveRecord::Base
       logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
-    # doublet check - no doublet user ids are allowed in response array
+    # doublet check 1 - no doublet user ids are allowed in response array
     if response.size != response.collect { |usr| usr['user_id'] }.uniq.size
       return 'users message with doublet user_ids was rejected'
     end
+    # doublet check 2 - error if sha256 values doublets
+    #
 
     max_checked_user_id = last_checked_user_id || 0
 
@@ -662,6 +668,7 @@ class Server < ActiveRecord::Base
               su.verified_at = Time.zone.now
               su.pseudo_user_id = usr["user_id"]
               su.save!
+              logger.debug2 "su = #{su.to_json}"
               # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
               u.update_sha256(true)
               u.save!
@@ -712,6 +719,7 @@ class Server < ActiveRecord::Base
             end
             su.remote_pseudo_user_id = usr["user_id"]
             su.save!
+            logger.debug2 "su = #{su.to_json}"
           else
             # todo: respond with sha2546 = nil
             logger.debug2 "user does not exists. return null user.sha256 signature"
@@ -751,8 +759,8 @@ class Server < ActiveRecord::Base
             else
               su.verified_at = Time.zone.now
               su.pseudo_user_id = sur.pseudo_user_id
-              logger.warn2 "old pseudo_user_id = #{su.pseudo_user_id_was}, new pseudo_user_id = #{su.pseudo_user_id}" if !su.new_record? and su.pseudo_user_id_changed?
               su.save!
+              logger.debug2 "su = #{su.to_json}"
               # mark sha256 as updated for user. friends and friend of friends. user must be included in next ping :friends response
               u.update_sha256(true)
               u.save!
@@ -812,11 +820,12 @@ class Server < ActiveRecord::Base
           # use negative pseudo user id in response and positive pseudo user id in db
           su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
           if su and su.pseudo_user_id
-            logger.warn2 "reusing pseudo_user_id from old match #{su.to_json}"
+            logger.warn2 "reusing old pseudo_user_id"
             pseudo_user_id = su.pseudo_user_id
           else
             pseudo_user_id = Sequence.next_pseudo_user_id
           end
+          logger.debug2 "su = #{su.to_json}" if su
           request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
           # insert into ServerUserRequest. Pseudo user ids must be in next ping request from "client".
           sur = ServerUserRequest.new

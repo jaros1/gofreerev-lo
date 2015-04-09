@@ -499,16 +499,14 @@ class Server < ActiveRecord::Base
     sha256_values = users.find_all do | usr|
       usr['sha256'].to_s != ''
     end.collect do |usr|
-      owner = usr['user_id'] >= 0 ? 'client' : 'server'
-      usr['sha256'] += " (#{owner})"
-      usr
+      sender = usr['user_id'] >= 0 ? 'client' : 'server'
+      { 'sha256' => "#{usr['sha256']} (#{sender})" }
     end
     sha256_doublets = sha256_values.group_by { |u| u['sha256'] }.select { |k, v| v.size > 1 }.keys
     return "compare users message with doublet sha256 values #{sha256_doublets.join(', ')}" if sha256_doublets.size > 0
     # no doublets in message
     nil
   end # validate_compare_users_message
-
 
 
   # create symmetric encrypted users message. return message or nil if no new users to check
@@ -525,10 +523,10 @@ class Server < ActiveRecord::Base
   protected
   def create_compare_users_message (pseudo_user_ids)
     request = []
-    # 1) reverse request/response cycle (request in response and response in request). user_id < 0
-    # that is users with negative user_id and client user.sha256 received from server in last ping
+    # 1) reverse request/response cycle (request received in response and response returned in request).
+    # that is users with negative user_id and sha256 received from server in last ping response
     buffer = ServerUserRequest.where('server_id = ? and pseudo_user_id < 0', self.id)
-    buffer.all.each do |usr|
+    buffer.each do |usr|
       u = User.find_by_sha256(usr.sha256)
       if !u
         request << { 'user_id' => usr.pseudo_user_id, 'sha256' => nil}
@@ -540,11 +538,15 @@ class Server < ActiveRecord::Base
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
       if su
         logger.debug2 "old su #{su.to_json} already exists"
-        next
+        if su.remote_pseudo_user_id and su.remote_pseudo_user_id != -usr.pseudo_user_id
+          # error. already in ServerUser table but with an other pseudo user id!
+          logger.error2 "old remote_pseudo_user_id = #{su.remote_pseudo_user_id}. new remote_pseudo_user_id = #{-usr.pseudo_user_id}"
+        end
+      else
+        su = ServerUser.new
+        su.server_id = self.id
+        su.user_id = u.id
       end
-      su = ServerUser.new
-      su.server_id = self.id
-      su.user_id = u.id
       su.remote_pseudo_user_id = -usr.pseudo_user_id
       su.save!
       logger.debug2 "new su #{su.to_json}"
@@ -553,28 +555,29 @@ class Server < ActiveRecord::Base
     buffer.delete_all
 
     # 2) normal request/response cycle. user_id > 0. send next 10 users for verification
-    # exclude gofreerev dummy users (provider=gofreerev)
-    # using pseudo user ids in request
     logger.debug2 "last_checked_user_id = #{last_checked_user_id}"
-    new_users = 0
+    new_users = []
     User.where("id > ? and user_id not like 'gofreerev/%'", (last_checked_user_id || 0)).order(:id).limit(10).each do |u|
-      new_users += 1
+      new_users << u.id
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { 'user_id' => pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
       # remember user ids from users request
       pseudo_user_ids[pseudo_user_id] = u.id
     end
     logger.debug2 "request (2) = #{request.to_json}"
-    if new_users < 10
-      # less than 10 new users. check for changed sha256 signatures for old users
-      limit = 10 - new_users
+    if new_users.size < 10
+      # 3) normal request/response cycle. less than 10 new users. check for changed sha256 signatures for old users
+      limit = 10 - new_users.size
+      new_users << 0 if new_users.size == 0
       from_timestamp = last_changed_user_sha256_at
       from_timestamp = 1.year.ago unless from_timestamp
-      user = User.where("sha256_updated_at is not null and sha256_updated_at > ?", from_timestamp).order(:sha256_updated_at).limit(limit).last
+      user = User.where("sha256_updated_at is not null and sha256_updated_at > ? and id not in (?) and user_id not like 'gofreerev/%'",
+                        from_timestamp, new_users).order(:sha256_updated_at).limit(limit).last
       if user
         # found users with changed sha256 signature since last compare users check
         to_timestamp = user.sha256_updated_at
-        User.where("sha256_updated_at is not null and sha256_updated_at > ? and sha256_updated_at <= ?", from_timestamp, to_timestamp).each do |u|
+        User.where("sha256_updated_at is not null and sha256_updated_at > ? and sha256_updated_at <= ? and id not in (?) and user_id not like 'gofreerev/%'",
+                   from_timestamp, to_timestamp, new_users).each do |u|
           su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
           if su and su.pseudo_user_id
             logger.warn2 "reusing pseudo_user_id from old match #{su.to_json}"
@@ -756,7 +759,7 @@ class Server < ActiveRecord::Base
           else
             # todo: respond with sha2546 = nil
             logger.debug2 "user does not exists. return null user.sha256 signature"
-            request << { :user_id => usr["user_id"] }
+            request << { 'user_id' => usr["user_id"] }
           end
         else
           # user_id < 0. My user from response to a previously incoming users message.
@@ -825,9 +828,9 @@ class Server < ActiveRecord::Base
     # exclude gofreerev dummy users (provider=gofreerev)
     ServerUserRequest.where(:server_id => self.id).delete_all
 
-    new_users = 0
+    new_users = []
     User.where("id > ? and user_id not like 'gofreerev/%'", (self.last_checked_user_id || 0)).order(:id).limit(10).each do |u|
-      new_users += 1
+      new_users << u.id
       # use negative pseudo user id in response and positive pseudo user id in db
       pseudo_user_id = Sequence.next_pseudo_user_id
       request << { 'user_id' => -pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
@@ -840,16 +843,19 @@ class Server < ActiveRecord::Base
     end # each u
     logger.debug2 "users (2) = #{request}"
 
-    if new_users < 10
+    if new_users.size < 10
       # less than 10 new users. check for any changed sha256 signatures.
-      limit = 10 - new_users
+      limit = 10 - new_users.size
+      new_users << 0 if new_users.size == 0
       from_timestamp = last_changed_user_sha256_at
       from_timestamp = 1.year.ago unless from_timestamp
-      user = User.where("sha256_updated_at is not null and sha256_updated_at > ?", from_timestamp).order(:sha256_updated_at).limit(limit).last
+      user = User.where("sha256_updated_at is not null and sha256_updated_at > ? and id not in (?) and user_id not like 'gofreerev/%'",
+                        from_timestamp, new_users).order(:sha256_updated_at).limit(limit).last
       if user
         # found users with changed sha256 signature since last compare users check
         to_timestamp = user.sha256_updated_at
-        User.where("sha256_updated_at is not null and sha256_updated_at > ? and sha256_updated_at <= ?", from_timestamp, to_timestamp).each do |u|
+        User.where("sha256_updated_at is not null and sha256_updated_at > ? and sha256_updated_at <= ? and id not in (?) and user_id not like 'gofreerev/%'",
+                   from_timestamp, to_timestamp, new_users).each do |u|
           # use negative pseudo user id in response and positive pseudo user id in db
           su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
           if su and su.pseudo_user_id

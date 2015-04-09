@@ -486,6 +486,31 @@ class Server < ActiveRecord::Base
   end # sym_password_message
 
 
+  # check for user doublets in compare users message before send / after receive
+  private
+  def validate_compare_users_message (users)
+    logger.debug2 "users = #{users}"
+    # doublet check 1 - no doublet user ids are allowed in response array
+    user_id_doublets = users.group_by { |u| u['user_id'] }.select { |k, v| v.size > 1 }.keys
+    return "compare users message with doublet user_ids #{user_id_doublets.join(', ')}" if user_id_doublets.size > 0
+    # doublet check 2 - error if sha256 values doublets - todo: see todo # 395
+    # separate doublet check for positive user ids and negative user ids
+    # (positive user id from client and negative user id from server - server to server communication)
+    sha256_values = users.find_all do | usr|
+      usr['sha256'].to_s != ''
+    end.collect do |usr|
+      owner = usr['user_id'] >= 0 ? 'client' : 'server'
+      usr['sha256'] += " (#{owner})"
+      usr
+    end
+    sha256_doublets = sha256_values.group_by { |u| u['sha256'] }.select { |k, v| v.size > 1 }.keys
+    return "compare users message with doublet sha256 values #{sha256_doublets.join(', ')}" if sha256_doublets.size > 0
+    # no doublets in message
+    nil
+  end # validate_compare_users_message
+
+
+
   # create symmetric encrypted users message. return message or nil if no new users to check
   # match user information with other Gofreerev server
   # matching is done with user.sha256
@@ -506,11 +531,11 @@ class Server < ActiveRecord::Base
     buffer.all.each do |usr|
       u = User.find_by_sha256(usr.sha256)
       if !u
-        request << { :user_id => usr.pseudo_user_id, :sha256 => nil}
+        request << { 'user_id' => usr.pseudo_user_id, 'sha256' => nil}
         next
       end
       # sha256 match
-      request << { :user_id => usr.pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+      request << { 'user_id' => usr.pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
       # insert user match as NOT verified in server_users table
       su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
       if su
@@ -535,13 +560,13 @@ class Server < ActiveRecord::Base
     User.where("id > ? and user_id not like 'gofreerev/%'", (last_checked_user_id || 0)).order(:id).limit(10).each do |u|
       new_users += 1
       pseudo_user_id = Sequence.next_pseudo_user_id
-      request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+      request << { 'user_id' => pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
       # remember user ids from users request
       pseudo_user_ids[pseudo_user_id] = u.id
     end
     logger.debug2 "request (2) = #{request.to_json}"
     if new_users < 10
-      # less than 10 new users. check for any changed sha256 signatures.
+      # less than 10 new users. check for changed sha256 signatures for old users
       limit = 10 - new_users
       from_timestamp = last_changed_user_sha256_at
       from_timestamp = 1.year.ago unless from_timestamp
@@ -557,7 +582,7 @@ class Server < ActiveRecord::Base
           else
             pseudo_user_id = Sequence.next_pseudo_user_id
           end
-          request << { :user_id => pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+          request << { 'user_id' => pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
           # remember user ids from users request
           pseudo_user_ids[pseudo_user_id] = u.id
         end
@@ -568,6 +593,14 @@ class Server < ActiveRecord::Base
     end # if
 
     return nil if request.size == 0
+
+    # doublet check 1 - no doublet user ids are allowed in users array
+    # doublet check 2 - no doublets sha256 are allowed in users array - todo: see todo # 395
+    error = validate_compare_users_message(request)
+    if error
+      logger.error2 "#{error} was not sent"
+      return nil
+    end
 
     message = {
         :msgtype => 'users',
@@ -591,6 +624,8 @@ class Server < ActiveRecord::Base
     envelope
 
   end # create_compare_users_message
+
+
 
 
   # receive symmetric encrypted compare users message on "client" or on "server"
@@ -618,21 +653,10 @@ class Server < ActiveRecord::Base
       logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
-    # doublet check 1 - no doublet user ids are allowed in response array
-    user_id_doublets = response.group_by { |u| u['user_id'] }.select { |k, v| v.size > 1 }.keys
-    return "compare users message with doublet user_ids #{user_id_doublets.join(', ')} was rejected" if user_id_doublets.size > 0
-    # doublet check 2 - error if sha256 values doublets - todo: see todo # 395
-    # separate doublet check for positive user ids and negative user ids
-    # (positive user id from client and negative user id from server - server to server communication)
-    sha256_values = response.find_all do | usr|
-      usr['sha256'].to_s != ''
-    end.collect do |usr|
-      owner = usr['user_id'] >= 0 ? 'client' : 'server'
-      usr['sha256'] += " (#{owner})"
-      usr
-    end
-    sha256_doublets = sha256_values.group_by { |u| u['sha256'] }.select { |k, v| v.size > 1 }.keys
-    return "compare users message with doublet sha256 values #{sha256_doublets.join(', ')} was rejected" if sha256_doublets.size > 0
+    # doublet check 1 - no doublet user ids are allowed in users array
+    # doublet check 2 - no doublets sha256 are allowed in users array - todo: see todo # 395
+    error = validate_compare_users_message(response)
+    return "#{error} was rejected" if error
 
     max_checked_user_id = last_checked_user_id || 0
 
@@ -718,7 +742,7 @@ class Server < ActiveRecord::Base
           if u
             # todo: respond with client user.sha256
             logger.debug2 "user exists. return client user.sha256 signature"
-            request << { :user_id => usr["user_id"], :sha256 => u.calc_sha256(self.secret) }
+            request << { 'user_id' => usr["user_id"], 'sha256' => u.calc_sha256(self.secret) }
             # save match as not verified in server_users table
             su = ServerUser.find_by_server_id_and_user_id(self.id, u.id)
             if !su
@@ -726,7 +750,7 @@ class Server < ActiveRecord::Base
               su.server_id = self.id
               su.user_id = u.id
             end
-            su.remote_pseudo_user_id = usr["user_id"]
+            su.remote_pseudo_user_id = usr['user_id']
             su.save!
             logger.debug2 "su = #{su.to_json}"
           else
@@ -806,7 +830,7 @@ class Server < ActiveRecord::Base
       new_users += 1
       # use negative pseudo user id in response and positive pseudo user id in db
       pseudo_user_id = Sequence.next_pseudo_user_id
-      request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+      request << { 'user_id' => -pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
       # insert into ServerUserRequest. Pseudo user ids must be in next ping request from "client".
       sur = ServerUserRequest.new
       sur.server_id = self.id
@@ -835,7 +859,7 @@ class Server < ActiveRecord::Base
             pseudo_user_id = Sequence.next_pseudo_user_id
           end
           logger.debug2 "su = #{su.to_json}" if su
-          request << { :user_id => -pseudo_user_id, :sha256 => u.calc_sha256(self.secret) }
+          request << { 'user_id' => -pseudo_user_id, 'sha256' => u.calc_sha256(self.secret) }
           # insert into ServerUserRequest. Pseudo user ids must be in next ping request from "client".
           sur = ServerUserRequest.new
           sur.server_id = self.id
@@ -848,6 +872,11 @@ class Server < ActiveRecord::Base
         self.save!
       end # if
     end # if
+
+    # doublet check 1 - no doublet user ids are allowed in users array
+    # doublet check 2 - no doublets sha256 are allowed in users array - todo: see todo # 395
+    error = validate_compare_users_message(request)
+    return "#{error} was not sent" if error
 
     message = {
         :msgtype => 'users',

@@ -1680,5 +1680,11 @@
      b) user info on remote server could be out-of-date
      c) discard old user match - user signature after update are no longer identical!
 
+395) SystemParameter.new_secret
+     doublet check ensures that sha256 values are unique on current gofreerev server A
+     but there can be remote sha256 doublets when comparing users between gofreerev servers
+     sha256 signature for user a on server A = remote sha256 signature for users b1 and b2 on server B
+     doublet remote sha256 on server B is ok for a user without a sha256 match on server A
+     doublet remote sha256 on server B is not ok for a user with a sha256 match on server A
 
-select next issue to solve: (rand*394).floor+1
+select next issue to solve: (rand*395).floor+1

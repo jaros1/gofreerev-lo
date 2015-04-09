@@ -619,11 +619,20 @@ class Server < ActiveRecord::Base
     end
 
     # doublet check 1 - no doublet user ids are allowed in response array
-    if response.size != response.collect { |usr| usr['user_id'] }.uniq.size
-      return 'users message with doublet user_ids was rejected'
+    user_id_doublets = response.group_by { |u| u['user_id'] }.select { |k, v| v.size > 1 }.keys
+    return "compare users message with doublet user_ids #{user_id_doublets.join(', ')} was rejected" if user_id_doublets.size > 0
+    # doublet check 2 - error if sha256 values doublets - todo: see todo # 395
+    # separate doublet check for positive user ids and negative user ids
+    # (positive user id from client and negative user id from server - server to server communication)
+    sha256_values = response.find_all do | usr|
+      usr['sha256'].to_s != ''
+    end.collect do |usr|
+      owner = usr['user_id'] >= 0 ? 'client' : 'server'
+      usr['sha256'] += " (#{owner})"
+      usr
     end
-    # doublet check 2 - error if sha256 values doublets
-    #
+    sha256_doublets = sha256_values.group_by { |u| u['sha256'] }.select { |k, v| v.size > 1 }.keys
+    return "compare users message with doublet sha256 values #{sha256_doublets.join(', ')} was rejected" if sha256_doublets.size > 0
 
     max_checked_user_id = last_checked_user_id || 0
 
@@ -782,12 +791,12 @@ class Server < ActiveRecord::Base
 
     return nil if client # client - called from Server.ping
 
-    # server
+    # server - called from UtilController.ping
+    # add sha256 signatures for reverse request/response cycle (request in response and response in request). user_id < 0
 
     return nil if received_msgtype[:users] # more than one ingoing compare users message (response already in messages table)
     received_msgtype[:users] = true
 
-    # server - called from util_controller.ping
     logger.debug2 "add users to response users message. response will be sent in next ping request"
     # exclude gofreerev dummy users (provider=gofreerev)
     ServerUserRequest.where(:server_id => self.id).delete_all

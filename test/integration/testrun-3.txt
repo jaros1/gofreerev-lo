@@ -1,0 +1,36 @@
+test setup: old laptop - client 1 in firefox (old known did) - client 2 in chrome (new unknown did).
+UI: no console messages in client 1 and client 2
+issue: server 1 cannot see client on server 2 - server 2 cannot see client on server 1
+
+client 1: logged in as 1705481075/facebook       - Jan Roslind         - in server_users as verified match
+client 2: logged in as 1616942831872982/facebook - Jan Mobilos Roslind - not in server_users
+
+client 1:
+new fb login - friend list was downloaded and sha256 signature for "1563545817212684/facebook" changed
+
+2.0.0-p643 :052 >   [ users[2].debug_info, users[2].sha256_updated_at, users[2].sha256, users[2].old_sha256 ]
+ => ["1563545817212684/facebook Jan R", Thu, 09 Apr 2015 15:42:40 UTC +00:00, "gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=", "0GKRSPs7HIm/LSsWdPQB6peSDM0bQlf5CKVLxVhTWnY="]
+
+2.0.0-p643 :058 >   ServerUser.all[1]
+  ServerUser Load (0.3ms)  SELECT `server_users`.* FROM `server_users`
+ => #<ServerUser id: 12, server_id: 1, user_id: 3, verified_at: "2015-04-09 12:59:51", created_at: "2015-04-09 12:59:51", updated_at: "2015-04-09 12:59:55", pseudo_user_id: 318, remote_pseudo_user_id: 54>
+
+
+sha256_changed_message should be in log (log was cleared after friends update)!
+
+
+2.0.0-p643 :048 >   [ users[0].debug_info, users[0].sha256_updated_at, users[0].sha256, users[0].old_sha256 ]
+ => ["gofreerev/gofreerev Gofreerev G", nil, nil, nil]
+2.0.0-p643 :049 >
+2.0.0-p643 :050 >   [ users[1].debug_info, users[1].sha256_updated_at, users[1].sha256, users[1].old_sha256 ]
+ => ["1705481075/facebook Jan R", Thu, 09 Apr 2015 12:59:51 UTC +00:00, "rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI=", "rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="]
+2.0.0-p643 :051 >
+2.0.0-p643 :053 >
+
+
+server 2:
+receive_message: from_did = 14285678419191535188, password = 8iiGHXIHw2lukWLhVMwCYhAnal2kJHn3jOnndbGRVgcJrYQE1vHYnAOU6fAANrUwcN4vvhqSiLFptydIlUVztTbGt1sFCDrxiDya2iTeYA1oaXzHkRpAkHpn6jUaU6pHp2C4QU0jYjkuEh4Pk0ZbSLPRjZJ6MF8h
+receive_message: message_json = {"msgtype":"sha256","seq":2,"users":[{"sha256":"VBjJa8Mp3ik/LH6wEL55rFR1VZeXt8KSDn87bv9FhnQ=","pseudo_user_id":54,"sha256_updated_at":1428594160}]}
+receive_sha256_changed_message: seq = 2
+receive_sha256_changed_message: users = [{"sha256"=>"VBjJa8Mp3ik/LH6wEL55rFR1VZeXt8KSDn87bv9FhnQ=", "pseudo_user_id"=>54, "sha256_updated_at"=>1428594160}]
+messages: request_error = not implemented

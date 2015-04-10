@@ -1,0 +1,72 @@
+test setup: new laptop
+- client 1 in firefox (1705481075/facebook - Jan Roslind )
+- client 2 in chrome (1616942831872982/facebook - Jan Mobilos Roslind)
+
+server_users infirmation was cleared before testrun:
+ServerUserRequest.delete_all ; ServerUser.delete_all ; Message.delete_all ; s = Server.first ; s.last_checked_user_id = nil ; last_changed_user_sha256_at = nil ; s.save!
+
+UI:
+- client 1: 07:31:02.531 "GiftService.receive_messages: Error. Ignoring message from device 14282510028835868148 with unknown key 14282510028835868148D5ehbXsvcq0UmgMkqCyr3RnSJv8/7OpcYS/qoKvnYZQ=
+            . message = {"sender_did":"14282510028835868148","server":false,"encryption":"rsa","message":"ZLqe7+3j7xlOuHcOXgk4s2h0m69x+vawPlG+NEQ6YUYHNjKct7SN+pSrYHgX639C8X8nV+7GKcWU/IyZYZ01Vz6+Tky/fMVGbYC4gkkcSQIUQWbz4S+MnI6YS5I6Wwj8pwtxq+zcAWOFwf98pkDZgCFJNnLjz3cC742sTKIcHGwp5aiGFH3w06WWlF1sS39py8UvHrOnnjyMe5CyE6oL8u3sygYuJxktHzUU+uFO7xH1fYD2X7FK/S5zT3EMydiX9IhIBUrrB1cDhexsbtOLVJ4Zkqr1kpsfLOsvqDEYO+L21yFuvCZSQ7JWjtSo0opulREvrel9OPD1a6/aPTbxbg==","receiver_did":"14252356907464191530","sender_sha256":"D5ehbXsvcq0UmgMkqCyr3RnSJv8/7OpcYS/qoKvnYZQ=\n"}" gofreerev.js:6373:0
+            07:31:04.714 "NavCtrl.ping: error: Ping too early. Please wait 31622397.332 seconds." gofreerev.js:6577:24
+- client 2: gofreerev.js?body=1:4366 GiftService.send_messages: symmetric password setup: generated password1
+            gofreerev.js?body=1:4385 GiftService.send_messages: symmetric password setup: sending rsa message
+            gofreerev.js?body=1:4385 GiftService.send_messages: symmetric password setup: sending rsa message
+            .....
+            gofreerev.js?body=1:4385 GiftService.send_messages: symmetric password setup: sending rsa message
+
+UI: no console messages in client 1 and client 2
+issue: server 1 cannot see client on server 2 - server 2 cannot see client on server 1
+
+
+user compare:
+
+console 1:
+#<ServerUser id: 14, server_id: 1, user_id: 1126, verified_at: "2015-04-10 05:30:59", created_at: "2015-04-10 05:27:45", updated_at: "2015-04-10 05:30:59", pseudo_user_id: 5998, remote_pseudo_user_id: 5998>
+#<ServerUser id: 15, server_id: 1, user_id: 920, verified_at: "2015-04-10 05:28:45", created_at: "2015-04-10 05:27:45", updated_at: "2015-04-10 05:28:45", pseudo_user_id: 5809, remote_pseudo_user_id: 597>
+console 2:
+#<ServerUser id: 14, server_id: 1, user_id: 3, verified_at: "2015-04-10 05:27:46", created_at: "2015-04-10 05:27:46", updated_at: "2015-04-10 05:30:58", pseudo_user_id: 598, remote_pseudo_user_id: 5998>
+#<ServerUser id: 15, server_id: 1, user_id: 2, verified_at: "2015-04-10 05:27:46", created_at: "2015-04-10 05:27:46", updated_at: "2015-04-10 05:28:45", pseudo_user_id: 597, remote_pseudo_user_id: 5809>
+
+
+pings (last_ping_at + #<Ping>) :
+console 1:
+
+[2015-04-07 08:05:49 +0200,
+ #<Ping id: 284, session_id: "23622853ce02e17c4a3c14d36ebdb7c4", client_userid: 1, client_sid: "14279968957366127427", last_ping_at: #<BigDecimal:76231d8,'0.1428386749 381E10',27(27)>, next_ping_at: #<BigDecimal:7623160,'0.1428386751 381E10',27(27)>,
+        did: "14252356907464191530", user_ids: "---\n- 1705481075/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: nil>]
+
+[2015-04-07 18:16:27 +0200,
+ #<Ping id: 293, session_id: "23622853ce02e17c4a3c14d36ebdb7c4", client_userid: 1, client_sid: "14284232199691459258", last_ping_at: #<BigDecimal:7622ff8,'0.1428423387 19E10',27(27)>, next_ping_at: #<BigDecimal:7622f80,'0.1428423389 19E10',27(27)>,
+        did: "14252356907464191530", user_ids: "---\n- 1705481075/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: nil>]
+
+[2015-04-08 06:02:07 +0200,
+ #<Ping id: 294, session_id: "23622853ce02e17c4a3c14d36ebdb7c4", client_userid: 1, client_sid: "14284656096678079843", last_ping_at: #<BigDecimal:7622e18,'0.1428465727 003E10',27(27)>, next_ping_at: #<BigDecimal:7622da0,'0.1428465729 003E10',27(27)>,
+        did: "14252356907464191530", user_ids: "---\n- 1705481075/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: nil>]
+
+[2015-04-10 07:32:07 +0200,
+ #<Ping id: 295, session_id: "009f2b42820c32fafda695a79f90bee1", client_userid: 1, client_sid: "14286436532428303116", last_ping_at: #<BigDecimal:7622c10,'0.1428643927 128E10',27(27)>, next_ping_at: #<BigDecimal:7622b98,'0.1460266328 672E10',27(27)>,
+        did: "14252356907464191530", user_ids: "---\n- 1563545817212684/facebook\n", sha256: "D5ehbXsvcq0UmgMkqCyr3RnSJv8/7OpcYS/qoKvnYZQ=\n", server_id: 1>]
+
+console 2:
+
+[2015-04-10 07:32:07 +0200,
+ #<Ping id: 36, session_id: "012e71fc43c5aaadf88d76ebdd58a4b4", client_userid: 1, client_sid: "14266933451169615979", last_ping_at: #<BigDecimal:7bb5ba0,'0.1428643927 565E10',27(27)>, next_ping_at: #<BigDecimal:7bb5b28,'0.1428643929 565E10',27(27)>,
+        did: "14285574007114866980", user_ids: "---\n- http://laptop.gofreerev.com/\n", sha256: nil, server_id: nil>]
+
+[2015-04-10 07:32:15 +0200,
+ #<Ping id: 37, session_id: "ff48018a68ac5bc68c9b2b77ff4858f2", client_userid: 1, client_sid: "14286436562899588560", last_ping_at: #<BigDecimal:7bb5920,'0.1428643935 426E10',27(27)>, next_ping_at: #<BigDecimal:7bb58a8,'0.1428643937 426E10',27(27)>,
+        did: "14282510028835868148", user_ids: "---\n- 1616942831872982/facebook\n", sha256: "D5ehbXsvcq0UmgMkqCyr3RnSJv8/7OpcYS/qoKvnYZQ=\n", server_id: nil>]
+
+[2015-04-10 07:30:57 +0200,
+ #<Ping id: 38, session_id: "12", client_userid: 1, client_sid: "12", last_ping_at: #<BigDecimal:7bb5740,'0.1428643857 276E10',27(27)>, next_ping_at: #<BigDecimal:7bb56a0,'0.1460266258 396E10',27(27)>,
+        did: "14252356907464191530", user_ids: "---\n- 4878645699741/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: 1>]
+
+
+
+console 1:
+create_online_users_message: no online users was found in pings table
+
+firefox client 1 updates pings with id 295 but this is a remote ping from server 1
+
+console 1: did = 14252356907464191530 for all rows in pings table

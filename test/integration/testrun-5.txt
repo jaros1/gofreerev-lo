@@ -1,0 +1,31 @@
+
+
+client 1 (firefox):
+
+12:23:28.800 "GiftService.receive_message_users_sha256: mailbox = {"did":"14281402123755149031","sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=\n","mutual_friends":[2],"server_id":1,"key":"14281402123755149031Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=\n","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14286613908285760027","users":[{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]}],"done":[],"error":[]}" gofreerev.js:4574:0
+12:23:28.800 "GiftService.receive_message_users_sha256: msg     = {"msgtype":"users_sha256","mid":"14286613889338304650","users":[{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]}" gofreerev.js:4575:0
+12:23:28.801 "GiftService.receive_message_users_sha256: users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids" gofreerev.js:4618:16
+12:23:28.801 "GiftService.receive_message_users_sha256: msg.users (1) = [{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]" gofreerev.js:4619:0
+12:23:28.802 "GiftService.receive_message_users_sha256: translating sha256 user_id gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw= to internal user_id 3" gofreerev.js:4645:24
+12:23:28.802 "GiftService.receive_message_users_sha256: translating sha256 user_id rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI= to internal user_id 2" gofreerev.js:4645:24
+12:23:28.802 "GiftService.receive_message_users_sha256: msg.users (2) = [{"user_id":2},{"user_id":3,"sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]" gofreerev.js:4654:0
+12:23:28.803 "GiftService.receive_message_users_sha256: msg_users = [2,3], my_mutual_friends = [2], invalid_user_ids = [3]" gofreerev.js:4667:0
+12:23:28.803 "GiftService.receive_message_users_sha256: 1 rejected users(s) in users_sha256 message. Received sha256 user signatures: rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI=, gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=. Received internal user ids: 2, 3. Expected user ids: 2. Unknown mutual friends: 3" gofreerev.js:4679:16
+12:23:28.804 "GiftService.receive_message_users_sha256: msg_users.length = 1" gofreerev.js:4682:16
+12:23:28.804 "GiftService.calc_sha256_for_user: No gifts was found for user_id 2" gofreerev.js:4242:16
+12:23:28.804 "GiftService.receive_message_users_sha256: sha256_hash = {"2":{}}" gofreerev.js:4721:0
+12:23:28.804 "GiftService.receive_message_users_sha256: mutual gifts for this device are up-to-date." gofreerev.js:4734:16
+
+
+client 2 (chrome):
+
+2015-04-10 12:23:27.933gofreerev.js?body=1:4574 GiftService.receive_message_users_sha256: mailbox = {"did":"14286559991469417938","sha256":"z3weBo2zM39N/uBigItxHM67IJQYPdndh+rqpt5Z0K8=\n","mutual_friends":[2,3],"server_id":1,"key":"14286559991469417938z3weBo2zM39N/uBigItxHM67IJQYPdndh+rqpt5Z0K8=\n","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14286613889338304650","users":[{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]}],"done":[],"error":[]}
+2015-04-10 12:23:27.934gofreerev.js?body=1:4575 GiftService.receive_message_users_sha256: msg     = {"msgtype":"users_sha256","mid":"14286613908285760027","users":[{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]}
+2015-04-10 12:23:27.942gofreerev.js?body=1:4618 GiftService.receive_message_users_sha256: users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids
+2015-04-10 12:23:27.943gofreerev.js?body=1:4619 GiftService.receive_message_users_sha256: msg.users (1) = [{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]
+2015-04-10 12:23:27.943gofreerev.js?body=1:4645 GiftService.receive_message_users_sha256: translating sha256 user_id Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk= to internal user_id 2
+2015-04-10 12:23:27.944gofreerev.js?body=1:4654 GiftService.receive_message_users_sha256: msg.users (2) = [{"user_id":2}]
+2015-04-10 12:23:27.945gofreerev.js?body=1:4667 GiftService.receive_message_users_sha256: msg_users = [2], my_mutual_friends = [2,3], invalid_user_ids = []
+2015-04-10 12:23:27.945gofreerev.js?body=1:4242 GiftService.calc_sha256_for_user: No gifts was found for user_id 2
+2015-04-10 12:23:27.947gofreerev.js?body=1:4721 GiftService.receive_message_users_sha256: sha256_hash = {"2":{}}
+2015-04-10 12:23:27.948gofreerev.js?body=1:4734 GiftService.receive_message_users_sha256: mutual gifts for this device are up-to-date.

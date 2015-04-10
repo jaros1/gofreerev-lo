@@ -1519,7 +1519,7 @@ angular.module('gifts', ['ngRoute'])
                 if (friend.hasOwnProperty('sha256')) friends_index_by_sha256[friend.sha256] = i ;
                 // old sha256 signatures. Valid for 1-2 minutes after changing server secret.
                 // only relevant if secret was changed just before page load or api provider login (friend list downloads)
-                if (friend.hasOwnProperty('old_sha256')) friends_index_by_sha256[friend.old_sha256] = i ;
+                if (friend.hasOwnProperty('old_sha256')) friends_index_by_old_sha256[friend.old_sha256] = i ;
                 // remote_sha256 - only friends on remote servers - used when sending messages to other Gofreerev servers
                 // make sure that remote_sha256 is a hash with server id as key
                 if (friend.hasOwnProperty('remote_sha256') && (friend.remote_sha256.constructor == Array)) {
@@ -1577,8 +1577,16 @@ angular.module('gifts', ['ngRoute'])
                     }
                     if (friends[j].friend != new_friend.friend) friends[j].friend = new_friend.friend;
                     // sha256 & old_sha256 - used when receiving messages from other gofreerev servers
-                    if (friends[j].sha256 != new_friend.sha256) friends[j].sha256 = new_friend.sha256;
-                    if (friends[j].old_sha256 != new_friend.old_sha256) friends[j].old_sha256 = new_friend.old_sha256;
+                    if (friends[j].sha256 != new_friend.sha256) {
+                        delete friends_index_by_sha256[friends[j].sha256] ;
+                        friends[j].sha256 = new_friend.sha256;
+                        friends_index_by_sha256[friends[j].sha256] = i ;
+                    }
+                    if (friends[j].old_sha256 != new_friend.old_sha256) {
+                        if (friends[j].old_sha256) delete friends_index_by_old_sha256[friends[j].old_sha256] ;
+                        friends[j].old_sha256 = new_friend.old_sha256;
+                        if (friends[j].old_sha256) friends_index_by_old_sha256[friends[j].old_sha256] = i ;
+                    }
                     // remote_sha256 - used when sending messages to other gofreerev servers
                     // make sure that remote_sha256 is a hash
                     if (new_friend.hasOwnProperty('remote_sha256')) {
@@ -1605,6 +1613,8 @@ angular.module('gifts', ['ngRoute'])
                     }
                     extern_user_ids[extern_user_id] = friends.length ;
                     friends_index_by_user_id[new_friend.user_id] = friends.length;
+                    friends_index_by_sha256[new_friend.sha256] = friends.length ;
+                    friends_index_by_old_sha256[new_friend.old_sha256] = friends.length ;
                     friends.push(new_friend);
                     refresh_index = true;
                 }
@@ -4212,6 +4222,7 @@ angular.module('gifts', ['ngRoute'])
             else {
                 device.password = device.password2 + device.password1;
             }
+            console.log(pgm + 'device.password = ' + device.password) ;
             device.password_at = (new Date).getTime();
             device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1);
             device.ignore_invalid_gifts = [];
@@ -4516,6 +4527,7 @@ angular.module('gifts', ['ngRoute'])
             device.password2_at = msg[2];
             // calc password_md5 if possible
             setup_device_password(device);
+            console.log(pgm + 'device.password = ' + device.password) ;
             // check of the two devices agree about password
             var md5_ok = (device.password_md5 && (msg.length == 4) && (device.password_md5 == msg[3]))
             if (md5_ok) console.log(pgm + 'symmetric password setup completed.');
@@ -6403,10 +6415,11 @@ angular.module('gifts', ['ngRoute'])
                     // console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
                     // console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
                     receive_message_password(device, msg) ;
+                    console.log(pgm + 'device.password = ' + device.password) ;
                 }
                 else {
                     // symmetric key decryption - all other messages
-                    if (!device || !device.password) {
+                    if (!device.password) {
                         console.log(pgm + 'Error. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
                         continue ;
                     }

@@ -378,7 +378,7 @@ class Message < ActiveRecord::Base
       # todo: forwarded messages send in an request to an other gofreerev server can be deleted after ok response
       ms = Message.where(:to_did => sender_did, :server => true).order(:created_at)
     else
-      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256, :server => false).order(:created_at)
+      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256, :server => false).order('created_at, encryption desc')
     end
     output_messages = ms.collect do |m|
       hash = {:sender_did => m.from_did,

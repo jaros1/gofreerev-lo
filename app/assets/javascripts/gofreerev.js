@@ -6134,6 +6134,14 @@ angular.module('gifts', ['ngRoute'])
                         // todo: how to validate gifts from client on other Gofreerev server? Not all user ids are known!
                         // todo: add server_id to gift. reuse gift.created_at_server as server_id? Should use 0 for local server and >0 for remote servers
                         console.log(pgm + 'verify remote gift ' + JSON.stringify(new_gift)) ;
+                        // verify remote gift
+                        //   {"gid":"14254791174816684686","giver_user_ids":[2,-790],"receiver_user_ids":[],
+                        //    "created_at_client":1425479117,"created_at_server":1,"currency":"usd","direction":"giver",
+                        //    "description":"e","like":false,"deleted_at_client":1425804186,
+                        //    "sha256":"Çî\u0002t 31gõ¤7NÈªãÃÏ\u0018ÂØ\u0013 ×Ü*á\u0013ùÑ",
+                        //    "sha256_gift":"\"&»º¡&Q§æíB\rö)Uz/\u0019B\u0018,·E>Q°qÜ",
+                        //    "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+
                     }
                     verify_gifts.push(new_gift); // todo: use a temporary array - move to verify_gifts at end of loop if no fatal errors were found
                     if (new_gift.comments) {

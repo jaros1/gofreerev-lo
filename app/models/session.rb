@@ -386,7 +386,7 @@ class Session < ActiveRecord::Base
           self.sha256 = nil
         elsif value.class == Array
           sha256_input = ([self.client_secret]+value.sort).join(',')
-          self.sha256 = Base64.encode64(Digest::SHA256.digest(sha256_input))
+          self.sha256 = Base64.encode64(Digest::SHA256.digest(sha256_input)).gsub(/\n$/,'') # remove last /n - used as hash key in JS
         else
           self.sha256 = nil
         end

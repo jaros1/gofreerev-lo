@@ -1687,4 +1687,7 @@
      doublet remote sha256 on server B is ok for a user without a sha256 match on server A
      doublet remote sha256 on server B is not ok for a user with a sha256 match on server A
 
-select next issue to solve: (rand*395).floor+1
+396) testrun-4
+     error. using numeric session id 9 in Ping.where and finding string session id "009f2b42820c32fafda695a79f90bee1"
+
+select next issue to solve: (rand*396).floor+1

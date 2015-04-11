@@ -1089,11 +1089,11 @@ class Server < ActiveRecord::Base
       end
 
       # translate pseudo session id received from other gofreerev server to pseudo session id used on this gofreerev server
-      ss = ServerSession.find_by_server_id_and_server_session_id(self.id, ping["session_id"])
+      ss = ServerSession.find_by_server_id_and_remote_session_id(self.id, ping["session_id"])
       if !ss
         ss = ServerSession.new
         ss.server_id = self.id
-        ss.server_session_id = ping["session_id"]
+        ss.remote_session_id = ping["session_id"]
         ss.session_id = Sequence.next_pseudo_session_id
         ss.save!
       end
@@ -1104,14 +1104,17 @@ class Server < ActiveRecord::Base
         pubkey.server_id = self.id
         pubkey.save!
       end
-      # find/create ping
-      p = Ping.find_by_session_id_and_client_userid(ss.session_id, ping["client_userid"])
+      # find/create ping - using String session id in pings table!
+      p = Ping.find_by_session_id_and_client_userid(ss.session_id.to_s, ping["client_userid"])
       if !p
         p = Ping.new
         p.session_id = ss.session_id.to_s
         p.client_userid = ping["client_userid"]
         p.client_sid = ss.session_id.to_s
         p.did = ping["did"]
+      elsif p.server_id != self.id
+        errors << "System error when receiving online users message. Invalid server id in pings table. received #{ping}. ping in db #{p.to_json}"
+        next
       end
       p.last_ping_at = Time.at ping["last_ping_at"]
       p.next_ping_at = 1.year.from_now.round(3)

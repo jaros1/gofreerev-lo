@@ -1,5 +1,7 @@
 class RemoteSession < ActiveRecord::Base
 
+  # translate session id to pseudo session id before sending online users message to other Gofreerev server
+
   # create_table "remote_sessions", force: true do |t|
   #   t.string   "session_id",        limit: 32, null: false
   #   t.integer  "pseudo_session_id",            null: false

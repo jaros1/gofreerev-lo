@@ -68,5 +68,15 @@ console 1:
 create_online_users_message: no online users was found in pings table
 
 firefox client 1 updates pings with id 295 but this is a remote ping from server 1
+server 1:   Session Load (0.4ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '009f2b42820c32fafda695a79f90bee1' AND `sessions`.`client_userid` = 1 LIMIT 1
+console 1: [2015-04-10 07:32:07 +0200,
+            #<Ping id: 295, session_id: "009f2b42820c32fafda695a79f90bee1", client_userid: 1, client_sid: "14286436532428303116", last_ping_at: #<BigDecimal:7622c10,'0.1428643927 128E10',27(27)>, next_ping_at: #<BigDecimal:7622b98,'0.1460266328 672E10',27(27)>,
+                   did: "14252356907464191530", user_ids: "---\n- 1563545817212684/facebook\n", sha256: "D5ehbXsvcq0UmgMkqCyr3RnSJv8/7OpcYS/qoKvnYZQ=\n", server_id: 1>]
+server 1: Ping Load (0.3ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = 9 AND `pings`.`client_userid` = 1 LIMIT 1
 
-console 1: did = 14252356907464191530 for all rows in pings table
+issue: session_id number in server_sessions and string in pings. ping with session_id 9 does not exist but ping with session_id = "009f2b42820c32fafda695a79f90bee1" was used
+
+solution:
+- renamed server_sesions.server_session_id to remote_session_id
+- added to_s in pings lookup
+- added server id check in receive online users message

@@ -3568,8 +3568,8 @@ angular.module('gifts', ['ngRoute'])
 
 
         // internal server id <=> server sha256 signature hashes
-        // server sha256 signature is used in cross server communication (send_gifts messsage)
-        // translated to sha256 before sending message and translated back to server id after receving message
+        // server sha256 signature is used in cross server communication (send_gifts message)
+        // translated to sha256 before sending message and translated back to server id after receiving message
         // loaded from /assets/ruby_to.js page at page start.
         // new servers after page start are added in /util/ping new_servers request and response
         var server_id_to_sha256_hash = {}, sha256_to_server_id_hash = {} ;
@@ -3593,7 +3593,7 @@ angular.module('gifts', ['ngRoute'])
             var now = Gofreerev.unix_timestamp() ;
             var request = [], sha256, last_request_at ;
             for (sha256 in unknown_servers) {
-                if (!unknown_servers.hasOwnProperty(server_id)) continue ;
+                if (!unknown_servers.hasOwnProperty(sha256)) continue ;
                 if (typeof unknown_servers[sha256] == 'number') {
                     // unknown server. timestamp for last request / last response
                     last_request_at = unknown_servers[sha256] ;
@@ -3731,6 +3731,8 @@ angular.module('gifts', ['ngRoute'])
                 // add user ids
                 if (verify_gift.giver_user_ids.length > 0) hash.giver_user_ids = verify_gift.giver_user_ids ;
                 if (verify_gift.receiver_user_ids.length > 0) hash.receiver_user_ids = verify_gift.receiver_user_ids ;
+                // add server id (only gifts for remote verification)
+                if (verify_gift.created_at_server != 0) hash.server_id = verify_gift.created_at_server ;
                 // check verify gifts buffer
                 key = JSON.stringify(hash);
                 seq = verify_gifts_key_to_seq[key];
@@ -3741,11 +3743,15 @@ angular.module('gifts', ['ngRoute'])
                 }
                 else {
                     // new request. add to verify gifts buffer and request array
-                    local_seq += 1 ;
-                    hash.seq = local_seq ;
-                    verify_gift.verify_seq = local_seq ;
-                    verify_gifts_key_to_seq[key] = local_seq ;
-                    verify_gifts_seq_to_gifts[local_seq] = {
+                    if (verify_gift.created_at_server == 0) {
+                        // local verification. positive seq. gift created on this gofreerev server
+                        local_seq += 1;
+                        hash.seq = local_seq ;
+                    }
+                    else hash.seq = -Gofreerev.get_next_seq() ; // remote verification. negative seq. gift created in an other Gofreerev server
+                    verify_gift.verify_seq = hash.seq ;
+                    verify_gifts_key_to_seq[key] = hash.seq ;
+                    verify_gifts_seq_to_gifts[hash.seq] = {
                         gid: verify_gift.gid,
                         key: key,
                         gifts: [verify_gift],
@@ -5878,9 +5884,6 @@ angular.module('gifts', ['ngRoute'])
                     } // for i
 
                 } // if server_id
-
-
-
 
                 // ready for pass 1
                 msg.pass = 1;

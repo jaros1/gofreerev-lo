@@ -258,7 +258,10 @@ JSON_SCHEMA = {
                       :type => 'object',
                       :properties => {
                           # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
+                          # use positive seq for local gifts without server id - use negative seq for remote gifts with server id
                           :seq => {:type => 'integer'},
+                          # optional server id for other Gofreerev server
+                          :server_id => {:type => 'integer', :minimum => 1},
                           # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :gid => {:type => 'string', :pattern => uid_pattern},
                           # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)

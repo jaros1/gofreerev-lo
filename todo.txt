@@ -1687,7 +1687,22 @@
      doublet remote sha256 on server B is ok for a user without a sha256 match on server A
      doublet remote sha256 on server B is not ok for a user with a sha256 match on server A
 
-396) testrun-4
-     error. using numeric session id 9 in Ping.where and finding string session id "009f2b42820c32fafda695a79f90bee1"
+397) server to server - verify remote gifts
+     master table with server verify gift request and response
+     client table with client verify gift requests - return answer from server to server gift verifications
+     master:
+     - server_id
+     - master_seq (id used in server response)
+     - gid
+     - giver_user_ids
+     - receiver_user_ids
+     - sha256
+     - sha256_accepted
+     - sha256_deleted
+     - verified_at_server boolean
+     client:
+     - client_session_id
+     - client_seq (negative seq from verify gifts request)
+     - master_seq (foreign key to master table)
 
-select next issue to solve: (rand*396).floor+1
+select next issue to solve: (rand*397).floor+1

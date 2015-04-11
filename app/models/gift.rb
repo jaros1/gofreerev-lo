@@ -284,8 +284,7 @@ class Gift < ActiveRecord::Base
   # sha256_deleted and sha256_accepted are optional in request and are validated if supplied
   # client should supply sha256_accepted in request if gift has been accepted
   # client should supply sha256_deleted in request if gift has been deleted
-  # todo: login user must be friend with giver or receiver of gift?
-  def self.verify_gifts (verify_gifts, login_user_ids)
+  def self.verify_gifts (verify_gifts, login_user_ids, client_session_id)
     logger.debug2 "verify_gifts = #{verify_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
     return unless verify_gifts
@@ -320,9 +319,28 @@ class Gift < ActiveRecord::Base
     User.where(:id => gifts_user_ids.uniq).each { |u| users[u.id] = u.user_id }
 
     response = []
+    remote_request = {} # server_id => array with verification requests
+
     verify_gifts.each do |verify_gift|
-      seq = verify_gift["seq"]
-      gid = verify_gift["gid"]
+      seq = verify_gift['seq']
+      server_id = verify_gift['server_id']
+      gid = verify_gift['gid']
+
+      if (server_id)
+        # remote gift verification
+        if seq >= 0
+          logger.error2 "gid #{gid}. Invalid request. seq must be negative for remote gift verification"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          next
+        end
+      else
+        # local gift verification
+        if seq < 0
+          logger.error2 "gid #{gid}. Invalid request. seq must be postive for local gift verification"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          next
+        end
+      end
 
       # validate row in verify gift request
       if verify_gift["giver_user_ids"] and verify_gift["giver_user_ids"].size > 0
@@ -365,19 +383,27 @@ class Gift < ActiveRecord::Base
       end
 
       # check if gift exists
-      gift = gifts[gid]
-      if !gift
-        # gift not found -
-        # todo: how to implement cross server gift sha256 signature validation?
-        logger.warn2 "gid #{gid} was not found"
-        response << { :seq => seq, :gid => gid, :verified_at_server => false }
-        next
+      if !server
+        # local gifts verification - gift must exist
+        gift = gifts[gid]
+        if !gift
+          # gift not found -
+          # todo: how to implement cross server gift sha256 signature validation?
+          logger.warn2 "gid #{gid} was not found"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          next
+        end
       end
 
       # check mutual friends
       mutual_friend = false
       giver_user_ids = []
+      giver_error = false
       verify_gift["giver_user_ids"].each do |user_id|
+        if server_id and user_id < 0 # unknown remote user
+          giver_user_ids << user_id
+          next
+        end
         giver = users[user_id]
         if giver
           giver_user_ids << giver
@@ -386,14 +412,22 @@ class Gift < ActiveRecord::Base
         else
           logger.warn2 "Gid #{gid} : Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
           response << { :seq => seq, :gid => gid, :verified_at_server => false }
-          next
+          giver_error = true
+          break
         end
       end if verify_gift["giver_user_ids"]
+      next if giver_error
       giver_user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
       giver_user_ids.sort!
 
       receiver_user_ids = []
+      receiver_error = false
       verify_gift["receiver_user_ids"].each do |user_id|
+        if server_id and user_id < 0
+          # unknown remote user
+          receiver_user_ids << user_id
+          next
+        end
         receiver = users[user_id]
         if receiver
           receiver_user_ids << receiver
@@ -402,9 +436,11 @@ class Gift < ActiveRecord::Base
         else
           logger.warn2 "Gid #{gid} : Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
           response << { :seq => seq, :gid => gid, :verified_at_server => false }
-          next
+          receiver_error = true
+          break
         end
       end if verify_gift["receiver_user_ids"]
+      next if receiver_error
       if !mutual_friend
         logger.debug2 "gid #{gid} is not from a friend"
         response << { :seq => seq, :gid => gid }
@@ -412,6 +448,10 @@ class Gift < ActiveRecord::Base
       end
       receiver_user_ids.uniq! # todo: should return an error if doublets in receiver_user_ids array
       receiver_user_ids.sort!
+
+      if server_id
+
+      end
 
       # calculate and check server side sha256 signature
       sha256_client = verify_gift["sha256"]

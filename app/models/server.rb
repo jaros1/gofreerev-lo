@@ -1104,7 +1104,9 @@ class Server < ActiveRecord::Base
         pubkey.server_id = self.id
         pubkey.save!
       end
-      # find/create ping - using String session id in pings table!
+
+      # find/create/update ping for remote session
+      # note! - using String session id in pings table! integer in remote_sessions, server_sessions and online users message but string in pings table
       p = Ping.find_by_session_id_and_client_userid(ss.session_id.to_s, ping["client_userid"])
       if !p
         p = Ping.new

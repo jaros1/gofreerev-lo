@@ -1384,7 +1384,8 @@ class UtilController < ApplicationController
         # client must reject gift if created_at_server timestamp is null or does not match
         # sha256 signature should ensure that gift information is not unauthorized updated on client
         logger.debug2 "verify_gifts = #{params[:verify_gifts]} (#{params[:verify_gifts].class})"
-        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids) unless server
+        client_session_id = "#{ping.did},#{ping.sha256}" unless server
+        verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids, client_session_id) unless server
         @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
         # 8) client to client messages or server or server messages

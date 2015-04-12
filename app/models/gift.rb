@@ -284,7 +284,13 @@ class Gift < ActiveRecord::Base
   # sha256_deleted and sha256_accepted are optional in request and are validated if supplied
   # client should supply sha256_accepted in request if gift has been accepted
   # client should supply sha256_deleted in request if gift has been deleted
-  def self.verify_gifts (verify_gifts, login_user_ids, client_session_id)
+  # params:
+  # - verify_gifts: array - see verify_gifts array in JSON_SCHEMA[:ping_request]
+  # - login_user_ids: from session :user_ids array - logged in users
+  # - client_sid: from ping - unique session id (one did can have multiple sids) = browser tab
+  # - client_sha256: from ping - mailbox sha256 signature - changes when api provider login changes
+  # ( client_sid + client_sha256 is used as unique session id when sending and receiving remote gift verifications )
+  def self.verify_gifts (verify_gifts, login_user_ids, client_sid, client_sha256)
     logger.debug2 "verify_gifts = #{verify_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
     return unless verify_gifts
@@ -302,11 +308,14 @@ class Gift < ActiveRecord::Base
 
     # cache users (user_id's are used in server side sha256 signature)
     # cache gifts (get previous server side sha256 signature and created_at timestamp)
-    users = {} # id => user_id
+    # cache remote servers (secrets for remote user sha256 signatures)
+    users = {} # id => user
     gifts = {} # gid => gift
     gids = []
     gifts_user_ids = []
     seqs = {}
+    server_ids = []
+    servers = {}
     verify_gifts.each do |new_gift|
       seq = new_gift["seq"]
       return { :error => 'Invalid verify gifts request. Seq in gifts array must be unique' } if seqs.has_key? seq
@@ -314,12 +323,15 @@ class Gift < ActiveRecord::Base
       gids << new_gift["gid"]
       gifts_user_ids += new_gift["giver_user_ids"] if new_gift["giver_user_ids"]
       gifts_user_ids += new_gift["receiver_user_ids"] if new_gift["receiver_user_ids"]
+      server_id = new_gift['server_id']
+      server_ids << server_id if server_id and !server_ids.index(server_id)
     end
     Gift.where(:gid => gids.uniq).each { |g| gifts[g.gid] = g }
-    User.where(:id => gifts_user_ids.uniq).each { |u| users[u.id] = u.user_id }
+    User.where(:id => gifts_user_ids.uniq).each { |u| users[u.id] = u }
+    Server.where(:id => server_ids).each { |s| servers[s.id] = s } if server_ids.size > 0
 
     response = []
-    remote_request = {} # server_id => array with verification requests
+    server_requests = {} # server_id => array with verification requests
 
     verify_gifts.each do |verify_gift|
       seq = verify_gift['seq']
@@ -330,6 +342,11 @@ class Gift < ActiveRecord::Base
         # remote gift verification
         if seq >= 0
           logger.error2 "gid #{gid}. Invalid request. seq must be negative for remote gift verification"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          next
+        end
+        if !servers.has_key? server_id
+          logger.error2 "gid #{gid}. Invalid request. Unknown server id"
           response << { :seq => seq, :gid => gid, :verified_at_server => false}
           next
         end
@@ -406,8 +423,8 @@ class Gift < ActiveRecord::Base
         end
         giver = users[user_id]
         if giver
-          giver_user_ids << giver
-          friend = friends[giver]
+          giver_user_ids << server_id ? giver.calc_sha256(servers[server_id].secret) : giver.user_id
+          friend = friends[giver.user_id]
           mutual_friend = true if friend and friend <= 2
         else
           logger.warn2 "Gid #{gid} : Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
@@ -430,8 +447,8 @@ class Gift < ActiveRecord::Base
         end
         receiver = users[user_id]
         if receiver
-          receiver_user_ids << receiver
-          friend = friends[receiver]
+          receiver_user_ids << server_id ? receiver.calc_sha256(servers[server_id].secret) : receiver.user_id
+          friend = friends[receiver.user_id]
           mutual_friend = true if friend and friend <= 2
         else
           logger.warn2 "Gid #{gid} : Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
@@ -450,7 +467,27 @@ class Gift < ActiveRecord::Base
       receiver_user_ids.sort!
 
       if server_id
-
+        # remote gift verification
+        # insert row in verify_gifts table
+        vg = VerifyGift.new
+        vg.client_sid = client_sid
+        vg.client_sha256 = client_sha256
+        vg.client_seq = seq
+        vg.server_id = server_id
+        vg.gid = gid
+        vg.server_seq = Sequence.next_verify_gift_seq
+        vg.save!
+        # insert verify_gifts request in server_requests hash
+        server_requests[server_id] = [] unless server_requests.has_key? server_id
+        server_requests << {
+            :seq => vg.server_seq,
+            :gid => gid,
+            :sha256 => verify_gift["sha256"],
+            :sha256_deleted => verify_gift["sha256_deleted"],
+            :sha256_accepted => verify_gift["sha256_acepted"],
+            :giver_user_ids => giver_user_ids,
+            :receiver_user_ids => giver_receiver_ids
+        }
       end
 
       # calculate and check server side sha256 signature

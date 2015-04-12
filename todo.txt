@@ -1701,8 +1701,12 @@
      - sha256_deleted
      - verified_at_server boolean
      client:
-     - client_session_id
+     - client_sid
+     - client_sha256
      - client_seq (negative seq from verify gifts request)
-     - master_seq (foreign key to master table)
+     - server_id
+     - gid
+     - server_seq
+
 
 select next issue to solve: (rand*397).floor+1

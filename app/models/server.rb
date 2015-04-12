@@ -343,6 +343,7 @@ class Server < ActiveRecord::Base
     # get session cookie and authenticity token (XSRF-TOKEN) from gofreerev server
     # loop. first loop with secure = true. second loop with secure = false
     res = nil
+    url = nil
     loop do
       url = URI.parse("#{site_url}en/main")
       begin

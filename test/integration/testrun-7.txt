@@ -1,0 +1,118 @@
+old laptop
+
+client 1:
+
+11:33:55.160 "GiftService.pubkeys_response: pubkeys = [{"did":"14281402123755149031","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBn5rdnBcmtu5jteS6a1rbT\np4HjTlC3AKrAubeLS3L7Vw+uEj+XGVBgV5dfLdxKmdnbfXlCxCEDlGRLsYGeRFz+\nSeyq03DIkUR2IdLvBoTkj43vlzdP/M27if3Lr60+rLJuNoWyR4U0IQQcubSTCrx+\nrfV4fge7QkDaOacNVMpYIpvO8joxgvd5w9pjdKXk5hnMAGJu32ORlHnWERZbB+YE\nKlyBGQ0hj6H1QI3v+qWJwNELg/OXwl+38tJN7/jNMzda8Ln8N3QLnOQokOrgQnv/\na9/S0AWvmeNV5vXQRLcFHKDF+RbX+LroPFU/W+yPGySZwSGd8rwFd9yjyHUXSoO1\nAgMBAAE=\n-----END PUBLIC KEY-----"}]" gofreerev.js:4198:0
+11:33:58.146 "GiftService.verify_comments_request: Not implemented." gofreerev.js:3960:12
+11:33:58.148 "GiftService.send_messages: symmetric password setup: generated password1" gofreerev.js:4383:24
+11:33:58.170 "GiftService.send_messages: symmetric password setup: sending rsa message" gofreerev.js:4402:20
+11:34:01.671 "GiftService.verify_comments_request: Not implemented." gofreerev.js:3960:12
+11:34:01.688 "GiftService.send_messages: symmetric password setup: sending rsa message" gofreerev.js:4402:20
+11:34:02.069 "GiftService.receive_messages: message_with_envelope = {"sender_did":"14281402123755149031","server":false,"encryption":"rsa","message":"QFW1CNrqbSw1mjRXthsah57IQhgOTdWxMX96PHuFmXzcVeXI6Rmw9frPWanvfmZfS/IsOkz93YmZ4ctG6R2HTTn0HM8vkIZArqQF4ny4n5YBrGwI8hHpj9iinn4vENhu5PDe16cpizQlH1r7zT2YApmbhjUs1v/XzQAWApsTIuBO4S7gqHYrRxD8Pa9N4T4Do/2jaynhV3W5Wloo8XS0+rjGorZxs0Evn0sPmBtFisx0bEnC1cYdMR4MJnKZDn2WAOsWQsk3SWspD0aRQFPUYHyNxjWrzx+VZ44jKeZ/uGHCuQg7vnB2EUC+6y7c/HuvugsGbmGfw7CyBwIn0UGWsw==","receiver_did":"14288310736915584911","sender_sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA="}" gofreerev.js:6414:0
+11:34:02.194 "GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4231:12
+11:34:02.195 "GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4536:12
+11:34:02.195 "GiftService.receive_message_password: symmetric password setup in progress." gofreerev.js:4540:17
+11:34:02.195 "GiftService.receive_message_password: done = 0, md5_ok = false" gofreerev.js:4541:12
+11:34:02.195 "GiftService.receive_messages: device.password = undefined" gofreerev.js:6429:20
+11:34:02.195 "GiftService.receive_messages: message_with_envelope = {"sender_did":"14281402123755149031","server":false,"encryption":"rsa","message":"CXwUZweRLtbOsBCezbyimswQZ5l0DggxIR2lSmvqaTLLgw56veweEb2EbHYP5BZ8+a+Ahs4c1qIWmuMrM3RcQey8O31clX6xhyOxo6z2Svs8N/TG0aTXICZl1eS1H7qqIKDFx6VnjkbBrsPIy3ZmpfDFGS7V6VPM4Cy7pK7eKzWXjksMok/rt9P79ZYeRWzkUQdoKhi+P9JfmW1pN+sdit5b0t567izHchhSkL0Wrnt9NGNYtpTf+xKzgyH3aHUSflcmPzNYqXVlYlXNDra63McQkdae/H9PvEf+GG3ktc0rocBLQNLCJd/c5vm0uZZGiKO95QTBMzXULIGrKWKBWQ==","receiver_did":"14288310736915584911","sender_sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA="}" gofreerev.js:6414:0
+11:34:02.263 "GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4231:12
+11:34:02.264 "GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4536:12
+11:34:02.264 "GiftService.receive_message_password: symmetric password setup in progress." gofreerev.js:4540:17
+11:34:02.264 "GiftService.receive_message_password: done = 0, md5_ok = false" gofreerev.js:4541:12
+11:34:02.264 "GiftService.receive_messages: device.password = undefined" gofreerev.js:6429:20
+11:34:05.066 "GiftService.verify_comments_request: Not implemented." gofreerev.js:3960:12
+11:34:05.067 "GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4231:12
+11:34:05.073 "GiftService.send_messages: symmetric password setup: sending rsa message" gofreerev.js:4402:20
+11:34:08.374 "GiftService.verify_comments_request: Not implemented." gofreerev.js:3960:12
+11:34:08.375 "GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4413:16
+11:34:08.375 "GiftService.send_messages: msg = {"mid":"14288312315332577479","msgtype":"users_sha256","users":[2]}" gofreerev.js:4427:0
+11:34:08.376 "GiftService.calc_sha256_for_user: No gifts was found for user_id 2" gofreerev.js:4248:16
+11:34:08.376 "GiftService.send_message_users_sha256: users_sha256_message = {"msgtype":"users_sha256","mid":"14288312315332577479","users":[{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]}" gofreerev.js:4316:0
+11:34:08.377 "GiftService.send_messages: unencrypted message = {"sent_at_client":1428831248377,"messages":[{"msgtype":"users_sha256","mid":"14288312315332577479","users":[{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]}]}" gofreerev.js:4468:0
+11:34:08.381 "GiftService.send_messages: message_with_envelope = {"receiver_did":"14281402123755149031","receiver_sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=","server":false,"encryption":"sym","message":"U2FsdGVkX1+7CtHFlRNqXYxEGhSX4Lt0OwzDRv/EP6CuGs0Jr/bMKz0DqNsMnpTOhsjMTizGlWdFnRtZHunldGJ030eMXQkAtNECcxiye1vszV1gY2v1xs8Uwq8leHVAed79V1xwEbG97pWjsIBRj+Z3jYLxFVK6MuCMaCI/yKom18Mdt39wP9VTOL0LPF8RaQR4mSAF1+LGrtr44AoB2aeO9AtyKA9ntZBPxfxOfEoXK7a33zNq4/Mz0KXf37YX"}" gofreerev.js:4481:0
+11:34:08.949 "GiftService.receive_messages: message_with_envelope = {"sender_did":"14281402123755149031","server":false,"encryption":"rsa","message":"V3eHRzovPN4lanKdeVTqJJKe/IOT+0ScTOWKdqDPHhIn26DQdxAAiTZtyTe5cTtgcW+47w1f0VtPhmVGKppkvDcWfOviBctaiPAH3BxRjwjlvQ0NBHJj+OIzYCYeOcT3hlXfvQLzG3rBx1E74WbT7xVOhMMwj9XoY0GyuTqNV99GIsiKeAEXjWrq+bdS9Bx6vlPwKCgN05NfdWwKF8dx0EiAdTL2209BWNmj1Y+SB3RmH5MlijGsx5hwD2SpjlCmkn1i3my12ST0Nbi7Hs4n8kdxgBjFuBOou01+eDHLwphKiYlHdMgtoNM/7AhKJziHOniq/g0RhIhJsH8uOc3K0w==","receiver_did":"14288310736915584911","sender_sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA="}" gofreerev.js:6414:0
+11:34:09.018 "GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4231:12
+11:34:09.019 "GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4536:12
+11:34:09.019 "GiftService.receive_message_password: symmetric password setup in progress." gofreerev.js:4540:17
+11:34:09.019 "GiftService.receive_message_password: done = 0, md5_ok = false" gofreerev.js:4541:12
+11:34:09.019 "GiftService.receive_messages: device.password = undefined" gofreerev.js:6429:20
+11:34:09.019 "GiftService.receive_messages: message_with_envelope = {"sender_did":"14281402123755149031","server":false,"encryption":"rsa","message":"ajG4CJCUDZuBA0joqiQjL8kLGZD3WrVGEekbvmE86jzRzdyapHywK0vZqWyPErATp88w4fmMZSkk7OULsvvtINd3D2mK8AAXMifJICPRPIIzn0rBSN1vh2hnaVznVCtjYUnkfaFCp+dffoTTzxYV3MuW1puCpB2IhmAfMxfqSgrbIi/Y1DV/J9SdqyXTzzI4dOjwC3M8QPcyBaV188C2T74A7KTUJJf+mE4HQKbJrMsDFSXepwV28VBYaD4bCOwjrvmW1ZVdkf2xhQ1B68kqgcrhZYguW1+vD4C6Hr7SyBWk+c3dMpXECoksyaHE8ZiAIQnQO6EcU9JDJhe4WpeQXQ==","receiver_did":"14288310736915584911","sender_sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA="}" gofreerev.js:6414:0
+11:34:09.083 "GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4231:12
+11:34:09.083 "GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4536:12
+11:34:09.083 "GiftService.receive_message_password: symmetric password setup completed." gofreerev.js:4539:24
+11:34:09.083 "GiftService.receive_message_password: done = 0, md5_ok = true" gofreerev.js:4541:12
+11:34:09.083 "GiftService.receive_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:6429:20
+11:34:11.949 "GiftService.verify_comments_request: Not implemented." gofreerev.js:3960:12
+11:34:11.949 "GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4413:16
+11:34:15.355 "GiftService.verify_comments_request: Not implemented." gofreerev.js:3960:12
+11:34:15.356 "GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G" gofreerev.js:4413:16
+11:34:15.659 "GiftService.receive_message_users_sha256: mailbox = {"did":"14281402123755149031","sha256":"Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=","mutual_friends":[2],"server_id":1,"key":"14281402123755149031Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14288312315332577479","users":[{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]}],"done":[],"error":[]}" gofreerev.js:4580:0
+11:34:15.660 "GiftService.receive_message_users_sha256: msg     = {"msgtype":"users_sha256","mid":"14288312234612430191","users":[{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]}" gofreerev.js:4581:0
+11:34:15.660 "GiftService.receive_message_users_sha256: users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids" gofreerev.js:4624:16
+11:34:15.661 "GiftService.receive_message_users_sha256: msg.users (1) = [{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]" gofreerev.js:4625:0
+11:34:15.661 "GiftService.receive_message_users_sha256: translating sha256 user_id gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw= to internal user_id 3" gofreerev.js:4651:24
+11:34:15.661 "GiftService.receive_message_users_sha256: translating sha256 user_id rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI= to internal user_id 2" gofreerev.js:4651:24
+11:34:15.661 "GiftService.receive_message_users_sha256: msg.users (2) = [{"user_id":2},{"user_id":3,"sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]" gofreerev.js:4660:0
+11:34:15.663 "GiftService.receive_message_users_sha256: msg_users = [2,3], my_mutual_friends = [2], invalid_user_ids = [3]" gofreerev.js:4673:0
+11:34:15.663 "GiftService.receive_message_users_sha256: 1 rejected users(s) in users_sha256 message. Received sha256 user signatures: rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI=, gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=. Received internal user ids: 2, 3. Expected user ids: 2. Unknown mutual friends: 3" gofreerev.js:4685:16
+11:34:15.664 "GiftService.receive_message_users_sha256: msg_users.length = 1" gofreerev.js:4688:16
+11:34:15.664 "GiftService.calc_sha256_for_user: No gifts was found for user_id 2" gofreerev.js:4248:16
+11:34:15.664 "GiftService.receive_message_users_sha256: sha256_hash = {"2":{}}" gofreerev.js:4727:0
+11:34:15.664 "GiftService.receive_message_users_sha256: mutual gifts for this device are up-to-date." gofreerev.js:4740:16
+
+
+client 2:
+
+
+2015-04-12 11:33:55.822gofreerev.js?body=1:4198 GiftService.pubkeys_response: pubkeys = [{"did":"14288310736915584911","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB9wZvN6ND+oiPmFRHe4Dgs\nG/6LNEUWmmwPPq+VblXaKIgW6u/1tOXGUEDaLf6yF39Z4SohAzBCI5Xh9ZCtonEV\nKKyXNu64HutBapP9GHPTNQIW/gr9MZ75s+fyZJGl7YaDpBkrBVOYGdVYpdnXtCZD\nHGKDCGEiRGBu6j+XmgSdnf2gwcpEg+Znc/S4FJ1UxFjanbh2tQBPR267NZ+HsgrQ\nj1OiLAQDTVbpTnTk9vhmBsVcG6hfz9Z2nlIfLmfY5yv91jldAfeSNLhbTI2G6K2K\nW4W/FQ0BoBaQe4yL0CDQ40Wz+SFIKtRqI67MhNG/0b7lPfTamiQLLxROcn0cbQDb\nAgMBAAE=\n-----END PUBLIC KEY-----"}]
+2015-04-12 11:33:57.010gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:33:57.013gofreerev.js?body=1:4383 GiftService.send_messages: symmetric password setup: generated password1
+2015-04-12 11:33:57.029gofreerev.js?body=1:4402 GiftService.send_messages: symmetric password setup: sending rsa message
+2015-04-12 11:33:59.359gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:33:59.370gofreerev.js?body=1:4402 GiftService.send_messages: symmetric password setup: sending rsa message
+2015-04-12 11:34:01.985gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:34:01.990gofreerev.js?body=1:4402 GiftService.send_messages: symmetric password setup: sending rsa message
+2015-04-12 11:34:02.354gofreerev.js?body=1:6414 GiftService.receive_messages: message_with_envelope = {"sender_did":"14288310736915584911","server":false,"encryption":"rsa","message":"YIjCc/28JhRbrGDi8zefT44A222sqLp4hoeqjFIJvMCrfRZnxR6aZy591IMiOrQ28j9w4dAbmgq9n1hJ60ye1BySO58bHJF3w92lyNq+zYAApJ29mdavei3JwNYFP8iRyIBZwEgDi5WbeImMfAvrQo3Oa6RApggKY3NcDRZ6C+amiXpkbyodsOmShVa73/oDs5RGAaR7Dn1qwkuhODiPh8w04Bu0pSVIr7BYffSCmBxWERJ3POr6h6Xil+LpMfdG1gTcDj7pra2Hht8J64fY0LU3CRKi+GhqnA2rTcY/QK6OfNhm0A4FRD+bTHsHWs2Y6jJ1ZvJai8gUj4/amNr+7w==","receiver_did":"14281402123755149031","sender_sha256":"YZ9JaxSA6t2PytQ9p2kQpxRA5MavchqZA8aA3T+aaLA="}
+2015-04-12 11:34:02.489gofreerev.js?body=1:4231 GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:02.491gofreerev.js?body=1:4536 GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:02.491gofreerev.js?body=1:4540 GiftService.receive_message_password: symmetric password setup in progress.
+2015-04-12 11:34:02.492gofreerev.js?body=1:4541 GiftService.receive_message_password: done = 0, md5_ok = false
+2015-04-12 11:34:02.492gofreerev.js?body=1:6429 GiftService.receive_messages: device.password = undefined
+2015-04-12 11:34:04.353gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:34:04.354gofreerev.js?body=1:4231 GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:04.362gofreerev.js?body=1:4402 GiftService.send_messages: symmetric password setup: sending rsa message
+2015-04-12 11:34:06.815gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:34:06.815gofreerev.js?body=1:4413 GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:06.829gofreerev.js?body=1:4427 GiftService.send_messages: msg = {"mid":"14288312234612430191","msgtype":"users_sha256","users":[2,3]}
+2015-04-12 11:34:06.830gofreerev.js?body=1:4248 GiftService.calc_sha256_for_user: No gifts was found for user_id 2
+2015-04-12 11:34:06.831gofreerev.js?body=1:4316 GiftService.send_message_users_sha256: users_sha256_message = {"msgtype":"users_sha256","mid":"14288312234612430191","users":[{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]}
+2015-04-12 11:34:06.838gofreerev.js?body=1:4468 GiftService.send_messages: unencrypted message = {"sent_at_client":1428831246838,"messages":[{"msgtype":"users_sha256","mid":"14288312234612430191","users":[{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]}]}
+2015-04-12 11:34:06.852gofreerev.js?body=1:4481 GiftService.send_messages: message_with_envelope = {"receiver_did":"14288310736915584911","receiver_sha256":"YZ9JaxSA6t2PytQ9p2kQpxRA5MavchqZA8aA3T+aaLA=","server":false,"encryption":"sym","message":"U2FsdGVkX1/Z91txY38akM8S5YBTfOcHTvY6jXaqTexlNeWdwM6yqadkt3ijQ+GNRwHRt5BjPxiFZaveSQdNPURL+YIhmL2pMAT0VY4XTNyno+2a0x1ZujpI0qMSxQkB2sYLIvr7T0AU+ygPt1WroxvaUWkRj1EArn9lpaLeoShPHbQ+vu/eIhIUWNV8+5Q124q0Ie5hWTtuCnfYiVYz94PhvI4EJEtKSyM2U5+phfvGRGt0P2ZdJHIiz6R5l1GJHklAA1I8OJ40zr3716okxMXVNhw5XWxKbtNj73JZYhOBNmlvHv370jk1XgQPSnEV2uWhS+QscIeEwQYVGHibAM1JsuAYKnzCDdWiGJOir4bt74z05trJW+7r7YxbHP5+8cXbraWx3B+ziHVltaeaCie2kpprdYyhU6NK3Fa3RbEB32+BjV8LOpM7lBtghth6"}
+2015-04-12 11:34:07.464gofreerev.js?body=1:6414 GiftService.receive_messages: message_with_envelope = {"sender_did":"14288310736915584911","server":false,"encryption":"rsa","message":"BhbEY7Ldb3imEa61CBqQOZo8KEFzL+PTyndD3Qk2gu8cyV3+JKzu3RZPCW+/JtvHII636kWLaBl06ncPvr0SODUFNkwY9XaOB6T7sOCC95cKMuM8FbRZrTW2fTTfV010ThOcqZu3QNCeuRGlbh6UZ1E0x+L88Ek4KyAjCXsu+WgXm11bJXD2JX1eQvHWzpAHyzshqD+nPAbmI9Wwzq94et8qQh7oAOVoTtyeqdBrjEvtufKn/7UoQrcAg48UQ+rBy4eop1hbC9IeVRI0SaogZ9eRd69vnhaj68M13M4W/RDqh2Wlj0TDUyajpK3potTEEtkvUIuEviqjyLZ004pWGw==","receiver_did":"14281402123755149031","sender_sha256":"YZ9JaxSA6t2PytQ9p2kQpxRA5MavchqZA8aA3T+aaLA="}
+2015-04-12 11:34:07.702gofreerev.js?body=1:4231 GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:07.703gofreerev.js?body=1:4536 GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:07.712gofreerev.js?body=1:4540 GiftService.receive_message_password: symmetric password setup in progress.
+2015-04-12 11:34:07.719gofreerev.js?body=1:4541 GiftService.receive_message_password: done = 0, md5_ok = false
+2015-04-12 11:34:07.719gofreerev.js?body=1:6429 GiftService.receive_messages: device.password = undefined
+2015-04-12 11:34:07.720gofreerev.js?body=1:6414 GiftService.receive_messages: message_with_envelope = {"sender_did":"14288310736915584911","server":false,"encryption":"rsa","message":"ORed59FeOf28PiP5nQdja8plruzuA2qsXlaODniD8cq/jegwn3vcxXEDKzN3Jr+CQnlYjQexxuP46NLy8DAz3lzyGZNprzQ4FoAmcgL8SLaFxFFEdbJXpqyjKhUoUMGN73Ry2g89olXrlBK161jgpeEU7HIP1MV3Rd/3uubqUt8kNnxtop7GddNSd0eTqa3bZRGUCmyRSnpd9omO6h04Ehk9JjPLZx8I/YcZgqZ0krha9FPxJkFAVs+CdY0oxwwk5OPMv1T12ez0BfIDo/x1R8O1G+59BZB9GhBK30fXNGNo5Uaj9aGgMdy29NEWSCvijq7IRHhdES1kqzeG4FYegQ==","receiver_did":"14281402123755149031","sender_sha256":"YZ9JaxSA6t2PytQ9p2kQpxRA5MavchqZA8aA3T+aaLA="}
+2015-04-12 11:34:07.891gofreerev.js?body=1:4231 GiftService.setup_device_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:07.892gofreerev.js?body=1:4536 GiftService.receive_message_password: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:07.892gofreerev.js?body=1:4539 GiftService.receive_message_password: symmetric password setup completed.
+2015-04-12 11:34:07.892gofreerev.js?body=1:4541 GiftService.receive_message_password: done = 0, md5_ok = true
+2015-04-12 11:34:07.893gofreerev.js?body=1:6429 GiftService.receive_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:09.435gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:34:09.435gofreerev.js?body=1:4413 GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:11.846gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:34:11.846gofreerev.js?body=1:4413 GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:14.293gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-04-12 11:34:14.293gofreerev.js?body=1:4413 GiftService.send_messages: device.password = RJjy04g(qGYE;x534AEyF19Clu4$in=!X£cD7eN7YWx)e-qk{W098$]Q4Tm+atf_Hbn%7F+3UR7!fZ?G
+2015-04-12 11:34:14.731gofreerev.js?body=1:4580 GiftService.receive_message_users_sha256: mailbox = {"did":"14288310736915584911","sha256":"YZ9JaxSA6t2PytQ9p2kQpxRA5MavchqZA8aA3T+aaLA=","mutual_friends":[2,3],"server_id":1,"key":"14288310736915584911YZ9JaxSA6t2PytQ9p2kQpxRA5MavchqZA8aA3T+aaLA=","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14288312234612430191","users":[{"user_id":"rxuFHn2xhJfgNV3sl/0zg2KHf9jIcUC+cTNmVeu/KMI="},{"user_id":"gZbsMskHbu7gINf33K/lv/qO7yckQ3frOSLMEXVT0Zw=","sha256":"Æ\u000fr\u000bñ¯y=IÁE\u001dÆÔÄ\u0007NÌ$_(Ú\u0015¡k@D"}]}],"done":[],"error":[]}
+2015-04-12 11:34:14.732gofreerev.js?body=1:4581 GiftService.receive_message_users_sha256: msg     = {"msgtype":"users_sha256","mid":"14288312315332577479","users":[{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]}
+2015-04-12 11:34:14.738gofreerev.js?body=1:4624 GiftService.receive_message_users_sha256: users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids
+2015-04-12 11:34:14.739gofreerev.js?body=1:4625 GiftService.receive_message_users_sha256: msg.users (1) = [{"user_id":"Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk="}]
+2015-04-12 11:34:14.739gofreerev.js?body=1:4651 GiftService.receive_message_users_sha256: translating sha256 user_id Y3kmoguG1c8fcUq3/0/YbjfQlmShu/1ZTs4RrLgzFJk= to internal user_id 2
+2015-04-12 11:34:14.740gofreerev.js?body=1:4660 GiftService.receive_message_users_sha256: msg.users (2) = [{"user_id":2}]
+2015-04-12 11:34:14.741gofreerev.js?body=1:4673 GiftService.receive_message_users_sha256: msg_users = [2], my_mutual_friends = [2,3], invalid_user_ids = []
+2015-04-12 11:34:14.741gofreerev.js?body=1:4248 GiftService.calc_sha256_for_user: No gifts was found for user_id 2
+2015-04-12 11:34:14.742gofreerev.js?body=1:4727 GiftService.receive_message_users_sha256: sha256_hash = {"2":{}}
+2015-04-12 11:34:14.742gofreerev.js?body=1:4740 GiftService.receive_message_users_sha256: mutual gifts for this device are up-to-date.

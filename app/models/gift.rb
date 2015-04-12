@@ -296,7 +296,7 @@ class Gift < ActiveRecord::Base
     return unless verify_gifts
 
     # cache friends for login users - giver and/or receiver for gifts must be friend of login user
-    login_users = User.where(:user_id => login_user_ids)
+    login_users = User.where(:user_id => login_user_ids).includes(:server_users)
     if login_users.size == 0 or login_users.size != login_user_ids.size
       return { :error => 'System error. Expected array with login user ids for current logged in users'}
     end
@@ -308,7 +308,7 @@ class Gift < ActiveRecord::Base
 
     # cache users (user_id's are used in server side sha256 signature)
     # cache gifts (get previous server side sha256 signature and created_at timestamp)
-    # cache remote servers (secrets for remote user sha256 signatures)
+    # cache servers (secrets for remote user sha256 signatures)
     users = {} # id => user
     gifts = {} # gid => gift
     gids = []
@@ -346,7 +346,7 @@ class Gift < ActiveRecord::Base
           next
         end
         if !servers.has_key? server_id
-          logger.error2 "gid #{gid}. Invalid request. Unknown server id"
+          logger.error2 "gid #{gid}. Invalid request. Unknown server id #{server_id}"
           response << { :seq => seq, :gid => gid, :verified_at_server => false}
           next
         end
@@ -423,6 +423,8 @@ class Gift < ActiveRecord::Base
         end
         giver = users[user_id]
         if giver
+          # todo: remote verification.
+          #       creator(s) of gift must exists on remote server (verified server user or unknown user with negative user id)
           giver_user_ids << server_id ? giver.calc_sha256(servers[server_id].secret) : giver.user_id
           friend = friends[giver.user_id]
           mutual_friend = true if friend and friend <= 2
@@ -467,8 +469,8 @@ class Gift < ActiveRecord::Base
       receiver_user_ids.sort!
 
       if server_id
-        # remote gift verification
-        # insert row in verify_gifts table
+        # remote gift verification (server to server verify gifts message)
+        # 1) insert row in verify_gifts table
         vg = VerifyGift.new
         vg.client_sid = client_sid
         vg.client_sha256 = client_sha256
@@ -477,17 +479,16 @@ class Gift < ActiveRecord::Base
         vg.gid = gid
         vg.server_seq = Sequence.next_verify_gift_seq
         vg.save!
-        # insert verify_gifts request in server_requests hash
+        # 2) insert verify_gifts request in server_requests hash
         server_requests[server_id] = [] unless server_requests.has_key? server_id
-        server_requests << {
-            :seq => vg.server_seq,
-            :gid => gid,
-            :sha256 => verify_gift["sha256"],
-            :sha256_deleted => verify_gift["sha256_deleted"],
-            :sha256_accepted => verify_gift["sha256_acepted"],
-            :giver_user_ids => giver_user_ids,
-            :receiver_user_ids => giver_receiver_ids
-        }
+        server_requests[server_id].push({:seq => vg.server_seq,
+                                         :gid => gid,
+                                         :sha256 => verify_gift["sha256"],
+                                         :sha256_deleted => verify_gift["sha256_deleted"],
+                                         :sha256_accepted => verify_gift["sha256_acepted"],
+                                         :giver_user_ids => giver_user_ids,
+                                         :receiver_user_ids => giver_receiver_ids})
+        next
       end
 
       # calculate and check server side sha256 signature
@@ -557,6 +558,39 @@ class Gift < ActiveRecord::Base
     end # each new_gift
 
     logger.debug2 "response = #{response}"
+    logger.debug2 "server_requests = #{server_requests}"
+
+    # send any server to server verify gifts messages
+    server_requests.each do |server_id, server_request|
+      # translate login user uds to sha256 signatures (verified server users) or negative user ids (unknown users)
+      login_user_ids = []
+      login_users.each do |login_user|
+        su = login_user.server_users.find { |su2| ((su2.server_id == server_id) and su2.verified_at) }
+        if su
+          # verified server user
+          login_user_ids.push({ :sha256 => login_user.calc_sha256(servers[server_id].secret),
+                                :pseudo_user_id => su.remote_pseudo_user_id})
+        else
+          # unknown login user
+          login_user_ids.push(-login_user.id)
+        end
+      end
+      message = {
+          :msgtype => 'verify_gifts',
+          :login_users => login_user_ids,
+          :verify_gifts => server_request }
+      logger.debug2 "message = #{message}"
+      sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
+      sym_enc_message = Base64.encode64(sym_enc_message)
+      m = Message.new
+      m.from_did = SystemParameter.did
+      m.to_did = servers[server_id].new_did
+      m.server = true
+      m.encryption = 'sym'
+      m.message = sym_enc_message
+      m.save!
+    end
+
     { :gifts => response }
   end # self.verify_gifts
 

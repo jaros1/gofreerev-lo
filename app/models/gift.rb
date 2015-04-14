@@ -327,7 +327,7 @@ class Gift < ActiveRecord::Base
       server_ids << server_id if server_id and !server_ids.index(server_id)
     end
     Gift.where(:gid => gids.uniq).each { |g| gifts[g.gid] = g }
-    User.where(:id => gifts_user_ids.uniq).each { |u| users[u.id] = u }
+    User.where(:id => gifts_user_ids.uniq).includes(:server_users).each { |u| users[u.id] = u }
     Server.where(:id => server_ids).each { |s| servers[s.id] = s } if server_ids.size > 0
 
     response = []
@@ -400,7 +400,7 @@ class Gift < ActiveRecord::Base
       end
 
       # check if gift exists
-      if !server
+      if !server_id
         # local gifts verification - gift must exist
         gift = gifts[gid]
         if !gift
@@ -423,9 +423,22 @@ class Gift < ActiveRecord::Base
         end
         giver = users[user_id]
         if giver
-          # todo: remote verification.
-          #       creator(s) of gift must exists on remote server (verified server user or unknown user with negative user id)
-          giver_user_ids << server_id ? giver.calc_sha256(servers[server_id].secret) : giver.user_id
+          if server_id
+            # remote gift verification
+            su = giver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+            if su
+              # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
+              giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[server_id]),
+                                    :pseudo_user_id => su.remote_pseudo_user_id,
+                                    :sha256_updated_at => giver.sha256_updated_at.to_i
+                                  })
+            else
+              giver_user_ids << -giver.id # unknown giver
+            end
+          else
+            # local gift verification
+            giver_user_ids << giver.user_id
+          end
           friend = friends[giver.user_id]
           mutual_friend = true if friend and friend <= 2
         else
@@ -437,7 +450,7 @@ class Gift < ActiveRecord::Base
       end if verify_gift["giver_user_ids"]
       next if giver_error
       giver_user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
-      giver_user_ids.sort!
+      giver_user_ids.sort! unless server_id
 
       receiver_user_ids = []
       receiver_error = false
@@ -449,7 +462,22 @@ class Gift < ActiveRecord::Base
         end
         receiver = users[user_id]
         if receiver
-          receiver_user_ids << server_id ? receiver.calc_sha256(servers[server_id].secret) : receiver.user_id
+          if server_id
+            # remote gift verification
+            su = receiver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+            if su
+              # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
+              receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[server_id]),
+                                    :pseudo_user_id => su.remote_pseudo_user_id,
+                                    :sha256_updated_at => receiver.sha256_updated_at.to_i
+                                  })
+            else
+              receiver_user_ids << -receiver.id # unknown receiver
+            end
+          else
+            # local gift verification
+            receiver_user_ids << receiver.user_id
+          end
           friend = friends[receiver.user_id]
           mutual_friend = true if friend and friend <= 2
         else
@@ -466,7 +494,7 @@ class Gift < ActiveRecord::Base
         next
       end
       receiver_user_ids.uniq! # todo: should return an error if doublets in receiver_user_ids array
-      receiver_user_ids.sort!
+      receiver_user_ids.sort! unless server_id
 
       if server_id
         # remote gift verification (server to server verify gifts message)
@@ -480,14 +508,15 @@ class Gift < ActiveRecord::Base
         vg.server_seq = Sequence.next_verify_gift_seq
         vg.save!
         # 2) insert verify_gifts request in server_requests hash
+        hash = {:seq => vg.server_seq,
+                :gid => gid,
+                :sha256 => verify_gift["sha256"]}
+        hash[:sha256_deleted] = verify_gift["sha256_deleted"] if verify_gift["sha256_deleted"]
+        hash[:sha256_accepted] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
+        hash[:giver_user_ids] = giver_user_ids if giver_user_ids.size > 0
+        hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.size > 0
         server_requests[server_id] = [] unless server_requests.has_key? server_id
-        server_requests[server_id].push({:seq => vg.server_seq,
-                                         :gid => gid,
-                                         :sha256 => verify_gift["sha256"],
-                                         :sha256_deleted => verify_gift["sha256_deleted"],
-                                         :sha256_accepted => verify_gift["sha256_acepted"],
-                                         :giver_user_ids => giver_user_ids,
-                                         :receiver_user_ids => giver_receiver_ids})
+        server_requests[server_id].push(hash)
         next
       end
 
@@ -567,11 +596,13 @@ class Gift < ActiveRecord::Base
       login_users.each do |login_user|
         su = login_user.server_users.find { |su2| ((su2.server_id == server_id) and su2.verified_at) }
         if su
-          # verified server user
+          # verified server user - use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
           login_user_ids.push({ :sha256 => login_user.calc_sha256(servers[server_id].secret),
-                                :pseudo_user_id => su.remote_pseudo_user_id})
+                                :pseudo_user_id => su.remote_pseudo_user_id,
+                                :sha256_updated_at => login_user.sha256_updated_at.to_i
+                              })
         else
-          # unknown login user
+          # unknown login user - use negative user id
           login_user_ids.push(-login_user.id)
         end
       end
@@ -579,7 +610,21 @@ class Gift < ActiveRecord::Base
           :msgtype => 'verify_gifts',
           :login_users => login_user_ids,
           :verify_gifts => server_request }
-      logger.debug2 "message = #{message}"
+      logger.debug2 "verify_gifts message = #{message}"
+      # validate json message before sending
+      json_schema = :verify_gifts_request
+      if !JSON_SCHEMA.has_key? json_schema
+        return { :error => "Could not validate verify_gifts server to server message. JSON schema definition #{json_schema.to_s} was not found." }
+      end
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+      if json_errors.size > 0
+        logger.error2 "Failed to sent gifts to remote verification. Error in #{json_schema}"
+        logger.error2 "message = #{message}"
+        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+        logger.error2 "errors = #{json_errors.join(', ')}"
+        return { :error => "Failed to create verify_gifts server to server message: #{json_errors.join(', ')}" }
+      end
+      # save server to server message - will be sent in next server to server ping
       sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
       sym_enc_message = Base64.encode64(sym_enc_message)
       m = Message.new
@@ -591,7 +636,8 @@ class Gift < ActiveRecord::Base
       m.save!
     end
 
-    { :gifts => response }
+    response.size == 0 ? nil : { :gifts => response }
+
   end # self.verify_gifts
 
 

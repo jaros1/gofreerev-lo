@@ -1031,6 +1031,100 @@ class Server < ActiveRecord::Base
   end # create_online_users_message
 
 
+  # ingoing message (online_users and verify_gifts - convert sha256 signatures to user_ids
+  # send changed sha256 message in case of changed sha256 signatures
+  # params:
+  # - user_signatures: from ingoing message - array with sha256, pseudo_user_id and sha256_updated_at
+  # - seq:
+  #     1: invalid user sha256 signature in receive_online_users_message
+  #   ( 2: user sha256 signature changed (User.update_sha256) ) -
+  #     3: invalid user sha256 signature in receive_verify_gifts_message
+  # - msg: log info. online users, verify gifts etc
+  # - translate_negative_user_ids:
+  #     null: not allowed - for example in receive_online_users_message
+  #     false: allowed but don't translate (login_users array in verify gifts request)
+  #     true: allowed + translate (giver and receiver user ids in verify gifts request)
+  private
+  def from_sha256s_to_user_ids (user_signatures, seq, msg, translate_negative_user_ids)
+    raise "invalid call" unless [nil, true, false].index(translate_negative_user_ids)
+    sha256_signatures = []
+    negative_user_ids = []
+    user_signatures.each do |user_signature|
+      if user_signature.class == Hash
+        sha256_signatures << user_signature
+      else
+        negative_user_ids << user_signature
+      end
+    end
+
+    errors = []
+    warnings = []
+
+    # check sha256 signatures. hash with sha256, pseudo_user_id and sha256_updated_at
+    # must exist as verified server user in server_users table
+    # pseudo_user_id is used as fallback information in case of changed sha256 signature
+    valid_sha256_signatures = []
+    changed_sha256_signatures = []
+    invalid_sha256_signatures = []
+    if sha256_signatures.size > 0
+      sha256s         = sha256_signatures.collect { |hash| hash["sha256"] }
+      pseudo_user_ids = sha256_signatures.collect { |hash| hash["pseudo_user_id"] }
+      server_users = ServerUser.includes(:user).where(
+          '(users.sha256 in (?) or pseudo_user_id in (?)) and server_id = ? and verified_at is not null',
+          sha256s, pseudo_user_ids, self.id).references(:users)
+      sha256_signatures.each do |sha256_signature|
+        su = server_users.find { |su2| su2.user.sha256 == sha256_signature['sha256']}
+        su = server_users.find { |su2| su2.pseudo_user_id == sha256_signature['pseudo_user_id']} unless su
+        if !su
+          invalid_sha256_signatures << sha256_signature
+        elsif su.user.sha256 == sha256_signature['sha256']
+          valid_sha256_signatures << su.user.user_id
+        else
+          changed_sha256_signatures << su
+        end
+      end
+      if changed_sha256_signatures.size > 0
+        warning = "Changed sha256 user signatures #{changed_sha256_signatures}"
+        warnings << warning
+        logger.debug2 "#{msg} message. #{warning}. Sending changed sha256 signature message"
+        Server.save_sha256_changed_message(seq, server_users) if server_users.size > 0
+      end
+      errors << "Invalid sha256 user signatures #{invalid_sha256_signatures}" if invalid_sha256_signatures.size > 0
+    end # if
+
+    # check negative user ids - allow for login users in verify gifts message - not allowed for giver and receiver in verify gifts message
+    valid_negative_user_ids = []
+    invalid_negative_user_ids = []
+    if negative_user_ids.size > 0
+      if translate_negative_user_ids == nil
+        # not allowed in online users message
+        errors << "Invalid negative user ids #{negative_user_ids.join(', ')}"
+        invalid_negative_user_ids += negative_user_ids
+      elsif translate_negative_user_ids
+        # giver and receiver in verify gifts message
+        # todo: how to handle gift creator on one gofreerev server and accepted deal proposal from an other gofreerev server? one or more user ids can be unknown
+        positive_user_ids = negative_user_ids.collect { |user_id| -user_id }
+        users = User.where(:id => positive_user_ids)
+        valid_negative_user_ids += users.collect { |user| user.user_id }
+        unknown_positive_user_ids = positive_user_ids - users.collect { |user| user.id }
+        unknown_negative_user_ids = unknown_positive_user_ids.collect { |user_id| -user_id }
+        errors << "Invalid negative user ids #{unknown_negative_user_ids.join(', ')}" if unknown_negative_user_ids.size > 0
+      else
+        # login users in verify gifts request
+      end
+    end # if
+
+    logger.debug2 "#{msg} message. #{user_signatures.size} signatures, #{sha256_signatures.size} sha256 signatures and #{negative_user_ids.size} negative user ids"
+    logger.debug2 "#{msg} message. #{changed_sha256_signatures.size} changed sha256 signatures" if changed_sha256_signatures.size > 0
+    logger.debug2 "#{msg} message. #{invalid_sha256_signatures.size} invalid sha256 signatures" if invalid_sha256_signatures.size > 0
+    logger.debug2 "#{msg} message. #{invalid_negative_user_ids.size} invalid negative user ids" if invalid_negative_user_ids.size > 0
+
+    error = errors.size > 0 ? (warnings + errors).join(', ') : nil
+    user_ids = valid_sha256_signatures + valid_negative_user_ids
+    [error, user_ids]
+  end # from_sha256s_to_user_ids
+
+
   public
   def receive_online_users_message (response, client, received_msgtype)
 
@@ -1053,27 +1147,12 @@ class Server < ActiveRecord::Base
 
     response.each do |ping|
 
-      # check user_ids. sha256 signature must match and user must be in server_users table as verified user
-      ping_sha256_user_ids = ping["user_ids"].collect { |hash| hash["sha256"] }
-      users = ServerUser.includes(:user).
-          where("users.sha256 in (?) and server_id = ? and verified_at is not null", ping_sha256_user_ids, self.id).references(:users)
-      user_ids = users.collect { |u| u.user.user_id }
-      if ping["user_ids"].size != user_ids.size
-
-        found_sha256_user_ids = users.collect { |u| u.sha256 }
-        unknown_sha256_user_ids = ping_sha256_user_ids - found_sha256_user_ids
-        logger.warn2 "received unknown user signatures #{unknown_sha256_user_ids.join(', ')} in online users message"
-        unknown_users = ping["user_ids"].find_all { |hash| unknown_sha256_user_ids.index(hash['sha256']) }
-        logger.debug2 "unknown_users = #{unknown_users.to_json}"
-        unknown_pseudo_user_ids = unknown_users.collect { |hash| hash["pseudo_user_id"]}
-        logger.debug2 "unknown_pseudo_user_ids = #{unknown_pseudo_user_ids.join(', ')}"
-        server_users = ServerUser.where('server_id = ? and verified_at is not null and pseudo_user_id in (?)', self.id, unknown_pseudo_user_ids).includes(:user)
-        if server_users.size != found_sha256_user_ids
-          # "fallback" to pseudo user ids failed!
-          logger.error2 "received unknown user signatures #{unknown_sha256_user_ids.join(', ')} AND unknown pseudo_user_ids #{unknown_pseudo_user_ids.join(', ')} in online users message"
-          next
-        end
-        Server.save_sha256_changed_message(1, server_users)
+      # check and convert user_ids. sha256 signature must match and user must be in server_users table as verified user
+      # changed sha256 signature message is sent in case of changed sha256 signature for known verified users (using pseudo user id)
+      error, user_ids = from_sha256s_to_user_ids(ping["user_ids"], 1, 'online users', nil)
+      if error
+        errors << error
+        next
       end
       next unless user_ids.size > 0
 
@@ -1561,6 +1640,125 @@ class Server < ActiveRecord::Base
     nil
 
   end # receive_client_messages
+
+  # receive remote gift verification message (request and response)
+  # request: with login_users array and without verified_at_server boolean in verify_gifts array
+  #   {"msgtype" : "verify_gifts",
+  #    "login_users" : [{"sha256" : "jAn3w9ZxeiadO57GC43eCBvmPx/+/HZmBzQNVnrShPw=", "pseudo_user_id" : 6542}],
+  #    "verify_gifts" : [
+  #       {"seq" : 4, "gid" : "14253148989837740200", "sha256" : "fsèÈAUñ\u003E6\u000F7|Í\u000BªÓ#$1ÈïÕ`8~\u000E0#", "sha256_deleted" : null, "sha256_accepted" : null, "giver_user_ids" : [1], "receiver_user_ids" : []},
+  #       {"seq" : 5, "gid" : "14253152345973353338", "sha256" : "°\u000Fâ\u00154=l©Pe¤A¢w\u0019;ñ\u0004zª«ä\u001AóPõ´", "sha256_deleted" : null, "sha256_accepted" : null, "giver_user_ids" : [1], "receiver_user_ids" : []},
+  #       {"seq" : 6, "gid" : "14253163835441202510", "sha256" : "ÞÕ¿£ámÎ=GmKÃÇ \u001Aiìw­µÀ]S]ôTjü\u0012Á", "sha256_deleted" : null, "sha256_accepted" : null, "giver_user_ids" : [1], "receiver_user_ids" : []},
+  #       {"seq" : 7, "gid" : "14253166119353097472", "sha256" : "L[âLí³8\u000B\u0001ÍB\u0011\u001FÄÂz²½Ó|r²¼\u0015öÞ", "sha256_deleted" : null, "sha256_accepted" : null, "giver_user_ids" : [1], "receiver_user_ids" : []},
+  #       {"seq" : 8, "gid" : "14253170024715544645", "sha256" : "GFÖfö{lT§ª\n\\_WOpi\u000BWpÈvÍÌºåzø", "sha256_deleted" : "Ó\u0004¼bë2ÖQúðÈïªw]ÇÉ)I\u001B{ÎìùJÞæw", "sha256_accepted" : null, "giver_user_ids" : [1], "receiver_user_ids" : []},
+  #       {"seq" : 9, "gid" : "14254791174816684686", "sha256" : "z\u0004\u0026¨ðRt\\,N/\u0004]\u0015dÜlîjZ47,\u0007å\u0001Ó³", "sha256_deleted" : "\u0000wnSkKî«/zè¥u£Sv÷ªIdDOµ\b éÝú", "sha256_accepted" : null, "giver_user_ids" : [-790, 1], "receiver_user_ids" : []},
+  #       {"seq" : 10, "gid" : "14255660363225768616", "sha256" : "X¢©·íÝ¸G\u0004ÌvËMÜ`,\u000FQ\u001BË-ÄÓÌÉì", "sha256_deleted" : "¯¨[\fX¦á\u0007Îþ«Ï)Y*ìH\u001Bë:°Ï$î¹ä", "sha256_accepted" : null, "giver_user_ids" : [-790, 1], "receiver_user_ids" : []},
+  #       {"seq" : 11, "gid" : "14255663264284720316", "sha256" : "ÀTé+çjïÀm¶â)1%èºÒ^o\f0y", "sha256_deleted" : "smtPíÄ¾j53-Y\nÄXó\u0005ñ¨wQ\u0001ßÝÒ]i\u000B\u0012", "sha256_accepted" : null, "giver_user_ids" : [-790, 1], "receiver_user_ids" : []},
+  #       {"seq" : 12, "gid" : "14255666249033078430", "sha256" : "óuAT'\u0002O\u0011xÀH²Ê9\u0001\n!j%ÊÄ÷ûþVB\u0010Oc", "sha256_deleted" : ",á»£è?L¯IÒå$\u0018µ5Î ¢¾ª0NÇ,v)ãÒè\u00134", "sha256_accepted" : null, "giver_user_ids" : [-790, 1], "receiver_user_ids" : []},
+  #       {"seq" : 13, "gid" : "14255715337351272927", "sha256" : ")ÛuØ\u001D|´Cç·\u0026*Äñ±\u0010ßmX\u001DÇÕæùó0ä", "sha256_deleted" : "±µÝ#wqd©°Lê%iÉ\u000F\u0006ÛgÅ\u0000ÓsÉ÷óËÁ8", "sha256_accepted" : null, "giver_user_ids" : [-790, 1], "receiver_user_ids" : []},
+  #       {"seq" : 14, "gid" : "14258782920140696549", "sha256" : "ïÏ\u0000\u000F·À0x*\"¿\\·ÚÓ8M\u001C¿J\u0012z¨Hq", "sha256_deleted" : null, "sha256_accepted" : null, "giver_user_ids" : [-1016, -790, 1], "receiver_user_ids" : []}]}
+  # response: without login_users array and with verified_at_server boolean in verify_gifts array
+  private
+  def receive_verify_gifts_request (login_users, verify_gifts)
+    # login users must be sha256 signature for a verified server user or a negative integer (unknown user)
+    # there must be minimum one verified server login user with valid sha256 signature in message
+    sha256_signatures = []
+    unknown_user_ids = []
+    login_users.each do |login_user|
+      if login_user.class == Fixnum
+        unknown_user_ids << login_user
+      elsif login_user.class == Hash
+        sha256_signatures << login_user
+      else
+        return "invalid login user #{login_user} (#{login_user.class}) was found in login_users array. must be a hash with sha256, pseudo_user_id and sha256_updated_at or a negative integer"
+      end
+    end # each user
+    return "login users in verify_gifts request message must have minimum one verified server user. Login_users = #{login_users}" if sha256_signatures.size == 0
+    logger.debug2 "sha256_signatures = #{sha256_signatures.to_json}"
+    logger.debug2 "unknown_users = #{unknown_user_ids.join(', ')}"
+
+    # check and convert user_ids. sha256 signature must match and user must be in server_users table as verified user
+    # changed sha256 signature message is sent in case of changed sha256 signature for known verified users (using pseudo user id)
+    error, login_user_ids = from_sha256s_to_user_ids(sha256_signatures, 3, 'verify_gifts', false)
+    return "verify_gifts request message was rejected. #{error}" if error
+    return "verify_gifts request message was rejected. Could not translate sha256 signatures for login users" if login_user_ids.size == 0
+    logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+
+    # check verify_gifts array
+    # seq must be unique - used in response
+    seqs = verify_gifts.collect { |hash| hash['seq'] }.uniq
+    return "verify_gifts request message was rejected. seq in verify_gifts array must be unique" if seqs.size != verify_gifts.size
+
+    # translate giver and receiver user ids from sha256 signatures / unknown user to user_ids
+    logger.debug2 "verify_gifts (1) = #{verify_gifts}"
+    errors = []
+    verify_gifts.each do |verify_gift|
+      seq = verify_gift['seq']
+      giver_user_ids = verify_gift['giver_user_ids']
+      if giver_user_ids.class == Array and giver_user_ids.size > 0
+        # check and translate giver user ids
+        error, valid_giver_user_ids = from_sha256s_to_user_ids(giver_user_ids, 3, 'verify_gifts', true)
+        if error
+          errors << "seq #{seq}: invalid givers in #{giver_user_ids}: #{error}"
+          next
+        end
+        if giver_user_ids.size != valid_giver_user_ids.size
+          errors << "seq #{seq}: invalid givers in #{giver_user_ids}"
+          next
+        end
+        verify_gift['giver_user_ids'] = giver_user_ids = valid_giver_user_ids
+      end
+      receiver_user_ids = verify_gift['receiver_user_ids']
+      if receiver_user_ids.class == Array and receiver_user_ids.size > 0
+        # check and translate receiver user ids
+        error, valid_receiver_user_ids = from_sha256s_to_user_ids(receiver_user_ids, 3, 'verify_gifts', true)
+        if error
+          errors << "seq #{seq}: invalid receivers in #{receiver_user_ids}: #{error}"
+          next
+        end
+        if receiver_user_ids.size != valid_receiver_user_ids.size
+          errors << "seq #{seq}: invalid receivers in #{receiver_user_ids}"
+          next
+        end
+        verify_gift['receiver_user_ids'] = receiver_user_ids = valid_receiver_user_ids
+      end
+    end
+
+    logger.debug2 "verify_gifts (2) = #{verify_gifts}"
+    logger.debug2 "errors = #{errors.join(', ')}"
+
+    return 'receive_verify_gifts_request not implemented'
+  end
+  def receive_verify_gifts_response (verify_gifts)
+    return 'receive_verify_gifts_response not implemented'
+  end
+
+  public
+  def receive_verify_gifts_message(message)
+    # validate json (request with login user and gifts info or response with verified_at_server boolean for each gift)
+    request = message.has_key?('login_users')
+    json_schema = request ? :verify_gifts_request : :verify_gifts_response
+    if !JSON_SCHEMA.has_key? json_schema
+      error = "Could not validate verify_gifts message. JSON schema definition #{json_schema.to_s} was not found."
+      logger.error2 error
+      return error
+    end
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+    if json_errors.size > 0
+      logger.error2 "Invalid #{json_schema} message"
+      logger.error2 "message = #{message}"
+      logger.error2 "schema  = #{JSON_SCHEMA[json_schema]}"
+      logger.error2 "errors  = #{json_errors.join(', ')}"
+      return "Invalid #{json_schema} message : #{json_errors.join(', ')}"
+    end
+    # json ok - process verify gifts request/response
+    login_users, verify_gifts = message['login_users'], message['verify_gifts']
+    if request
+      return receive_verify_gifts_request(login_users, verify_gifts)
+    else
+      return receive_verify_gifts_response(verify_gifts)
+    end
+  end # receive_verify_gifts_message
 
 
   # return array with messages to server or nil

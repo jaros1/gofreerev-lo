@@ -126,7 +126,7 @@ class Message < ActiveRecord::Base
   #   only relevant for direct server to server user compare
   #   not relevant in forwarded users messages
   # received_msgtype:
-  # - only relevant for client=false. mark when server has maked a respond for a msgtype
+  # - only relevant for client=false. mark when server has made a respond for a msgtype
   def receive_message (client, pseudo_user_ids, received_msgtype)
     logger.debug "new mail: #{self.to_json}"
 
@@ -172,7 +172,7 @@ class Message < ActiveRecord::Base
     logger.secret2 "message_json = #{message_json}"
     message = JSON.parse(message_json)
 
-    if message["msgtype"] == 'users'
+    if message['msgtype'] == 'users'
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
       error = server.receive_compare_users_message(message['users'], client, pseudo_user_ids, received_msgtype) # false: server side of communication
       return error if error
@@ -180,29 +180,36 @@ class Message < ActiveRecord::Base
       return nil
     end
 
-    if message["msgtype"] == 'online'
+    if message['msgtype'] == 'online'
       error = server.receive_online_users_message(message['users'], client, received_msgtype) # false: server side of communication
       return error if error
       self.destroy
       return nil
     end
 
-    if message["msgtype"] == 'sha256'
+    if message['msgtype'] == 'sha256'
       error = server.receive_sha256_changed_message(message['seq'], message['users'])
       return error if error
       self.destroy
       return nil
     end
 
-    if message["msgtype"] == 'pubkeys'
+    if message['msgtype'] == 'pubkeys'
       error = server.receive_public_keys_message(message['users'], client, received_msgtype) # false: server side of communication
       return error if error
       self.destroy
       return nil
     end
 
-    if message["msgtype"] == 'client'
+    if message['msgtype'] == 'client'
       error = server.receive_client_messages(message['messages'], client, received_msgtype) # false: server side of communication
+      return error if error
+      self.destroy
+      return nil
+    end
+
+    if message['msgtype'] == 'verify_gifts'
+      error = server.receive_verify_gifts_message(message)
       return error if error
       self.destroy
       return nil

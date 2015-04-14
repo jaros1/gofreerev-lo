@@ -1421,7 +1421,9 @@ class UtilController < ApplicationController
     rescue => e
       logger.debug2 "Exception: #{e.message.to_s} (#{e.class})"
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
-      format_response_key '.exception', :error => e.message
+      error = t '.exception', :error => e.message
+      @json[:error] = @json[:error] ? "#{@json[:error]}, #{error}" : error
+      format_response
     end
   end # ping
 

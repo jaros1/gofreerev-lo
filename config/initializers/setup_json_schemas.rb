@@ -708,11 +708,88 @@ JSON_SCHEMA = {
         :additionalProperties => false
     },
 
-    # todo: device to device communication (server spec)
+    ##################################
+    # server to server communication #
+    ##################################
 
+    # server login: see client :login_request and :login_response
 
+    # server ping: see client :ping_request and :ping_response
 
-    # device to device communication (client spec)
+    # todo: changed user sha256 server to server message
+
+    # verify_gifts server to server message
+    :verify_gifts_request => {
+        :type => 'object',
+        :properties => {
+            :msgtype  => { :type => 'string', :pattern => '^verify_gifts$' },
+            # array with logged in users - must be a hash with sha256, pseudo_user_id and sha256_updated_at
+            # (verified server user) or a negative integer (unknown user)
+            :login_users => {
+                :type => 'array',
+                :items => {
+                    :type => %w(object integer),
+                    :properties => { # if object - verified server user
+                        :sha256 => { :type => 'string'},
+                        :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                        :sha256_updated_at => { :type => 'integer'},
+                        :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                        :additionalProperties => false
+                    },
+                    :maximum => -1, # if integer - unknown user
+                },
+                :minItems => 1
+            },
+            # array with verify gifts request from clients
+            :verify_gifts => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        # unique seq (Sequence.next_verify_gift_seq) returned in response (gid is not guaranteed to be unique when receiving gifts for verification).
+                        :seq => {:type => 'integer'},
+                        # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                        :gid => {:type => 'string', :pattern => uid_pattern},
+                        # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                        :sha256 => {:type => 'string', :maxLength => 32},
+                        # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
+                        :sha256_deleted => {:type => 'string', :maxLength => 32},
+                        # only used in accepted_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
+                        :sha256_accepted => {:type => 'string', :maxLength => 32},
+                        # internal user ids for either giver or receiver
+                        :giver_user_ids => {
+                            :type => %w(NilClass array),
+                            :items => {
+                                :type => %w(object integer),
+                                :properties => { # if object - verified server user
+                                                 :sha256 => { :type => 'string'},
+                                                 :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                                 :sha256_updated_at => { :type => 'integer'},
+                                                 :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                                 :additionalProperties => false
+                                },
+                                :maximum => -1, # if integer - unknown user with negative user id
+                            }
+                        },
+                        :receiver_user_ids => {
+                            :type => %w(NilClass array),
+                            :items => {
+                                :type => %w(object integer),
+                                :properties => { # if object - verified server user
+                                                 :sha256 => { :type => 'string'},
+                                                 :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                                 :sha256_updated_at => { :type => 'integer'},
+                                                 :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                                 :additionalProperties => false
+                                },
+                                :maximum => -1, # if integer - unknown user with negative user id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
 
     # todo: client to client communication step 1 - symmetric password handshake
 

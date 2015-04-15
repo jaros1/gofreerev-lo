@@ -74,13 +74,11 @@ class Message < ActiveRecord::Base
     if !server
       # Unknown server! Cannot handle rsa message. Can be an old message from a server with new did
       logger.error2 "Ignoring rsa message from unknown server #{self.from_did}"
-      self.destroy!
       return
     end
     if !server.new_pubkey
       # Public keys are send and received in login request/response
       logger.error2 "Ignoring rsa message from #{server.site_url} without a public key"
-      self.destroy!
       return
     end
     # save symmetric password part 2 received from other Gofreerev server
@@ -98,7 +96,6 @@ class Message < ActiveRecord::Base
       logger.debug2 "client_md5 = #{client_md5}"
       logger.debug2 "server_md5 = #{server.new_password_md5}"
     end
-    self.destroy!
 
     return if done and md5_ok # password setup completed on both Gofreerev servers
 
@@ -176,42 +173,36 @@ class Message < ActiveRecord::Base
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
       error = server.receive_compare_users_message(message['users'], client, pseudo_user_ids, received_msgtype) # false: server side of communication
       return error if error
-      self.destroy
       return nil
     end
 
     if message['msgtype'] == 'online'
       error = server.receive_online_users_message(message['users'], client, received_msgtype) # false: server side of communication
       return error if error
-      self.destroy
       return nil
     end
 
     if message['msgtype'] == 'sha256'
       error = server.receive_sha256_changed_message(message['seq'], message['users'])
       return error if error
-      self.destroy
       return nil
     end
 
     if message['msgtype'] == 'pubkeys'
       error = server.receive_public_keys_message(message['users'], client, received_msgtype) # false: server side of communication
       return error if error
-      self.destroy
       return nil
     end
 
     if message['msgtype'] == 'client'
       error = server.receive_client_messages(message['messages'], client, received_msgtype) # false: server side of communication
       return error if error
-      self.destroy
       return nil
     end
 
     if message['msgtype'] == 'verify_gifts'
       error = server.receive_verify_gifts_message(message)
       return error if error
-      self.destroy
       return nil
     end
 
@@ -324,12 +315,21 @@ class Message < ActiveRecord::Base
     errors = []
     Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each do |m|
       error = m.receive_message(client, pseudo_user_ids, received_msgtype)
+      m.destroy!
       errors << error if error
     end
 
     return errors.size == 0 ? nil : errors.join(', ') if sender_sha256 # called from browser client
 
     # call from other gofreerev server
+
+    # check for any ingoing server messages with changed user sha256 signature.
+    # must sent either changed sha256 signature to other gofreerev server (here)
+    # or update user information on this gofreerev server (client ping)
+    server_users = ServerUser.where(
+        'verified_at is not null and remote_pseudo_user_id is not null and remote_sha256_updated_at is not null ' +
+            'and ( sha256_message_sent_at is null or sha256_message_sent_at < ? )', 2.minutes.ago)
+    Server.save_sha256_changed_message(4, server_users) if server_users.size > 0
 
     # check response for each message types. server must check and return any response for each message type
     logger.debug2 "received_msgtype (1) = #{received_msgtype}"

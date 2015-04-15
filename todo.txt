@@ -1708,5 +1708,13 @@
      - gid
      - server_seq
 
+398) changed user sha256 signature
+     compare sha256_updated_at timestamp
+     a) newest sha256_updated_at timestamp on this server - send sha256 signature changed message to other gofreerev server
+        client on other gofreerev server must download and update user info
+        add remote_sha256_updated_at
+     b) newest sha256_updated_at timestamp on other gofreerev server
+        client on this gofreerev server must donwload and update user info
+
 
 select next issue to solve: (rand*397).floor+1

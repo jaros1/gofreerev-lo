@@ -1039,6 +1039,8 @@ class Server < ActiveRecord::Base
   #     1: invalid user sha256 signature in receive_online_users_message
   #   ( 2: user sha256 signature changed (User.update_sha256) ) -
   #     3: invalid user sha256 signature in receive_verify_gifts_message
+  #     4: generic. Message.receive_messages
+  #     5: sha256 user signature changed message
   # - msg: log info. online users, verify gifts etc
   # - translate_negative_user_ids:
   #     null: not allowed - for example in receive_online_users_message
@@ -1063,6 +1065,7 @@ class Server < ActiveRecord::Base
     # check sha256 signatures. hash with sha256, pseudo_user_id and sha256_updated_at
     # must exist as verified server user in server_users table
     # pseudo_user_id is used as fallback information in case of changed sha256 signature
+    now = Time.zone.now
     valid_sha256_signatures = []
     changed_sha256_signatures = []
     invalid_sha256_signatures = []
@@ -1079,15 +1082,45 @@ class Server < ActiveRecord::Base
           invalid_sha256_signatures << sha256_signature
         elsif su.user.sha256 == sha256_signature['sha256']
           valid_sha256_signatures << su.user.user_id
+        elsif sha256_signature['sha256_updated_at'] > now.to_i
+          # identical pseudo user id - changed sha256 signature but invalid sha256_updated_at timestamp
+          logger.error2 "rejected changed sha256 signature #{sha256_signature} with sha256_updated_at in the future. now = #{now.to_i}"
+          invalid_sha256_signatures << sha256_signature
         else
+          # identical pseudo user id - changed sha256 signature - changed user information on this or on other gofreerev server
           changed_sha256_signatures << su
+          user = su.user
+          if !su.remote_sha256_updated_at or su.remote_sha256_updated_at.to_i < sha256_signature['sha256_updated_at']
+            su.remote_sha256_updated_at = Time.at sha256_signature['sha256_updated_at']
+            if !user.sha256_updated_at or user.sha256_updated_at < su.remote_sha256_updated_at
+              # update user info and calc new user.sha256 on this gofreerev server
+              # client of this gofreerev server must download fresh user info from login provider
+              user.update_attribute remote_sha256_updated_at, now
+            else
+              # update user info and calc new user.sha256 on other gofreerev server
+              # sent changed user sha256 message to other gofreerev server
+              su.sha256_message_sent_at = nil
+            end
+            su.save!
+          end
+          # debug info with status for changed sha256 signature:
+          #  1) old user info on this server - waited x seconds
+          #  2) old user info on other server - waited x seconds for sha256 message to be sent
+          #  3) old user info on other server - waited x seconds for updated sha256 signature
+          if user.remote_sha256_updated_at
+            logger.debug2 "changed sha256 signature #{sha256_signature}. waited #{now-user.remote_sha256_updated_at} seconds for user info update on this server"
+          elsif su.sha256_message_sent_at
+            logger.debug2 "changed sha256 signature #{sha256_signature}. waited #{now-su.sha256_message_sent_at} seconds for user info update on other server"
+          else
+            logger.debug2 "changed sha256 signature #{sha256_signature}. waiting for sha256 message to be sent to other server"
+          end
         end
       end
       if changed_sha256_signatures.size > 0
+        # todo: move to
         warning = "Changed sha256 user signatures #{changed_sha256_signatures}"
         warnings << warning
-        logger.debug2 "#{msg} message. #{warning}. Sending changed sha256 signature message"
-        Server.save_sha256_changed_message(seq, server_users) if server_users.size > 0
+        logger.debug2 "#{msg} message. #{warning}"
       end
       errors << "Invalid sha256 user signatures #{invalid_sha256_signatures}" if invalid_sha256_signatures.size > 0
     end # if
@@ -1233,12 +1266,14 @@ class Server < ActiveRecord::Base
 
   # create and save user sha256 signature changed message
   # after (seq):
-  # - 1: invalid user sha256 signature in receive_online_users_message
+  # - 1: invalid user sha256 signature in receive_online_users_message (not used)
   # - 2: user sha256 signature changed (User.update_sha256)
-  # - 3:
+  # - 3: invalid user sha256 signature in receive_verify_gifts_request (not used)
+  # - 4: generic. Message.receive_messages (1 and/or 3)
   public
   def self.save_sha256_changed_message (seq, server_users)
 
+    now = Time.zone.now
     server_users = server_users.sort_by { |su| su.server_id }
 
     users = []
@@ -1248,6 +1283,9 @@ class Server < ActiveRecord::Base
                    :pseudo_user_id => su.remote_pseudo_user_id,
                    :sha256_updated_at => su.user.sha256_updated_at.to_i
                  })
+      # mark sha256 message as sent for user
+      su.sha256_message_sent_at = now
+      su.save!
       if i == server_users.size-1 or su.server_id != server_users[i+1].server_id
         # save message
         message = {
@@ -1265,9 +1303,10 @@ class Server < ActiveRecord::Base
         m.encryption = 'sym'
         m.message = sym_enc_message
         m.save!
-
+        users = []
       end # if
     end # do  i
+
   end # save_sha256_changed_message
 
 
@@ -1275,7 +1314,14 @@ class Server < ActiveRecord::Base
   def receive_sha256_changed_message (seq, users)
     logger.error2 "seq = #{seq}"
     logger.error2 "users = #{users}"
-    return 'not implemented'
+    # translate sha256 signatures (sha256, pseudo_user_id and sha256_updated_at) to user_ids
+    # from_sha256s_to_user_ids checks for changed sha256 signatures and marks server_user or user as changed  (remote_sha256_updated_at)
+    # returns a sha256 signature changed message if user information on this server is newest
+    # ask a client on this gofreerev server to download fresh user information from login provider if user information on this server is oldest
+    error, user_ids = from_sha256s_to_user_ids(users, 5, 'sha256_changed', nil) # nil: negative user ids are not allowed
+    logger.debug2 "error = #{error}" if error
+    logger.debug2 "user_ids = #{user_ids.join(', ')}"
+    error
   end # receive_sha256_changed_message
 
 
@@ -1660,28 +1706,14 @@ class Server < ActiveRecord::Base
   # response: without login_users array and with verified_at_server boolean in verify_gifts array
   private
   def receive_verify_gifts_request (login_users, verify_gifts)
+    # check and convert login users
     # login users must be sha256 signature for a verified server user or a negative integer (unknown user)
     # there must be minimum one verified server login user with valid sha256 signature in message
-    sha256_signatures = []
-    unknown_user_ids = []
-    login_users.each do |login_user|
-      if login_user.class == Fixnum
-        unknown_user_ids << login_user
-      elsif login_user.class == Hash
-        sha256_signatures << login_user
-      else
-        return "invalid login user #{login_user} (#{login_user.class}) was found in login_users array. must be a hash with sha256, pseudo_user_id and sha256_updated_at or a negative integer"
-      end
-    end # each user
-    return "login users in verify_gifts request message must have minimum one verified server user. Login_users = #{login_users}" if sha256_signatures.size == 0
-    logger.debug2 "sha256_signatures = #{sha256_signatures.to_json}"
-    logger.debug2 "unknown_users = #{unknown_user_ids.join(', ')}"
-
-    # check and convert user_ids. sha256 signature must match and user must be in server_users table as verified user
+    # user sha256 signature must match and user must be in server_users table as verified user
     # changed sha256 signature message is sent in case of changed sha256 signature for known verified users (using pseudo user id)
-    error, login_user_ids = from_sha256s_to_user_ids(sha256_signatures, 3, 'verify_gifts', false)
+    error, login_user_ids = from_sha256s_to_user_ids(login_users, 3, 'verify_gifts', false) # false: ignore login users with negative user id (unknown users)
     return "verify_gifts request message was rejected. #{error}" if error
-    return "verify_gifts request message was rejected. Could not translate sha256 signatures for login users" if login_user_ids.size == 0
+    return "verify_gifts request message was rejected. Message must have minimum one verified server user. login users = #{login_users}" if login_user_ids.size == 0
     logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
 
     # check verify_gifts array

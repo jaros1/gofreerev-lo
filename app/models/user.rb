@@ -403,6 +403,10 @@ class User < ActiveRecord::Base
   # 23) friend_sha256_updated_at. timestamp for last sha256 signature update for friend or for friend of friend.
   # clients must download and use newest sha256 signatures (short friend list returned from util_controller.ping)
 
+  # 24) remote_sha256_updated_at. timestamp for last sha256 signature update on other gofreerev servers
+  # set after detection changed sha256 signature in ingoing messages (online users, verify gifts etc)
+  # a client on this Gofreerev server must download fresh user info from login provider
+
   # change currency in page header.
   attr_accessor :new_currency
 

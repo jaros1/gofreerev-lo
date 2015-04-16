@@ -428,7 +428,7 @@ class Gift < ActiveRecord::Base
             su = giver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
             if su
               # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-              giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[server_id]),
+              giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[server_id].secret),
                                     :pseudo_user_id => su.remote_pseudo_user_id,
                                     :sha256_updated_at => giver.sha256_updated_at.to_i
                                   })
@@ -467,7 +467,7 @@ class Gift < ActiveRecord::Base
             su = receiver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
             if su
               # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-              receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[server_id]),
+              receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[server_id].secret),
                                     :pseudo_user_id => su.remote_pseudo_user_id,
                                     :sha256_updated_at => receiver.sha256_updated_at.to_i
                                   })

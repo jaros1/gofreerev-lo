@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150415064445) do
+ActiveRecord::Schema.define(version: 20150416135844) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -118,6 +118,10 @@ ActiveRecord::Schema.define(version: 20150415064445) do
   end
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
+
+  create_table "jan", id: false, force: true do |t|
+    t.decimal "a", precision: 13, scale: 3
+  end
 
   create_table "messages", force: true do |t|
     t.string   "from_did",    limit: 20,       null: false
@@ -242,7 +246,7 @@ ActiveRecord::Schema.define(version: 20150415064445) do
     t.integer  "remote_pseudo_user_id"
     t.datetime "remote_sha256_updated_at"
     t.datetime "sha256_message_sent_at"
-    t.datetime "sha256_message_received_at"
+    t.datetime "sha256_signature_received_at"
   end
 
   add_index "server_users", ["server_id", "user_id"], name: "index_server_users_pk", unique: true, using: :btree

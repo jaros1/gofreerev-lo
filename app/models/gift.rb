@@ -331,7 +331,7 @@ class Gift < ActiveRecord::Base
     Server.where(:id => server_ids).each { |s| servers[s.id] = s } if server_ids.size > 0
 
     response = []
-    server_requests = {} # server_id => array with verification requests
+    server_requests = {} # server_id => array with remote gift verification request
 
     verify_gifts.each do |verify_gift|
       seq = verify_gift['seq']
@@ -498,6 +498,10 @@ class Gift < ActiveRecord::Base
 
       if server_id
         # remote gift verification (server to server verify gifts message)
+        # todo: sha256 signatures on this gofreerev server can be out of date
+        #       must keep verify_gift row from client if verify gift request must be resent after updated sha256 signature (giver and/or receiver)
+        #       could also be used in a verify gift cache on this gofreerev server
+        #       don't send identical verify gifts request to other gofreerev server
         # 1) insert row in verify_gifts table
         vg = VerifyGift.new
         vg.client_sid = client_sid

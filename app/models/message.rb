@@ -59,6 +59,11 @@ class Message < ActiveRecord::Base
 
   # 9) timestamps
 
+  # keep_message boolean. Normally messages are deleted when read/received
+  # used for verify_gifts message if verify gift request is waiting for local user info update (changed sha256 signature)
+  attr_accessor :keep_message
+
+
   def receive_message_sym_password
     # receive symmetric password setup message from other Gofreerev server
     # rsa comma separated string with done, password2, password2_at and password_md5
@@ -172,38 +177,32 @@ class Message < ActiveRecord::Base
     if message['msgtype'] == 'users'
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
       error = server.receive_compare_users_message(message['users'], client, pseudo_user_ids, received_msgtype) # false: server side of communication
-      return error if error
-      return nil
+      return error ? error : nil
     end
 
     if message['msgtype'] == 'online'
       error = server.receive_online_users_message(message['users'], client, received_msgtype) # false: server side of communication
-      return error if error
-      return nil
+      return error ? error : nil
     end
 
     if message['msgtype'] == 'sha256'
       error = server.receive_sha256_changed_message(message['seq'], message['users'])
-      return error if error
-      return nil
+      return error ? error : nil
     end
 
     if message['msgtype'] == 'pubkeys'
       error = server.receive_public_keys_message(message['users'], client, received_msgtype) # false: server side of communication
-      return error if error
-      return nil
+      return error ? error : nil
     end
 
     if message['msgtype'] == 'client'
       error = server.receive_client_messages(message['messages'], client, received_msgtype) # false: server side of communication
-      return error if error
-      return nil
+      return error ? error : nil
     end
 
     if message['msgtype'] == 'verify_gifts'
-      error = server.receive_verify_gifts_message(message)
-      return error if error
-      return nil
+      error, self.keep_message = server.receive_verify_gifts_message(message)
+      return error ? error : nil
     end
 
     logger.error2 "mstype #{message["msgtype"]} not implemented"
@@ -315,7 +314,7 @@ class Message < ActiveRecord::Base
     errors = []
     Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each do |m|
       error = m.receive_message(client, pseudo_user_ids, received_msgtype)
-      m.destroy!
+      m.destroy! unless m.keep_message
       errors << error if error
     end
 

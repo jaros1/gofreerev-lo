@@ -119,10 +119,6 @@ ActiveRecord::Schema.define(version: 20150416135844) do
 
   add_index "gifts", ["gid"], name: "index_gifts_on_gid", unique: true, using: :btree
 
-  create_table "jan", id: false, force: true do |t|
-    t.decimal "a", precision: 13, scale: 3
-  end
-
   create_table "messages", force: true do |t|
     t.string   "from_did",    limit: 20,       null: false
     t.string   "from_sha256", limit: 45

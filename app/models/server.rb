@@ -1828,14 +1828,15 @@ class Server < ActiveRecord::Base
     # there must be minimum one verified server login user with valid sha256 signature in message
     # user sha256 signature must match and user must be in server_users table as verified user
     # changes sha256 user signatures
-    # - local changed signatures - wait for this server to refresh user info (keep verify request message)
+    # - local changed signatures - wait for this server to refresh user info before processing verify gifts request (keep verify request)
     # - remote changed signatures - return verify gift request and wait for remote server to send a new verify gift request with correct user signatures
+    keep_message = false
     error, login_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
         from_sha256s_to_user_ids(login_users,
                                  :seq => 3, :msg => 'verify_gifts', :negative_user_ids => true,
                                  :allow_changed_sha256 => 5.minutes.to_i)
-    return "verify_gifts request message was rejected. #{error}" if error
-    return "verify_gifts request message was rejected. Message must have minimum one verified server user. login users = #{login_users}" if login_user_ids.size == 0
+    return ["verify_gifts request message was rejected. #{error}", keep_message] if error
+    return ["verify_gifts request message was rejected. Message must have minimum one verified server user. login users = #{login_users}", keep_message] if login_user_ids.size == 0
     logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
     local_changed_login_users = (no_local_changed_signatures > 0)
     remote_changed_login_users = (no_remote_changed_signatures > 0)
@@ -1843,15 +1844,17 @@ class Server < ActiveRecord::Base
     # check verify_gifts array
     # seq must be unique - used in response
     seqs = verify_gifts.collect { |hash| hash['seq'] }.uniq
-    return "verify_gifts request message was rejected. seq in verify_gifts array must be unique" if seqs.size != verify_gifts.size
+    return ["verify_gifts request message was rejected. seq in verify_gifts array must be unique", keep_message] if seqs.size != verify_gifts.size
 
-    # translate giver and receiver user ids from sha256 signatures / unknown user to user_ids
+    # translate giver and receiver user ids from sha256 signatures and/or unknown user to user_ids
     logger.debug2 "verify_gifts (1) = #{verify_gifts}"
-    errors = []
-    response = []
-    request_put_on_hold = []
+    no_errors = 0 # fatal errors - request not processed
+    verify_gifts_response = [] # response to calling gofreerev server
+    request_on_hold = [] # keep request for later - must update user info on this gofreerev server before processing verify gift request
+    local_verify_gifts_request = [] # request ready for local verification
     verify_gifts.each do |verify_gift|
       seq = verify_gift['seq']
+      gid = verify_gift['gid']
       giver_user_ids = verify_gift['giver_user_ids']
       local_changed_givers = remote_changed_givers = local_changed_receivers = remote_changed_receivers = false
       if giver_user_ids.class == Array and giver_user_ids.size > 0
@@ -1861,11 +1864,21 @@ class Server < ActiveRecord::Base
                                      :seq => 3, :msg => 'verify_gifts', :negative_user_ids => :translate,
                                      :allow_changed_sha256 => 5.minutes.to_i)
         if error
-          errors << "seq #{seq}: invalid givers in #{giver_user_ids}: #{error}"
+          logger.debug2 "seq #{seq}: invalid givers in #{giver_user_ids}: #{error}"
+          verify_gifts_response.push({:seq => seq,
+                         :gid => gid,
+                         :verified_at_server => false,
+                         :error => "invalid givers in #{giver_user_ids}: #{error}" })
+          no_errors += 1
           next
         end
         if giver_user_ids.size != valid_giver_user_ids.size
-          errors << "seq #{seq}: invalid givers in #{giver_user_ids}"
+          logger.debug2 "seq #{seq}: invalid givers in #{giver_user_ids}"
+          verify_gifts_response.push({:seq => seq,
+                         :gid => gid,
+                         :verified_at_server => false,
+                         :error => "invalid givers in #{giver_user_ids}" })
+          no_errors += 1
           next
         end
         local_changed_givers = true if no_local_changed_signatures > 0
@@ -1881,11 +1894,21 @@ class Server < ActiveRecord::Base
                                      :seq => 3, :msg => 'verify_gifts', :negative_user_ids => :translate,
                                      :allow_changed_sha256 => 5.minutes.to_i)
         if error
-          errors << "seq #{seq}: invalid receivers in #{receiver_user_ids}: #{error}"
+          logger.debug2 "seq #{seq}: invalid receivers in #{receiver_user_ids}: #{error}"
+          verify_gifts_response.push({:seq => seq,
+                         :gid => gid,
+                         :verified_at_server => false,
+                         :error => "invalid receivers in #{receiver_user_ids}: #{error}" })
+          no_errors += 1
           next
         end
         if receiver_user_ids.size != valid_receiver_user_ids.size
-          errors << "seq #{seq}: invalid receivers in #{receiver_user_ids}"
+          logger.debug2 "seq #{seq}: invalid receivers in #{receiver_user_ids}"
+          verify_gifts_response.push({:seq => seq,
+                         :gid => gid,
+                         :verified_at_server => false,
+                         :error => "invalid receivers in #{receiver_user_ids}" })
+          no_errors += 1
           next
         end
         local_changed_receivers = true if no_local_changed_signatures > 0
@@ -1893,40 +1916,127 @@ class Server < ActiveRecord::Base
       else
         receiver_user_ids = []
       end
+      # move to relevant array
       if remote_changed_login_users or remote_changed_givers or remote_changed_receivers
         # sha256 changed user signature message will be sent to remote server
         # wait for remote server to update user info and resend verify gifts request with fresh user signatures
-        response.push({:seq => seq,
-                       :gid => verify_gift['gid'],
+        verify_gifts_response.push({:seq => seq,
+                       :gid => gid,
                        :sha256_changed => true})
-      elsif local_changed_login_users or local_changed_givers or local_changed_receivers
-        # wait for local server to update user info and process verify gifts request when ready
-        # - user.sha256_updated_at - timestamp for last sha256 update / last change in user info
-        # - user.remote_sha256_updated_at - timestamp for incoming request with newer sha256 signature from remote server
+      else
+        # ready for local gift verification or waiting for local user info to be updated (changed sha256 signatures)
         hash = {:seq => seq,
-                :gid => verify_gift['gid'],
+                :gid => gid,
                 :sha256 => verify_gift['sha256']}
         hash[:sha256_deleted] = verify_gift["sha256_deleted"] if verify_gift["sha256_deleted"]
         hash[:sha256_accepted] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
-        hash[:giver_user_ids] = giver_user_ids if giver_user_ids.size > 0
-        hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.size > 0
-        request_put_on_hold.push(hash)
-      else
-        # ready to process verify gifts message
-        verify_gift['giver_user_ids'] = valid_giver_user_ids
-        verify_gift['receiver_user_ids'] = valid_receiver_user_ids
+        if local_changed_login_users or local_changed_givers or local_changed_receivers
+          # wait for local server to update user info and process verify gifts request later
+          hash[:giver_user_ids] = giver_user_ids if giver_user_ids.size > 0
+          hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.size > 0
+          request_on_hold.push(hash)
+        else
+          # ready to process verify gifts request
+          hash[:giver_user_ids] = valid_giver_user_ids
+          hash[:receiver_user_ids] = valid_receiver_user_ids
+          local_verify_gifts_request.push(hash)
+        end
       end
+    end # each verify_gift
+    
+    logger.debug2 "no_errors = #{no_errors}, response.size = #{verify_gifts_response.size}, request_on_hold.size = #{request_on_hold.size}, local_request.size = #{local_verify_gifts_request.size}"
+    logger.debug2 "verify_gifts (2) = #{verify_gifts}"
+
+    if verify_gifts.size == request_on_hold.size
+      # waiting for local user info update - keep verify gift message for next ping
+      keep_message = true
+      return [nil, keep_message]
     end
 
-    logger.debug2 "verify_gifts (2) = #{verify_gifts}"
-    logger.debug2 "errors = #{errors.join(', ')}"
+    if request_on_hold.size > 0
+      # some gifts in verify gifts requests are waiting for local user info update
+      # save request for next ping. Receiver is this current gofreerev server
+      message = {
+          :msgtype => 'verify_gifts',
+          :login_users => login_users,
+          :verify_gifts => request_on_hold
+      }
+      # validate json message before "sending"
+      json_schema = :verify_gifts_request
+      if !JSON_SCHEMA.has_key? json_schema
+        return ["Could not validate verify_gifts message with requests on hold. JSON schema definition #{json_schema.to_s} was not found.", false]
+      end
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+      if json_errors.size > 0
+        logger.error2 "Failed to \"save\" verify_gifts message with requests on hold. Error in #{json_schema}"
+        logger.error2 "message = #{message}"
+        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+        logger.error2 "errors = #{json_errors.join(', ')}"
+        return "Failed to create verify_gifts message with requests on hold: #{json_errors.join(', ')}"
+      end
+      # save server to server message - will be procesed in next ping
+      sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
+      sym_enc_message = Base64.encode64(sym_enc_message)
+      m = Message.new
+      m.from_did = servers[server_id].new_did
+      m.to_did = SystemParameter.did
+      m.server = true
+      m.encryption = 'sym'
+      m.message = sym_enc_message
+      m.save!
+    end
 
-    return 'receive_verify_gifts_request not implemented'
-  end
+    if local_verify_gifts_request.size > 0
+      # gift verify requests ready for local verification
+      local_verify_gifts_response = Gift.verify_gifts(local_verify_gifts_request, login_user_ids, nil, nil) # client_sid = client_sha256 = nil (local verification)
+      logger.debug2 "local_verify_gifts_request = #{local_verify_gifts_request}"
+      logger.debug2 "local_verify_gifts_response = #{local_verify_gifts_response}"
+      error = local_verify_gifts_response[:error]
+      gifts = local_verify_gifts_response[:gifts]
+      verify_gifts_response += gifts if gifts
+    end
+    
+    logger.debug2 "error = #{error}"
+    logger.debug2 "verify_gifts_response = #{verify_gifts_response}"
+
+    # format response - note - no login users array
+    message = {
+        :msgtype => 'verify_gifts',
+        :verify_gifts => verify_gifts_response
+    }
+    message[:error] = error if error
+
+    # validate json message before "sending"
+    json_schema = :verify_gifts_request
+    if !JSON_SCHEMA.has_key? json_schema
+      return ["Could not validate verify_gifts response. JSON schema definition #{json_schema.to_s} was not found.", false]
+    end
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+    if json_errors.size > 0
+      logger.error2 "Failed to return remote verify gifts response. Error in #{json_schema}"
+      logger.error2 "message = #{message}"
+      logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+      logger.error2 "errors = #{json_errors.join(', ')}"
+      return "Failed to return remote verify gifts response: #{json_errors.join(', ')}"
+    end
+    # save server to server message - will be procesed in next ping
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
+    sym_enc_message = Base64.encode64(sym_enc_message)
+    m = Message.new
+    m.from_did = SystemParameter.did
+    m.to_did = servers[server_id].new_did
+    m.server = true
+    m.encryption = 'sym'
+    m.message = sym_enc_message
+    m.save!
+
+  end # receive_verify_gifts_request
+
 
   def receive_verify_gifts_response (verify_gifts)
     return 'receive_verify_gifts_response not implemented'
   end
+
 
   public
   def receive_verify_gifts_message(message)
@@ -1949,9 +2059,10 @@ class Server < ActiveRecord::Base
     # json ok - process verify gifts request/response
     login_users, verify_gifts = message['login_users'], message['verify_gifts']
     if request
-      return receive_verify_gifts_request(login_users, verify_gifts)
+      error, keep_message = receive_verify_gifts_request(login_users, verify_gifts)
+      return [error, keep_message]
     else
-      return receive_verify_gifts_response(verify_gifts)
+      return [receive_verify_gifts_response(verify_gifts), false]
     end
   end
 

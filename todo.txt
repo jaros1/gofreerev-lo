@@ -1718,6 +1718,14 @@
 
 399) send rsa message. Send message and wait xx seconds for rsa message from other device
 
+400) user.remote_sha256_updated_at: not null - request client (user or friend of user) to update user info
+     add remote_friends table with user id (out of date user), friend id (logged in friend) and transaction status
+     ( not started, info update request sent to client, oauth eceived from client, get friend info from api provider,
+       returned friend info to client, not online, api error etc)
+     must try an other client to first update user info fails.
+     should not try user info update forever in case of errors
+     should wait for online friends if no online friends
+
 
 
 select next issue to solve: (rand*399).floor+1

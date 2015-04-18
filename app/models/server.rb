@@ -1085,9 +1085,9 @@ class Server < ActiveRecord::Base
   #       :translate: allowed + translate (giver and receiver user ids in verify gifts request)
   #   - :sha256_msg: true if incoming sha256 (:msgtype) message. warning if NOT changed sha256 signature
   #   - :allow_changed_sha256: integer. 0: not allowed, >0: max number of seconds to wait for valid sha256 signature
+  #   - :field: :id or :user_id - return user_ids for logged in users. return ids for givers/receivers
   # returns error and user_ids
-  # todo: should return user_ids for changed sha256 signature but with a "changed sha256 signature flag" if only "error"
-  # todo: change :allow_changed_sha256 from boolean to integer (max number of seconds to wait for valid sha256 signature)
+  # todo: login users - return user_id (uid/provider). givers/receivers - return id
   private
   def from_sha256s_to_user_ids (user_signatures, options = {})
     # logger.debug2 "user_signatures = #{user_signatures}"
@@ -1099,12 +1099,15 @@ class Server < ActiveRecord::Base
     negative_user_ids = options.delete(:negative_user_ids) || false
     sha256_msg = options.delete(:sha256_msg) || false # true if incoming changed sha256 user signature
     allow_changed_sha256 = options.delete(:allow_changed_sha256) || 0
+    field = options.delete(:field) || :user_id
+
     # sha256 = false if sha256 == nil
     raise "invalid :seq param. Must be an integer. Was #{seq} (#{seq.class})" unless seq.class == Fixnum
     raise "invalid :msg param. Must be a string. Was #{msg} (#{msg.class})" unless msg.class == String
     raise "invalid :negative_user_ids parm. Allowed values are false, true and :translate. Was #{negative_user_ids} (#{negative_user_ids.class})" unless [false, true, :translate].index(negative_user_ids)
     raise "invalid :sha256_msg param. Must be true (incoming changed sha256 signature message) or false. Was #{sha256_msg} (#{sha256_msg.class})" unless [true, false].index(sha256_msg)
     raise "invalid :allow_changed_sha256 param. Must be a integer > 0. Was #{allow_changed_sha256} (#{allow_changed_sha256.class})" unless [Fixnum, Bignum].index(allow_changed_sha256.class) and allow_changed_sha256 >= 0
+    raise "invalid :field parm. Allowed values are :id and :user_id. Was #{field} (#{field.class})" unless [:id, :user_id, 'id', 'user_id'].index(negative_user_ids)
     raise "unknown #{options.keys.join(', ')} param" unless options == {}
 
     sha_signatures = []
@@ -1142,7 +1145,7 @@ class Server < ActiveRecord::Base
           logger.error2 "unknown signature #{sha_signature} in incoming changed sha256 message" if sha256_msg
         elsif su.user.sha256 == sha_signature['sha256']
           # received valid signature from other gofreerev server
-          valid_sha_signatures << su.user.user_id
+          valid_sha_signatures << su.user[field]
           logger.warn2 "warning. valid signature #{sha_signature} in incoming changed sha256 message" if sha256_msg
           # blank any old changed signature information
           su.remote_sha256_updated_at = nil if su.remote_sha256_updated_at
@@ -1165,7 +1168,7 @@ class Server < ActiveRecord::Base
               # client of this gofreerev server must download fresh user info from login provider
               # user sha256 signature on this server must change and sha256 message will be sent to other gofreerev server
               # push verify gifts request back in messages and wait for updated user info
-              user.update_attribute remote_sha256_updated_at, now
+              user.changed_remote_sha256
             elsif sha256_msg
               errors << "Incoming sha256 changed message with old signature #{sha_signature}. user.sha256_updated_at = #{user.sha256_updated_at.to_i}, sha256_signature['sha256_updated_at'] = #{sha_signature['sha256_updated_at']}"
               invalid_sha_signatures << sha_signature
@@ -1204,7 +1207,7 @@ class Server < ActiveRecord::Base
               # waiting for other gofreerev server. return verify gift request with "changed sha signature" error code
               remote_changed_sha_signatures += 1
             end
-            valid_sha_signatures << user.user_id
+            valid_sha_signatures << user[field]
           else
             # reject message. timeout or changed sha256 signatures not allowed in message
             changed_sha_signatures << su
@@ -1231,7 +1234,7 @@ class Server < ActiveRecord::Base
         # todo: how to handle gift creator on one gofreerev server and accepted deal proposal from an other gofreerev server? one or more user ids can be unknown
         positive_user_ids = negative_user_ids.collect { |user_id| -user_id }
         users = User.where(:id => positive_user_ids)
-        valid_negative_user_ids += users.collect { |user| user.user_id }
+        valid_negative_user_ids += users.collect { |user| user[field] }
         unknown_positive_user_ids = positive_user_ids - users.collect { |user| user.id }
         unknown_negative_user_ids = unknown_positive_user_ids.collect { |user_id| -user_id }
         errors << "Invalid negative user ids #{unknown_negative_user_ids.join(', ')}" if unknown_negative_user_ids.size > 0
@@ -1283,7 +1286,8 @@ class Server < ActiveRecord::Base
       # changed sha256 signature message is sent in case of changed sha256 signature for known verified users (using pseudo user id)
       error, user_ids, no_local_changed_signatures, no_remote_changed_signatures =
           from_sha256s_to_user_ids(ping["user_ids"],
-                                   :seq => 1, :msg => 'online users', :negative_user_ids => false, :allow_changed_sha256 => 0)
+                                   :seq => 1, :msg => 'online users', :negative_user_ids => false,
+                                   :allow_changed_sha256 => 0, :field => :user_id)
       if error
         errors << error
         next
@@ -1426,10 +1430,12 @@ class Server < ActiveRecord::Base
     error, user_ids, no_local_changed_signatures, no_remote_changed_signatures =
         from_sha256s_to_user_ids(users,
                                  :seq => 5, :msg => 'sha256_changed', :negative_user_ids => false, :sha256_msg => true,
-                                 :allow_changed_sha256 => 5.minutes.to_i)
+                                 :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
     logger.debug2 "error = #{error}" if error
     logger.debug2 "user_ids = #{user_ids.join(', ')}"
-    error
+
+    User.where(:id => user_ids).each { |u| u.changed_remote_sha256 } if user_ids.size > 0
+    return "receive_sha256_changed_message not implemented: user_ids = #{user_ids}, error = #{error}"
   end
 
   # receive_sha256_changed_message
@@ -1835,7 +1841,7 @@ class Server < ActiveRecord::Base
     error, login_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
         from_sha256s_to_user_ids(login_users,
                                  :seq => 3, :msg => 'verify_gifts', :negative_user_ids => true,
-                                 :allow_changed_sha256 => 5.minutes.to_i)
+                                 :allow_changed_sha256 => 5.minutes.to_i, :field => :user_id)
     return ["verify_gifts request message was rejected. #{error}", keep_message] if error
     return ["verify_gifts request message was rejected. Message must have minimum one verified server user. login users = #{login_users}", keep_message] if login_user_ids.size == 0
     logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
@@ -1863,7 +1869,7 @@ class Server < ActiveRecord::Base
         error, valid_giver_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
             from_sha256s_to_user_ids(giver_user_ids,
                                      :seq => 3, :msg => 'verify_gifts', :negative_user_ids => :translate,
-                                     :allow_changed_sha256 => 5.minutes.to_i)
+                                     :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
         if error
           logger.debug2 "seq #{seq}: invalid givers in #{giver_user_ids}: #{error}"
           verify_gifts_response.push({:seq => seq,
@@ -1893,7 +1899,7 @@ class Server < ActiveRecord::Base
         error, valid_receiver_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
             from_sha256s_to_user_ids(receiver_user_ids,
                                      :seq => 3, :msg => 'verify_gifts', :negative_user_ids => :translate,
-                                     :allow_changed_sha256 => 5.minutes.to_i)
+                                     :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
         if error
           logger.debug2 "seq #{seq}: invalid receivers in #{receiver_user_ids}: #{error}"
           verify_gifts_response.push({:seq => seq,

@@ -2452,6 +2452,17 @@ class User < ActiveRecord::Base
   end # update_sha256
 
 
+  # received server to server message with changed user sha256 signature (verify gifts request, sha256 changed user signature etc)
+  # user info on this server is oldest. mark that user info is out-of-date (remote_sha256_updated_at)
+  # a client on this server must download fresh user info from login provider (user or friend of user)
+  #
+  def changed_remote_sha256
+    update_attribute :remote_sha256_updated_at, Time.zone.now
+    # get list of online friends
+
+  end
+
+
   ##############
   # encryption #
   ##############

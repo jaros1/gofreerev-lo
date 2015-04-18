@@ -6435,7 +6435,13 @@ angular.module('gifts', ['ngRoute'])
                         continue ;
                     }
                     msg_json_sym_enc = msg_server_envelope.message ;
-                    msg_csv = Gofreerev.decrypt(msg_json_sym_enc, device.password) ;
+                    try {
+                        msg_csv = Gofreerev.decrypt(msg_json_sym_enc, device.password)
+                    }
+                    catch (err) {
+                        console.log(pgm + 'Ignoring symmetric decrypt error ' + err.message) ;
+                        continue ;
+                    }
                     msg_client_envelope = JSON.parse(msg_csv) ;
                     // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
                     // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;

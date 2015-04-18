@@ -1716,5 +1716,8 @@
      b) newest sha256_updated_at timestamp on other gofreerev server
         client on this gofreerev server must donwload and update user info
 
+399) send rsa message. Send message and wait xx seconds for rsa message from other device
 
-select next issue to solve: (rand*397).floor+1
+
+
+select next issue to solve: (rand*399).floor+1

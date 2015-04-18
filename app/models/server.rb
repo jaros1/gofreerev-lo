@@ -1136,6 +1136,7 @@ class Server < ActiveRecord::Base
       sha_signatures.each do |sha_signature|
         su = server_users.find { |su2| su2.user.sha256 == sha_signature['sha256'] }
         su = server_users.find { |su2| su2.pseudo_user_id == sha_signature['pseudo_user_id'] } unless su
+        user = su.user if su
         if !su
           invalid_sha_signatures << sha_signature
           logger.error2 "unknown signature #{sha_signature} in incoming changed sha256 message" if sha256_msg
@@ -1925,20 +1926,20 @@ class Server < ActiveRecord::Base
                        :sha256_changed => true})
       else
         # ready for local gift verification or waiting for local user info to be updated (changed sha256 signatures)
-        hash = {:seq => seq,
-                :gid => gid,
-                :sha256 => verify_gift['sha256']}
-        hash[:sha256_deleted] = verify_gift["sha256_deleted"] if verify_gift["sha256_deleted"]
-        hash[:sha256_accepted] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
+        hash = {"seq" => seq,
+                "gid" => gid,
+                "sha256" => verify_gift['sha256']}
+        hash["sha256_deleted"] = verify_gift["sha256_deleted"] if verify_gift["sha256_deleted"]
+        hash["sha256_accepted"] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
         if local_changed_login_users or local_changed_givers or local_changed_receivers
           # wait for local server to update user info and process verify gifts request later
-          hash[:giver_user_ids] = giver_user_ids if giver_user_ids.size > 0
-          hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.size > 0
+          hash["giver_user_ids"] = giver_user_ids if giver_user_ids.size > 0
+          hash["receiver_user_ids"] = receiver_user_ids if receiver_user_ids.size > 0
           request_on_hold.push(hash)
         else
           # ready to process verify gifts request
-          hash[:giver_user_ids] = valid_giver_user_ids
-          hash[:receiver_user_ids] = valid_receiver_user_ids
+          hash["giver_user_ids"] = valid_giver_user_ids
+          hash["receiver_user_ids"] = valid_receiver_user_ids
           local_verify_gifts_request.push(hash)
         end
       end
@@ -2020,11 +2021,11 @@ class Server < ActiveRecord::Base
       return "Failed to return remote verify gifts response: #{json_errors.join(', ')}"
     end
     # save server to server message - will be procesed in next ping
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
     sym_enc_message = Base64.encode64(sym_enc_message)
     m = Message.new
     m.from_did = SystemParameter.did
-    m.to_did = servers[server_id].new_did
+    m.to_did = self.new_did
     m.server = true
     m.encryption = 'sym'
     m.message = sym_enc_message

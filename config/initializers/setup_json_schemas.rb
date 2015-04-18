@@ -764,10 +764,10 @@ JSON_SCHEMA = {
                                 :properties => { # if object - verified server user
                                                  :sha256 => { :type => 'string'},
                                                  :pseudo_user_id => { :type => 'integer', :minimum => 1},
-                                                 :sha256_updated_at => { :type => 'integer'},
-                                                 :required => %w(sha256 pseudo_user_id sha256_updated_at),
-                                                 :additionalProperties => false
+                                                 :sha256_updated_at => { :type => 'integer'}
                                 },
+                                :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                :additionalProperties => false,
                                 :maximum => -1, # if integer - unknown user with negative user id
                             }
                         },
@@ -778,10 +778,10 @@ JSON_SCHEMA = {
                                 :properties => { # if object - verified server user
                                                  :sha256 => { :type => 'string'},
                                                  :pseudo_user_id => { :type => 'integer', :minimum => 1},
-                                                 :sha256_updated_at => { :type => 'integer'},
-                                                 :required => %w(sha256 pseudo_user_id sha256_updated_at),
-                                                 :additionalProperties => false
+                                                 :sha256_updated_at => { :type => 'integer'}
                                 },
+                                :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                :additionalProperties => false,
                                 :maximum => -1, # if integer - unknown user with negative user id
                             }
                         }
@@ -789,6 +789,36 @@ JSON_SCHEMA = {
                 }
             }
         }
+    },
+
+    :verify_gifts_response => {
+        :type => 'object',
+        :properties => {
+            :msgtype => {:type => 'string', :pattern => '^verify_gifts$'},
+            # array with verify gifts response to clients on other gofreerev server
+            :verify_gifts => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        # unique seq (Sequence.next_verify_gift_seq) returned in response (gid is not guaranteed to be unique when receiving gifts for verification).
+                        :seq => { :type => 'integer'},
+                        # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                        :gid => {:type => 'string', :pattern => uid_pattern},
+                        # verify gift request rejected due to changed user sha256 signatures. Server must process incoming sha256 changed signature message, update user info and resend verify gift request with up-to-date sha256 signatures
+                        :sha256_changed => { :type => 'boolean'},
+                        # true if verify gift request was ok. false if not. See more info in error field
+                        :verified_at_server => { :type => 'boolean'},
+                        # optional additional error info. Only "system" errors
+                        :error => { :type => 'string'}
+                    },
+                    :required => %w(seq),
+                    :additionalProperties => false
+                }
+            }
+        },
+        :required => %w(msgtype),
+        :additionalProperties => false
     },
 
     # todo: client to client communication step 1 - symmetric password handshake

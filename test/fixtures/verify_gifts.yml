@@ -1,0 +1,19 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  client_sid: MyString
+  client_sha256: MyString
+  client_seq: 1
+  server_id: 1
+  gid: MyString
+  server_seq: 1
+  verified_at_server: false
+
+two:
+  client_sid: MyString
+  client_sha256: MyString
+  client_seq: 1
+  server_id: 1
+  gid: MyString
+  server_seq: 1
+  verified_at_server: false

@@ -93,7 +93,7 @@ class AuthController < ApplicationController
       # login ok - flash message has been set in login method
       user_id = login_user_ids.find { |userid2| userid2.split('/').last == provider }
       user = User.find_by_user_id(user_id)
-      if @users.size == 1 and !user.share_account_id
+      if @users.size == 1
         # singleton user login - continue to gifts page
         redirect_to "#{angular_url}gifts/#{client_userid}"
       else

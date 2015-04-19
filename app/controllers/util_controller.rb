@@ -367,15 +367,7 @@ class UtilController < ApplicationController
 
       # recalculate balance for user or for user combination
       today = Date.parse(Sequence.get_last_exchange_rate_date)
-      if user.share_account_id
-        users = User.where('share_account_id = ? and (balance_at is null or balance_at <> ?)', user.share_account_id, today)
-        if users.size > 0
-          # todo. User.recalculate_balance class method is not tested
-          res = User.recalculate_balance(users)
-        end
-      else
-        res = user.recalculate_balance if !user.balance_at or user.balance_at != today
-      end
+      res = user.recalculate_balance if !user.balance_at or user.balance_at != today
       ['.recal_user_cal_pending',{}] unless res
 
       nil

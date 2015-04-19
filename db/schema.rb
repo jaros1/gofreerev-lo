@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150416135844) do
+ActiveRecord::Schema.define(version: 20150419071958) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -292,17 +292,6 @@ ActiveRecord::Schema.define(version: 20150416135844) do
 
   add_index "sessions", ["session_id", "client_userid"], name: "index_session_session_id", unique: true, using: :btree
 
-  create_table "share_accounts", force: true do |t|
-    t.integer  "share_level"
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer  "no_users"
-    t.string   "share_account_id", limit: 20, null: false
-    t.text     "email"
-  end
-
-  add_index "share_accounts", ["share_account_id"], name: "index_share_accounts_accountid", unique: true, using: :btree
-
   create_table "system_parameters", force: true do |t|
     t.string   "name"
     t.text     "value"
@@ -352,7 +341,6 @@ ActiveRecord::Schema.define(version: 20150416135844) do
     t.text     "access_token"
     t.text     "access_token_expires"
     t.text     "refresh_token"
-    t.string   "share_account_id",         limit: 20
     t.string   "sha256",                   limit: 45
     t.string   "old_sha256",               limit: 45
     t.datetime "sha256_updated_at"
@@ -362,7 +350,6 @@ ActiveRecord::Schema.define(version: 20150416135844) do
 
   add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree
   add_index "users", ["sha256_updated_at"], name: "index_users_on_sha256_updated", using: :btree
-  add_index "users", ["share_account_id"], name: "index_users_share_account_id", using: :btree
   add_index "users", ["user_id"], name: "index_users_on_user_id", unique: true, using: :btree
 
   create_table "verify_gifts", force: true do |t|

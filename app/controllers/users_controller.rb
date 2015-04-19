@@ -111,11 +111,6 @@ class UsersController < ApplicationController
   end # destroy
 
   def index
-    # add disconnected shared accounts so that user can see friends from disconnected accounts
-    # no actions are allowed for disconnected accounts
-    # added disconnected users are marked with user.disconnected_shared_account = true
-    @users = User.add_shared_accounts(@users, [2,3,4], true)
-
     # page filters:
     # - friends: yes no me all
     # - appuser: yes no all
@@ -131,7 +126,7 @@ class UsersController < ApplicationController
       friends_filter = friends_filter_values.first
     end
     if friends_filter == 'find'
-      # must be logged in with minimum 2 combined user accounts (user.share_account_id)
+      # must be logged in with minimum 2 user accounts
       if !show_find_friends_link?
         save_flash_key '.find_friends_not_allowed', {}
         friends_filter = friends_filter_values.first
@@ -383,8 +378,6 @@ class UsersController < ApplicationController
 
       # find gifts with @user2 as giver or receiver
       # this select only shows gifts for @user2.provider - that is not gifts across providers
-      # todo: should show gift across providers if @user2.share_account_id and @user2 in @users
-      #       ( balance shared across login providers if user has selected this )
       logger.debug "status = #{status}, direction = #{direction}"
       api_gifts = ApiGift.where('(user_id_giver = ? or user_id_receiver = ?) and gifts.deleted_at is null',
                             @user2.user_id, @user2.user_id).references(:gifts, :api_gifts).includes(:gift, :giver, :receiver).find_all do |ag|
@@ -469,16 +462,8 @@ class UsersController < ApplicationController
       end
     end
 
-    # find all users to change currency for
-    users = @users
-    share_accounts = users.collect { |user| user.share_account_id }.find_all { |share_account_id| share_account_id }.uniq
-    if share_accounts.length > 0
-      users = users + User.where('share_account_id in (?)', share_accounts)
-      users = users.uniq
-    end
-
     # update currency
-    users.each do |user|
+    @users.each do |user|
       user.update_attribute :currency, new_currency
     end
 

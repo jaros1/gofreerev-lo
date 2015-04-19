@@ -1575,19 +1575,7 @@ class ApplicationController < ActionController::Base
   # used in shared/share_account partial in auth/index and users/index pages
   private
   def show_find_friends_link?
-    return false unless logged_in?
-    if @users.size == 1 and !@users.first.share_account_id
-      # simple one provider login without shared accounts - cross provider friends find is not relevant
-      return false
-    end
-    if @users.size == 1
-      users = User.where('share_account_id = ?', @users.first.share_account_id)
-      if users.size == 1
-        @users.first.share_account_clear
-        return false
-      end
-    end
-    true
+    (@users.size > 1)
   end
   helper_method :show_find_friends_link?
 

@@ -28,7 +28,6 @@ class User < ActiveRecord::Base
   has_many :verified_server_users, -> { where "verified_at is not null" }, :class_name => 'ServerUser'
   # has_many :servers, :through => :verified_server_users
   has_many :servers, :through => :server_users
-  belongs_to :share_account, :class_name => 'ShareAccount', :primary_key => :share_account_id, :foreign_key => :share_account_id, :counter_cache => :no_users
 
   # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database
   # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
@@ -239,8 +238,6 @@ class User < ActiveRecord::Base
   end
 
   # negative_interest_was
-
-  # 11) share_account_id - unencrypted integer - connect user balance across login providers
 
   # 12) api_profile_url - user profile url - used for some API's with special url not derived from uid - for example linkedin
   # String in model - Encrypted text in db
@@ -1100,13 +1097,9 @@ class User < ActiveRecord::Base
   # cross api friends search - compare friend lists across multiple api providers
   # used in users/index?friends=find and in batch notifications
   # compare friends categories 2 and 3 with friends categories 4, 6 and 7
-  # match non friends on user_name or on share_account_id
+  # match non friends on user_name
   # note that any shared accounts is added to login_users array
   def self.find_friends (login_users, options = {})
-    # add shared accounts before friends find
-    logger.debug2 "login_users.size = #{login_users.size}"
-    login_users = User.add_shared_accounts(login_users, [2,3,4])
-    logger.debug2 "login_users.size = #{login_users.size}"
     # check friend cache (user.friends_hash)
     users_without_cache = login_users.find_all { |u| !u.friends_hash }
     if users_without_cache.size > 0
@@ -1121,12 +1114,9 @@ class User < ActiveRecord::Base
     # find friends
     friends = users3 = User.app_friends(login_users, [2, 3])
     friend_names = friends.collect { |u| u.user_name }.uniq
-    friend_user_comb = friends.collect { |u| u.share_account_id }.delete_if { |uc| !uc }.uniq
     # compare with non friends
-    users = User.app_friends(login_users, [4, 6, 7]).find_all do |u|
-      (friend_names.index(u.user_name) or
-          (u.share_account_id and friend_user_comb.index(u.share_account_id)))
-    end
+    users = User.app_friends(login_users, [4, 6, 7]).find_all { |u| friend_names.index(u.user_name)
+    }
     # add any old friends proposal from previous find_friends searches (friends? == 7) done by login users friends
     # ( friends proposals have been inserted in friends table with api_friend = 'P' )
     old_user_ids = users.collect { |u| u.user_id }
@@ -1189,35 +1179,28 @@ class User < ActiveRecord::Base
         # send internal Gofreerev and facebook/email notification to one user
         # find one random user and check for friends proposals
         # find with user combination
-        login_user = User.where('share_account_id is not null ' +
-                              'and last_login_at > ? ' +
-                              'and last_friends_find_at < ?',
-                          FIND_FRIENDS_LAST_LOGIN.ago, FIND_FRIENDS_LAST_NOTI.ago).shuffle.first
-        if login_user
-          # user with share accounts - dynamic friends proposal check - compare friends lists across APIs
-          login_users = User.where('share_account_id = ?', login_user.share_account_id)
-          friends_proposals = User.find_friends(login_users)
-        else
-          # find without user combination - pending friends proposals are already stored on friends table with api_friend == 'P'
-          login_users = User.where('share_account_id is null and last_login_at is not null ' +
-                                 'and last_login_at > ? ' +
-                                 'and last_friends_find_at < ?',
-                             FIND_FRIENDS_LAST_LOGIN.ago, FIND_FRIENDS_LAST_NOTI.ago).includes(:friends)
-          # check for "unread" friends proposals
-          login_users.delete_if do |login_user|
-            if login_user.friends.find { |f| f.api_friend == 'P' }
-              # friends proposal was found - keep user in array
-              false
-            else
-              # friends proposal was not found - next check in two weeks - remove user from array
-              login_user.update_attribute :last_friends_find_at, Time.now
-              true
-            end
-          end # delete_if
-          login_user = login_users.shuffle.first
-          return unless login_user # no users with pending friends proposals was found
-          friends_proposals = login_user.friends.find_all { |f| f.api_friend == 'P' }.collect { |f| f.friend }
-        end
+
+        # find without user combination - pending friends proposals are already stored on friends table with api_friend == 'P'
+        login_users = User.where('share_account_id is null and last_login_at is not null ' +
+                                     'and last_login_at > ? ' +
+                                     'and last_friends_find_at < ?',
+                                 FIND_FRIENDS_LAST_LOGIN.ago, FIND_FRIENDS_LAST_NOTI.ago).includes(:friends)
+        # check for "unread" friends proposals
+        login_users.delete_if do |login_user|
+          if login_user.friends.find { |f| f.api_friend == 'P' }
+            # friends proposal was found - keep user in array
+            false
+          else
+            # friends proposal was not found - next check in two weeks - remove user from array
+            login_user.update_attribute :last_friends_find_at, Time.now
+            true
+          end
+        end # delete_if
+        login_user = login_users.shuffle.first
+        return unless login_user # no users with pending friends proposals was found
+        friends_proposals = login_user.friends.find_all { |f| f.api_friend == 'P' }.collect { |f| f.friend }
+
+
       else
         # from called from util.new_messages_count for multi user login - online notifications in Gofreerev only
         batch_notification = false
@@ -1361,7 +1344,9 @@ class User < ActiveRecord::Base
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
       raise
     end
-  end  # self.find_friends_batch
+  end
+
+  # self.find_friends_batch
 
   # friends information is used many different places
   # cache friends information once and for all in @users array (user.friends_hash)
@@ -1435,13 +1420,8 @@ class User < ActiveRecord::Base
       return true
     end
     # find user(s)
-    if share_account_id
-      # find all closed deals for this user combination
-      user_ids = User.where('share_account_id = ?', share_account_id).collect { |user| user.user_id }
-    else
-      # find all closed deals for this user
-      user_ids = [user_id]
-    end
+    # find all closed deals for this user
+    user_ids = [user_id]
     # find closed deals
     api_gifts = ApiGift.where('user_id_giver in (?) and user_id_receiver is not null or ' +
                                   'user_id_receiver in (?) and user_id_giver is not null',
@@ -1610,25 +1590,7 @@ class User < ActiveRecord::Base
   # recalculate_balance
 
   def self.recalculate_balance (login_users)
-    users = login_users.sort_by { |u| u.share_account_id || 0 }
-    # user.share_account_id is used to combine accounts across multiple login providers
-    # keep one login_user for each share_account_id for balance calculation
-    # keep all users without share_account_id
-    old_share_account_id = -1
-    users = users.find_all do |user|
-      if user.share_account_id
-        if user.share_account_id == old_share_account_id
-          false # skip user with doublet share_account_id
-        else
-          old_share_account_id = user.share_account_id
-          true # keep first user for share_account_id
-        end
-      else
-        true # keep all users without share_account_id
-      end
-    end
-    # recalculate
-    users.each { |user| user.recalculate_balance }
+    login_users.each { |user| user.recalculate_balance }
   end
 
   # self.recalculate_balance
@@ -2131,15 +2093,6 @@ class User < ActiveRecord::Base
 
       # start logical delete
       affected_users = {}
-      if user.share_account_id
-        old_share_account_id = user.share_account_id
-        user.share_account_clear
-        ShareAccount.where(:id => old_share_account_id, :no_users => 1).each do |sa|
-          user2 = sa.users.first
-          sa.destroy
-          user2.share_account_clear
-        end
-      end
       # delete mark gifts
       ApiGift.where('? in (user_id_giver, user_id_receiver)', user.user_id).each do |ag|
         # delete gift or delete api gift
@@ -2319,72 +2272,6 @@ class User < ActiveRecord::Base
 
   # self.delete_user
 
-
-  def share_account_clear
-    self.share_account_id = nil
-    self.access_token = nil
-    self.access_token_expires = nil
-    self.save!
-  end
-
-
-  # return user array including disconnected shared accounts
-  # auth/index page - show information about share levels and accounts
-  # find friends - also show friends from not connected API's
-  # params:
-  #   login_users: @users - array with current login users
-  #   filter_share_levels: array with selected share levels 1..4
-  #   cache_friends: true/false - cache friend info for added users?
-  def self.add_shared_accounts (login_users, filter_share_levels = [2,3,4], cache_friends=false)
-    # only relevant for logged in users
-    return login_users if !User.logged_in?(login_users)
-    # check share accounts and share levels filter
-    filter_share_levels = filter_share_levels & [1,2,3,4]
-    return login_users if filter_share_levels.size == 0
-    share_account_ids = login_users.collect { |u| u.share_account_id }.uniq.find_all { |x| x }
-    return login_users if share_account_ids.size == 0 # none shared accounts
-    share_accounts = ShareAccount.where(:share_account_id => share_account_ids)
-    share_accounts = share_accounts.find_all { |sa| filter_share_levels.index(sa.share_level) }
-    return login_users if share_accounts.size == 0 # no shared accounts with selected filter
-    share_account_ids = share_accounts.collect { |sa| sa.share_account_id }
-    # get shared but disconnected user accounts
-    login_user_ids = login_users.collect { |u| u.user_id }
-    login_providers = login_users.collect { |u| u.provider }
-    other_users = User.where('share_account_id in (?) and user_id not in (?)', share_account_ids, login_user_ids)
-    return login_users if other_users.size == 0 # already connected with all relevant share accounts
-    other_users = other_users.find_all { |u| !login_providers.index(u.provider) }
-    return login_users if other_users.size == 0 # already logged in for all relevant login providers
-    # add other disconnected accounts to login_users array
-    # logger.debug2 "before clone: users without friends hash: " + login_users.find_all { |u| !u.friends_hash}.collect { |u| u.user_id }.join(', ')
-    # # clone login_users array including custom accessor variables
-    # login_users_clone = login_users.clone
-    # 0.upto(login_users.size-1).each do |i|
-    #   login_users_clone[i].new_currency = login_users[i].new_currency
-    #   login_users_clone[i].cache_new_notifications = login_users[i].cache_new_notifications
-    #   login_users_clone[i].friends_hash = login_users[i].friends_hash
-    # end
-    # login_users = login_users_clone
-    # logger.debug2 "after clone: users without friends hash: " + login_users.find_all { |u| !u.friends_hash}.collect { |u| u.user_id }.join(', ')
-    users_without_cache = []
-    other_users.each do |u|
-      if !login_providers.index(u.provider)
-        u.disconnected_shared_account = true
-        login_providers << u.provider
-        login_users << u
-        users_without_cache << u if cache_friends
-      end
-    end
-    if cache_friends
-      # cache friends info for added disconnected shared accounts
-      User.cache_friend_info(users_without_cache)
-      login_users.each do |u1|
-        next if u1.friends_hash
-        u2 = users_without_cache.find { |u3| u3.user_id == u1.user_id }
-        u1.friends_hash = u2.friends_hash
-      end
-    end
-    login_users
-  end # self.add_shared_accounts
 
   # calc sha256 from SystemParameter.secret and user info
   def calc_sha256 (secret)

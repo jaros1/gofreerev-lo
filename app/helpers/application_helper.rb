@@ -76,22 +76,7 @@ module ApplicationHelper
     # logger.debug2  "user = #{user.user_id}, login_users = " + login_users.collect { |user| user.user_id }.join(', ')
     return nil unless user.class == User and [Array, ActiveRecord::Relation::ActiveRecord_Relation_User].index(login_users.class)
     return nil if login_users.length == 0
-    if user.share_account_id
-      # shared user account - one balance for all users with this share_account_id
-      balance = {}
-      User.where('share_account_id = ?', user.share_account_id).each do |user2|
-        if user2.balance.class == Hash
-          # sum balance for all users with this user combination
-          user2.balance.each do |name, value|
-            balance[name] = 0 unless balance.has_key? name
-            balance[name] += value
-          end
-        end
-      end
-    else
-      # standalone user account
-      balance = user.balance
-    end
+    balance = user.balance
     return nil unless balance
     return nil unless balance.size > 1
     from_amount = balance[BALANCE_KEY]
@@ -330,111 +315,6 @@ module ApplicationHelper
   def selected_languages
     codes = Rails.application.config.i18n.available_locales.collect { |locale| locale.to_s }
     codes.collect { |code| [t("shared.languages.#{code}"), code]}.sort_by { |a| a[1] }
-  end
-
-  # shared accounts check box + list shared accounts
-  # used in shared/shared_accounts partial
-  # user in auth/index and users/index?friends=me pages
-  def accounts
-    return {} unless logged_in?
-    share_account_ids = @users.find_all { |u| u.share_account_id }.collect { |u| u.share_account_id }.uniq
-    logger.debug2 "share_account ids = #{share_account_ids.join(', ')}"
-    return {} if share_account_ids.size == 0 # no shared accounts
-    shared = {}
-    @users.each do |user|
-      next unless user.share_account_id
-      shared[user.share_account] = [] unless shared.has_key? user.share_account
-      shared[user.share_account] << provider_downcase(user.provider)
-    end
-    # check for shared accounts with not logged in users
-    all_shared_users = User.add_shared_accounts(@users, [1,2,3,4])
-    all_shared_users.each do |user|
-      next if login_user_ids.index(user.user_id) # logged in user already in shared hash
-      # not logged shared account user found - add special symbols for not logged in (*) and expired access token (#)
-      if [3,4].index(user.share_account.share_level) and
-          (!user.access_token or !user.access_token_expires or (user.access_token_expires < Time.now.to_i))
-        note_symbol = '#' # expired access token
-      else
-        note_symbol = '*' # not logged in
-      end
-      shared[user.share_account] << provider_downcase(user.provider) + note_symbol
-    end
-    shared_providers = []
-    shared.delete_if do |share_account, providers|
-      if providers.size == 1
-        true
-      else
-        shared_providers += providers
-        false
-      end
-    end
-    not_shared_providers = @users.collect { |u| provider_downcase(u.provider) } - shared_providers
-    shared[0] = not_shared_providers if not_shared_providers.size > 0 # special key with unshared providers
-    shared
-  end
-  def shared_accounts
-    accounts = accounts()
-    logger.debug2 "accounts = #{accounts}"
-    accounts.delete(0)
-    accounts
-  end
-  def shared_accounts?
-    (shared_accounts.size > 0)
-  end
-  def shared_accounts_list
-    shared = shared_accounts()
-    if shared.size == 0
-      t '.no_shared_accounts_text'
-    # elsif shared.size == 1
-    #   text = shared[shared.keys.first].sort.join(', ')
-    else
-      # mixed account sharing
-      line_seperator = shared.size == 1 ? '' : '<br>- '
-      shared.collect do |share_account, providers|
-         share_level = share_account.share_level
-         share_level_text = t "shared.share_accounts.lov_text_#{share_level}"
-         providers_text = providers.sort.join(', ')
-         notes = []
-         notes << t('.not_logged_in_note') if providers_text.index('*')
-         notes << t('.expired_token_note') if providers_text.index('#')
-         if notes.empty?
-           notes = ''
-         else
-           notes = "( #{notes.join(' ,')} )"
-         end
-         "#{line_seperator}#{providers_text}: #{share_level_text}#{notes}"
-      end.join.html_safe
-    end
-  end
-  def shared_accounts_disabled?
-    return true if not logged_in?
-    return false if @users.size > 1
-    (shared_accounts.size == 0)
-  end
-
-  def share_level
-    return 0 unless logged_in?
-    share_levels = shared_accounts.keys.collect { |sa| [sa.share_level, sa.email] }.uniq
-    share_levels.delete_if { |share_level| share_level[0] == 0 }
-    return 0 if share_levels.size == 0 # no sharing
-    return 5 if share_levels.size > 1 # mixed sharing
-    return 5 if accounts.has_key?(0) # mixed sharing (shared and not shared providers)
-    return share_levels.first[0] # one and only one share level
-  end
-
-  def share_levels (share_level)
-    last_level = share_level == 5 ? 5 : 4 # 5 mixed sharing - display only option
-    0.upto(last_level).collect { |i| [t("shared.share_accounts.lov_text_#{i}"), i] }
-  end
-
-  def share_accounts_email
-    accounts = accounts()
-    accounts.delete(0)
-    # logger.debug2 "accounts = #{accounts}"
-    emails = accounts.keys.collect { |sa| sa.email }.delete_if { |email| !email}
-    logger.debug2 "emails = #{emails}"
-    return nil unless emails.size == 1
-    emails.first
   end
 
   # check for disconnected shared account. Added in User.add_shared_accounts

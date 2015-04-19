@@ -1726,6 +1726,14 @@
      should not try user info update forever in case of errors
      should wait for online friends if no online friends
 
+401) move do_tasks to ping (first ping after page start/reload)
 
+402) users.json object with status for user info refresh operation
+     add users.friend_remote_sha256 updated flag (on
+     add friends.remote_sha256_updated flag
 
-select next issue to solve: (rand*399).floor+1
+403) download all friends or download only user with changed remote sha256?
+     timestamp for last friend list download (user.last_login_at)
+     online user with oldest friend list info should refresh friend list
+
+select next issue to solve: (rand*403).floor+1

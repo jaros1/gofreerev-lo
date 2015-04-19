@@ -611,9 +611,7 @@ class User < ActiveRecord::Base
     Flash.where("created_at < ?", 1.minute.ago).delete_all
     # user find/create ok - continue with login
     user
-  end
-
-  # find_or_create_user
+  end # find_or_create_user
 
 
   # task from task queue - download and save profile picture from provider after login

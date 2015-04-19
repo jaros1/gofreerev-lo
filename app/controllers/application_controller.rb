@@ -268,7 +268,7 @@ class ApplicationController < ActionController::Base
 
     # fetch user(s)
     if login_user_ids.length > 0
-      @users = User.where("user_id in (?)", login_user_ids).includes(:share_account)
+      @users = User.where("user_id in (?)", login_user_ids)
     else
       @users = []
     end

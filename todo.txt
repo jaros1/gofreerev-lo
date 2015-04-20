@@ -1743,8 +1743,12 @@
      - status - status for user info update operation
        - 0 - waiting for next ping
        - 1 - friend list update request sent to client at xxxxxx
-       - 2 - operation aborted at xxxxxx - oauth and friend list update request received from client - client not online
-       - 2 - operation aborted at xxxxxx - oauth and friend list update request received from client - client online (error)
+       - 2 - user info update ok
+       - 3 - client not online - request (1) sent in ping but next ping was not received (offline between step 1 and 2)
+       in 1 but no next ping was not receivedtry again later
+       - 4 -
+       - 2 - client no longer online - oauth and friend list update request not received from client - try again later
+       - 3 - user info ok operation aborted at xxxxxx - oauth and friend list update request received from client - client online (unknown error)
        - 3 - friend list update operation done - ok - user info updated and to expected value
        - 4 - friend list update operation done - error - no change in old sha256 signature
        - 5 - friend list update operation done - error - updated but not to expected sha256 value

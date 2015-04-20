@@ -2344,6 +2344,10 @@ class User < ActiveRecord::Base
   def changed_remote_sha256
     update_attribute :remote_sha256_updated_at, Time.zone.now
     # get list of online friends
+    # best friend candidate is:
+    #  1) last_login_at is not null (app user)
+    #  2) oldest last_login_at (timestamp for last login and friend list download)
+    #  3) online users
 
   end
 

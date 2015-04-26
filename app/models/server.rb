@@ -1165,7 +1165,7 @@ class Server < ActiveRecord::Base
             if !user.sha256_updated_at or user.sha256_updated_at < su.remote_sha256_updated_at
               # todo:
               # update user info and calc new user.sha256 on this gofreerev server
-              # client of this gofreerev server must download fresh user info from login provider
+              # a client of this gofreerev server must download fresh user info from login provider
               # user sha256 signature on this server must change and sha256 message will be sent to other gofreerev server
               # push verify gifts request back in messages and wait for updated user info
               user.changed_remote_sha256

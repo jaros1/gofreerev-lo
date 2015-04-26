@@ -1737,22 +1737,24 @@
      - remote_sha256_updated_at = sha256_updated_at in received user signature
      - system_secret - system secret when user signature was received (for control)
      - friends - array with relevant friends to be used in user info update operation
-       must be a friend of user. must be an app used (last_login_at not null).
-       sort by last_login_at - friend with oldest friend list frist.
+       must be a friend of user. must be an app user (last_login_at not null).
+       sort by last_login_at - friend with oldest friend list first.
      - index - index to friends array - start with 0
-     - status - status for user info update operation
-       - 0 - waiting for next ping
+     - status - status for user info update operation - start with 0
+       - 0 - waiting for next ping request with user,remote_sha256_updated_at is not null
        - 1 - friend list update request sent to client at xxxxxx
-       - 2 - operation aborted at xxxxxx - oauth and friend list update request received from client - client not online
-       - 2 - operation aborted at xxxxxx - oauth and friend list update request received from client - client online (error)
-       - 3 - friend list update operation done - ok - user info updated and to expected value
-       - 4 - friend list update operation done - error - no change in old sha256 signature
-       - 5 - friend list update operation done - error - updated but not to expected sha256 value
-       - 6 - friend list update operation rejected - user not in friend list
-       - 7 - friend list update operation rejected - api error
+       - 2 - operation aborted at xxxxxx - timeout - client not online
+       - 3 - operation aborted at xxxxxx - continue - oauth/friend list update error xxxxxx
+       - 4 - friend list update operation done - ok - user info updated and to expected value
+       - 5 - friend list update operation done - continue - user not in friend list
+       - 6 - friend list update operation done - abort loop - no change in old sha256 signature = no change in user information
+       - 7 - friend list update operation done - abort loop - error - updated but not to expected sha256 value
 
 403) download all friends or download only user with changed remote sha256?
      timestamp for last friend list download (user.last_login_at)
      online user with oldest friend list info should refresh friend list
 
-select next issue to solve: (rand*403).floor+1
+404) combine Gofreerev with a rich-poor dating app with onmiauth support
+     connect rich cities, families, people with poor cities, families and people
+
+select next issue to solve: (rand*404).floor+1

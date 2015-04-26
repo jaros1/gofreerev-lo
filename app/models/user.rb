@@ -2343,7 +2343,31 @@ class User < ActiveRecord::Base
   #
   def changed_remote_sha256
     update_attribute :remote_sha256_updated_at, Time.zone.now
+    # find "active" friends of user - minimum one login on this gofreerev server
+    online = {}
+    Friend.
+        where(:user_id_giver => self.user_id).includes(:friend).
+        where('users.last_login_at is not null').references(:users).each do |user|
+      online[user.user_id_receiver] = false
+    end
+    # find online friends (ping with user or friend of user in ping.user_ids)
+    s = Sequence.get_server_ping_cycle
+    server_ping_cycle = s.value
+    Ping.where('server_id is null and last_ping_at > ?',
+                (2*server_ping_cycle/1000).seconds.ago.to_f).each do |ping|
+
+    end
+
+
+
+    user_friends = Friend.where(:user_id_giver => self.user_ids).includes(:friend)
+                              .find_all { |f| f.friend_status_code == 'Y' }
+                              .collect { |f| f.user_id_receiver }
+
     # get list of online friends
+
+
+
     # best friend candidate is:
     #  1) last_login_at is not null (app user)
     #  2) oldest last_login_at (timestamp for last login and friend list download)

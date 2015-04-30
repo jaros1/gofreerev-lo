@@ -275,7 +275,7 @@ class UtilController < ApplicationController
   end # post_login_update_friends
 
   # generic post login task - used if post_login_<provider> does not exist
-  # upload and updates friend list and updates user balance
+  # upload and updates friend list
   private
   def generic_post_login (provider)
     begin
@@ -876,9 +876,9 @@ class UtilController < ApplicationController
       end
 
       oauths = params[:oauths] # array with oauth authorization
-      tokens = get_session_value(:tokens)
-      expires_at = get_session_value(:expires_at)
-      refresh_tokens = get_session_value(:refresh_tokens)
+      # tokens = get_session_value(:tokens)
+      # expires_at = get_session_value(:expires_at)
+      # refresh_tokens = get_session_value(:refresh_tokens)
       # logger.secret2 "old tokens = #{tokens}"
       # logger.debug2 "old expires_at = #{expires_at}"
       # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
@@ -926,7 +926,7 @@ class UtilController < ApplicationController
         logger.debug2 "new providers  = #{providers.join(', ')}"
       end
 
-      # update friend lists from login providers and return user info to client
+      # update friends list from login providers and user info to client
       @json[:friends] = []
       providers.each do |provider|
         # get hash with user_id and friend category
@@ -1140,6 +1140,10 @@ class UtilController < ApplicationController
         ping.client_sid = sid
         ping.next_ping_at = now
         ping.last_ping_at = (old_server_ping_cycle/1000).seconds.ago(now)
+        if server
+          s = Server.find_by_site_url login_user_ids.first
+          ping.server_id = s.id
+        end
         ping.save!
       end
       # todo: force logout if ping.did != sessions.did?
@@ -1280,7 +1284,8 @@ class UtilController < ApplicationController
         # 1) return short friends list after changed system secret
         # 2) return short friends list after changed sha256 values for login users, friends of login users or friend of friends of login users
         system_secret_changed = false
-        users_sha256_values_changed = false
+        sha256_values_changed = false
+        remote_sha256_values_changed = []
         if !server
           system_secret_at = SystemParameter.secret_at
           system_secret_changed = (system_secret_at != get_session_value(:system_secret_updated_at))
@@ -1290,16 +1295,37 @@ class UtilController < ApplicationController
             if last_short_friends_list_at
               login_users = User.where(:user_id => login_user_ids)
               login_users.each do |user|
-                users_sha256_values_changed = true if user.sha256_updated_at and user.sha256_updated_at >= last_short_friends_list_at
-                users_sha256_values_changed = true if user.friend_sha256_updated_at and user.friend_sha256_updated_at >= last_short_friends_list_at
-                break if users_sha256_values_changed
+                sha256_values_changed = true if user.sha256_updated_at and user.sha256_updated_at >= last_short_friends_list_at
+                sha256_values_changed = true if user.friend_sha256_updated_at and user.friend_sha256_updated_at >= last_short_friends_list_at
+                break if sha256_values_changed
               end
             else
-              users_sha256_values_changed = true
+              sha256_values_changed = true
             end
           end
+          # check remote_sha256_updated_at. user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
+          login_users = User.where(:user_id => login_user_ids) unless login_users
+          login_users.each do |user|
+            next unless user.remote_sha256_updated_at
+            friends = Friend.where(:user_id_giver => user.user_id).includes(:friend).where('users.remote_sha256_update_info is not null').references(:users)
+            friends = friends.find_all { |friend| friend.friend_status_code == 'Y' }
+            if friends.size == 0
+              # no pending update user info operation was found
+              logger.debug "no pending user update operation was found for #{user.debug_info}"
+              user.update_attributes :remote_sha256_updated_at => nil, :remote_sha256_update_info => nil
+              next
+            end
+            friends.each do |friend|
+              remote_sha256_values_changed << friend.friend if friend.friend_status_code == 'Y'
+            end
+          end
+          logger.debug2 "remote_sha256_values_changed.size = #{remote_sha256_values_changed.size}"
+          remote_sha256_values_changed.each do |user|
+            logger.debug2 "user #{user.debug_info}, remote_sha256_update_info = #{user.remote_sha256_update_info}"
+          end if remote_sha256_values_changed.size > 0
+
         end
-        if system_secret_changed or users_sha256_values_changed
+        if system_secret_changed or sha256_values_changed or remote_sha256_values_changed.size > 0
           time1 = Time.zone.now
           # system secret and/or sha256 signatures for users has changed since last client ping
           # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)
@@ -1331,6 +1357,14 @@ class UtilController < ApplicationController
             end
             hash
           end
+          # check remote_sha256_updated_at. user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
+          if remote_sha256_values_changed.size > 0
+            # set refresh = true if friend list update operation should be started by client
+            if !User.check_changed_remote_sha256(@json[:friends], login_users, remote_sha256_values_changed) and !system_secret_changed and !sha256_values_changed
+              @json.delete(:friends)
+            end
+          end
+
           # old sha256 signatures are valid for 3 minutes after update of system secret
           set_session_value :system_secret_updated_at, system_secret_at if system_secret_changed
           @json[:friends_sha256_update_at] = system_secret_at.to_i

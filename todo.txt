@@ -1741,8 +1741,8 @@
        sort by last_login_at - friend with oldest friend list first.
      - index - index to friends array - start with 0
      - status - status for user info update operation - start with 0
-       - 0 - waiting for next ping request with user,remote_sha256_updated_at is not null
-       - 1 - friend list update request sent to client at xxxxxx
+       - 0 - waiting for ping request
+       - 1 - friend list refresh sent to client - waiting for oauth and friend list update in next ping
        - 2 - operation aborted at xxxxxx - timeout - client not online
        - 3 - operation aborted at xxxxxx - continue - oauth/friend list update error xxxxxx
        - 4 - friend list update operation done - ok - user info updated and to expected value

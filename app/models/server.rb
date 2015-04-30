@@ -1107,7 +1107,7 @@ class Server < ActiveRecord::Base
     raise "invalid :negative_user_ids parm. Allowed values are false, true and :translate. Was #{negative_user_ids} (#{negative_user_ids.class})" unless [false, true, :translate].index(negative_user_ids)
     raise "invalid :sha256_msg param. Must be true (incoming changed sha256 signature message) or false. Was #{sha256_msg} (#{sha256_msg.class})" unless [true, false].index(sha256_msg)
     raise "invalid :allow_changed_sha256 param. Must be a integer > 0. Was #{allow_changed_sha256} (#{allow_changed_sha256.class})" unless [Fixnum, Bignum].index(allow_changed_sha256.class) and allow_changed_sha256 >= 0
-    raise "invalid :field parm. Allowed values are :id and :user_id. Was #{field} (#{field.class})" unless [:id, :user_id, 'id', 'user_id'].index(negative_user_ids)
+    raise "invalid :field parm. Allowed values are :id and :user_id. Was #{field} (#{field.class})" unless [:id, :user_id, 'id', 'user_id'].index(field)
     raise "unknown #{options.keys.join(', ')} param" unless options == {}
 
     sha_signatures = []
@@ -1151,7 +1151,7 @@ class Server < ActiveRecord::Base
           su.remote_sha256_updated_at = nil if su.remote_sha256_updated_at
           su.sha256_signature_received_at = nil if su.sha256_signature_received_at
           su.sha256_message_sent_at = nil if su.sha256_message_sent_at
-          user.update_attribute remote_sha256_updated_at, nil if user.remote_sha256_updated_at
+          user.update_attribute :remote_sha256_updated_at, nil if user.remote_sha256_updated_at
         elsif sha_signature['sha256_updated_at'] > now.to_i
           # identical pseudo user id - changed sha256 signature but with invalid sha256_updated_at timestamp
           logger.error2 "#{msg} message. rejected changed sha256 signature #{sha_signature} with sha256_updated_at in the future. now = #{now.to_i}"
@@ -1168,7 +1168,7 @@ class Server < ActiveRecord::Base
               # a client of this gofreerev server must download fresh user info from login provider
               # user sha256 signature on this server must change and sha256 message will be sent to other gofreerev server
               # push verify gifts request back in messages and wait for updated user info
-              user.changed_remote_sha256
+              user. set_changed_remote_sha256(sha_signature)
             elsif sha256_msg
               errors << "Incoming sha256 changed message with old signature #{sha_signature}. user.sha256_updated_at = #{user.sha256_updated_at.to_i}, sha256_signature['sha256_updated_at'] = #{sha_signature['sha256_updated_at']}"
               invalid_sha_signatures << sha_signature
@@ -1414,9 +1414,7 @@ class Server < ActiveRecord::Base
       end # if
     end # do  i
 
-  end
-
-  # save_sha256_changed_message
+  end # save_sha256_changed_message
 
 
   public
@@ -1434,11 +1432,15 @@ class Server < ActiveRecord::Base
     logger.debug2 "error = #{error}" if error
     logger.debug2 "user_ids = #{user_ids.join(', ')}"
 
-    User.where(:id => user_ids).each { |u| u.changed_remote_sha256 } if user_ids.size > 0
+    User.where(:id => user_ids).includes(:server_users).each do |u|
+      su = u.server_users.find { |su2| su2.server_id == self.id }
+      logger.debug2 "su = #{su.to_json}"
+      sha_signature = users.find { |user| user["pseudo_user_id"] == su.pseudo_user_id }
+      logger.debug2 "sha_signature = #{sha_signature}"
+      u.set_changed_remote_sha256(sha_signature)
+    end if user_ids.size > 0
     return "receive_sha256_changed_message not implemented: user_ids = #{user_ids}, error = #{error}"
-  end
-
-  # receive_sha256_changed_message
+  end # receive_sha256_changed_message
 
 
   # send and receive client public keys to and from other gofreerev servers

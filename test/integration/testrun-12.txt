@@ -1,0 +1,25 @@
+client 1 firefox:
+
+client 2 chrome:
+
+server 2:
+block in ping: login_user_ids = 1616942831872982/facebook
+...
+ping: remote_sha256_values_changed.size = 1
+block in ping: user 1616942831872982/facebook Jan R,
+remote_sha256_update_info =
+  {:remote_sha256=>"P/aL5kqsakSdeTzXVbXgqxG/GhenXLJyjVmO73ryt38=",
+   :remote_sha256_updated_at=>1430294745,
+   :system_secret=>"H5TwgtJnZb",
+   :friends=>["4878645699741/facebook", "1616942831872982/facebook"],
+   :index=>-1,
+   :status=>0,
+   :status_at=>2015-04-29 09:04:22 UTC
+  }
+
+client 2 chrome:
+short friends list from server
+gofreerev.js?body=1:1643 UserService.update_friends:
+friends = [
+  {"user_id":2,"uid":"4878645699741","provider":"facebook","user_name":"Jan Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996…f8d6eb9b4f&oe=55C8AF27&__gda__=1439891048_d8dc2e5cb084f761e6a18fc0332b4147","sha256":"9gAIm4ABTujQnzO9P225Q2xXv296DEqBp0eTvbDUjew=","remote_sha256":{"1":"cMcX++DSwWc8W65ugGQrdZy0fbpnRsVDOTxfCqjGLII="},"verified_at":1430301247,"short_user_name":"Jan R","old_sha256":"tOQKlOPmDt7mvgrbAlG/b2Z/+8kpjXPp+KttUMo0b3o="},
+  {"user_id":3,"uid":"1616942831872982","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…8fb7d7f15b&oe=55989DF9&__gda__=1439343660_593d03a90a59ca83949ba3457eceffe1","sha256":"P/aL5kqsakSdeTzXVbXgqxG/GhenXLJyjVmO73ryt38=","remote_sha256":{"1":"z77gnCilQRGIDFxtwzplKnlryk94+3r3vSPYpGBT72c="},"verified_at":1430301247,"short_user_name":"Jan M","old_sha256":"JoiD3YZo/XkAhI9bTRHr0h66v3cqoYYQYwjki88uHVQ="}]

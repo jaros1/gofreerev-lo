@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150419071958) do
+ActiveRecord::Schema.define(version: 20150429054823) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -321,7 +321,7 @@ ActiveRecord::Schema.define(version: 20150419071958) do
   end
 
   create_table "users", force: true do |t|
-    t.string   "user_id",                  limit: 40
+    t.string   "user_id",                   limit: 40
     t.text     "user_name"
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -337,15 +337,16 @@ ActiveRecord::Schema.define(version: 20150419071958) do
     t.datetime "last_login_at"
     t.datetime "deauthorized_at"
     t.datetime "last_friends_find_at"
-    t.string   "language",                 limit: 2
+    t.string   "language",                  limit: 2
     t.text     "access_token"
     t.text     "access_token_expires"
     t.text     "refresh_token"
-    t.string   "sha256",                   limit: 45
-    t.string   "old_sha256",               limit: 45
+    t.string   "sha256",                    limit: 45
+    t.string   "old_sha256",                limit: 45
     t.datetime "sha256_updated_at"
     t.datetime "friend_sha256_updated_at"
     t.datetime "remote_sha256_updated_at"
+    t.text     "remote_sha256_update_info"
   end
 
   add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree

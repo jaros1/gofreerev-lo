@@ -5,14 +5,36 @@ class User < ActiveRecord::Base
   FRIEND_REQUEST_NOTI_KEY = 'request_for_app_friendship_v1'
 =begin
   create_table "users", force: true do |t|
-    t.string   "user_id",    limit: 20
+    t.string   "user_id",                   limit: 40
     t.text     "user_name"
     t.datetime "created_at"
     t.datetime "updated_at"
     t.text     "currency"
     t.text     "balance"
     t.date     "balance_at"
+    t.text     "permissions"
+    t.text     "no_api_friends"
+    t.text     "negative_interest"
+    t.text     "api_profile_url"
+    t.text     "api_profile_picture_url"
+    t.datetime "deleted_at"
+    t.datetime "last_login_at"
+    t.datetime "deauthorized_at"
+    t.datetime "last_friends_find_at"
+    t.string   "language",                  limit: 2
+    t.text     "access_token"
+    t.text     "access_token_expires"
+    t.text     "refresh_token"
+    t.string   "sha256",                    limit: 45
+    t.string   "old_sha256",                limit: 45
+    t.datetime "sha256_updated_at"
+    t.datetime "friend_sha256_updated_at"
+    t.datetime "remote_sha256_updated_at"
+    t.text     "remote_sha256_update_info"
   end
+  add_index "users", ["sha256"], name: "index_users_sha256", unique: true, using: :btree
+  add_index "users", ["sha256_updated_at"], name: "index_users_on_sha256_updated", using: :btree
+  add_index "users", ["user_id"], name: "index_users_on_user_id", unique: true, using: :btree
 =end
 
 
@@ -403,6 +425,48 @@ class User < ActiveRecord::Base
   # 24) remote_sha256_updated_at. timestamp for last sha256 signature update on other gofreerev servers
   # set after detection changed sha256 signature in ingoing messages (online users, verify gifts etc)
   # a client on this Gofreerev server must download fresh user info from login provider
+
+  # 25) remote_sha256_update_info. Used in user info refresh operation. See 24). Hash in model. Text in db
+  # hash with :remote_sha256, :remote_sha256_updated_at, :system_secret, :friends, :index, :status and :status_at
+  #      - remote_sha256 = sha256 in received user signature
+  # - remote_sha256_updated_at = sha256_updated_at in received user signature
+  # - system_secret - system secret when user signature was received (for control)
+  # - friends - array with relevant friends to be used in user info update operation
+  #             must be a friend of user. must be an app user (last_login_at not null).
+  #             sort by last_login_at - friend with oldest friend list first.
+  # - index - index to friends array - start with 0
+  # - status - status for user info update operation - start with 0
+  #   - 0 - waiting for next ping request with user,remote_sha256_updated_at is not null
+  #   - 1 - friend list update request sent to client at xxxxxx
+  #   - 2 - operation aborted at xxxxxx - timeout - client not online
+  #   - 3 - operation aborted at xxxxxx - continue - oauth/friend list update error xxxxxx
+  #   - 4 - friend list update operation done - ok - user info updated and to expected value
+  #   - 5 - friend list update operation done - continue - user not in friend list
+  #   - 6 - friend list update operation done - abort loop - no change in old sha256 signature = no change in user information
+  #   - 7 - friend list update operation done - abort loop - error - updated but not to expected sha256 value
+  # - status_at - timestamp for status change
+  def remote_sha256_update_info
+    return nil unless (temp_remote_sha256_update_info = read_attribute(:remote_sha256_update_info))
+    # logger.debug2  "temp_remote_sha256_update_info = #{temp_remote_sha256_update_info}"
+    YAML::load temp_remote_sha256_update_info
+  end # remote_sha256_update_info
+
+  def remote_sha256_update_info=(new_remote_sha256_update_info)
+    if new_remote_sha256_update_info
+      check_type('remote_sha256_update_info', new_remote_sha256_update_info, 'Hash')
+      write_attribute :remote_sha256_update_info, new_remote_sha256_update_info.to_yaml
+    else
+      write_attribute :remote_sha256_update_info, nil
+    end
+  end # remote_sha256_update_info=
+  alias_method :remote_sha256_update_info_before_type_cast, :remote_sha256_update_info
+
+  def remote_sha256_update_info_was
+    return remote_sha256_update_info unless remote_sha256_update_info_changed?
+    return nil unless (temp_remote_sha256_update_info = attribute_was(:remote_sha256_update_info))
+    YAML::load temp_remote_sha256_update_info
+  end # remote_sha256_update_info_was
+
 
   # change currency in page header.
   attr_accessor :new_currency
@@ -2334,44 +2398,130 @@ class User < ActiveRecord::Base
       server_users = verified_server_users.includes(:server, :user).order(:server_id)
       Server.save_sha256_changed_message(2, server_users)
     end
+    if self.remote_sha256_update_info
+      # check pending user info update operation - this server is updating user info after detecting changed sha256 signature in incoming message
+      logger.debug2 "check pending user info update operation - this server is updating user info after detecting changed sha256 signature in incoming message"
+      logger.debug2 "user #{self.debug_info}"
+      logger.debug2 "remote_sha256_update_info = #{self.remote_sha256_update_info}"
+      old_sha256 = self.remote_sha256_update_info[:remote_sha256]
+      old_secret = self.remote_sha256_update_info[:system_secret]
+      new_sha256 = calc_sha256(old_secret)
+      sha256_ok = (new_sha256 == old_sha256)
+      logger.debug2 "old_secret = #{old_secret}, old_sha256 = #{old_sha256}, new_sha256 = #{new_sha256}, sha256_ok = #{sha256_ok}"
+      if sha256_ok
+        logger.debug2 "Ok. sha256 signature ok after user info update. pending verify gifts operation can continue"
+      elsif old_sha256 == new_sha256
+        logger.error2 "Error. Unchanged user info and still invalid remote sha256 signature"
+      else
+        logger.error2 "Error. Changed user info and invalid remote sha256 signature"
+      end
+      self.remote_sha256_updated_at = nil
+      self.remote_sha256_update_info = nil
+      self.save!
+    end
   end # update_sha256
 
 
   # received server to server message with changed user sha256 signature (verify gifts request, sha256 changed user signature etc)
   # user info on this server is oldest. mark that user info is out-of-date (remote_sha256_updated_at)
   # a client on this server must download fresh user info from login provider (user or friend of user)
-  #
-  def changed_remote_sha256
+  # sha_signature is a hash with :sha256, :sha256_updated_at and :pseudo_user_id
+  def set_changed_remote_sha256 (sha_signature)
+    logger.debug2 "user = #{self.debug_info}, sha_signature = #{sha_signature}"
     update_attribute :remote_sha256_updated_at, Time.zone.now
     # find "active" friends of user - minimum one login on this gofreerev server
     online = {}
-    Friend.
+    friends = Friend.
         where(:user_id_giver => self.user_id).includes(:friend).
-        where('users.last_login_at is not null').references(:users).each do |user|
-      online[user.user_id_receiver] = false
+        where('users.last_login_at is not null').references(:users).find_all do |friend|
+      (friend.friend_status_code == 'Y') # only mutual friends!
     end
-    # find online friends (ping with user or friend of user in ping.user_ids)
+    friends.each do |friend|
+      online[friend.user_id_receiver] = 2
+    end
+    logger.debug2 "user #{self.debug_info} has #{friends.size} friends"
+    # find online friends (ping.user_ids)
     s = Sequence.get_server_ping_cycle
     server_ping_cycle = s.value
     Ping.where('server_id is null and last_ping_at > ?',
                 (2*server_ping_cycle/1000).seconds.ago.to_f).each do |ping|
+      if !ping.did or !ping.sha256
+        logger.error2 "ignoring ping id #{ping.id} without pid or sha256."
+        next
+      end
+      user_ids = ping.user_ids
+      user_ids.each do |user_id|
+        online[user_id] = 1 if online.has_key? user_id
+      end
+    end
+    online_friends = online.find_all { |key,value| value == 1 }.size
+    logger.debug2 "user #{self.debug_info} has online #{online_friends} friends"
+    friends.sort_by! { |friend| [online[friend.user_id_receiver], friend.user.last_login_at] }
+    user_ids = friends.collect { |friend| friend.user_id_receiver }
+    # hash object with status for user info update operation. Normally user info will be updated in first ping from user or friend of user
+    remote_sha256_update_info = {
+        :remote_sha256 => sha_signature['sha256'],
+        :remote_sha256_updated_at => sha_signature['sha256_updated_at'],
+        :system_secret => SystemParameter.secret,
+        :friends => user_ids,
+        :index => 0, # index to friends array - waiting for first ping
+        :status => 0, # wait for first ping
+        :status_at => Time.zone.now
+    }
+    User.where(:user_id => user_ids).update_all :remote_sha256_updated_at => Time.zone.now
+    self.remote_sha256_update_info = remote_sha256_update_info
+    self.save!
+    nil
+  end # set_changed_remote_sha256
 
+
+  # called from util_controller.ping before returning short friends list to client
+  # check if friends list(s) must be updated
+  # returns true if refresh was set to true for one or more users
+  # returns false if no refresh operation for this client
+
+  def self.check_changed_remote_sha256 (short_friends_list, login_users, pending_users)
+    logger.debug2 "short_friends_list = #{short_friends_list}"
+    logger.debug2 "login_users = #{login_users}"
+    logger.debug2 "pending_users.size = #{pending_users.size}"
+    pending_users.each do |user|
+      logger.debug2 "pending_user = #{user.to_json}"
     end
 
+    # status 0 - wait for next ping - first step in update user info operation
+    login_user_ids = login_users.collect { |user| user.user_id }
+    refresh = false
+    pending_users.each do |pending_user|
+      remote_sha256_update_info = pending_user.remote_sha256_update_info
+      friend_userids = remote_sha256_update_info[:friends]
+      index = remote_sha256_update_info[:index]
+      status = remote_sha256_update_info[:status]
+      friend_userid = friend_userids[index]
+      if !login_user_ids.index(friend_userid) == 0
+        logger.debug2 "ignoring pending user #{pending_user} - friend #{friend_userid} is not a login user"
+        next
+      end
+      short_friend = short_friends_list.find { |friend| (friend_userid == "#{friend[:uid]}/#{friend[:provider]}") }
+      if !short_friend
+        logger.debug2 "ignoring pending user #{pending_user} - friend #{friend_userid} not in short friends list"
+        next
+      end
+      if status == 0
+        # wait for next ping
+        short_friend[:refresh] = refresh = true
+        remote_sha256_update_info[:status] = 1 # friend list refresh request sent to client - wait for reconnect and friend list update
+        remote_sha256_update_info[:status_at] = Time.zone.now
+        pending_user.remote_sha256_update_info = remote_sha256_update_info
+        pending_user.save!
+      elsif status == 1
+        # refresh request sent to client - check timeout
+        status_at = remote_sha256_update_info[:status_at]
+        logger.error2 "status #{status} not implented"
+        next
+      end
+    end
 
-
-    user_friends = Friend.where(:user_id_giver => self.user_ids).includes(:friend)
-                              .find_all { |f| f.friend_status_code == 'Y' }
-                              .collect { |f| f.user_id_receiver }
-
-    # get list of online friends
-
-
-
-    # best friend candidate is:
-    #  1) last_login_at is not null (app user)
-    #  2) oldest last_login_at (timestamp for last login and friend list download)
-    #  3) online users
+    return refresh
 
   end
 

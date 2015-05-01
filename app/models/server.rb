@@ -1168,7 +1168,7 @@ class Server < ActiveRecord::Base
               # a client of this gofreerev server must download fresh user info from login provider
               # user sha256 signature on this server must change and sha256 message will be sent to other gofreerev server
               # push verify gifts request back in messages and wait for updated user info
-              user. set_changed_remote_sha256(sha_signature)
+              user.set_changed_remote_sha256(sha_signature)
             elsif sha256_msg
               errors << "Incoming sha256 changed message with old signature #{sha_signature}. user.sha256_updated_at = #{user.sha256_updated_at.to_i}, sha256_signature['sha256_updated_at'] = #{sha_signature['sha256_updated_at']}"
               invalid_sha_signatures << sha_signature
@@ -2043,7 +2043,7 @@ class Server < ActiveRecord::Base
 
 
   def receive_verify_gifts_response (verify_gifts)
-    return 'receive_verify_gifts_response not implemented'
+    logger.debug2 "verify_gifts = #{verify_gifts}" ; return 'receive_verify_gifts_response not implemented'
   end
 
 

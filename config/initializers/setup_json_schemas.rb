@@ -97,7 +97,10 @@ friends_array_type = {
                     :additionalProperties => false
                 },
                 :minItems => 1
-            }
+            },
+            # short list with remote friends from ping. Ask client to initialize a friend list update
+            # ( after receiving server to server message with changed sha256 signature )
+            :refresh => { :type => 'boolean' }
         },
         :required => %w(user_id uid provider user_name friend),
         :additionalProperties => false

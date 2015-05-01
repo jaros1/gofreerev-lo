@@ -2506,6 +2506,7 @@ class User < ActiveRecord::Base
         logger.debug2 "ignoring pending user #{pending_user} - friend #{friend_userid} not in short friends list"
         next
       end
+      logger.debug2 "check status #{status} for friend #{friend_userid}"
       if status == 0
         # wait for next ping
         short_friend[:refresh] = refresh = true
@@ -2516,14 +2517,37 @@ class User < ActiveRecord::Base
       elsif status == 1
         # refresh request sent to client - check timeout
         status_at = remote_sha256_update_info[:status_at]
-        logger.error2 "status #{status} not implented"
+        elapsed_time = Time.zone.now - status_at
+        s = Sequence.get_server_ping_cycle
+        server_ping_cycle = s.value / 1000
+        if elapsed_time > 2*server_ping_cycle
+          logger.warn2 "Timeout while waiting for client friend list update. Could be an error. Could be offline client"
+          index = index + 1
+          if index == friend_userids.size
+            logger.warn2 "Friend list update operation failed for #{pending_user.to_json}"
+            pending_user.remote_sha256_updated_at = nil
+            pending_user.remote_sha256_update_info = nil
+            pending_user.save!
+          else
+            logger.debug2 "Continue with next friend #{friend_userids[index]}"
+            remote_sha256_update_info[:status] = 0
+            remote_sha256_update_info[:status_at] = Time.zone.now
+            remote_sha256_update_info[:index] = index
+            pending_user.remote_sha256_update_info = remote_sha256_update_info
+            pending_user.save!
+          end
+        else
+          logger.debug2 "waiting for client friend list update for #{pending_user.to_json}"
+        end
+      else
+        logger.error2 "status #{status} not implemented"
         next
       end
     end
 
     return refresh
 
-  end
+  end # self.check_changed_remote_sha256
 
 
   ##############

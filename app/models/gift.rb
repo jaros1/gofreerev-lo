@@ -333,6 +333,8 @@ class Gift < ActiveRecord::Base
     response = []
     server_requests = {} # server_id => array with remote gift verification request
 
+    server_mid = {}
+
     verify_gifts.each do |verify_gift|
       seq = verify_gift['seq']
       server_id = verify_gift['server_id']
@@ -503,6 +505,7 @@ class Gift < ActiveRecord::Base
         #       could also be used in a verify gift cache on this gofreerev server
         #       don't send identical verify gifts request to other gofreerev server
         # 1) insert row in verify_gifts table
+        server_mid[server_id] = Sequence.next_server_mid unless server_mid.has_key?(server_id)
         vg = VerifyGift.new
         vg.client_sid = client_sid
         vg.client_sha256 = client_sha256
@@ -510,6 +513,7 @@ class Gift < ActiveRecord::Base
         vg.server_id = server_id
         vg.gid = gid
         vg.server_seq = Sequence.next_verify_gift_seq
+        vg.mid = server_mid[server_id]
         vg.save!
         # 2) insert verify_gifts request in server_requests hash
         hash = {:seq => vg.server_seq,
@@ -612,6 +616,7 @@ class Gift < ActiveRecord::Base
       end
       message = {
           :msgtype => 'verify_gifts',
+          :mid => server_mid[server_id],
           :login_users => login_user_ids,
           :verify_gifts => server_request }
       logger.debug2 "verify_gifts message = #{message}"
@@ -635,10 +640,11 @@ class Gift < ActiveRecord::Base
       m.from_did = SystemParameter.did
       m.to_did = servers[server_id].new_did
       m.server = true
+      m.mid = server_mid[server_id]
       m.encryption = 'sym'
       m.message = sym_enc_message
       m.save!
-    end
+    end # each server_id, server_request
 
     response.size == 0 ? nil : { :gifts => response }
 

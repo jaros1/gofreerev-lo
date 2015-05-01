@@ -1757,6 +1757,12 @@
 404) combine Gofreerev with a rich-poor dating app with onmiauth support
      connect rich cities, families, people with poor cities, families and people
 
-     x
+405) client verify gift request
+     don't always trust verify gifts = true response from server
+     mix real verify gift requests with fake verify gifts request and check that server response is false for all fake verify gifts requests
+     most important when receiving gifts from remote client and sending gifts to remote verification
 
-select next issue to solve: (rand*404).floor+1
+406) check error handling when receiving messages. pull and push.
+     server error messages should be written to log and error message sent to other gofreerev server
+
+select next issue to solve: (rand*406).floor+1

@@ -164,4 +164,30 @@ class Sequence < ActiveRecord::Base
   end # self.verify_gift_seq
 
 
+  # server mid (unique message id) - used in server to server communication
+
+  private
+  def self.get_server_mid
+    name = 'server_mid'
+    s = Sequence.find_by_name(name)
+    if !s
+      s = Sequence.new
+      s.name = name
+      s.value = 0
+      s.save!
+    end
+    s
+  end # self.get_server_mid
+
+  public
+  def self.next_server_mid
+    transaction do
+      s = Sequence.get_server_mid
+      s.value = s.value + 1
+      s.save!
+      return s.value
+    end # do
+  end # self.server_mid
+  
+  
 end

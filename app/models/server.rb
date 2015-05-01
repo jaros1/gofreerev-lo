@@ -1244,7 +1244,9 @@ class Server < ActiveRecord::Base
     end # if
 
     # debug info
-    logger.debug2 "#{msg} message. #{user_signatures.size} user ids. #{sha_signatures.size} signatures and #{negative_user_ids.size} negative user ids"
+    if changed_sha_signatures.size > 0 or invalid_sha_signatures.size > 0 or invalid_negative_user_ids.size > 0 or local_changed_sha_signatures > 0 or remote_changed_sha_signatures > 0
+      logger.debug2 "#{msg} message. #{user_signatures.size} user ids. #{sha_signatures.size} signatures and #{negative_user_ids.size} negative user ids"
+    end
     logger.debug2 "#{msg} message. #{changed_sha_signatures.size} changed signatures" if changed_sha_signatures.size > 0
     logger.debug2 "#{msg} message. #{invalid_sha_signatures.size} invalid signatures" if invalid_sha_signatures.size > 0
     logger.debug2 "#{msg} message. #{invalid_negative_user_ids.size} invalid negative user ids" if invalid_negative_user_ids.size > 0
@@ -1255,9 +1257,7 @@ class Server < ActiveRecord::Base
     error = errors.size > 0 ? errors.join(', ') : nil
     user_ids = valid_sha_signatures + valid_negative_user_ids
     [error, user_ids, local_changed_sha_signatures, remote_changed_sha_signatures]
-  end
-
-  # from_sha256s_to_user_ids
+  end # from_sha256s_to_user_ids
 
 
   public
@@ -1366,9 +1366,7 @@ class Server < ActiveRecord::Base
 
     return errors.size == 0 ? nil : errors.join(', ')
 
-  end
-
-  # receive_online_users_message
+  end # receive_online_users_message
 
 
   # create and save user sha256 signature changed message
@@ -1831,7 +1829,7 @@ class Server < ActiveRecord::Base
   #       {"seq" : 14, "gid" : "14258782920140696549", "sha256" : "ïÏ\u0000\u000F·À0x*\"¿\\·ÚÓ8M\u001C¿J\u0012z¨Hq", "sha256_deleted" : null, "sha256_accepted" : null, "giver_user_ids" : [-1016, -790, 1], "receiver_user_ids" : []}]}
   # response: without login_users array and with verified_at_server boolean in verify_gifts array
   private
-  def receive_verify_gifts_request (login_users, verify_gifts)
+  def receive_verify_gifts_request (mid, login_users, verify_gifts)
     # check and convert login users
     # login users must be sha256 signature for a verified server user or a negative integer (unknown user)
     # there must be minimum one verified server login user with valid sha256 signature in message
@@ -2000,12 +1998,11 @@ class Server < ActiveRecord::Base
       local_verify_gifts_response = Gift.verify_gifts(local_verify_gifts_request, login_user_ids, nil, nil) # client_sid = client_sha256 = nil (local verification)
       logger.debug2 "local_verify_gifts_request = #{local_verify_gifts_request}"
       logger.debug2 "local_verify_gifts_response = #{local_verify_gifts_response}"
-      error = local_verify_gifts_response[:error]
-      gifts = local_verify_gifts_response[:gifts]
-      verify_gifts_response += gifts if gifts
+      local_verify_gifts_error = local_verify_gifts_response[:error]
+      verify_gifts_response += local_verify_gifts_response[:gifts] if local_verify_gifts_response[:gifts]
     end
     
-    logger.debug2 "error = #{error}"
+    logger.debug2 "local_verify_gifts_error = #{local_verify_gifts_error}"
     logger.debug2 "verify_gifts_response = #{verify_gifts_response}"
 
     # format response - note - no login users array
@@ -2013,7 +2010,7 @@ class Server < ActiveRecord::Base
         :msgtype => 'verify_gifts',
         :verify_gifts => verify_gifts_response
     }
-    message[:error] = error if error
+    message[:error] = local_verify_gifts_error if local_verify_gifts_error
 
     # validate json message before "sending"
     json_schema = :verify_gifts_request
@@ -2042,9 +2039,82 @@ class Server < ActiveRecord::Base
   end # receive_verify_gifts_request
 
 
-  def receive_verify_gifts_response (verify_gifts)
-    logger.debug2 "verify_gifts = #{verify_gifts}" ; return 'receive_verify_gifts_response not implemented'
-  end
+  # receive verify gifts response from other Gofreerev server
+  def receive_verify_gifts_response (mid, request_mid, verify_gifts, error)
+    logger.debug2 "mid = #{mid}, request_mid = #{request_mid}"
+    logger.debug2 "verify_gifts = #{verify_gifts}"
+    logger.debug2 "error        = #{error}"
+
+    errors = []
+    errors << "empty verify_gifts response message was rejected" unless verify_gifts or error
+    errors << error if error
+
+    # seq in verify_gifts must be unique
+    if verify_gifts
+      server_seqs = verify_gifts.collect { |hash| hash['seq'] }.uniq
+      errors << "verify_gifts response message was rejected. seq in verify_gifts array must be unique" if server_seqs.size != verify_gifts.size
+      verify_gifts = nil
+    end
+    return errors.join(', ') unless verify_gifts
+
+    # seq must be in verify_gifts table (see Gift.verify_gifts)
+    vgs = {}
+    VerifyGift.where(:server_seq => server_seqs).each { |vg| vgs[vg.server_seq] = vg }
+    unknown_seq = []
+    invalid_server_id = []
+    invalid_gid = []
+    invalid_response = []
+    identical_response = []
+    ok_response = []
+    verify_gifts.each do |verify_gift|
+      seq = verify_gift['seq']
+      gid = verify_gift['gid']
+      verified_at_server = verify_gift['verified_at_server']
+      error = verify_gift['error']
+      vg = vgs[seq]
+      if !vg
+        unknown_seq << verify_gift
+      elsif vg.server_id != self.server_id
+        invalid_server_id << verify_gift
+      elsif vg.gid != gid
+        invalid_gid << verify_gift
+      elsif vg.verified_at_server.class != NilClass
+        if (verified_at_server != vg.verified_at_server or error != vg.error)
+          # has already received a different response for this request
+          invalid_response << verify_gift
+        else
+          identical_response << verify_gift
+        end
+      else
+        # save response for remote gift verification. Response will be returned to client in next ping
+        ok_response << verify_gift
+        vg.verified_at_server = verified_at_server
+        vg.error = error
+        vg.save!
+      end
+    end # each verify_gift
+
+    logger.debug2 "verify_gifts.size = #{verify_gifts.size}, unknown_seq.size = #{unknown_seq.size}, " +
+                      "invalid_server_id.size = #{invalid_server_id.size}, invalid_gid.size = #{invalid_gid.size}, " +
+                      "invalid_response.size = #{invalid_response.size}, identical_response.size = #{identical_response.size}, " +
+                      "ok_response.size = #{ok_response.size}"
+
+    if unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size > 0
+      # todo: send server to server error message
+
+
+    end
+
+    # verify_gifts =
+    #    [{:seq=>224, :gid=>"14253148989837740200", :verified_at_server=>true}, {:seq=>225, :gid=>"14253152345973353338", :verified_at_server=>true},
+    #     {:seq=>226, :gid=>"14253163835441202510", :verified_at_server=>true}, {:seq=>227, :gid=>"14253166119353097472", :verified_at_server=>true},
+    #     ...
+    #     {:seq=>234, :gid=>"14258782920140696549", :verified_at_server=>true}]
+
+
+
+    return "receive_verify_gifts_response not implemented. verify gifts = #{verify_gifts}, error = #{error}"
+  end # receive_verify_gifts_response
 
 
   public
@@ -2066,16 +2136,15 @@ class Server < ActiveRecord::Base
       return "Invalid #{json_schema} message : #{json_errors.join(', ')}"
     end
     # json ok - process verify gifts request/response
-    login_users, verify_gifts = message['login_users'], message['verify_gifts']
+    mid, request_mid, login_users, verify_gifts, error =
+        message['mid'], message['request_mid'], message['login_users'], message['verify_gifts'], message['error']
     if request
-      error, keep_message = receive_verify_gifts_request(login_users, verify_gifts)
+      error, keep_message = receive_verify_gifts_request(mid, login_users, verify_gifts)
       return [error, keep_message]
     else
-      return [receive_verify_gifts_response(verify_gifts), false]
+      return [receive_verify_gifts_response(mid, request_mid, verify_gifts, error), false]
     end
-  end
-
-  # receive_verify_gifts_message
+  end # receive_verify_gifts_message
 
 
   # return array with messages to server or nil
@@ -2120,9 +2189,7 @@ class Server < ActiveRecord::Base
     logger.debug2 "messages = #{messages}"
     messages.size == 0 ? nil : messages
 
-  end
-
-  # send_messages
+  end # send_messages
 
 
   # server ping - server to server messages - like js ping /util/ping (client server messages)
@@ -2247,9 +2314,7 @@ class Server < ActiveRecord::Base
     self.reload
     # 3) todo: etc
 
-  end
-
-  # ping
+  end # ping
 
 
   public

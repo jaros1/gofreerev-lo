@@ -726,6 +726,8 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             :msgtype  => { :type => 'string', :pattern => '^verify_gifts$' },
+            # mid - unique server to server message id
+            :mid => { :type => 'integer', :minimum => 1},
             # array with logged in users - must be a hash with sha256, pseudo_user_id and sha256_updated_at
             # (verified server user) or a negative integer (unknown user)
             :login_users => {
@@ -791,13 +793,19 @@ JSON_SCHEMA = {
                     }
                 }
             }
-        }
+        },
+        :required => %w(msgtype mid login_users verify_gifts),
+        :additionalProperties => false
     },
 
     :verify_gifts_response => {
         :type => 'object',
         :properties => {
             :msgtype => {:type => 'string', :pattern => '^verify_gifts$'},
+            # mid - unique server to server message id
+            :mid => { :type => 'integer', :minimum => 1},
+            # request mid - unique server to server message id - from verify gifts request
+            :request_mid => { :type => 'integer', :minimum => 1},
             # array with verify gifts response to clients on other gofreerev server
             :verify_gifts => {
                 :type => 'array',
@@ -818,9 +826,11 @@ JSON_SCHEMA = {
                     :required => %w(seq),
                     :additionalProperties => false
                 }
-            }
+            },
+            # optional error message.
+            :error => { :type => 'string' }
         },
-        :required => %w(msgtype),
+        :required => %w(msgtype mid request_mid),
         :additionalProperties => false
     },
 

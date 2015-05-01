@@ -1329,9 +1329,6 @@ class UtilController < ApplicationController
           time1 = Time.zone.now
           # system secret and/or sha256 signatures for users has changed since last client ping
           # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)
-
-          # todo: should also return this short friend list when secret changes on other gofreerev servers
-
           login_users = User.where(:user_id => login_user_ids) unless login_users
           # cache friends info. for friends and people in network
           User.cache_friend_info(login_users)
@@ -1357,17 +1354,20 @@ class UtilController < ApplicationController
             end
             hash
           end
-          # check remote_sha256_updated_at. user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
+          # check sha256 signature changed on other gofreerev servers (remote_sha256_updated_at)
+          # user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
+          # ( see server.from_sha256s_to_user_ids where incoming sha256 signatures are translated to internal user ids )
           if remote_sha256_values_changed.size > 0
             # set refresh = true if friend list update operation should be started by client
             if !User.check_changed_remote_sha256(@json[:friends], login_users, remote_sha256_values_changed) and !system_secret_changed and !sha256_values_changed
               @json.delete(:friends)
             end
           end
-
-          # old sha256 signatures are valid for 3 minutes after update of system secret
-          set_session_value :system_secret_updated_at, system_secret_at if system_secret_changed
-          @json[:friends_sha256_update_at] = system_secret_at.to_i
+          if @json[:friends]
+            # old sha256 signatures are valid for 3 minutes after update of system secret
+            set_session_value :system_secret_updated_at, system_secret_at if system_secret_changed
+            @json[:friends_sha256_update_at] = system_secret_at.to_i
+          end
           time2 = Time.zone.now
           elapsed = (time2-time1)
           logger.debug2 "elapsed = #{elapsed}"

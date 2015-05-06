@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150501152725) do
+ActiveRecord::Schema.define(version: 20150505093226) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -365,7 +365,8 @@ ActiveRecord::Schema.define(version: 20150501152725) do
     t.datetime "created_at"
     t.datetime "updated_at"
     t.string   "error"
-    t.integer  "mid"
+    t.integer  "request_mid"
+    t.integer  "response_mid"
   end
 
   add_index "verify_gifts", ["client_sid", "client_sha256", "client_seq"], name: "index_verify_gift_pk", unique: true, using: :btree

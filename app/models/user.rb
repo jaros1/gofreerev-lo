@@ -1225,7 +1225,7 @@ class User < ActiveRecord::Base
 
   # self.find_friends
 
-  # batch task for friends find - only relevant for multi user login or shared accounts find friends batch task for friends find notifications
+  # batch task for friends find - only relevant for multi user login
   # without users param - started as post login task after single user login - batch notification in gofreerev and to facebook/email
   # with user param - called from util.new_messages_count for multi user login - auto friends search for login users - online notification in Gofreerev only
   # rules:
@@ -1243,9 +1243,7 @@ class User < ActiveRecord::Base
         # find with user combination
 
         # find without user combination - pending friends proposals are already stored on friends table with api_friend == 'P'
-        login_users = User.where('share_account_id is null and last_login_at is not null ' +
-                                     'and last_login_at > ? ' +
-                                     'and last_friends_find_at < ?',
+        login_users = User.where('last_login_at is not null and last_login_at > ? and last_friends_find_at < ?',
                                  FIND_FRIENDS_LAST_LOGIN.ago, FIND_FRIENDS_LAST_NOTI.ago).includes(:friends)
         # check for "unread" friends proposals
         login_users.delete_if do |login_user|

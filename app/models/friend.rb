@@ -318,7 +318,7 @@ class Friend < ActiveRecord::Base
       user.api_profile_url         = new_friends[user_id][:api_profile_url]
       user.api_profile_picture_url = new_friends[user_id][:api_profile_picture_url]
       user.no_api_friends          = new_friends[user_id][:no_api_friends]
-      user.update_sha256(true)
+      # user.update_sha256(true)
       user.save!
       new_users[user_id] = user
     end

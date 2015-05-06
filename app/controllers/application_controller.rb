@@ -638,24 +638,15 @@ class ApplicationController < ActionController::Base
         logger.debug2 "invalid picture received from #{provider}. image = #{image}"
       end
     end
-    # 2) post_login for relevant providers
-    providers = [provider]
-    providers += single_sign_on_users.collect { |user2| user2.provider } if single_sign_on_users
-    providers.each do |provider2|
-      if provider2 != provider
-        # do not schedule post login tasks for expired logins (single sign-on)
-        user2 = single_sign_on_users.find { |user3| user3.provider == provider2 }
-        next unless user2.access_token_expires
-        next if user2.access_token_expires.abs < Time.now.to_i
-      end
-      post_login_task_provider = "post_login_#{provider2}" # private method in UtilController
-      if UtilController.new.private_methods.index(post_login_task_provider.to_sym)
-        add_task post_login_task_provider, 5
-      else
-        add_task "generic_post_login('#{provider2}')", 5
-        logger.debug2 "no post_login_#{provider2} method was found in util controller - using generic post login task"
-      end
-    end # each provider2
+    # 2) post_login for provider
+    post_login_task_provider = "post_login_#{provider}" # private method in UtilController
+    if UtilController.new.private_methods.index(post_login_task_provider.to_sym)
+      add_task post_login_task_provider, 5
+    else
+      add_task "generic_post_login('#{provider}')", 5
+      logger.debug2 "no post_login_#{provider} method was found in util controller - using generic post login task"
+    end
+
     # 4) refresh user(s) balance
     today = Date.parse(Sequence.get_last_exchange_rate_date)
     if !user.balance_at or user.balance_at != today

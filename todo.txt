@@ -1765,4 +1765,33 @@
 406) check error handling when receiving messages. pull and push.
      server error messages should be written to log and error message sent to other gofreerev server
 
-select next issue to solve: (rand*406).floor+1
+407) rescue in generic_post_login: Exception: EncryptedStrings::NoPasswordError (EncryptedStrings::NoPasswordError)
+     rescue in generic_post_login: Backtrace: /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/symmetric_cipher.rb:77:in `initialize'
+     /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/extensions/string.rb:197:in `new'
+     /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/extensions/string.rb:197:in `cipher_from_args'
+     /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/extensions/string.rb:45:in `encrypt'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1402:in `block in save_sha256_changed_message'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1385:in `upto'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1385:in `save_sha256_changed_message'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/user.rb:2399:in `update_sha256'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/friend.rb:410:in `block in update_api_friends_from_hash'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/friend.rb:327:in `each'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/friend.rb:327:in `update_api_friends_from_hash'
+     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/controllers/util_controller.rb:272:in `post_login_update_friends'
+     changed user info => sha256 message to other gofreerev server before symmetric password setup has completed
+     for example after server reboot and clearing password info stored in memory
+     as fallback should server_users be marked so that sha256 message is sent after password has completed
+     See Message.receive_messages:
+              # check for any ingoing server messages with changed user sha256 signature.
+              # must sent either changed sha256 signature to other gofreerev server (here)
+              # or update user information on this gofreerev server (client ping)
+              server_users = ServerUser.where(
+                  'verified_at is not null and remote_pseudo_user_id is not null and remote_sha256_updated_at is not null ' +
+                      'and ( sha256_message_sent_at is null or sha256_message_sent_at < ? )', 2.minutes.ago)
+              Server.save_sha256_changed_message(4, server_users) if server_users.size > 0
+
+408) firefox log: Password fields present on an insecure (http://) page. This is a security risk that allows user login credentials to be stolen.[Learn More]
+     replace password field with text field + css to hide characters
+     http://stackoverflow.com/questions/3574474/change-text-to-dots-in-text-field-with-css-javascript
+
+select next issue to solve: (rand*408).floor+1

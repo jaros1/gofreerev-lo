@@ -1384,30 +1384,40 @@ class Server < ActiveRecord::Base
     users = []
     0.upto(server_users.size-1) do |i|
       su = server_users[i]
-      users.push({:sha256 => su.user.calc_sha256(su.server.secret),
-                  :pseudo_user_id => su.remote_pseudo_user_id,
-                  :sha256_updated_at => su.user.sha256_updated_at.to_i
-                 })
-      # mark sha256 message as sent for user
-      su.sha256_message_sent_at = now
+      if su.server.new_password
+        users.push({:sha256 => su.user.calc_sha256(su.server.secret),
+                    :pseudo_user_id => su.remote_pseudo_user_id,
+                    :sha256_updated_at => su.user.sha256_updated_at.to_i
+                   })
+        # mark sha256 message as sent
+        su.sha256_message_sent_at = now
+      else
+        # symmetric password setup not yet completed. symmetric passwords are stored in memory and are null after reboot.
+        # or maybe no server to server connection to other gofreerev server
+        # mark sha256 message as not sent. Will be sent later after completed password setup in Message.receive_messages
+        logger.warn2 "symmetric password setup not completed for server #{su.server_id}. sha256 message for #{su.user.debug_info} will be sent later"
+        su.sha256_message_sent_at = nil
+        su.remote_sha256_updated_at = Time.zone.now unless su.remote_sha256_updated_at
+      end
       su.save!
-      if i == server_users.size-1 or su.server_id != server_users[i+1].server_id
-        # save message
-        message = {
-            :msgtype => 'sha256',
-            :seq => seq,
-            :users => users
-        }
-        logger.debug2 "send sha256 message #{message}"
-        sym_enc_message = message.to_json.encrypt(:symmetric, :password => su.server.new_password)
-        sym_enc_message = Base64.encode64(sym_enc_message)
-        m = Message.new
-        m.from_did = SystemParameter.did
-        m.to_did = su.server.new_did
-        m.server = true
-        m.encryption = 'sym'
-        m.message = sym_enc_message
-        m.save!
+      if (i == server_users.size-1 or su.server_id != server_users[i+1].server_id) and  users.size > 0
+          # save message
+          message = {
+              :msgtype => 'sha256',
+              :seq => seq,
+              :users => users
+          }
+          logger.debug2 "send sha256 message #{message}"
+          sym_enc_message = message.to_json.encrypt(:symmetric, :password => su.server.new_password)
+          sym_enc_message = Base64.encode64(sym_enc_message)
+          m = Message.new
+          m.from_did = SystemParameter.did
+          m.to_did = su.server.new_did
+          m.server = true
+          m.encryption = 'sym'
+          m.message = sym_enc_message
+          m.save!
+
         users = []
       end # if
     end # do  i
@@ -2008,12 +2018,14 @@ class Server < ActiveRecord::Base
     # format response - note - no login users array
     message = {
         :msgtype => 'verify_gifts',
-        :verify_gifts => verify_gifts_response
+        :verify_gifts => verify_gifts_response,
+        :mid => Sequence.next_server_mid,
+        :request_mid => mid
     }
     message[:error] = local_verify_gifts_error if local_verify_gifts_error
 
     # validate json message before "sending"
-    json_schema = :verify_gifts_request
+    json_schema = :verify_gifts_response
     if !JSON_SCHEMA.has_key? json_schema
       return ["Could not validate verify_gifts response. JSON schema definition #{json_schema.to_s} was not found.", false]
     end
@@ -2034,6 +2046,7 @@ class Server < ActiveRecord::Base
     m.server = true
     m.encryption = 'sym'
     m.message = sym_enc_message
+    m.mid = message[:mid]
     m.save!
 
   end # receive_verify_gifts_request
@@ -2099,21 +2112,49 @@ class Server < ActiveRecord::Base
                       "invalid_response.size = #{invalid_response.size}, identical_response.size = #{identical_response.size}, " +
                       "ok_response.size = #{ok_response.size}"
 
-    if unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size > 0
-      # todo: send server to server error message
-
-
-    end
-
     # verify_gifts =
     #    [{:seq=>224, :gid=>"14253148989837740200", :verified_at_server=>true}, {:seq=>225, :gid=>"14253152345973353338", :verified_at_server=>true},
     #     {:seq=>226, :gid=>"14253163835441202510", :verified_at_server=>true}, {:seq=>227, :gid=>"14253166119353097472", :verified_at_server=>true},
     #     ...
     #     {:seq=>234, :gid=>"14258782920140696549", :verified_at_server=>true}]
+    ok_response.each do |verify_gift|
+      seq = verify_gift['seq']
+      vg = vgs[seq]
+      vg.verified_at_server = verify_gift['verified_at_server']
+      vg.error = verify_gift['error'] if verify_gift['error']
+      vg.response_mid = mid
+      vg.save!
+    end
 
+    if unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size > 0
+      # send server to server error message
+      errors = [ "#{unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size} rows in verify gift response" ]
+      errors << "Unknown or deleted seqs: " + unknown_seq.collect { |vg| vg['seq'] }.join(', ') if unknown_seq.size > 0
+      errors << "Invalid seqs (other server): " + invalid_server_id.collect { |vg| vg['seq'] }.join(', ') if invalid_server_id.size > 0
+      errors << "Invalid gids: " + invalid_gid.collect { |vg| vg['seq'] }.join(', ') if invalid_gid.size > 0
+      errors << "Changed response: " + invalid_response.collect { |vg| vg['seq'] }.join(', ') if invalid_gid.size > 0
+      message = {
+          :msgtype => 'error',
+          :mid => Sequence.next_server_mid,
+          :request_mid => request_mid,
+          :response_mid => mid,
+          :error => errors.join(', ')
+      }
+      logger.debug2 "error message = #{message}"
+      sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+      sym_enc_message = Base64.encode64(sym_enc_message)
+      m = Message.new
+      m.from_did = SystemParameter.did
+      m.to_did = self.new_did
+      m.server = true
+      m.encryption = 'sym'
+      m.message = sym_enc_message
+      m.mid = message.mid
+      m.save!
+      return errors.join(', ')
+    end
 
-
-    return "receive_verify_gifts_response not implemented. verify gifts = #{verify_gifts}, error = #{error}"
+    return nil
   end # receive_verify_gifts_response
 
 

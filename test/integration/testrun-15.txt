@@ -1,0 +1,59 @@
+client 2:
+
+2015-05-06 08:26:40.267 gofreerev.js?body=1:5873 GiftService.receive_message_send_gifts: other_server_id_to_sha256 = {"0":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}
+2015-05-06 08:26:40.268 gofreerev.js?body=1:6139 GiftService.receive_message_send_gifts: verify remote gift {"gid":"14308934536173258982","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1430893453,"created_at_server":1,"currency":"usd","direction":"giver","description":"a","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+2015-05-06 08:26:40.277 gofreerev.js?body=1:6203 GiftService.receive_message_send_gifts: Waiting for 1 gifts and 0 comments to be server validated.
+2015-05-06 08:26:40.277 gofreerev.js?body=1:6207 GiftService.receive_message_send_gifts: verify_gifts = [{"gid":"14308934536173258982","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1430893453,"created_at_server":1,"currency":"usd","direction":"giver","description":"a","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}]
+2015-05-06 08:26:40.278 gofreerev.js?body=1:6208 GiftService.receive_message_send_gifts: verify_comments = []
+2015-05-06 08:26:42.250 gofreerev.js?body=1:3768 GiftService.verify_gifts_request: 1 new gift verification requests sent to server.
+2015-05-06 08:26:42.252 gofreerev.js?body=1:3960 GiftService.verify_comments_request: Not implemented.
+2015-05-06 08:26:42.253 gofreerev.js?body=1:4413 GiftService.send_messages: device.password = ]aqTsp#&8C!0P@CZ;Tv£W$k+ +VSCs)STwv? -%s=Kbd&-AYCIm3W+O5f:KDfI0Lq)0y77%DqzET;OSJ
+2015-05-06 08:26:45.058 gofreerev.js?body=1:3693 GiftService.verify_gifts_request: Warning. Found 0 local and 1 remote not yet verified gifts in buffer.
+
+
+server 2:
+
+  SQL (0.4ms)  INSERT INTO `verify_gifts` (`client_seq`, `client_sha256`, `client_sid`, `created_at`, `gid`, `request_mid`, `server_id`, `server_seq`, `updated_at`) VALUES (-3, 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=', '14308935196808158683', '2015-05-06 06:26:42', '14308934536173258982', 1, 1, 1, '2015-05-06 06:26:42')
+   (71.5ms)  COMMIT
+verify_gifts: response = []
+verify_gifts: server_requests = {1=>[{:seq=>1, :gid=>"14308934536173258982", :sha256=>"3´¢¢\u0003:\u008E¨/\u0015¦ £²>vÄcÖDkb-øÈN\u00849\u0011ªr", :giver_user_ids=>[{:sha256=>"kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y=", :pseudo_user_id=>323, :sha256_updated_at=>1430819298}]}]}
+block in verify_gifts: verify_gifts message = {:msgtype=>"verify_gifts", :mid=>1, :login_users=>[{:sha256=>"UuDJUQ2HbHmPZ08834UYQOIFDqLtQIafmUgeghW8WLI=", :pseudo_user_id=>324, :sha256_updated_at=>1430819297}], :verify_gifts=>[{:seq=>1, :gid=>"14308934536173258982", :sha256=>"3´¢¢\u0003:\u008E¨/\u0015¦ £²>vÄcÖDkb-øÈN\u00849\u0011ªr", :giver_user_ids=>[{:sha256=>"kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y=", :pseudo_user_id=>323, :sha256_updated_at=>1430819298}]}]}
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+   (0.1ms)  BEGIN
+  SQL (0.4ms)  INSERT INTO `messages` (`created_at`, `encryption`, `from_did`, `message`, `mid`, `server`, `to_did`, `updated_at`) VALUES ('2015-05-06 06:26:42', 'sym', '14308901216421983040', 'Ui9BdEczSjU2Y1hQSTVaMHBwdHlNU29wSTBtSVJYWFlPTkd6di9YQTcvWGts\nUGM2ajhCZ0Y2MVp5UE1hCmVmSktncW1IY0g2b3Y3Lzc4VlZlbmpWZjhValZ0\naFN4VlR0anJSSHFMOFYwb1hsM0JqcHprdWlGTENaUwpITnh0SVZHUFdzUDdH\ndUF4eTBOVjJFN0tvNmhjcW9CY2NpaHRYekJlZ2VoZkMvSEZJZkoySjd3SWVw\nWDIKRWY4UjdQcjdKMzZsTG0rM3B2WFhxRllrSERXNUsyVWdGZDhnSHR6N1JB\ndWFLZUZ5dXdCZzF4dnZxbVd3ClRNdlE0MTR4Tlg4UEhyMjYxYmlMamUrbnhu\nODhWTi93V21WV2taSitNQWx6Z1d6QkNhWjQrbjYxL0liQQpjRisydXVnMUU5\nQUc4cmpnRXpROElKM2pBU3I1L1V6Q3VMa291a3p6UmVrM1dHK0FoWUUzQVND\nME9sSTMKTDJObjFrWExwNXBpdHlvNnUyR1QxMFRnU05mSW9leWJJd05WVVRK\nUW5ZeWw2UDZiY0l5SkYvZFlSSEpCCk95QnVzZ1kzUDBTNU5LeFZnT1JPRXZt\nbThyMlROMENxMklvMmtQWEI5OVFjWHVDQVNjMisvczIrc05NTwo4Z2ppaHhQ\nOWNMaXhjZ2Jja0ZkN0JUSTlGMUplS2w1d3A4KzNvN3h4RXZBUFFMTDFaTU9O\ndlhZaUZOdW4KTWU2VWhzcVR2MjVINVFGTEZXUmJWbjFOQXFlUmIrMXVPQW9s\nCg==\n', 1, 1, '14308901097809213139', '2015-05-06 06:26:42')
+
+
+server 1:
+
+receive_verify_gifts_request: login_user_ids = 1563545817212684/facebook
+receive_verify_gifts_request: verify_gifts (1) = [{"seq"=>1, "gid"=>"14308934536173258982", "sha256"=>"3´¢¢\u0003:\u008E¨/\u0015¦ £²>vÄcÖDkb-øÈN\u00849\u0011ªr", "giver_user_ids"=>[{"sha256"=>"kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y=", "pseudo_user_id"=>323, "sha256_updated_at"=>1430819298}]}]
+  SQL (0.9ms)  SELECT `server_users`.`id` AS t0_r0, `server_users`.`server_id` AS t0_r1, `server_users`.`user_id` AS t0_r2, `server_users`.`verified_at` AS t0_r3, `server_users`.`created_at` AS t0_r4, `server_users`.`updated_at` AS t0_r5, `server_users`.`pseudo_user_id` AS t0_r6, `server_users`.`remote_pseudo_user_id` AS t0_r7, `server_users`.`remote_sha256_updated_at` AS t0_r8, `server_users`.`sha256_message_sent_at` AS t0_r9, `server_users`.`sha256_signature_received_at` AS t0_r10, `users`.`id` AS t1_r0, `users`.`user_id` AS t1_r1, `users`.`user_name` AS t1_r2, `users`.`created_at` AS t1_r3, `users`.`updated_at` AS t1_r4, `users`.`currency` AS t1_r5, `users`.`balance` AS t1_r6, `users`.`balance_at` AS t1_r7, `users`.`permissions` AS t1_r8, `users`.`no_api_friends` AS t1_r9, `users`.`negative_interest` AS t1_r10, `users`.`api_profile_url` AS t1_r11, `users`.`api_profile_picture_url` AS t1_r12, `users`.`deleted_at` AS t1_r13, `users`.`last_login_at` AS t1_r14, `users`.`deauthorized_at` AS t1_r15, `users`.`last_friends_find_at` AS t1_r16, `users`.`language` AS t1_r17, `users`.`access_token` AS t1_r18, `users`.`access_token_expires` AS t1_r19, `users`.`refresh_token` AS t1_r20, `users`.`sha256` AS t1_r21, `users`.`old_sha256` AS t1_r22, `users`.`sha256_updated_at` AS t1_r23, `users`.`friend_sha256_updated_at` AS t1_r24, `users`.`remote_sha256_updated_at` AS t1_r25, `users`.`remote_sha256_update_info` AS t1_r26 FROM `server_users` LEFT OUTER JOIN `users` ON `users`.`id` = `server_users`.`user_id` WHERE ((users.sha256 in ('kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y=') or pseudo_user_id in (323)) and server_id = 1 and verified_at is not null)
+receive_verify_gifts_request: no_errors = 0, response.size = 0, request_on_hold.size = 0, local_request.size = 1
+receive_verify_gifts_request: verify_gifts (2) = [{"seq"=>1, "gid"=>"14308934536173258982", "sha256"=>"3´¢¢\u0003:\u008E¨/\u0015¦ £²>vÄcÖDkb-øÈN\u00849\u0011ªr", "giver_user_ids"=>[{"sha256"=>"kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y=", "pseudo_user_id"=>323, "sha256_updated_at"=>1430819298}]}]
+verify_gifts: verify_gifts = [{"seq":1,"gid":"14308934536173258982","sha256":"3´¢¢\u0003:¨/\u0015¦ £²\u003EvÄcÖDkb-øÈN9\u0011ªr","giver_user_ids":[2],"receiver_user_ids":null}]
+verify_gifts: login_user_ids = ["1563545817212684/facebook"]
+   (0.6ms)  SELECT COUNT(*) FROM `users` WHERE `users`.`user_id` IN ('1563545817212684/facebook')
+   (0.3ms)  SELECT COUNT(*) FROM `users` WHERE `users`.`user_id` IN ('1563545817212684/facebook')
+   (0.1ms)  SELECT COUNT(*) FROM `users` WHERE `users`.`user_id` IN ('1563545817212684/facebook')
+  User Load (0.5ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1563545817212684/facebook')
+  ServerUser Load (0.5ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` IN (3)
+  Friend Load (0.5ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1563545817212684/facebook'))
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook'))
+  Gift Load (0.4ms)  SELECT `gifts`.* FROM `gifts` WHERE `gifts`.`gid` IN ('14308934536173258982')
+  User Load (0.5ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` IN (2)
+  ServerUser Load (0.5ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` IN (2)
+verify_gifts: response = [{:seq=>1, :gid=>"14308934536173258982", :verified_at_server=>true}]
+verify_gifts: server_requests = {}
+receive_verify_gifts_request: local_verify_gifts_request = [{"seq"=>1, "gid"=>"14308934536173258982", "sha256"=>"3´¢¢\u0003:\u008E¨/\u0015¦ £²>vÄcÖDkb-øÈN\u00849\u0011ªr", "giver_user_ids"=>[2], "receiver_user_ids"=>nil}]
+receive_verify_gifts_request: local_verify_gifts_response = {:gifts=>[{:seq=>1, :gid=>"14308934536173258982", :verified_at_server=>true}]}
+receive_verify_gifts_request: local_verify_gifts_error =
+receive_verify_gifts_request: verify_gifts_response = [{:seq=>1, :gid=>"14308934536173258982", :verified_at_server=>true}]
+receive_verify_gifts_request: Failed to return remote verify gifts response. Error in verify_gifts_request
+receive_verify_gifts_request: message = {:msgtype=>"verify_gifts", :verify_gifts=>[{:seq=>1, :gid=>"14308934536173258982", :verified_at_server=>true}]}
+receive_verify_gifts_request: json_schema = {:type=>"object", :properties=>{:msgtype=>{:type=>"string", :pattern=>"^verify_gifts$"}, :mid=>{:type=>"integer", :minimum=>1}, :login_users=>{:type=>"array", :items=>{:type=>["object", "integer"], :properties=>{:sha256=>{:type=>"string"}, :pseudo_user_id=>{:type=>"integer", :minimum=>1}, :sha256_updated_at=>{:type=>"integer"}, :required=>["sha256", "pseudo_user_id", "sha256_updated_at"], :additionalProperties=>false}, :maximum=>-1}, :minItems=>1}, :verify_gifts=>{:type=>"array", :items=>{:type=>"object", :properties=>{:seq=>{:type=>"integer"}, :gid=>{:type=>"string", :pattern=>"^(146251563[0-6]|14625156[0-2][0-9]|1462515[0-5][0-9]{2}|146251[0-4][0-9]{3}|146250[0-9]{4}|1462[0-4][0-9]{5}|146[01][0-9]{6}|14[0-5][0-9]{7}|139[0-9]{7}|1389[0-9]{6}|1388[6-9][0-9]{5}|13885[4-9][0-9]{4}|138853[5-9][0-9]{3}|1388534[4-9][0-9]{2})[0-9]{10}$"}, :sha256=>{:type=>"string", :maxLength=>32}, :sha256_deleted=>{:type=>"string", :maxLength=>32}, :sha256_accepted=>{:type=>"string", :maxLength=>32}, :giver_user_ids=>{:type=>["NilClass", "array"], :items=>{:type=>["object", "integer"], :properties=>{:sha256=>{:type=>"string"}, :pseudo_user_id=>{:type=>"integer", :minimum=>1}, :sha256_updated_at=>{:type=>"integer"}}, :required=>["sha256", "pseudo_user_id", "sha256_updated_at"], :additionalProperties=>false, :maximum=>-1}}, :receiver_user_ids=>{:type=>["NilClass", "array"], :items=>{:type=>["object", "integer"], :properties=>{:sha256=>{:type=>"string"}, :pseudo_user_id=>{:type=>"integer", :minimum=>1}, :sha256_updated_at=>{:type=>"integer"}}, :required=>["sha256", "pseudo_user_id", "sha256_updated_at"], :additionalProperties=>false, :maximum=>-1}}}}}}, :required=>["msgtype", "mid", "login_users", "verify_gifts"], :additionalProperties=>false}
+receive_verify_gifts_request: errors =
+The property '#/' did not contain a required property of 'mid' in schema 20e4f1e8-9de9-5d07-914c-37f787aaf522#,
+The property '#/' did not contain a required property of 'login_users' in schema 20e4f1e8-9de9-5d07-914c-37f787aaf522#
+   (0.2ms)  BEGIN
+  SQL (0.4ms)  DELETE FROM `messages` WHERE `messages`.`id` = 126
+   (38.5ms)  COMMIT

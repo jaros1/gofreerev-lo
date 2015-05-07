@@ -2056,7 +2056,8 @@ class Server < ActiveRecord::Base
   def receive_verify_gifts_response (mid, request_mid, verify_gifts, error)
     logger.debug2 "mid = #{mid}, request_mid = #{request_mid}"
     logger.debug2 "verify_gifts = #{verify_gifts}"
-    logger.debug2 "error        = #{error}"
+    logger.debug2 "error        = #{error} (#{error.class})"
+    logger.debug2 "error.size = #{error.size}" if error.class == Array
 
     errors = []
     errors << "empty verify_gifts response message was rejected" unless verify_gifts or error
@@ -2065,10 +2066,15 @@ class Server < ActiveRecord::Base
     # seq in verify_gifts must be unique
     if verify_gifts
       server_seqs = verify_gifts.collect { |hash| hash['seq'] }.uniq
-      errors << "verify_gifts response message was rejected. seq in verify_gifts array must be unique" if server_seqs.size != verify_gifts.size
-      verify_gifts = nil
+      if server_seqs.size != verify_gifts.size
+        errors << "verify_gifts response message was rejected. seq in verify_gifts array must be unique"
+        verify_gifts = nil
+      end
     end
-    return errors.join(', ') unless verify_gifts
+    if !verify_gifts or verify_gifts.size == 0
+      logger.debug2 "errors = #{errors.join(', ')}"
+      return errors.size == 0 ? nil : errors.join(', ')
+    end
 
     # seq must be in verify_gifts table (see Gift.verify_gifts)
     vgs = {}
@@ -2087,7 +2093,7 @@ class Server < ActiveRecord::Base
       vg = vgs[seq]
       if !vg
         unknown_seq << verify_gift
-      elsif vg.server_id != self.server_id
+      elsif vg.server_id != self.id
         invalid_server_id << verify_gift
       elsif vg.gid != gid
         invalid_gid << verify_gift

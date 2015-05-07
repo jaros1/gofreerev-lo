@@ -293,7 +293,24 @@ class Gift < ActiveRecord::Base
   def self.verify_gifts (verify_gifts, login_user_ids, client_sid, client_sha256)
     logger.debug2 "verify_gifts = #{verify_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
-    return unless verify_gifts
+    if !verify_gifts
+      # any remote verify gift response ready for this client?
+      vgs = VerifyGift.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
+      return nil if vgs.size == 0
+      logger.debug2 "vgs.size = #{vgs.size}"
+      response = {
+          :gifts => vgs.collect do |vg|
+            logger.debug2 "vg = #{vg.to_json}" if vg.error
+            {
+                :seq => vg.client_seq,
+                :gid => vg.gid,
+                :verified_at_server => vg.verified_at_server
+            }
+          end
+      }
+      vgs.delete_all
+      return response
+    end
 
     # cache friends for login users - giver and/or receiver for gifts must be friend of login user
     login_users = User.where(:user_id => login_user_ids).includes(:server_users)

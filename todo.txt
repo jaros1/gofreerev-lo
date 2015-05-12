@@ -1794,4 +1794,25 @@
      replace password field with text field + css to hide characters
      http://stackoverflow.com/questions/3574474/change-text-to-dots-in-text-field-with-css-javascript
 
-select next issue to solve: (rand*408).floor+1
+409) console 1:
+     ping: res = #<HTTP::Message:0x00000008197488>
+     ping: res.body = {"error":"Ping too early. Please wait 1.999 seconds.","interval":1999.0}
+     ping: ping_response = {"error"=>"Ping too early. Please wait 1.999 seconds.", "interval"=>1999.0}
+     Invalid ping json response: The property '#/interval' of type Float did not match the following type: integer in schema 86dfb840-a317-5a70-9500-3286d17b48a9#
+
+410) add server.ping_loop method : s = Server.first ; s.login ; loop do ; puts s.ping ; s.reload ; sleep 8 ; end
+     get interval from ping response
+
+411) client verify gift. Identical gift is being added many time to verify_gifts array:
+     GiftService.receive_message_send_gifts:
+     verify_gifts = [
+        {"gid":"14311626443044336206","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431162644,"created_at_server":1,"currency":"usd","direction":"giver","description":"client 1","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"},
+        {"gid":"14311626443044336206","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431162644,"created_at_server":1,"currency":"usd","direction":"giver","description":"client 1","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"},
+          ...
+        {"gid":"14311626443044336206","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431162644,"created_at_server":1,"currency":"usd","direction":"giver","description":"client 1","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ
+
+412) split giftService.receive_messages in two functions
+     1) receive messages - decrypt and move to inbox
+     2) process messages - process messages from inbox (new messages) and read (old not processed messages)
+
+select next issue to solve: (rand*412).floor+1

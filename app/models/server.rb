@@ -2246,13 +2246,13 @@ class Server < ActiveRecord::Base
   def ping
 
     # secret must exists. Used in users sync between servers
-    return 'Cannot send ping request. No secret was found for server id #{self.id}. Please log in' unless self.secret
+    return {:error => 'Cannot send ping request. No secret was found for server id #{self.id}. Please log in'} unless self.secret
 
     # all time calc in time with milliseconds
     now = Time.zone.now.round(3)
     if self.next_ping_at and now < self.next_ping_at
       seconds = (self.next_ping_at-now)
-      return "Ping too early. Please wait #{seconds} seconds."
+      return { :error => "Ping too early. Please wait #{seconds} seconds.", :interval => (seconds*1000).round }
     end
     default_interval = 60 # default 60 seconds is used as start and fallback value for interval between pings
     old_interval = self.next_ping_at - self.last_ping_at if self.last_ping_at and self.next_ping_at
@@ -2272,7 +2272,7 @@ class Server < ActiveRecord::Base
       # logger.debug2 "cookie = #{cookie.to_json}"
       xsrf_token = cookie.value if cookie.name == 'XSRF-TOKEN'
     end
-    return "No XSRF-TOKEN was found in session cookie" unless xsrf_token
+    return { :error => "No XSRF-TOKEN was found in session cookie" } unless xsrf_token
 
     # pseudo_user_ids used in users message. from pseudo_user_id to user_id. initialised in request. checked in response
     pseudo_user_ids = {}
@@ -2304,10 +2304,10 @@ class Server < ActiveRecord::Base
     # json validate ping request before send
     json_schema = :ping_request
     if !JSON_SCHEMA.has_key? json_schema
-      return "Could not validate ping request. JSON schema definition #{json_schema.to_s} was not found."
+      return { :error => "Could not validate ping request. JSON schema definition #{json_schema.to_s} was not found." }
     end
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_request)
-    return "Invalid ping json request: #{json_errors.join(', ')}" unless json_errors.size == 0
+    return { :error => "Invalid ping json request: #{json_errors.join(', ')}" } unless json_errors.size == 0
 
     # update timestamp before ping
     logger.debug2 "now = #{now} (#{now.class})"
@@ -2329,10 +2329,7 @@ class Server < ActiveRecord::Base
     res = client.post(url, :body => ping_request.to_json, :header => header)
     logger.debug2 "res = #{res}"
     FileUtils.rm signature_filename
-    if res.status != 200
-      puts "post #{url.to_s} failed with status #{res.status}"
-      return nil
-    end
+    return { :error => "post #{url.to_s} failed with status #{res.status}" } unless res.status == 200
     client.cookie_manager.save_all_cookies(true, true, true)
     logger.debug2 "res.body = #{res.body}"
 
@@ -2341,11 +2338,11 @@ class Server < ActiveRecord::Base
     logger.debug2 "ping_response = #{ping_response}"
     json_schema = :ping_response
     if !JSON_SCHEMA.has_key? json_schema
-      return "Could not validate ping response. JSON schema definition #{json_schema.to_s} was not found."
+      return { :error => "Could not validate ping response. JSON schema definition #{json_schema.to_s} was not found." }
     end
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_response)
-    return "Invalid ping json response: #{json_errors.join(', ')}" unless json_errors.size == 0
-    return ping_response['error'] if ping_response['error']
+    return { :error => "Invalid ping json response: #{json_errors.join(', ')}" } unless json_errors.size == 0
+    return { :error => ping_response['error'] } if ping_response['error']
 
     # process ping response from other Gofreerev server
     # 1) interval in milliseconds between ping requests
@@ -2353,13 +2350,14 @@ class Server < ActiveRecord::Base
     self.save!
     # 2) receive and process any messages
     if ping_response["messages"]
-      return ping_response["messages"]["error"] if ping_response["messages"].has_key? "error"
+      return { :error => ping_response["messages"]["error"], :interval => ping_response["interval"]} if ping_response["messages"].has_key? "error"
       # client=true: called from Server.ping. received messages are server messages
       error = Message.receive_messages true, self.new_did, nil, pseudo_user_ids, ping_response["messages"]["messages"]
-      return error if error
+      return { :error => error, :interval => ping_response["interval"] } if error
     end
     self.reload
     # 3) todo: etc
+    { :interval => ping_response["interval"] }
 
   end # ping
 

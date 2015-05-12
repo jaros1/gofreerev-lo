@@ -1095,7 +1095,7 @@ class UtilController < ApplicationController
         seconds = ping.next_ping_at - now
         seconds = 1 if seconds < 1 # minimum 1000 milliseconds in json schema.
         @json[:error] = "Ping too early. Please wait #{seconds} seconds."
-        @json[:interval] = seconds*1000
+        @json[:interval] = (seconds*1000).round
         validate_json_response
         format_response
         return
@@ -1131,7 +1131,7 @@ class UtilController < ApplicationController
       if (rand*100).floor == 0
         # cleanup old sessions
         Ping.where('next_ping_at < ?', 1.hour.ago(now).to_f).delete_all
-        ping = Ping.find_by_id(ping.id)
+        ping = Ping.find_by_id(ping.id) if ping
       end
       if !ping
         ping = Ping.new

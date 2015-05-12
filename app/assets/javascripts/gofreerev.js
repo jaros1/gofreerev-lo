@@ -3672,6 +3672,15 @@ angular.module('gifts', ['ngRoute'])
         var verify_gifts_online = true ; // todo: set to false if ping does not respond - set to true if ping respond
         var verify_gifts_old_remote_seq = Gofreerev.getItem('seq') ; // ignore old remote gift verifications
 
+        // add gift to verify_gifts array. called from receive_message_send_gifts once each pass/loop
+        var verify_gifts_add = function (gift) {
+            var pgm = service + '.verify_gifts_add: ' ;
+            if (gift.in_verify_gifts) return ;
+            gift.in_verify_gifts = true ;
+            verify_gifts.push(gift) ;
+            console.log(pgm + 'added gid ' + gift.gid + ' to verify gifts buffer') ;
+        };
+
         var verify_gifts_request = function () {
             var pgm = service + '.verify_gifts_request: ';
             // check buffer for "old gifts". should normally be empty except for gifts with negative seq (remote gifts)
@@ -3703,6 +3712,7 @@ angular.module('gifts', ['ngRoute'])
             var new_request = 0 ;
             var verify_gift, sha256_client, hash, key ;
             var signatures ;
+            console.log(pgm + 'verify_gifts.length = ' + verify_gifts.length) ;
             while (verify_gifts.length > 0) {
                 verify_gift = verify_gifts.shift();
                 if (verify_gift.hasOwnProperty('verified_at_server')) {
@@ -4055,6 +4065,7 @@ angular.module('gifts', ['ngRoute'])
         var key_mailbox_index = {}; // from key (did+sha256) to index
         var devices = {}; // hash with public key and symmetric password for each unique device (did)
         var user_mailboxes = {}; // list with relevant mailboxes for each user id (mutual friend) - how to notify about changes in gifts
+        var unencrypted_messages = [] ; // temporary buffer symmetric encrypted messages (waiting for public key / symmetric password )
 
         var update_key_mailbox_index = function () {
             var pgm = service + '.update_key_mailbox_index: ';
@@ -5859,11 +5870,13 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'unknown_servers[' + sha256 + '] = ' + unknown_servers[sha256]) ;
                     } // for i
                     if (no_unknown_servers > 0) {
+                        // unknown server. Push back to read folder at check after next ping
                         console.log(pgm + no_unknown_servers + ' unknown servers. wait for new_servers request/response in ping') ;
                         mailbox.read.push(msg);
+                        console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length) ;
                         return ;
                     }
-                    // no unknown servers. translate server sha256 signatures
+                    // no (more) unknown servers. translate server sha256 signatures
                     var other_server_id_to_sha256 = {} ; // from internal server id on other gofreerev server to sha256 signature
                     var server ;
                     for (i=0 ; i<msg.servers.length ; i++) {
@@ -5897,39 +5910,42 @@ angular.module('gifts', ['ngRoute'])
 
             var gifts_already_on_ignore_list = [] ; // array with gids - ignore
             var identical_gift_and_comments = []; // array with gids - ignore
-            var validate_new_gifts = 0; // number of new gifts that must be server validated
+            var verify_new_gifts = 0; // number of new gifts that must be server validated
             var verifying_new_gifts = 0; // number of new gifts already in queue for server validation (offline client, remote gifts or errors)
-            var new_gifts_invalid_signature = []; // array with gids
-            var validate_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
+            var new_gifts_invalid_sha = []; // array with gids
+            var verify_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
             var verifying_old_gifts = 0; // number of old gifts already in queue for server validation (offline client, remote gifts or errors)
-            var old_gifts_invalid_signature = []; // array with gids
-            var validate_new_comments = 0; // number of new comments that must be server validated
+            var old_gifts_invalid_sha = []; // array with gids
+            var verify_new_comments = 0; // number of new comments that must be server validated
             var verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
-            var index_system_errors = []; // gid array with gift index system errors - fatal javascript errors - not communication errors
-            var validation_system_errors = []; // gid array with
+            var new_comments_invalid_sha = []; // array with cids
+            var index_system_errors = []; // gid array with gift index system errors - fatal javascript error
+            var validation_system_errors = []; // gid array with sha validation system errors - fatal javascript error
 
-            var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, old_cids;
+            var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, cid, old_cids;
             var new_gift_creators, old_gift_creators, new_gift_counterpart, old_gift_counterpart ;
             var old_gift_accepted, new_gift_accepted, gift_accept_action, gift_delete_action, gift_price_action, gift_like_action;
             var counterpart_errors ;
+            var gifts_without_mutual_friends ; // array with gids - new gifts - ignore and report as warning in log
 
-            // pass 1, 2, 3 loop - continue until 1) without server verification, 2) with server verification, 3) do actions (insert, update)
+            // pass 1, 2, 3 loop - 1) without server verification, 2) with server verification, 3) do actions (insert, update)
             while (true) {
 
                 // reset counters and arrays - used after gifts loop to select next action and used in errors and warnings
                 gifts_already_on_ignore_list = [] ; // array with gids - ignore
                 identical_gift_and_comments = []; // array with gids - just ignore
-                validate_new_gifts = 0; // number of new gifts that must be server validated
+                verify_new_gifts = 0; // number of new gifts that must be server validated
                 verifying_new_gifts = 0; // number of new gifts already in queue for server validation (offline client, remote gifts or errors)
-                new_gifts_invalid_signature = []; // array with gids
-                validate_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
+                new_gifts_invalid_sha = []; // array with gids
+                verify_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
                 verifying_old_gifts = 0; // number of old gifts already in queue for server validation (offline client, remote gifts or errors)
-                old_gifts_invalid_signature = []; // array with gids
-                validate_new_comments = 0; // number of new comments that must be server validated
+                old_gifts_invalid_sha = []; // array with gids
+                verify_new_comments = 0; // number of new comments that must be server validated
                 verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
                 index_system_errors = []; // gid array with gift index system errors - fatal javascript errors - not communication errors
                 validation_system_errors = []; // gid array with
                 counterpart_errors = [] ;
+                gifts_without_mutual_friends = [] ; // array with gids - new gifts - ignore and report as warning in log
 
                 // gifts loop
                 for (i = 0; i < msg.gifts.length; i++) {
@@ -5943,7 +5959,7 @@ angular.module('gifts', ['ngRoute'])
                         // existing gift
                         index = gid_to_gifts_index[gid];
                         if (!index || (index < 0) || (index >= gifts.length)) {
-                            // system error - error in javascript
+                            // system error - error in javascript logic
                             index_system_errors.push(gid);
                             continue;
                         }
@@ -5992,8 +6008,8 @@ angular.module('gifts', ['ngRoute'])
                                 // could be a communication error or gift could have been modified by this or by other client
                                 if (!new_gift.hasOwnProperty('verify_seq')) {
                                     // new gift must be server validated before continuing (between pass 1 and pass 2)
-                                    validate_new_gifts += 1;
-                                    verify_gifts.push(new_gift);
+                                    verify_new_gifts += 1;
+                                    verify_gifts_add(new_gift) ;
                                     continue;
                                 }
                                 if (!new_gift.hasOwnProperty('verified_at_server')) {
@@ -6003,15 +6019,15 @@ angular.module('gifts', ['ngRoute'])
                                 }
                                 if (!new_gift.verified_at_server) {
                                     // invalid signature for new gift - changed on other client or not correct in message
-                                    new_gifts_invalid_signature.push(gid);
+                                    new_gifts_invalid_sha.push(gid);
                                     continue;
                                 }
                                 // new gift is valid. old gift must be invalid  - changed on this client or not saved correct
                                 if (!old_gift.hasOwnProperty('verify_seq')) {
                                     // old gift must be server validated before continuing (between pass 1 and pass 2)
-                                    validate_old_gifts += 1;
+                                    verify_old_gifts += 1;
                                     delete old_gift.verified_at_server ;
-                                    verify_gifts.push(old_gift);
+                                    verify_gifts_add(old_gift) ;
                                     continue;
                                 }
                                 if (!old_gift.hasOwnProperty('verified_at_server')) {
@@ -6021,7 +6037,7 @@ angular.module('gifts', ['ngRoute'])
                                 }
                                 if (!old_gift.verified_at_server) {
                                     // invalid signature for gift - old gift must be deleted and new gift accepted
-                                    old_gifts_invalid_signature.push(gid);
+                                    old_gifts_invalid_sha.push(gid);
                                     continue;
                                 }
                                 // there is a BIG problem. valid server side sha256 signature for old and new gift - must be a javascript error
@@ -6093,7 +6109,7 @@ angular.module('gifts', ['ngRoute'])
                         } // if old_gift.sha256_gift != new_gift.sha256_gift
 
                         if (old_gift.sha256_comments == new_gift.sha256_comments) {
-                            // comments identical - minor changes in gift - merge in pass 3
+                            // comments identical - minor changes in gift - merge gift in pass 3
                             merge_gifts.push(gid) ;
                             continue ;
                         }
@@ -6110,13 +6126,20 @@ angular.module('gifts', ['ngRoute'])
                             new_comment = new_gift.comments[j];
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
                             if (old_cids.indexOf(new_comment.cid) == -1) {
-                                validate_new_comments += 1;
-                                validate_new_comments.push({gid: gid, comment: new_comment});
+                                // new comment
+                                verify_new_comments += 1; // xxx
+                                verify_new_comments.push({gid: gid, comment: new_comment});
+
+                            }
+                            else {
+                                // existing comment
                             }
                         }
+                        // end update existing gift
                         continue;
                     }
-                    // new gift - must be a gift from a mutual friend
+
+                    // new gift - must be a gift from a mutual friend - check - friend lists could be out of sync
                     is_mutual_gift = false;
                     for (j = 0; j < new_gift.giver_user_ids.length; j++) {
                         user_id = new_gift.giver_user_ids[j];
@@ -6126,17 +6149,22 @@ angular.module('gifts', ['ngRoute'])
                         user_id = new_gift.receiver_user_ids[j];
                         if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true;
                     }
-                    if (!is_mutual_gift) continue; // errors are reported after pass 2
+                    if (!is_mutual_gift) {
+                        // write warning in log. friend lists on the two clients could be out of sync.
+                        gifts_without_mutual_friends.push(gid) ;
+                        continue;
+                    }
                     // new gift from a mutual friend.
 
-                    //
-                    // server id and server sha256 signature must be verified before continuing with pass 2
+                    // gift and comment sha256 signatures must be verified before continuing with pass 2
+                    // local gifts (other users on this gofreerev server) are validated in next ping cycle
+                    // remote gifts (from users on other gofreerev servers) take a little longer as gifts have to be remote validated
 
-                    validate_new_gifts += 1;
                     if (mailbox.hasOwnProperty('server_id')) {
-                        // todo: how to validate gifts from client on other Gofreerev server? Not all user ids are known!
-                        // todo: add server_id to gift. reuse gift.created_at_server as server_id? Should use 0 for local server and >0 for remote servers
-                        console.log(pgm + 'verify remote gift ' + JSON.stringify(new_gift)) ;
+                        // user ids have already been translated from sha256 signatures to internal user id or negative user id (unknown user)
+                        // See userService.sha256_to_user_ids calls for user_id_giver, user_id_receiver and comment.user_id
+                        // server id (created_at_server) has already been translated from sha256 signature to integer in end of pass 0.
+                        console.log(pgm + 'pass = ' + msg.pass + ', verify remote gift ' + JSON.stringify(new_gift)) ;
                         // verify remote gift
                         //   {"gid":"14254791174816684686","giver_user_ids":[2,-790],"receiver_user_ids":[],
                         //    "created_at_client":1425479117,"created_at_server":1,"currency":"usd","direction":"giver",
@@ -6146,37 +6174,140 @@ angular.module('gifts', ['ngRoute'])
                         //    "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
 
                     }
-                    verify_gifts.push(new_gift); // todo: use a temporary array - move to verify_gifts at end of loop if no fatal errors were found
+                    if (!new_gift.hasOwnProperty('verify_seq')) {
+                        // new gift must be server validated before continuing (between pass 1 and pass 2)
+                        verify_new_gifts += 1;
+                        // todo: use a temporary array - move to verify_gifts at end of gifts loop if no fatal errors were found in pass 1
+                        verify_gifts_add(new_gift) ;
+                        continue;
+                    }
+                    if (!new_gift.hasOwnProperty('verified_at_server')) {
+                        // new gift already in queue for server verification (offline, server not responding or remote gift)
+                        verifying_new_gifts += 1;
+                        continue;
+                    }
+                    if (!new_gift.verified_at_server) {
+                        // invalid signature for new gift - changed on other client or not correct in message
+                        new_gifts_invalid_sha.push(gid);
+                        continue;
+                    }
+                    // new gift ok - gift ready for pass 3
                     if (new_gift.comments) {
                         // server validate new comments
                         for (j = 0; j < new_gift.comments.length; j++) {
                             new_comment = new_gift.comments[j];
+                            cid = new_comment.cid ;
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
-                            validate_new_comments += 1;
-                            verify_comments.push({gid: gid, comment: new_comment});
+                            if (!new_comment.hasOwnProperty('verify_seq')) {
+                                // pass 1 - new comment must be server validated before continuing (between pass 1 and pass 2)
+                                verify_new_comments += 1;
+                                // todo: use a temporary array - move to verify_comments at end of gifts loop if no fatal errors were found in pass 1
+                                verify_comments.push({gid: gid, comment: new_comment});
+                                continue ;
+                            }
+                            if (!new_comment.hasOwnProperty('verified_at_server')) {
+                                // between pass 1 and 2 - new comment already in queue for server verification (offline, server not responding or remote gift)
+                                verifying_new_comments += 1;
+                                continue;
+                            }
+                            // pass 2 - comment has been server verified
+                            if (!new_comment.verified_at_server) {
+                                // invalid signature for new comment - changed on other client or not correct in message
+                                // gift will be created but without invalid comments
+                                new_comments_invalid_sha.push(cid);
+                                continue;
+                            }
+                            // new comment ok - ready for pass 3
+
+
                         } // for j (comments)
                     } // if
+                    // new gift and any comments ready for pass 3
+
+                    if (pass < 3) continue ;
+
+                    // pass 3 - create gift and valid comments
+                    console.log(pgm + 'pass 3 - todo: create gift and valid comments. gift = ' + JSON.stringify(new_gift)) ;
+
                 } // for i (gifts loop)
 
-                // end gifts loop
+                // end gifts loop - pass 1, 2 or 3
 
-                // check result of pass 1, 2 and 3
+                // check result of pass 1, 2 and 3 / continue with next pass if ok
+
+                // check for system errors - write message in log, send error message and abort
+                if (index_system_errors.length > 0) {
+                    // system error - error in javascript logic - abort processing of send_gifts message
+                    error = 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ') ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    });
+                    return;
+                }
+                if (validation_system_errors.length > 0) {
+                    // system error - error in javascript logic - abort processing of send_gifts message
+                    // valid server side sha256 signature for old and new gift - must be a javascript error
+                    error = 'System error. Readonly fields was updated for gift and both old and new gift has a valid sha256 signature. Gifts: ' + validation_system_errors.join(', ') ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    });
+                    return;
+                }
+
+                if (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts + verify_new_comments + verifying_new_comments > 0) {
+                    // between pass 1 and pass 2. waiting for server verification of gifts and comments. check after next ping
+                    console.log(pgm + 'Waiting for ' + (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts) + ' gifts and ' + (verify_new_comments + verifying_new_comments) + ' comments to be server validated.');
+                    mailbox.read.push(msg);
+                    console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length) ;
+
+                    // debug
+                    console.log(pgm + 'verify_gifts = ' + JSON.stringify(verify_gifts));
+                    console.log(pgm + 'verify_comments = ' + JSON.stringify(verify_comments));
+                    return;
+                }
+
+                // all gifts and comments have been server verified
                 if (msg.pass == 1) {
-                    // pass 1 - check for fatal errors
-                    if (index_system_errors.length > 0) console.log(pgm + 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ')) ;
-                    if (validation_system_errors.length > 0) console.log(pgm + 'System error. Sha256 signature failure for old and new gift. Gifts: ' + validation_system_errors.join(', ')) ;
+                    // continue with full validation
+                    console.log(pgm + 'pass 1 => pass 2') ;
+                    msg.pass = 2 ;
+                    continue ;
+                }
+                // all gifts and comments have been full validated
+                if (msg.pass == 2) {
+                    // continue witn inserts and updates
+                    console.log(pgm + 'pass 2 => pass 3') ;
+                    msg.pass = 3 ;
+                    continue ;
+                }
+
+
+                if (msg.pass == 1) {
+                    // pass 1 - validation without verify gift - check for any fatal errors in message
                     if (counterpart_errors.length > 0) console.log(pgm + 'System error. Invalid counterpart update. Gifts: ' + counterpart_errors.join(', ')) ;
-                    if (index_system_errors.length + validation_system_errors.length + counterpart_errors.length) {
-                        // todo: send error to other client and exit
-                    }
                     // pass 1 - wait for server side sha256 signature validation
                 }
 
 
                 // error report, wait or continue with next pass
 
+
+
+
+
                 break ;
             } // // pass 1, 2, 3 loop
+
+            // error report
+            console.log(pgm + 'error report missing') ;
 
 
 
@@ -6198,9 +6329,9 @@ angular.module('gifts', ['ngRoute'])
 
             // ready for pass 2 - but wait for any server validation for new gift and new comments
             msg.pass = 2;
-            if (validate_new_gifts + verifying_new_gifts + validate_old_gifts + verifying_old_gifts + validate_new_comments + verifying_new_comments > 0) {
+            if (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts + verify_new_comments + verifying_new_comments > 0) {
                 // wait. continue with pass 2 after next ping
-                console.log(pgm + 'Waiting for ' + (validate_new_gifts + verifying_new_gifts + validate_old_gifts + verifying_old_gifts) + ' gifts and ' + (validate_new_comments + verifying_new_comments) + ' comments to be server validated.');
+                console.log(pgm + 'Waiting for ' + (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts) + ' gifts and ' + (verify_new_comments + verifying_new_comments) + ' comments to be server validated.');
                 mailbox.read.push(msg);
 
                 // debug
@@ -6220,17 +6351,19 @@ angular.module('gifts', ['ngRoute'])
                 // wait for next ping - server validation for gift created on other gofreerev servers can take some time
                 console.log(pgm + 'Waiting for new gifts and new comments to be server validated.');
                 mailbox.read.push(msg);
+                console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length) ;
                 return;
             }
 
             // pass 2 - ready for full validation
+            console.log(pgm + 'pass 2 - ready for full validation') ;
             var already_in_ignore_list = [];
             var merge_comments = [];
             var creator_changed = [];
             var invalid_signature = [];
             var sha256_values;
 
-            // todo: change to a while length > 0 shift loop to free memory (see mailbox.read loop in receive_messages)
+            // todo: change to a while length > 0 shift loop (see mailbox.read loop in receive_messages)
             for (i = 0; i < msg.gifts.length; i++) {
                 new_gift = msg.gifts[i];
                 gid = new_gift.gid;
@@ -6378,7 +6511,9 @@ angular.module('gifts', ['ngRoute'])
             console.log(pgm + 'Error. Not implemented') ;
         }; // receive_message_check_gifts
 
-        // receive messages from other devices
+        // receive encrypted messages from other devices
+        // - process rsa password message
+        // - save symmetric decrypted messages in inbox for process_messages function
         var receive_messages = function (response) {
             var pgm = service + '.receive_messages: ' ;
             // console.log(pgm + 'receive ' + JSON.stringify(response)) ;
@@ -6386,9 +6521,14 @@ angular.module('gifts', ['ngRoute'])
                 console.log(pgm + 'Error when sending and receiving messages. ' + response.error) ;
                 if (!response.messages) return ;
             }
-            messages_sent() ;
             var encrypt, prvkey ;
             var msg_server_envelope, key, index, mailbox, did, device, msg, msg_csv_rsa_enc, msg_csv, msg_json_sym_enc, msg_client_envelope ;
+            // move any temporary parked symmetric encrypted messages to response.messages array
+            // ( symmetric encrypted message received before symmetric password setup was completed )
+            while (unencrypted_messages.length > 0) {
+                msg_server_envelope = unencrypted_messages.shift() ;
+                response.messages.push(msg_server_envelope) ;
+            }
             for (var i=0 ; i<response.messages.length ; i++) {
                 msg_server_envelope = response.messages[i] ;
                 key = msg_server_envelope.sender_did + msg_server_envelope.sender_sha256 ;
@@ -6431,7 +6571,15 @@ angular.module('gifts', ['ngRoute'])
                 else {
                     // symmetric key decryption - all other messages
                     if (!device.password) {
-                        console.log(pgm + 'Error. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
+                        // could be symmetric password setup in progress. keep message and check after next ping. wait for max 2 minutes.
+                        if (!msg_server_envelope.hasOwnProperty('received_at')) msg_server_envelope.received_at = Gofreerev.unix_timestamp() ;
+                        if (Gofreerev.unix_timestamp() - msg_server_envelope.received_at < 120) {
+                            unencrypted_messages.push(msg_server_envelope) ;
+                            console.log(pgm + 'Warning. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
+                        }
+                        else {
+                            console.log(pgm + 'Error. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
+                        }
                         continue ;
                     }
                     msg_json_sym_enc = msg_server_envelope.message ;
@@ -6450,56 +6598,78 @@ angular.module('gifts', ['ngRoute'])
                         console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
                         continue ;
                     }
-                    // move any messages temporary parked in inbox to new (send_gifts)
-                    while (mailbox.read.length > 0) {
-                        msg = mailbox.read.shift() ;
-                        mailbox.inbox.push(msg) ;
-                    }
                     // move new messages received from server to inbox
                     while (msg_client_envelope.messages.length > 0) {
                         msg = msg_client_envelope.messages.shift() ;
                         mailbox.inbox.push(msg) ;
                     }
-                    // process messages in inbox (old and new)
-                    while (mailbox.inbox.length > 0) {
-                        msg = mailbox.inbox.shift() ;
-                        switch(msg.msgtype) {
-                            case 'users_sha256':
-                                // communication step 2 - compare sha256 values for users (mutual friends)
-                                receive_message_users_sha256(device, mailbox, msg) ;
-                                break ;
-                            case 'gifts_sha256':
-                                // communication step 3 - compare sha256 values for gifts (mutual friends)
-                                receive_message_gifts_sha256(device, mailbox, msg) ;
-                                break ;
-                            case 'sync_gifts':
-                                // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
-                                // verify that request_mid is correct and add sub messages to inbox
-                                receive_message_sync_gifts(device, mailbox, msg) ;
-                                break ;
-                            case 'send_gifts':
-                                // communication step 4 - sub message from sync_gifts - receive missing gifts from other device
-                                receive_message_send_gifts(device, mailbox, msg) ;
-                                break ;
-                            case 'request_gifts':
-                                // communication step 4 - sub message from sync_gifts - send missing gift to other device
-                                receive_message_request_gifts(device, mailbox, msg) ;
-                                break ;
-                            case 'check_gifts':
-                                // communication step 4 - sub message from sync_gifts - check gift sub sha256 values and return gift, comments or both
-                                receive_message_check_gifts(device, mailbox, msg) ;
-                                break ;
-                            case 'error':
-                                // error in client to client communication - print error in log and move previous message to error folder
-                                receive_message_error(device, mailbox, msg) ;
-                                break ;
-                            default:
-                                console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in inbox. msg = ' + JSON.stringify(msg)) ;
-                        } // end msgtype switch
-                    } // while
                 } // if else (rsa or sym encryption)
             } // for i (one message from each device)
         }; // receive_messages
+
+        // process decrypted messages in mailbox (inbox + read folders)
+        var process_messages = function () {
+            var pgm = service + '.process_messages: ';
+            // loop for all mailbox and process any messages in 1) inbox and 2) read
+            // any new "read" messages generated when processing inbox messages will be processed after next ping
+            var i, mailbox, old_read_length, msg, did, key, device;
+            for (i = 0; i < mailboxes.length; i++) {
+                mailbox = mailboxes[i];
+                if (mailbox.inbox.length + mailbox.read.length == 0) continue ;
+                did = mailbox.did ;
+                key = mailbox.key ;
+                device = devices[did] ;
+                // console.log(pgm + 'did = ' + did  + ', device = ' + JSON.stringify(device)) ;
+                if (!device || !device.pubkey) {
+                    console.log(pgm + 'Error. Ignoring messages from device '  + did + 'with key ' + key + '. Public key has not yet been received.') ;
+                    continue ;
+                }
+                if (mailbox.read.length > 0) console.log(pgm + mailbox.read.length + ' messages was moved from mailbox.read to mailbox.inbox');
+                while (mailbox.read.length > 0) {
+                    msg = mailbox.read.shift();
+                    mailbox.inbox.push(msg);
+                }
+                // process messages in inbox (old read from previous ping and new just received messages from this ping)
+                while (mailbox.inbox.length > 0) {
+                    msg = mailbox.inbox.shift();
+                    switch (msg.msgtype) {
+                        case 'users_sha256':
+                            // communication step 2 - compare sha256 values for users (mutual friends)
+                            receive_message_users_sha256(device, mailbox, msg);
+                            break;
+                        case 'gifts_sha256':
+                            // communication step 3 - compare sha256 values for gifts (mutual friends)
+                            receive_message_gifts_sha256(device, mailbox, msg);
+                            break;
+                        case 'sync_gifts':
+                            // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
+                            // verify that request_mid is correct and add sub messages to inbox
+                            receive_message_sync_gifts(device, mailbox, msg);
+                            break;
+                        case 'send_gifts':
+                            // communication step 4 - sub message from sync_gifts - receive missing gifts from other device
+                            receive_message_send_gifts(device, mailbox, msg);
+                            console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length)
+                            break;
+                        case 'request_gifts':
+                            // communication step 4 - sub message from sync_gifts - send missing gift to other device
+                            receive_message_request_gifts(device, mailbox, msg);
+                            break;
+                        case 'check_gifts':
+                            // communication step 4 - sub message from sync_gifts - check gift sub sha256 values and return gift, comments or both
+                            receive_message_check_gifts(device, mailbox, msg);
+                            break;
+                        case 'error':
+                            // error in client to client communication - print error in log and move previous message to error folder
+                            receive_message_error(device, mailbox, msg);
+                            break;
+                        default:
+                            console.log(pgm + 'Unknown msgtype ' + msg.msgtype + ' in inbox. msg = ' + JSON.stringify(msg));
+                    } // end msgtype switch
+                } // while msg in mailbox.inbox
+            } // for i (one message from each device)
+        }; // process_messages
+
 
         return {
             gifts: gifts,
@@ -6531,6 +6701,7 @@ angular.module('gifts', ['ngRoute'])
             update_mailboxes: update_mailboxes,
             send_messages: send_messages,
             receive_messages: receive_messages,
+            process_messages: process_messages,
             messages_sent: messages_sent,
             messages_not_sent: messages_not_sent
         };
@@ -6637,6 +6808,7 @@ angular.module('gifts', ['ngRoute'])
                     // check for new messages from other devices
                     if (response.data.messages) giftService.receive_messages(response.data.messages) ;
                     else giftService.messages_sent() ;
+                    giftService.process_messages() ;
 
                     // check interval between client timestamp and previous client timestamp
                     // interval should be 60000 = 60 seconds

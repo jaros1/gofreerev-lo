@@ -611,6 +611,22 @@ class Gift < ActiveRecord::Base
 
     end # each new_gift
 
+    # any remote verify gift response ready for this client?
+    vgs = VerifyGift.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
+    if vgs.size > 0
+      logger.debug2 "vgs.size = #{vgs.size}"
+      vgs.each do |vg|
+        logger.debug2 "vg = #{vg.to_json}" if vg.error
+        response.push({
+                          :seq => vg.client_seq,
+                          :gid => vg.gid,
+                          :verified_at_server => vg.verified_at_server
+                      })
+
+      end
+      vgs.delete_all
+    end
+
     logger.debug2 "response = #{response}"
     logger.debug2 "server_requests = #{server_requests}"
 

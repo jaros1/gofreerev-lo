@@ -1,0 +1,30 @@
+testrun 19
+
+two google crome clients
+error after receiving result of remote verify gift request
+
+
+client 2:
+
+GiftService.process_messages: mailbox.read.length = 1
+GiftService.verify_gifts_request: Warning. Found 0 local and 1 remote not yet verified gifts in buffer.
+GiftService.verify_comments_request: Not implemented.
+GiftService.send_messages: device.password = S[]&b5FIz 51pt0kFJ#}(gVd?xtYs0gur|JI2Gq?iO&2pl54c{e4Fc@&auatqypDi!rd!mP%eIZDLD]_
+GiftService.verify_gifts_response: Received 1 verifications for 1 gifts (1 valid and 0 invalid).
+GiftService.process_messages: 1 messages was moved from mailbox.read to mailbox.inbox
+GiftService.receive_message_send_gifts: mailbox  = {"did":"14311621396607257930","sha256":"ZnDMJUWStVAS9Zmvzx7Z2GHUDkKgShIlRvxPNj1m5Uc=","mutual_friends":[2,3],"server_id":1,"key":"14311621396607257930ZnDMJUWStVAS9Zmvzx7Z2GHUDkKgShIlRvxPNj1m5Uc=","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[{"mid":"14315021358136537518","request_mid":"14315021129889541387","msgtype":"sync_gifts","users":["kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y="],"request_gifts":{"mid":"14315021358131537906","msgtype":"request_gifts","gifts":["14311626443044336206"]}}],"done":[{"mid":"14315020962021710979","request_mid":"14315019879864079939","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y="],"gifts":[]},{"msgtype":"users_sha256","mid":"14315019710485221584","users":[{"user_id":"kYDksLgCZUhxoGmapa5bAshZ0qylNPGkfg2WrmogF1Y="},{"user_id":"UuDJUQ2HbHmPZ08834UYQOIFDqLtQIafmUgeghW8WLI=","sha256":"\u00119<X\u0007ÞÖ¨ÁW\u001eÜ¥Á!Q×ï\u0007\u0012Èi\u000b\u0011Äò"}]}],"error":[]}
+GiftService.receive_message_send_gifts: msg      = {"mid":"14315021128342662211","msgtype":"send_gifts","gifts":[{"gid":"14311626443044336206","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431162644,"created_at_server":1,"currency":"usd","direction":"giver","description":"client 1","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","in_verify_gifts":true,"verify_seq":-16,"verified_at_server":true}],"users":[],"servers":[{"server_id":0,"sha256":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}],"request_mid":"14315020962021710979","pass":1}
+GiftService.receive_message_send_gifts: msg.pass = 1
+GiftService.receive_message_send_gifts: pass = 1, verify remote gift {"gid":"14311626443044336206","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431162644,"created_at_server":1,"currency":"usd","direction":"giver","description":"client 1","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","in_verify_gifts":true,"verify_seq":-16,"verified_at_server":true}
+ReferenceError: pass is not defined
+    at receive_message_send_gifts (gofreerev.js:6227)
+    at Object.process_messages (gofreerev.js:6651)
+    at gofreerev.js:6811
+    at processQueue (angular.js?body=1:12915)
+    at angular.js?body=1:12931
+    at Scope.$eval (angular.js?body=1:14124)
+    at Scope.$digest (angular.js?body=1:13940)
+    at Scope.$apply (angular.js?body=1:14228)
+    at done (angular.js?body=1:9494)
+    at completeRequest (angular.js?body=1:9679)
+GiftService.verify_comments_request: Not implemented.

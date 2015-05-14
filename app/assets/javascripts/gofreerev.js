@@ -490,7 +490,7 @@ var Gofreerev = (function() {
     (function () {
         var storage_flag ; // a-n
         var index ; // 0-19
-        for (var storage_flag in storage_flags) {
+        for (storage_flag in storage_flags) {
             if (storage_flags.hasOwnProperty(storage_flag)) {
                 index = storage_options_bin_key(storage_flags[storage_flag]) ;
                 storage_flag_index[index] = storage_flag ;
@@ -1495,7 +1495,7 @@ angular.module('gifts', ['ngRoute'])
             var remote_sha256_hash = {}, i ;
             for (i=0 ; i<remote_sha256_array.length ; i++) remote_sha256_hash[remote_sha256_array[i].server_id] = remote_sha256_array[i].sha256 ;
             return remote_sha256_hash ;
-        } // remote_sha256_to_hash
+        }; // remote_sha256_to_hash
 
         // init array with friends init.
         // initialized at page load and after device login with friend list for all login providers
@@ -2273,7 +2273,6 @@ angular.module('gifts', ['ngRoute'])
                 if (external_user_ids.indexOf(external_user_id) != -1) console.log(pgm + 'Warning. Doublet user ids in ' + internal_user_ids.join(', ') + '.') ;
                 else external_user_ids.push(external_user_id) ;
             }
-            external_user_ids = external_user_ids ;
             return external_user_ids ;
         }; // get_external_user_ids ;
 
@@ -3178,8 +3177,8 @@ angular.module('gifts', ['ngRoute'])
                 //    continue ;
                 //}
 
-                if (gift.gid == '14315260473562892268') {
-                    // testrun-21 - delete remote gift from other gofreerev server without created_at_server property
+                if (gift.gid == '14315906760737834203') {
+                    // cleanup after testrun-22
                     console.log(pgm + 'delete remote gift ' + gift.gid) ;
                     Gofreerev.removeItem(keys[i]) ;
                     continue ;
@@ -3662,7 +3661,7 @@ angular.module('gifts', ['ngRoute'])
         var sha256_to_server_id = function (sha256) {
             if (!sha256_to_server_id_hash.hasOwnProperty(sha256)) return null ;
             return sha256_to_server_id_hash[sha256] ;
-        } // sha256_to_server_id
+        }; // sha256_to_server_id
 
 
         // check sha256 server signature for gifts received from other clients before adding or merging gift on this client
@@ -3685,7 +3684,7 @@ angular.module('gifts', ['ngRoute'])
         var verify_gifts_add = function (gift) {
             var pgm = service + '.verify_gifts_add: ' ;
             if (gift.in_verify_gifts) return ;
-            gift.in_verify_gifts = true ;
+            gift.in_verify_gifts = Gofreerev.unix_timestamp() ;
             verify_gifts.push(gift) ;
             console.log(pgm + 'added gid ' + gift.gid + ' to verify gifts buffer') ;
         };
@@ -4555,7 +4554,7 @@ angular.module('gifts', ['ngRoute'])
             setup_device_password(device);
             console.log(pgm + 'device.password = ' + device.password) ;
             // check of the two devices agree about password
-            var md5_ok = (device.password_md5 && (msg.length == 4) && (device.password_md5 == msg[3]))
+            var md5_ok = (device.password_md5 && (msg.length == 4) && (device.password_md5 == msg[3]));
             if (md5_ok) console.log(pgm + 'symmetric password setup completed.');
             else console.log(pgm + 'symmetric password setup in progress.');
             console.log(pgm + 'done = ' + done + ', md5_ok = ' + md5_ok) ;
@@ -5787,15 +5786,7 @@ angular.module('gifts', ['ngRoute'])
                     new_gift = msg.gifts[i] ;
 
                     if (mailbox.hasOwnProperty('server_id')) {
-                        // received gifts from an other Gofreerev server.
-
-                        // todo: how to handle missing/unknown server sha256 signatures?
-                        // a) replace server id with sha256 signature and verify gift with sha256 signature.
-                        //    server must find server id before processing gifts verification request
-                        //    return false for unknown server
-                        // b) request missing server ids between pass1 and pass2
-                        //
-
+                        // gifts from an other Gofreerev server.
                         // user ids have been validated in validate_send_gifts_message and are either
                         // 1) sha256 signatures for remote users or
                         // 2) negative user ids for "unknown" users
@@ -5866,8 +5857,7 @@ angular.module('gifts', ['ngRoute'])
                 } // if sha256 calc errors
 
                 if (mailbox.hasOwnProperty('server_id')) {
-
-                    // cross server message
+                    // gifts from an other Gofreerev server.
                     // check for any unknown server sha256 signatures
                     // unknown server sha256 signatures must be validated between pass 0 and pass 1
                     var no_unknown_servers = 0, sha256 ;
@@ -5907,15 +5897,18 @@ angular.module('gifts', ['ngRoute'])
 
                 } // if server_id
 
-                // ready for pass 1
+                // ready for pass 1, 2 and 3
                 msg.pass = 1;
             } // if pass 0
 
-            // one loop for pass 1, 2 and 3 - logic is identical except for a few things
+            // one gifts loop with pass 1, 2 and 3 for each gift
             // pass 1: validation without server side sha256 check - find new gifts and new comments that must be server side validated
             // between pass 1 and 2: server side sha256 check - see ping verify_gifts_request and verify_gifts_response
             // pass 2: validation with server side sha256 check
             // pass 3: do actions (create gifts, update gifts, merge comments etc)
+            // send_gifts message will be pushed back to mailbox.read folder until all relevant gifts and comments have been server validated
+            // local gifts created on this server will be validated in next ping
+            // validation for gifts created on other gofreerev servers can take some time (remove gift validation)
 
             var gifts_already_on_ignore_list = [] ; // array with gids - ignore
             var identical_gift_and_comments = []; // array with gids - ignore
@@ -5930,409 +5923,379 @@ angular.module('gifts', ['ngRoute'])
             var new_comments_invalid_sha = []; // array with cids
             var index_system_errors = []; // gid array with gift index system errors - fatal javascript error
             var validation_system_errors = []; // gid array with sha validation system errors - fatal javascript error
+            var counterpart_errors = [] ; // gid array with gifts with invalid counter part update (other user) - only allowed when acception a new deal
+            var gifts_without_mutual_friends ; // array with gids - new gifts without mutual friends - ignore and report as warning in log
+            var gifts_created = [] ; // array with gids - new created gifts
 
             var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, cid, old_cids;
-            var new_gift_creators, old_gift_creators, new_gift_counterpart, old_gift_counterpart ;
+            var new_gift_creators, old_gift_creators, new_gift_counterpart, old_gift_counterpart;
             var old_gift_accepted, new_gift_accepted, gift_accept_action, gift_delete_action, gift_price_action, gift_like_action;
-            var counterpart_errors ;
-            var gifts_without_mutual_friends ; // array with gids - new gifts - ignore and report as warning in log
+            var comments_pass, seconds ;
 
-            // pass 1, 2, 3 loop - 1) without server verification, 2) with server verification, 3) do actions (insert, update)
-            while (true) {
 
-                // reset counters and arrays - used after gifts loop to select next action and used in errors and warnings
-                gifts_already_on_ignore_list = [] ; // array with gids - ignore
-                identical_gift_and_comments = []; // array with gids - just ignore
-                verify_new_gifts = 0; // number of new gifts that must be server validated
-                verifying_new_gifts = 0; // number of new gifts already in queue for server validation (offline client, remote gifts or errors)
-                new_gifts_invalid_sha = []; // array with gids
-                verify_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
-                verifying_old_gifts = 0; // number of old gifts already in queue for server validation (offline client, remote gifts or errors)
-                old_gifts_invalid_sha = []; // array with gids
-                verify_new_comments = 0; // number of new comments that must be server validated
-                verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
-                index_system_errors = []; // gid array with gift index system errors - fatal javascript errors - not communication errors
-                validation_system_errors = []; // gid array with
-                counterpart_errors = [] ;
-                gifts_without_mutual_friends = [] ; // array with gids - new gifts - ignore and report as warning in log
-
-                // gifts loop
-                for (i = 0; i < msg.gifts.length; i++) {
-                    new_gift = msg.gifts[i];
-                    gid = new_gift.gid;
-                    if (is_gift_on_ignore_list(device, gid)) {
-                        gifts_already_on_ignore_list.push(pid) ;
+            // gifts loop
+            for (i = 0; i < msg.gifts.length; i++) {
+                new_gift = msg.gifts[i];
+                gid = new_gift.gid;
+                if (is_gift_on_ignore_list(device, gid)) {
+                    gifts_already_on_ignore_list.push(pid);
+                    continue;
+                }
+                if (gid_to_gifts_index.hasOwnProperty(gid)) {
+                    // existing gift
+                    index = gid_to_gifts_index[gid];
+                    if (!index || (index < 0) || (index >= gifts.length)) {
+                        // system error - error in javascript logic
+                        index_system_errors.push(gid);
                         continue;
                     }
-                    if (gid_to_gifts_index.hasOwnProperty(gid)) {
-                        // existing gift
-                        index = gid_to_gifts_index[gid];
-                        if (!index || (index < 0) || (index >= gifts.length)) {
-                            // system error - error in javascript logic
-                            index_system_errors.push(gid);
+                    old_gift = gifts[index];
+                    if (!old_gift || (old_gift.gid != gid)) {
+                        // system error - error in javascript
+                        index_system_errors.push(gid);
+                        continue;
+                    }
+                    // compare old (this client) and new gift (from other client)
+                    if (old_gift.sha256 == new_gift.sha256) {
+                        identical_gift_and_comments.push(gid);
+                        continue;
+                    }
+                    if (old_gift.sha256_gift != new_gift.sha256_gift) {
+                        // old gift != new gift when ignoring comments
+                        // many gift fields are readonly but update is allowed for a few fields
+
+                        // changed gift - check if readonly fields used in server side sha256 signature have been changed
+                        if (new_gift.direction == 'giver') {
+                            new_gift_creators = new_gift.giver_user_ids.sort.join(',');
+                            new_gift_counterpart = (new_gift.receiver_user_ids || []).sort.join(',');
+                        }
+                        else {
+                            new_gift_creators = new_gift.receiver_user_ids.sort.join(',');
+                            new_gift_counterpart = (new_gift.giver_user_ids || []).sort.join(',');
+                        }
+                        if (old_gift.direction == 'giver') {
+                            old_gift_creators = old_gift.giver_user_ids.sort.join(',');
+                            old_gift_counterpart = (old_gift.receiver_user_ids || []).sort.join(',');
+                        }
+                        else {
+                            old_gift_creators = old_gift.receiver_user_ids.sort.join(',');
+                            old_gift_counterpart = (old_gift.giver_user_ids || []).sort.join(',');
+                        }
+                        if (!identical_values(old_gift.created_at_client, new_gift.created_at_client) || !identical_values(old_gift.direction, new_gift.direction) || !identical_values(old_gift_creators, new_gift_creators) || !identical_values(old_gift.description, new_gift.description) || !identical_values(old_gift.open_graph_url, new_gift.open_graph_url) || !identical_values(old_gift.open_graph_title, new_gift.open_graph_title) || !identical_values(old_gift.open_graph_description, new_gift.open_graph_description) || !identical_values(old_gift.open_graph_image, new_gift.open_graph_image)) {
+                            // changed readonly fields!
+                            // fields used in server side sha256 signature are NOT identical for new and old gift
+                            // could be a communication error or gift could have been modified by this or by other client
+                            if (!new_gift.hasOwnProperty('verify_seq')) {
+                                // new gift must be server validated before continuing (between pass 1 and pass 2)
+                                verify_new_gifts += 1;
+                                verify_gifts_add(new_gift);
+                                continue;
+                            }
+                            if (!new_gift.hasOwnProperty('verified_at_server')) {
+                                // new gift already in queue for server verification (offline, server not responding or remote gift)
+                                verifying_new_gifts += 1;
+                                continue;
+                            }
+                            if (!new_gift.verified_at_server) {
+                                // invalid signature for new gift - changed on other client or not correct in message
+                                new_gifts_invalid_sha.push(gid);
+                                continue;
+                            }
+                            // new gift is valid. old gift must be invalid  - changed on this client or not saved correct
+                            if (!old_gift.hasOwnProperty('verify_seq')) {
+                                // old gift must be server validated before continuing (between pass 1 and pass 2)
+                                verify_old_gifts += 1;
+                                delete old_gift.verified_at_server;
+                                verify_gifts_add(old_gift);
+                                continue;
+                            }
+                            if (!old_gift.hasOwnProperty('verified_at_server')) {
+                                // old gift already in queue for server verification (offline, server not responding or remote gift)
+                                verifying_old_gifts += 1;
+                                continue;
+                            }
+                            if (!old_gift.verified_at_server) {
+                                // invalid signature for gift - old gift must be deleted and new gift accepted
+                                old_gifts_invalid_sha.push(gid);
+                                continue;
+                            }
+                            // there is a BIG problem. valid server side sha256 signature for old and new gift - must be a javascript error
+                            validation_system_errors.push(gid);
+                            continue;
+                        } // if changed readonly fields!
+
+                        // pass 2 - gift has been server validated - few changed fields in gift
+
+                        // check changes in gift - only few changes are allowed
+                        // accept and delete actions changes server side sha256 signature (already validated) and are one direction actions
+                        // todo: testcase - accept gift on one client and delete gift on an other client
+                        // todo: 1) sub testcase: server delete gift before server accept gift
+                        // todo: 2) sub testcase: server accept gift before server delete gift
+
+                        old_gift_accepted = (old_gift.accepted_cid || old_gift.accepted_at_client);
+                        new_gift_accepted = (new_gift.accepted_cid || new_gift.accepted_at_client);
+                        gift_accept_action = ((old_gift_accepted && !new_gift_accepted) || (!old_gift_accepted && new_gift_accepted));
+                        gift_delete_action = ((old_gift.deleted_at_client && !new_gift.deleted_at_client) || (!old_gift.deleted_at_client && new_gift.deleted_at_client));
+                        gift_price_action = !gift_accept_action && ((old_gift.price != new_gift.price) || (old_gift.currency != new_gift.currency));
+                        gift_like_action = (old_gift.like != new_gift.like);
+                        if (!gift_accept_action && (old_gift_counterpart != new_gift_counterpart)) {
+                            // counterpart can only be changed when accepting proposal
+                            counterpart_errors.push(gid);
                             continue;
                         }
-                        old_gift = gifts[index];
-                        if (!old_gift || (old_gift.gid != gid)) {
-                            // system error - error in javascript
-                            index_system_errors.push(gid);
+
+                        if (msg.pass == 3) {
+                            // todo: add updated_at_client timestamp to gift. last update wins in a few situations
+                            // updateable fields:
+                            // 1) other user ids when proposal has been accepted - opposite of creator
+                            //    there must a new proposal in comments with accepted = true
+                            //    user ids in accepted proposal be identical with other user ids in gift
+                            // 2) price - can be updated until accepted proposal and must after accept be identical with price accepted proposal
+                            // 3) currency - can be updated until accepted proposal and must after accept be identical with price accepted proposal
+                            // 4) like - todo: now a boolean. must be changed to a likes array with user ids and like/unlike timestamps. merge likes
+                            // 5) deleted_at_client
+                            // 6) accepted_cid
+                            // 7) accepted_at_client
+
+                            // allowed actions:
+                            // a) price and currency change and not an accept gift action
+                            // b) merge likes
+                            // c) accept gift
+                            // d) delete gift
+                            // e) control. old and new gift should be identical
+                            // analyse gift changes
+                            // do actions
+                            if (gift_price_action) {
+                                // todo: use price and currency from last changed gift. add updated_at_client to gift
+                                console.log(pgm + 'Error: Implement gift price action: old price = ' + old_gift.price + old_gift.currency + ', new price = ' + new_gift.price + new_gift.currency);
+                            }
+                            if (gift_like_action) {
+                                // todo: change like to array with userid and timestamps for like and unlike
+                                console.log(pgm + 'Error: Implement gift like action: old like = ' + JSON.stringify(old_gift.like) + ', new like = ' + JSON.stringify(new_gift.like));
+                            }
+                            if (gift_accept_action) {
+                                if (old_gift_accepted) {
+                                    // todo: send gift to other client
+                                }
+                                else {
+                                    // update gift with
+                                }
+                            }
+
+
+                        } // if pass 3
+
+                    } // if old_gift.sha256_gift != new_gift.sha256_gift
+
+                    if (old_gift.sha256_comments == new_gift.sha256_comments) {
+                        // comments identical - minor changes in gift - merge gift in pass 3
+                        merge_gifts.push(gid);
+                        continue;
+                    }
+
+                    // comments are not identical
+
+
+                    old_cids = [];
+                    if (old_gift.comments) for (j = 0; j < old_gift.comments.length; j++) old_cids.push(old_gift.comments[j].cid);
+                    if (new_gift.comments) for (j = 0; j < new_gift.comments.length; j++) {
+                        new_comment = new_gift.comments[j];
+                        // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
+                        if (old_cids.indexOf(new_comment.cid) == -1) {
+                            // new comment
+                            verify_new_comments += 1; // xxx
+                            verify_new_comments.push({gid: gid, comment: new_comment});
+
+                        }
+                        else {
+                            // existing comment
+                        }
+                    }
+                    // end update existing gift
+                    continue;
+                }
+
+                // new gift - must be a gift from a mutual friend - check - friend lists could be out of sync
+                is_mutual_gift = false;
+                for (j = 0; j < new_gift.giver_user_ids.length; j++) {
+                    user_id = new_gift.giver_user_ids[j];
+                    if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true;
+                }
+                for (j = 0; j < new_gift.receiver_user_ids.length; j++) {
+                    user_id = new_gift.receiver_user_ids[j];
+                    if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true;
+                }
+                if (!is_mutual_gift) {
+                    // write warning in log. friend lists on the two clients could be out of sync.
+                    gifts_without_mutual_friends.push(gid);
+                    continue;
+                }
+                // new gift from a mutual friend.
+
+                // gift and comment sha256 signatures must be verified before continuing with pass 2
+                // local gifts (other users on this gofreerev server) are validated in next ping cycle
+                // remote gifts (from users on other gofreerev servers) take a little longer as gifts have to be remote validated
+
+                if (mailbox.hasOwnProperty('server_id')) {
+                    // user ids have already been translated from sha256 signatures to internal user id or negative user id (unknown user)
+                    // See userService.sha256_to_user_ids calls for user_id_giver, user_id_receiver and comment.user_id
+                    // server id (created_at_server) has already been translated from sha256 signature to integer in end of pass 0.
+                    console.log(pgm + 'pass = ' + msg.pass + ', verify remote gift ' + JSON.stringify(new_gift));
+                    // verify remote gift
+                    //   {"gid":"14254791174816684686","giver_user_ids":[2,-790],"receiver_user_ids":[],
+                    //    "created_at_client":1425479117,"created_at_server":1,"currency":"usd","direction":"giver",
+                    //    "description":"e","like":false,"deleted_at_client":1425804186,
+                    //    "sha256":"Çî\u0002t 31gõ¤7NÈªãÃÏ\u0018ÂØ\u0013 ×Ü*á\u0013ùÑ",
+                    //    "sha256_gift":"\"&»º¡&Q§æíB\rö)Uz/\u0019B\u0018,·E>Q°qÜ",
+                    //    "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+
+                }
+                if (!new_gift.hasOwnProperty('verify_seq')) {
+                    // new gift must be server validated before continuing (between pass 1 and pass 2)
+                    verify_new_gifts += 1;
+                    verify_gifts_add(new_gift);
+                    continue; // wait for verify gifts
+                }
+                if (!new_gift.hasOwnProperty('verified_at_server')) {
+                    // new gift already in queue for server verification (offline, server not responding or remote gift)
+                    // todo: how long time to wait for:
+                    //   a: offline client - no internet connection
+                    //   b: server not responding (error or timeout)
+                    //   c: remote gift verification (error or remote server not responding)
+                    seconds = Gofreerev.unix_timestamp() - new_gift.in_verify_gifts ;
+                    console.log(pgm + 'Waited ' + seconds + ' seconds for gift ' + gid + ' verification') ;
+                    verifying_new_gifts += 1;
+                    continue; // wait for verify gifts
+                }
+                if (!new_gift.verified_at_server) {
+                    // invalid signature for new gift - changed on other client or incorrect in message
+                    new_gifts_invalid_sha.push(gid);
+                    continue;
+                }
+                // new gift ok - gift ready for pass 2
+                comments_pass = 2 ;
+                if (new_gift.comments) {
+                    // server validate new comments
+                    for (j = 0; j < new_gift.comments.length; j++) {
+                        new_comment = new_gift.comments[j];
+                        cid = new_comment.cid;
+                        // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
+                        if (!new_comment.hasOwnProperty('verify_seq')) {
+                            // pass 1 - new comment must be server validated before continuing (between pass 1 and pass 2)
+                            verify_new_comments += 1;
+                            // todo: use a temporary array - move to verify_comments at end of gifts loop if no fatal errors were found in pass 1
+                            verify_comments.push({gid: gid, comment: new_comment});
+                            comments_pass = 1 ;
                             continue;
                         }
-                        // compare old (this client) and new gift (from other client)
-                        if (old_gift.sha256 == new_gift.sha256) {
-                            identical_gift_and_comments.push(gid) ;
-                            continue ;
+                        if (!new_comment.hasOwnProperty('verified_at_server')) {
+                            // between pass 1 and 2 - new comment already in queue for server verification (offline, server not responding or remote gift)
+                            verifying_new_comments += 1;
+                            comments_pass = 1 ;
+                            continue;
                         }
-                        if (old_gift.sha256_gift != new_gift.sha256_gift) {
-                            // old gift != new gift when ignoring comments
-                            // many gift fields are readonly but update is allowed for a few fields
-
-                            // changed gift - check if readonly fields used in server side sha256 signature have been changed
-                            if (new_gift.direction == 'giver') {
-                                new_gift_creators = new_gift.giver_user_ids.sort.join(',');
-                                new_gift_counterpart = (new_gift.receiver_user_ids || []).sort.join(',');
-                            }
-                            else {
-                                new_gift_creators = new_gift.receiver_user_ids.sort.join(',');
-                                new_gift_counterpart = (new_gift.giver_user_ids || []).sort.join(',');
-                            }
-                            if (old_gift.direction == 'giver') {
-                                old_gift_creators = old_gift.giver_user_ids.sort.join(',');
-                                old_gift_counterpart = (old_gift.receiver_user_ids || []).sort.join(',') ;
-                            }
-                            else {
-                                old_gift_creators = old_gift.receiver_user_ids.sort.join(',');
-                                old_gift_counterpart = (old_gift.giver_user_ids || []).sort.join(',');
-                            }
-                            if (!identical_values(old_gift.created_at_client, new_gift.created_at_client) ||
-                                !identical_values(old_gift.direction, new_gift.direction) ||
-                                !identical_values(old_gift_creators, new_gift_creators) ||
-                                !identical_values(old_gift.description, new_gift.description) ||
-                                !identical_values(old_gift.open_graph_url, new_gift.open_graph_url) ||
-                                !identical_values(old_gift.open_graph_title, new_gift.open_graph_title) ||
-                                !identical_values(old_gift.open_graph_description, new_gift.open_graph_description) ||
-                                !identical_values(old_gift.open_graph_image, new_gift.open_graph_image)) {
-                                // changed readonly fields!
-                                // fields used in server side sha256 signature are NOT identical for new and old gift
-                                // could be a communication error or gift could have been modified by this or by other client
-                                if (!new_gift.hasOwnProperty('verify_seq')) {
-                                    // new gift must be server validated before continuing (between pass 1 and pass 2)
-                                    verify_new_gifts += 1;
-                                    verify_gifts_add(new_gift) ;
-                                    continue;
-                                }
-                                if (!new_gift.hasOwnProperty('verified_at_server')) {
-                                    // new gift already in queue for server verification (offline, server not responding or remote gift)
-                                    verifying_new_gifts += 1;
-                                    continue;
-                                }
-                                if (!new_gift.verified_at_server) {
-                                    // invalid signature for new gift - changed on other client or not correct in message
-                                    new_gifts_invalid_sha.push(gid);
-                                    continue;
-                                }
-                                // new gift is valid. old gift must be invalid  - changed on this client or not saved correct
-                                if (!old_gift.hasOwnProperty('verify_seq')) {
-                                    // old gift must be server validated before continuing (between pass 1 and pass 2)
-                                    verify_old_gifts += 1;
-                                    delete old_gift.verified_at_server ;
-                                    verify_gifts_add(old_gift) ;
-                                    continue;
-                                }
-                                if (!old_gift.hasOwnProperty('verified_at_server')) {
-                                    // old gift already in queue for server verification (offline, server not responding or remote gift)
-                                    verifying_old_gifts += 1;
-                                    continue;
-                                }
-                                if (!old_gift.verified_at_server) {
-                                    // invalid signature for gift - old gift must be deleted and new gift accepted
-                                    old_gifts_invalid_sha.push(gid);
-                                    continue;
-                                }
-                                // there is a BIG problem. valid server side sha256 signature for old and new gift - must be a javascript error
-                                validation_system_errors.push(gid);
-                                continue;
-                            } // if changed readonly fields!
-
-                            // pass 2 - gift has been server validated - few changed fields in gift
-
-                            // check changes in gift - only few changes are allowed
-                            // accept and delete actions changes server side sha256 signature (already validated) and are one direction actions
-                            // todo: testcase - accept gift on one client and delete gift on an other client
-                            // todo: 1) sub testcase: server delete gift before server accept gift
-                            // todo: 2) sub testcase: server accept gift before server delete gift
-
-                            old_gift_accepted = (old_gift.accepted_cid || old_gift.accepted_at_client) ;
-                            new_gift_accepted = (new_gift.accepted_cid || new_gift.accepted_at_client) ;
-                            gift_accept_action = ((old_gift_accepted && !new_gift_accepted) || (!old_gift_accepted && new_gift_accepted)) ;
-                            gift_delete_action = ((old_gift.deleted_at_client && !new_gift.deleted_at_client) || (!old_gift.deleted_at_client && new_gift.deleted_at_client)) ;
-                            gift_price_action = !gift_accept_action && ((old_gift.price != new_gift.price) || (old_gift.currency != new_gift.currency)) ;
-                            gift_like_action = (old_gift.like != new_gift.like) ;
-                            if (!gift_accept_action && (old_gift_counterpart != new_gift_counterpart)) {
-                                // counterpart can only be changed when accepting proposal
-                                counterpart_errors.push(gid) ;
-                                continue ;
-                            }
-
-                            if (msg.pass == 3) {
-                                // todo: add updated_at_client timestamp to gift. last update wins in a few situations
-                                // updateable fields:
-                                // 1) other user ids when proposal has been accepted - opposite of creator
-                                //    there must a new proposal in comments with accepted = true
-                                //    user ids in accepted proposal be identical with other user ids in gift
-                                // 2) price - can be updated until accepted proposal and must after accept be identical with price accepted proposal
-                                // 3) currency - can be updated until accepted proposal and must after accept be identical with price accepted proposal
-                                // 4) like - todo: now a boolean. must be changed to a likes array with user ids and like/unlike timestamps. merge likes
-                                // 5) deleted_at_client
-                                // 6) accepted_cid
-                                // 7) accepted_at_client
-
-                                // allowed actions:
-                                // a) price and currency change and not an accept gift action
-                                // b) merge likes
-                                // c) accept gift
-                                // d) delete gift
-                                // e) control. old and new gift should be identical
-                                // analyse gift changes
-                                // do actions
-                                if (gift_price_action) {
-                                    // todo: use price and currency from last changed gift. add updated_at_client to gift
-                                    console.log(pgm + 'Error: Implement gift price action: old price = ' + old_gift.price + old_gift.currency + ', new price = ' + new_gift.price + new_gift.currency) ;
-                                }
-                                if (gift_like_action) {
-                                    // todo: change like to array with userid and timestamps for like and unlike
-                                    console.log(pgm + 'Error: Implement gift like action: old like = ' + JSON.stringify(old_gift.like) + ', new like = ' + JSON.stringify(new_gift.like));
-                                }
-                                if (gift_accept_action) {
-                                    if (old_gift_accepted) {
-                                        // todo: send gift to other client
-                                    }
-                                    else {
-                                        // update gift with
-                                    }
-                                }
-
-
-
-                            } // if pass 3
-
-                        } // if old_gift.sha256_gift != new_gift.sha256_gift
-
-                        if (old_gift.sha256_comments == new_gift.sha256_comments) {
-                            // comments identical - minor changes in gift - merge gift in pass 3
-                            merge_gifts.push(gid) ;
-                            continue ;
+                        // pass 2 - comment has been server verified
+                        if (!new_comment.verified_at_server) {
+                            // invalid signature for new comment - changed on other client or not correct in message
+                            // gift will be created but without invalid comments
+                            new_comments_invalid_sha.push(cid);
+                            continue;
                         }
-
-                        // comments are not identical
-
+                        // new comment ok - ready for pass 3
 
 
+                    } // for j (comments)
+                } // if
+                if (comments_pass == 1) continue ; // wait for verify comments
 
+                // pass 2 - gift and comments have been server validated. no extra validations for new gifts
 
-                        old_cids = [];
-                        if (old_gift.comments) for (j = 0; j < old_gift.comments.length; j++) old_cids.push(old_gift.comments[j].cid);
-                        if (new_gift.comments) for (j = 0; j < new_gift.comments.length; j++) {
-                            new_comment = new_gift.comments[j];
-                            // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
-                            if (old_cids.indexOf(new_comment.cid) == -1) {
-                                // new comment
-                                verify_new_comments += 1; // xxx
-                                verify_new_comments.push({gid: gid, comment: new_comment});
-
-                            }
-                            else {
-                                // existing comment
-                            }
-                        }
-                        // end update existing gift
-                        continue;
-                    }
-
-                    // new gift - must be a gift from a mutual friend - check - friend lists could be out of sync
-                    is_mutual_gift = false;
-                    for (j = 0; j < new_gift.giver_user_ids.length; j++) {
-                        user_id = new_gift.giver_user_ids[j];
-                        if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true;
-                    }
-                    for (j = 0; j < new_gift.receiver_user_ids.length; j++) {
-                        user_id = new_gift.receiver_user_ids[j];
-                        if (mailbox.mutual_friends.indexOf(user_id) != -1) is_mutual_gift = true;
-                    }
-                    if (!is_mutual_gift) {
-                        // write warning in log. friend lists on the two clients could be out of sync.
-                        gifts_without_mutual_friends.push(gid) ;
-                        continue;
-                    }
-                    // new gift from a mutual friend.
-
-                    // gift and comment sha256 signatures must be verified before continuing with pass 2
-                    // local gifts (other users on this gofreerev server) are validated in next ping cycle
-                    // remote gifts (from users on other gofreerev servers) take a little longer as gifts have to be remote validated
-
-                    if (mailbox.hasOwnProperty('server_id')) {
-                        // user ids have already been translated from sha256 signatures to internal user id or negative user id (unknown user)
-                        // See userService.sha256_to_user_ids calls for user_id_giver, user_id_receiver and comment.user_id
-                        // server id (created_at_server) has already been translated from sha256 signature to integer in end of pass 0.
-                        console.log(pgm + 'pass = ' + msg.pass + ', verify remote gift ' + JSON.stringify(new_gift)) ;
-                        // verify remote gift
-                        //   {"gid":"14254791174816684686","giver_user_ids":[2,-790],"receiver_user_ids":[],
-                        //    "created_at_client":1425479117,"created_at_server":1,"currency":"usd","direction":"giver",
-                        //    "description":"e","like":false,"deleted_at_client":1425804186,
-                        //    "sha256":"Çî\u0002t 31gõ¤7NÈªãÃÏ\u0018ÂØ\u0013 ×Ü*á\u0013ùÑ",
-                        //    "sha256_gift":"\"&»º¡&Q§æíB\rö)Uz/\u0019B\u0018,·E>Q°qÜ",
-                        //    "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
-
-                    }
-                    if (!new_gift.hasOwnProperty('verify_seq')) {
-                        // new gift must be server validated before continuing (between pass 1 and pass 2)
-                        verify_new_gifts += 1;
-                        // todo: use a temporary array - move to verify_gifts at end of gifts loop if no fatal errors were found in pass 1
-                        verify_gifts_add(new_gift) ;
-                        continue;
-                    }
-                    if (!new_gift.hasOwnProperty('verified_at_server')) {
-                        // new gift already in queue for server verification (offline, server not responding or remote gift)
-                        verifying_new_gifts += 1;
-                        continue;
-                    }
-                    if (!new_gift.verified_at_server) {
-                        // invalid signature for new gift - changed on other client or not correct in message
-                        new_gifts_invalid_sha.push(gid);
-                        continue;
-                    }
-                    // new gift ok - gift ready for pass 3
-                    if (new_gift.comments) {
-                        // server validate new comments
-                        for (j = 0; j < new_gift.comments.length; j++) {
-                            new_comment = new_gift.comments[j];
-                            cid = new_comment.cid ;
-                            // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
-                            if (!new_comment.hasOwnProperty('verify_seq')) {
-                                // pass 1 - new comment must be server validated before continuing (between pass 1 and pass 2)
-                                verify_new_comments += 1;
-                                // todo: use a temporary array - move to verify_comments at end of gifts loop if no fatal errors were found in pass 1
-                                verify_comments.push({gid: gid, comment: new_comment});
-                                continue ;
-                            }
-                            if (!new_comment.hasOwnProperty('verified_at_server')) {
-                                // between pass 1 and 2 - new comment already in queue for server verification (offline, server not responding or remote gift)
-                                verifying_new_comments += 1;
-                                continue;
-                            }
-                            // pass 2 - comment has been server verified
-                            if (!new_comment.verified_at_server) {
-                                // invalid signature for new comment - changed on other client or not correct in message
-                                // gift will be created but without invalid comments
-                                new_comments_invalid_sha.push(cid);
-                                continue;
-                            }
-                            // new comment ok - ready for pass 3
-
-
-                        } // for j (comments)
-                    } // if
-                    // new gift and any comments ready for pass 3
-
-                    if (msg.pass < 3) continue ;
-
-                    // pass 3 - create gift and valid comments
-                    console.log(pgm + 'pass 3 - create gift and valid comments. gift = ' + JSON.stringify(new_gift)) ;
-                    // create gift with created_at_server property (not a new gift)
-                    var gift = {
-                        gid: new_gift.gid,
-                        direction: new_gift.direction,
-                        giver_user_ids: new_gift.giver_user_ids,
-                        receiver_user_ids: new_gift.receiver_user_ids,
-                        created_at_client: new_gift.created_at_client,
-                        created_at_server: new_gift.created_at_server,
-                        price: new_gift.price,
-                        currency: new_gift.currency,
-                        direction: new_gift.direction,
-                        description: new_gift.description,
-                        open_graph_url: new_gift.open_graph_url,
-                        open_graph_title: new_gift.open_graph_title,
-                        open_graph_description: new_gift.open_graph_description,
-                        open_graph_image: new_gift.open_graph_image,
-                        show: true,
-                        new_comment: {comment: ""}
-                    };
-                    // extra control. gifts have already been validated in validate_send_gifts_message
-                    if (errors=invalid_gift(gift, [])) {
-                        console.log(pgm + 'Could not create new gift: ' + errors) ;
-                        console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
-                        create_gift_errors.push(new_gift.gid) ;
-                        continue ;
-                    }
-                    // add new gift to 1) JS array and 2) localStorage
-                    save_new_gift(gift) ;
-
-                    console.log(pgm + 'pass 3 - todo: create valid comments. gift = ' + JSON.stringify(new_gift)) ;
-
-                } // for i (gifts loop)
-
-                // end gifts loop - pass 1, 2 or 3
-
-                // check result of pass 1, 2 and 3 / continue with next pass if ok
-
-                // check for system errors - write message in log, send error message and abort
-                if (index_system_errors.length > 0) {
-                    // system error - error in javascript logic - abort processing of send_gifts message
-                    error = 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ') ;
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
-                    mailbox.outbox.push({
-                        mid: Gofreerev.get_new_uid(),
-                        msgtype: 'error',
-                        request_mid: msg.mid,
-                        error: error
-                    });
-                    return;
-                }
-                if (validation_system_errors.length > 0) {
-                    // system error - error in javascript logic - abort processing of send_gifts message
-                    // valid server side sha256 signature for old and new gift - must be a javascript error
-                    error = 'System error. Readonly fields was updated for gift and both old and new gift has a valid sha256 signature. Gifts: ' + validation_system_errors.join(', ') ;
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
-                    mailbox.outbox.push({
-                        mid: Gofreerev.get_new_uid(),
-                        msgtype: 'error',
-                        request_mid: msg.mid,
-                        error: error
-                    });
-                    return;
-                }
-
-                if (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts + verify_new_comments + verifying_new_comments > 0) {
-                    // between pass 1 and pass 2. waiting for server verification of gifts and comments. check after next ping
-                    // todo: max number of seconds/minutes to wait for remote gift and comment verification?
-                    console.log(pgm + 'Waiting for ' + (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts) + ' gifts and ' + (verify_new_comments + verifying_new_comments) + ' comments to be server validated.');
-                    mailbox.read.push(msg);
-                    console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length) ;
-
-                    // debug
-                    console.log(pgm + 'verify_gifts = ' + JSON.stringify(verify_gifts));
-                    console.log(pgm + 'verify_comments = ' + JSON.stringify(verify_comments));
-                    return;
-                }
-
-                // all gifts and comments have been server verified
-                if (msg.pass == 1) {
-                    // continue with full validation
-                    console.log(pgm + 'pass 1 => pass 2') ;
-                    msg.pass = 2 ;
-                    continue ;
-                }
-                // all gifts and comments have been full validated
-                if (msg.pass == 2) {
-                    // continue witn inserts and updates
-                    console.log(pgm + 'pass 2 => pass 3') ;
-                    msg.pass = 3 ;
+                if (new_gift.pass == 3) {
+                    // gift already created in a previous pass of this send_gifts message
+                    gifts_created.push(gid) ;
                     continue ;
                 }
 
-                // done. pass == 3
-                break ;
-            } // // pass 1, 2, 3 loop
+                // pass 3 - create gift and valid comments
+                console.log(pgm + 'pass 3 - create gift and valid comments. gift = ' + JSON.stringify(new_gift));
+                // create gift with created_at_server property (not a new gift)
+                var gift = {
+                    gid: new_gift.gid,
+                    direction: new_gift.direction,
+                    giver_user_ids: new_gift.giver_user_ids,
+                    receiver_user_ids: new_gift.receiver_user_ids,
+                    created_at_client: new_gift.created_at_client,
+                    created_at_server: new_gift.created_at_server,
+                    price: new_gift.price,
+                    currency: new_gift.currency,
+                    direction: new_gift.direction,
+                    description: new_gift.description,
+                    open_graph_url: new_gift.open_graph_url,
+                    open_graph_title: new_gift.open_graph_title,
+                    open_graph_description: new_gift.open_graph_description,
+                    open_graph_image: new_gift.open_graph_image,
+                    show: true,
+                    new_comment: {comment: ""}
+                };
+                // extra control. gifts have already been validated in validate_send_gifts_message
+                if (errors = invalid_gift(gift, [])) {
+                    console.log(pgm + 'Could not create new gift: ' + errors);
+                    console.log(pgm + 'gift = ' + JSON.stringify(gift));
+                    create_gift_errors.push(new_gift.gid);
+                    continue;
+                }
+                // add new gift to 1) JS array and 2) localStorage
+                save_new_gift(gift);
+                new_gift.pass = 3 ;
+                gifts_created.push(gid) ;
+
+                console.log(pgm + 'pass 3 - todo: create valid comments. gift = ' + JSON.stringify(new_gift));
+
+            } // for i (gifts loop)
+
+            // end gifts loop - pass 1, 2 or 3
+
+            // check result of pass 1, 2 and 3 / continue with next pass if ok
+
+            // check for system errors - write message in log, send error message and abort
+            if (index_system_errors.length > 0) {
+                // system error - error in javascript logic - abort processing of send_gifts message
+                error = 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ');
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                });
+                return;
+            }
+            if (validation_system_errors.length > 0) {
+                // system error - error in javascript logic - abort processing of send_gifts message
+                // valid server side sha256 signature for old and new gift - must be a javascript error
+                error = 'System error. Readonly fields was updated for gift and both old and new gift has a valid sha256 signature. Gifts: ' + validation_system_errors.join(', ');
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                });
+                return;
+            }
+
+            if (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts + verify_new_comments + verifying_new_comments > 0) {
+                // between pass 1 and pass 2. waiting for server verification of gifts and comments. check after next ping
+                // todo: max number of seconds/minutes to wait for remote gift and comment verification?
+                console.log(pgm + 'Waiting for ' + (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts) + ' gifts and ' + (verify_new_comments + verifying_new_comments) + ' comments to be server validated.');
+                mailbox.read.push(msg);
+                console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length);
+
+                // debug
+                console.log(pgm + 'verify_gifts = ' + JSON.stringify(verify_gifts));
+                console.log(pgm + 'verify_comments = ' + JSON.stringify(verify_comments));
+                return;
+            }
 
             // error report in log and send error message. pass should be 3
             console.log(pgm + 'pass = ' + msg.pass + ', error report missing') ;
@@ -6342,8 +6305,7 @@ angular.module('gifts', ['ngRoute'])
             if (new_gifts_invalid_sha.length > 0) console.log(pgm + 'Error. Received gifts ' + new_gifts_invalid_sha.join(', ') + ' with invalid sha256 signature (invalid on other client)') ;
             if (old_gifts_invalid_sha.length > 0) console.log(pgm + 'Error. Replacing gifts ' + old_gifts_invalid_sha.join(', ') + ' invalid on this client with gifts valid in message from other client') ;
             if (counterpart_errors.length > 0) console.log(pgm + 'System error. Received gifts ' + counterpart_errors.join(', ') + ' with invalid counterpart update') ;
-
-
+            if (gifts_created.length > 0) console.log(pgm + 'Ok. Created gifts ' + gifts_created.join(', ')) ;
 
         }; // receive_message_send_gifts
 
@@ -6536,7 +6498,7 @@ angular.module('gifts', ['ngRoute'])
                         case 'send_gifts':
                             // communication step 4 - sub message from sync_gifts - receive missing gifts from other device
                             receive_message_send_gifts(device, mailbox, msg);
-                            console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length)
+                            console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length);
                             break;
                         case 'request_gifts':
                             // communication step 4 - sub message from sync_gifts - send missing gift to other device

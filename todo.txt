@@ -1799,11 +1799,4 @@
 
 413) receive_message_send_gifts: max seconds to wait for remote gift and comment verification?
 
-414) receive_message_send_gifts:
-     now outer pass 1, 2, 3 loop and inner gifts loop
-     but one message can contain gifts with local verification and gifts from several other gofreerev servers
-     gifts with fast verification shouldn't wait for gifts with slow remote gift verification
-     change to outer gifts loop and inner pass 1, 2, 3 loop
-     end with error report when all gifts in message have been processed
-
 select next issue to solve: (rand*414).floor+1

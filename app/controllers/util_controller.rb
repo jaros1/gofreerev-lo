@@ -1413,7 +1413,15 @@ class UtilController < ApplicationController
         verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids, ping.client_sid, ping.sha256) unless server
         @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
-        # 8) client to client messages or server or server messages
+        # 8) verify comments. check server side signature for existing comments. used when receiving comments from other devices. Return created_at_server timestamps (or null) to client
+        # login user must be friend with giver or receiver of gift
+        # client must reject comment if created_at_server timestamp is null or does not match
+        # sha256 signature should ensure that comment information is not unauthorized updated on client
+        logger.debug2 "verify_comments = #{params[:verify_comments]} (#{params[:verify_comments].class})"
+        verify_comments_response = Comment.verify_comments(params[:verify_comments], login_user_ids, ping.client_sid, ping.sha256) unless server
+        @json[:verify_comments] = verify_comments_response if verify_comments_response
+
+        # 9) client to client messages or server or server messages
         # client to client:
         #   input: buffered messages (JS array) from actual client to other clients - saved in messages table
         #   output: messages to actual client from other clients - from messages table - saved in a JS array

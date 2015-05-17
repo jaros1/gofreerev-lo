@@ -2722,10 +2722,10 @@ angular.module('gifts', ['ngRoute'])
                         if (gift.comments[i].cid == gift.accepted_cid) accepted_comment = gift.comments[i] ;
                     }
                     if (!accepted_comment) errors.push('Unknown accepted cid (unique comment id). Accepted deal proposal was not found') ;
-                    else if (accepted_comment.accepted) errors.push('Invalid accepted cid (unique comment id). Comment is not an accepted deal proposal') ;
-                    else if (!accepted_comment.accepted_by_user_ids) errors.push('Invalid accepted cid (unique comment id). Accepted by for accepted deal proposal was not found') ;
+                    else if (accepted_comment.new_deal_action != 'accepted') errors.push('Invalid accepted cid (unique comment id). Comment is not an accepted deal proposal') ;
+                    else if (!accepted_comment.new_deal_action_by_user_ids) errors.push('Invalid accepted cid (unique comment id). Accepted by for accepted deal proposal was not found') ;
                     else {
-                        // todo: compare comment.accepted_by_user_ids and gift.giver_user_ids / gift.receiver_user_ids
+                        // todo: compare comment.new_deal_action_by_user_ids and gift.giver_user_ids / gift.receiver_user_ids
 
                     }
 
@@ -2736,7 +2736,7 @@ angular.module('gifts', ['ngRoute'])
             if (gift.accepted_at_client) {
                 if (gift.accepted_at_client < from_unix_timestamp) errors.push('Invalid accepted_at_client unix timestamp') ;
                 else if (gift.accepted_at_client > to_unix_timestamp) errors.push('Invalid accepted_at_client unix timestamp') ;
-                else if (accepted_comment && (gift.accepted_at_client != accepted_comment.accepted_at_client)) {
+                else if (accepted_comment && (gift.accepted_at_client != accepted_comment.new_deal_action_at_client)) {
                     errors.push('Invalid accepted_at_client unix timestamp') ;
                     accepted_comment = null ;
                 }
@@ -2763,52 +2763,39 @@ angular.module('gifts', ['ngRoute'])
             return null ;
         };
 
-        // calculate sha256 value for comment. used when comparing gift lists between clients. replicate gifts with changed sha256 value between clients
+        // calculate sha256 value for comment. used when comparing gift and comments between clients. replicate gifts with changed sha256 value between clients
         // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
-        // - created_at_client    - readonly- used in client path of server side sha256 signature - not included in comment sha256 calculation
-        // - comment              - readonly- used in client path of server side sha256 signature - not included in comment sha256 calculation
-        // - price                - readonly- used in client path of server side sha256 signature - not included in comment sha256 calculation
-        // - currency             - readonly- used in client path of server side sha256 signature - not included in comment sha256 calculation
-        // - user_ids             - readonly- used in server side sha256 signature - not included in comment sha256 calculation
+        // - created_at_client    - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
+        // - comment              - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
+        // - price                - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
+        // - currency             - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
+        // - new_deal             - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
+        // - user_ids             - readonly - used in server side sha256 signature - not included in comment sha256 calculation
         // - created_at_server    - server number - returned from new comments request and not included in comment sha256 calculation
-        // - new_deal             - boolean: null or true. null: comment. true: new deal proposal - can be cancelled - include in comment sha256 calculation
+        // - new_deal_action      - blank, cancelled, accepted or rejected - only used for new deal proposals (new_deal=true), include in comment sha256 calculation
+        // - new_deal_action_by_user_ids - relevant login user ids for new_deal_action (cancel, accept, reject) - subset of comment or gift creators - include in comment sha256 calculation
+        // - new_deal_action_at_client - new deal action client unix timestamp - cancel, accept or reject - include in comment sha256 calculation
         // - deleted_at_client    - deleted at client unix timestamp - include in comment sha256 calculation
-        // - accepted             - accepted boolean: null: comment, true: accepted deal, false: rejected deal - include in comment sha256 calculation
-        // - accepted_at_client   - accepted at client unix timestamp - accepted deals only - include in comment sha256 calculation
-        // - accepted_by_user_ids - accepted by user ids - accepted deals only - subset of gift creators - include in comment sha256 calculation
-        // - rejected_at_client   - rejected at client unix timestamp - rejected deals only - include in comment sha256 calculation
-        // - rejected_by_user_ids - rejected by user ids - rejected deals only - subset of gift creators - include in comment sha256 calculation
         var calc_sha256_for_comment = function (comment) {
             var pgm = service + '.calc_sha256_for_comment: ';
             if (!comment.hasOwnProperty('created_at_server')) return null; // wait - no server side sha256 signature
-
-            var accepted_by_user_ids;
-            if (!comment.hasOwnProperty('accepted_by_user_ids') || (typeof comment.accepted_by_user_ids == 'undefined') || (comment.accepted_by_user_ids == null)) accepted_by_user_ids = [];
+            // optional new deal action (cancelled, rejected or accepted)
+            var new_deal_action_by_user_ids;
+            if (!comment.hasOwnProperty('new_deal_action_by_user_ids') || (typeof comment.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) new_deal_action_by_user_ids = [];
             else {
-                accepted_by_user_ids = userService.get_external_user_ids(comment.accepted_by_user_ids);
-                if (!accepted_by_user_ids) return null;
-                accepted_by_user_ids = accepted_by_user_ids.sort ;
+                new_deal_action_by_user_ids = userService.get_external_user_ids(comment.new_deal_action_by_user_ids);
+                if (!new_deal_action_by_user_ids) new_deal_action_by_user_ids = [];
+                new_deal_action_by_user_ids = new_deal_action_by_user_ids.sort ;
             }
-            accepted_by_user_ids.unshift(accepted_by_user_ids.length);
-            accepted_by_user_ids = accepted_by_user_ids.join(',');
-
-            var rejected_by_user_ids;
-            if (!comment.hasOwnProperty('rejected_by_user_ids') || (typeof comment.rejected_by_user_ids == 'undefined') || (comment.rejected_by_user_ids == null)) rejected_by_user_ids = [];
-            else {
-                rejected_by_user_ids = userService.get_external_user_ids(comment.rejected_by_user_ids);
-                if (!rejected_by_user_ids) return null;
-                rejected_by_user_ids = rejected_by_user_ids.sort ;
-            }
-            rejected_by_user_ids.unshift(rejected_by_user_ids.length);
-            rejected_by_user_ids = rejected_by_user_ids.join(',');
-            return Gofreerev.sha256(comment.new_deal, comment.deleted_at_client, comment.accepted, comment.accepted_at_client,
-                                    comment.accepted_by_user_ids, comment.rejected_at_client, comment.rejected_by_user_ids);
+            new_deal_action_by_user_ids.unshift(new_deal_action_by_user_ids.length);
+            new_deal_action_by_user_ids = new_deal_action_by_user_ids.join(',');
+            return Gofreerev.sha256(comment.new_deal_action, new_deal_action_by_user_ids, comment.new_deal_action_at_client, comment.deleted_at_client);
         }; // calc_sha256_for_comment
 
         // calculate sha256 value for gift. used when comparing gift lists between clients. replicate gifts with changed sha256 value between devices
-        // - readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for gift
+        // - readonly fields used in server side sha256 signature - update is not allowed - not included in client side sha256 calc for gift:
         //   created_at_client, description, open_graph_url, open_graph_title, open_graph_description and open_graph_image,
-        //   direction, giver_user_ids and receiver_user_ids
+        //   direction, giver_user_ids or receiver_user_ids
         //   direction=giver: giver_user_ids can not be changed, receiver_user_ids are added later, use receiver_user_ids in sha256 value
         //   direction=receiver: receiver_user_ids can not be changed, giver_uds_ids are added latter, use receiver user ids in sha256 value
         // - created_at_server timestamp is readonly and is returned from ping/new_gifts response - not included in sha256 value
@@ -3177,11 +3164,34 @@ angular.module('gifts', ['ngRoute'])
                 //    continue ;
                 //}
 
-                if (gift.gid == '14315906760737834203') {
-                    // cleanup after testrun-22
+                if (gift.gid == '14315931137417750564') {
+                    // cleanup after testrun-23
                     console.log(pgm + 'delete remote gift ' + gift.gid) ;
                     Gofreerev.removeItem(keys[i]) ;
                     continue ;
+                }
+
+                // migrate old comment accepted/rejected fields
+                if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
+                    comment = gift.comments[j];
+                    if (comment.hasOwnProperty('accepted_at_client')) {
+                        comment.new_deal_action = 'accepted' ;
+                        comment.new_deal_action_by_user_ids = comment.accepted_by_user_ids ;
+                        comment.new_deal_action_at_client = comment.accepted_at_client ;
+                        delete comment.accepted ;
+                        delete comment.accepted_by_user_ids ;
+                        delete comment.accepted_at_client ;
+                        migration = true ;
+                    }
+                    if (comment.hasOwnProperty('rejected_at_client')) {
+                        comment.new_deal_action = 'rejected' ;
+                        comment.new_deal_action_by_user_ids = comment.rejected_by_user_ids ;
+                        comment.new_deal_action_at_client = comment.rejected_at_client ;
+                        delete comment.rejected ;
+                        delete comment.rejected_by_user_ids ;
+                        delete comment.rejected_at_client ;
+                        migration = true ;
+                    }
                 }
                 
                 // migration_user_ids - friends used in gifts and comments must be in users
@@ -3372,12 +3382,10 @@ angular.module('gifts', ['ngRoute'])
             if (comment.created_at_client != comments[index].created_at_client) comment.created_at_client = comments[index].created_at_client;
             if (comment.created_at_server != comments[index].created_at_server) comment.created_at_server = comments[index].created_at_server;
             if (comment.new_deal != comments[index].new_deal) comment.new_deal = comments[index].new_deal;
+            if (comment.new_deal_action != comments[index].new_deal_action) comment.new_deal_action = comments[index].new_deal_action;
+            if (comment.new_deal_action_by_user_ids != comments[index].new_deal_action_by_user_ids) comment.new_deal_action_by_user_ids = comments[index].new_deal_action_by_user_ids;
+            if (comment.new_deal_action_at_client != comments[index].new_deal_action_at_client) comment.new_deal_action_at_client = comments[index].new_deal_action_at_client;
             if (comment.deleted_at_client != comments[index].deleted_at_client) comment.deleted_at_client = comments[index].deleted_at_client;
-            if (comment.accepted != comments[index].accepted) comment.accepted = comments[index].accepted;
-            if (comment.accepted_at_client != comments[index].accepted_at_client) comment.accepted_at_client = comments[index].accepted_at_client;
-            if (comment.accepted_by_user_ids != comments[index].accepted_by_user_ids) comment.accepted_by_user_ids = comments[index].accepted_by_user_ids;
-            if (comment.rejected_at_client != comments[index].rejected_at_client) comment.rejected_at_client = comments[index].rejected_at_client;
-            if (comment.rejected_by_user_ids != comments[index].rejected_by_user_ids) comment.rejected_by_user_ids = comments[index].rejected_by_user_ids;
         }; // refresh_gift_and_comment
 
         // less that <ping_interval> milliseconds (see ping) between util/ping for client_userid
@@ -3967,27 +3975,47 @@ angular.module('gifts', ['ngRoute'])
             } // for i
         }; // delete_gifts_response
 
-        // check sha256 server signature for comments received from other devices before adding comment on this device
-        // input is comments from send_gifts message pass 1 (receive_message_send_gifts)
-        // output is used in send_gifts message pass 2 (receive_message_send_gifts)
-        // server verifies if comment sha256 signature is valid and returns a created_at_server timestamp if ok or null if not ok
-        var verify_comments = []; // array with comments for next verify_gifts request - there can be doublets if same gift is received from multiple devices
-        // todo: use comment.sha256 as a hash key? for quick lookup of identical new comments!
-        var verify_comments_request = function () {
-            var pgm = service + '.verify_comments_request: ';
-            console.log(pgm + 'Not implemented.');
-        };
-        var verify_comments_response = function (response) {
-            var pgm = service + '.verify_comments_response: ';
-            console.log(pgm + 'Not implemented.');
+        // return hash with <n> sha256 comment signatures used when communicating with server and other clients
+        // used in new_comments_request, verify_comments_request and delete_comments_request
+        // readonly fields in all signatures: gid, created_at_client + comment + price and currency
+        // 1) sha256: required in all requests
+        //    generated from gid + created_at_client + comment + price + currency
+        //    updateable fields: new_deal (true => false)
+        // 2) sha256_accepted: only used when accepting or when verifying accepted gifts
+        //    generated from created_at_client + description + open graph fields + price + currency + accepted_cid + accepted_at_client
+        //    updateable fields: deleted_at_client
+        // 3) sha256_deleted: only used when deleting or when verifying deleted gifts
+        //    generated from created_at_client + description + open graph fields + price + currency + accepted_cid + accepted_at_client + deleted_at_client
+        //    updateable fields; none
+        // server adds extra information to signatures from client and checks server side sha256 signatures in all requests
+        // that should ensure that gift information on client is not changed
+
+        var comment_signature_for_server = function (gid, comment) {
+            var signature = {
+                sha256: Gofreerev.sha256(gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency, comment.new_deal)
+            };
+            if (comment.new_deal_action) signature.sha256_action = Gofreerev.sha256(gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency, comment.new_deal, comment.new_deal_action, comment.new_deal_action_at_client) ;
+            if (comment.deleted_at_client) signature.sha256_deleted = Gofreerev.sha256(gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency, comment.new_deal, comment.new_deal_action, comment.new_deal_action_at_client, comment.deleted_at_client) ;
+            return signature;
         };
 
+
+
+
+        
+        
+        
+        
+        
+        
+        
+        
         // send meta-data for new comments to server and get comment.created_at_server boolean.
         // called from UserService.ping
         var new_comments_request_index = {}; // from cid to [gift,comment] - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
             var pgm = service + '.new_comments_request: ';
-            var request = [];
+            var request = [], signature ;
             new_comments_request_index = {};
             var gift, comments, comment, hash, sha256_client, cid;
             for (var i = 0; i < gifts.length; i++) {
@@ -3999,8 +4027,8 @@ angular.module('gifts', ['ngRoute'])
                     comment = comments[j];
                     cid = comment.cid;
                     // send meta-data for new comment to server and generate a sha256 signature for comment on server
-                    sha256_client = Gofreerev.sha256(gift.gid, comment.created_at_client.toString(), comment.comment, comment.price, comment.currency);
-                    hash = {cid: cid, user_ids: comment.user_ids, sha256: sha256_client};
+                    signature = comment_signature_for_server(gift.gid, comment) ;
+                    hash = {cid: cid, user_ids: comment.user_ids, sha256: signature.sha256};
                     request.push(hash);
                     // cid to gift+comment helper - used in new_comments_response for quick gift and comment lookup
                     new_comments_request_index[cid] = [gift, comment];
@@ -4065,7 +4093,192 @@ angular.module('gifts', ['ngRoute'])
             } // for i
             new_comments_request_index = {};
         }; // new_comments_response
-        
+
+
+        // check sha256 server signature for comments received from other clients before adding or merging gift on this client
+        // input is comments in verify_comments from send_gifts message pass 1 (receive_message_send_gifts)
+        // unique sequence seq is used in verify comments requests.
+        // positive seq is used for local comments where response in immediate
+        // negative seq (from sequence) is used for remote comments where response will come in a later verify_comments_response
+        // server verifies if comment sha256 server signature is valid and returns a created_at_server timestamp if ok or null if not ok
+        // output is created_at_server timestamp received in verify_comments_response (added as comment.verified_at_server)
+        // output is used in send_gifts message pass 2 (receive_message_send_gifts)
+        var verify_comments = []; // array with commentss for next verify_comments request - there can be doublets in array if a gift is received from multiple clients
+        // verify comments buffer - index by seq and key
+        var verify_comments_key_to_seq = {} ; // helper: array with keys, key = gid+sha256+userids
+        var verify_comments_seq_to_comms = {} ; // helper: from seq to one or more comments
+        var verify_comments_online = true ; // todo: set to false if ping does not respond - set to true if ping respond
+        var verify_comments_old_remote_seq = Gofreerev.getItem('seq') ; // ignore old remote comment verifications todo: identical with verify_gifts_old_remote_seq
+
+        // add comment to verify_comments array. called from receive_message_send_gifts once each pass
+        var verify_comments_add = function (gid, comment) {
+            var pgm = service + '.verify_comments_add: ' ;
+            if (comment.in_verify_comments) return ;
+            comment.in_verify_comments = Gofreerev.unix_timestamp() ;
+            verify_comments.push({gid: gid, comment: comment});
+            console.log(pgm + 'added cid ' + comment.cid + ' to verify comments buffer') ;
+        };
+
+        var verify_comments_request = function () {
+            var pgm = service + '.verify_comments_request: ';
+            // check buffer for "old comments". should normally be empty except for comments with negative seq (remote comments)
+            // local comments are allowed if device is offline or if server does not respond
+            var local_seq = 0 ;
+            var seq, local_comments = 0, remote_comments = 0 ;
+            var request = [] ;
+            for (seq in verify_comments_seq_to_comms) {
+                // console.log(pgm + 'seq = ' + seq + '(' + typeof seq + ')') ;
+                if (parseInt(seq) >= 0) {
+                    // found "old" local new comment in buffer. should only be the case if device is offline or server is not responding
+                    local_comments += 1;
+                    if (parseInt(seq) > local_seq) local_seq = parseInt(seq) ;
+                    request.push(verify_comments_seq_to_comms[seq].request) ; // resend old verify comments request
+                }
+                else remote_comments += 1 ; // ok - remote comment verification can take some time
+            }
+            if (verify_comments_online && (local_comments + remote_comments > 0)) {
+                console.log(pgm + 'Warning. Found ' + local_comments + ' local and ' + remote_comments + ' remote not yet verified comments in buffer.') ;
+            }
+
+            if (verify_comments.length == 0) return (request.length == 0 ? null : request) ; // no new comments for verification
+
+            // loop for new comments in verify_comments array
+            var no_new_comments = verify_comments.length ;
+            var already_verified = 0 ;
+            var waiting_for_verification = 0 ;
+            var old_request = request.length ; // resend old requests
+            var new_request = 0 ;
+            var verify_comment, sha256_client, hash, key, gid ;
+            var signatures ;
+            console.log(pgm + 'verify_comments.length = ' + verify_comments.length) ;
+            while (verify_comments.length > 0) {
+                hash = verify_comments.shift();
+                gid = hash.gid ;
+                verify_comment = hash.comment;
+                if (verify_comment.hasOwnProperty('verified_at_server')) {
+                    // ignore comment. comment has already been verified. can maybe happen if same gift has been received from more than one client
+                    already_verified += 1;
+                    continue;
+                }
+                if (verify_comment.hasOwnProperty('verify_seq')) {
+                    // must be a remote comment waiting for validation on an other gofreerev server
+                    waiting_for_verification += 1;
+                    continue;
+                } // if
+                // prepare request - using same client sha256 calculations as in new_comments_request
+                // calculate 1-3 client side signatures (sha256, sha256_action and/or sha256_deleted)
+                signatures = comment_signature_for_server(gid,verify_comment) ;
+                hash = { cid: verify_comment.cid, sha256: signatures.sha256, user_ids: verify_comment.user_ids };
+                if (signatures.sha256_action) hash.sha256_action = signatures.sha256_action ;
+                if (signatures.sha256_deleted) hash.sha256_deleted = signatures.sha256_deleted ;
+                // add server id (only comments for remote verification)
+                if (verify_comment.created_at_server != 0) hash.server_id = verify_comment.created_at_server ;
+                // check verify comments buffer
+                key = JSON.stringify(hash);
+                seq = verify_comments_key_to_seq[key];
+                if (seq) {
+                    // key already in verify comments buffer.
+                    verify_comment.verify_seq = seq ;
+                    verify_comments_seq_to_comms[seq].comments.push(verify_comment);
+                }
+                else {
+                    // new request. add to verify comments buffer and request array
+                    if (verify_comment.created_at_server == 0) {
+                        // local verification. positive seq. comment created on this gofreerev server
+                        local_seq += 1;
+                        hash.seq = local_seq ;
+                    }
+                    else hash.seq = -Gofreerev.get_next_seq() ; // remote verification. negative seq. comment created on an other Gofreerev server
+                    verify_comment.verify_seq = hash.seq ;
+                    verify_comments_key_to_seq[key] = hash.seq ;
+                    verify_comments_seq_to_comms[hash.seq] = {
+                        cid: verify_comment.cid,
+                        key: key,
+                        comments: [verify_comment],
+                        request: hash
+                    };
+                    request.push(hash);
+                    new_request += 1 ;
+                }
+            } // verify_comments while loop
+
+            if (already_verified > 0) console.log(pgm + 'Warning. Found ' + already_verified + ' already verified comments in verify_comments buffer.');
+            if (waiting_for_verification > 0) console.log(pgm + 'Warning. Found ' + waiting_for_verification + ' comments waiting for verification in verify_comments buffer.');
+            if (old_request > 0) console.log(pgm + 'Warning. Found ' + old_request + ' old requests in verify comments buffer.') ;
+            if (new_request > 0) console.log(pgm + new_request + ' new comment verification requests sent to server.');
+            return (request.length == 0 ? null : request);
+        }; // verify_comments_request
+
+        var verify_comments_response = function (response) {
+            var pgm = service + '.verify_comments_response: ';
+
+            if (response.error) {
+                console.log(pgm + response.error) ;
+                return ;
+            }
+
+            // seq must be unique i response and all positive seq must be in verify comments buffer
+            var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_cid = 0, new_comment  ;
+            for (i=0 ; i<response.comments.length ; i++) {
+                new_comment = response.comments[i] ;
+                seq = new_comment.seq;
+                if (seqs.indexOf(seq) == -1) {
+                    seqs.push(seq) ;
+                    if (!verify_comments_seq_to_comms[seq]) {
+                        // unknown seq!
+                        if (seq >= 0) invalid_local_seq += 1 ;
+                        else {
+                            // ok if remote verification was started in a previous session / before page reload
+                            // todo: there is a problem with multiple client sessions with same client_userid. remote verification can be started by one client and response received by an other client!
+                            // todo: is there a mailbox per device or a mailbox per client?
+                            if (verify_comments_old_remote_seq == null) verify_comments_old_remote_seq = 0 ;
+                            else if (typeof verify_comments_old_remote_seq == 'string') verify_comments_old_remote_seq = parseInt(verify_comments_old_remote_seq) ;
+                            if (-seq <= verify_comments_old_remote_seq) old_remote_seq.push(seq) ; // ignore old remove verifications (js variables have been reset)
+                            else invalid_remote_seq += 1 ;
+                        }
+                    }
+                    else if (verify_comments_seq_to_comms[seq].cid != new_comment.cid) invalid_cid += 1 ;
+                }
+                else not_unique_seq += 1 ;
+            }
+            seqs = null ;
+
+            // receipt - abort if errors in verify comments response
+            if (not_unique_seq > 0) console.log(pgm + 'Error. ' + not_unique_seq + ' not unique seq in verify comments response.') ;
+            if (invalid_local_seq > 0) console.log(pgm + 'Error. ' + invalid_local_seq + ' invalid local seq in verify comments response.') ;
+            if (invalid_remote_seq > 0) console.log(pgm + 'Error. ' + invalid_remote_seq + ' invalid remote seq in verify comments response.') ;
+            if (invalid_cid > 0) console.log(pgm + invalid_cid + ' invalid unique comment id (cid) in verify comments response.') ;
+            if (old_remote_seq.length > 0) console.log(pgm + 'Warning. ' + old_remote_seq + ' old unknown remote seq in verify comments response') ;
+            if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_cid > 0) return ;
+
+            // loop for each row in verify comments response
+            var comment_verification, cid, new_comments, key, no_verifications = 0, no_comments = 0, no_valid = 0, no_invalid = 0 ;
+            while (response.comments.length > 0) {
+                comment_verification = response.comments.shift();
+                seq = comment_verification.seq ;
+                if (old_remote_seq.indexOf(seq) != -1) continue ; // ignore old remote comment verification
+                no_verifications += 1 ;
+                new_comments = verify_comments_seq_to_comms[seq].comments;
+                while (new_comments.length > 0) {
+                    no_comments += 1 ;
+                    new_comment = new_comments.shift() ;
+                    new_comment.verified_at_server = comment_verification.verified_at_server ;
+                    if (identical_values(new_comment.created_at_server, new_comment.verified_at_server)) no_valid += 1 ;
+                    else no_invalid += 1 ;
+
+                }
+                // remove from verify comments buffer
+                key = verify_comments_seq_to_comms[seq].key ;
+                delete verify_comments_seq_to_comms[seq] ;
+                delete verify_comments_key_to_seq[key] ;
+            } // while response.length > 0
+
+            // receipt
+            console.log(pgm + 'Received ' + no_verifications + ' verifications for ' + no_comments + ' comments (' + no_valid + ' valid and ' + no_invalid + ' invalid).') ;
+
+        }; // verify_comments_response
+
+
 
         // list of mailboxes for other devices (online and offline)
         // key = did+sha256 is used as mailbox index.
@@ -4429,7 +4642,7 @@ angular.module('gifts', ['ngRoute'])
                     // wait with any messages in outbox until symmetric password setup is complete
                     continue;
                 }
-                console.log(pgm + 'device.password = ' + device.password) ; // todo: remove
+                // console.log(pgm + 'device.password = ' + device.password) ;
                 if (mailbox.outbox.length == 0) continue; // no new messages for this mailbox
 
                 // send continue with symmetric key communication
@@ -5340,13 +5553,11 @@ angular.module('gifts', ['ngRoute'])
                                 created_at_client: comment.created_at_client,
                                 created_at_server: comment.created_at_server,
                                 new_deal: comment.new_deal,
-                                deleted_at_client: comment.deleted_at_client,
+                                new_deal_action: comment.new_deal_action,
+                                new_deal_action_by_user_ids: comment.new_deal_action_by_user_ids,
+                                new_deal_action_at_client: comment.new_deal_action_at_client,
+                                deleted_at_client: comment.deleted_at_client
                                 // todo: add deleted_at_server (integer)
-                                accepted: comment.accepted,
-                                accepted_at_client: comment.accepted_at_client,
-                                accepted_by_user_ids: comment.accepted_by_user_ids,
-                                rejected_at_client: comment.rejected_at_client,
-                                rejected_by_user_ids: comment.rejected_by_user_ids
                                 // ,sha256: comment.sha256
                             }) ;
                             // save relevant comment.user_ids in gift_users buffer
@@ -6183,8 +6394,8 @@ angular.module('gifts', ['ngRoute'])
                         if (!new_comment.hasOwnProperty('verify_seq')) {
                             // pass 1 - new comment must be server validated before continuing (between pass 1 and pass 2)
                             verify_new_comments += 1;
-                            // todo: use a temporary array - move to verify_comments at end of gifts loop if no fatal errors were found in pass 1
-                            verify_comments.push({gid: gid, comment: new_comment});
+                            // verify_comments.push({gid: gid, comment: new_comment});
+                            verify_comments_add(gid, new_comment);
                             comments_pass = 1 ;
                             continue;
                         }
@@ -7149,7 +7360,7 @@ angular.module('gifts', ['ngRoute'])
         self.show_delete_comment_link = function (gift, comment) {
             // from rails Comment.show_delete_comment_link?
             var pgm = controller + '.show_delete_comment_link. gid = ' + gift.gid + ', cid = ' + comment.cid + '. ';
-            if (comment.accepted) return false ; // delete accepted proposal is not allow - delete gift is allowed
+            if (comment.new_deal_action == 'accepted') return false ; // delete accepted proposal is not allow - delete gift is allowed
             if (comment.deleted_at_client) return false ; // comment has already been marked as deleted
             // console.log(pgm) ;
             // ok to delete if login user(s) is giver/reciever
@@ -7195,10 +7406,9 @@ angular.module('gifts', ['ngRoute'])
         self.show_cancel_new_deal_link = function (gift,comment) {
             // from rails Comment.show_cancel_new_deal_link?
             if (comment.new_deal != true) return false ;
-            if (comment.accepted) return false ;
+            if (comment.new_deal_action) return false ; // already cancelled, rejected or accepted
             var login_user_ids = userService.get_login_userids() ;
             if ($(login_user_ids).filter(comment.user_ids).length == 0) return false ;
-            if (gift.direction == 'both') return false ;
             return true ;
         };
         self.cancel_new_deal = function (gift,comment) {
@@ -7206,7 +7416,12 @@ angular.module('gifts', ['ngRoute'])
             if (!comment.cid) return ; // comment has been deleted
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
             if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
-            comment.new_deal = false ;
+            var login_user_ids = userService.get_login_userids() ;
+            var user_ids = $(login_user_ids).filter(comment.user_ids) ;
+            comment.new_deal = false ; // todo: remove. should be a readonly field
+            comment.new_deal_action = 'cancelled' ;
+            comment.new_deal_action_by_user_ids = user_ids ;
+            comment.new_deal_action_at_client = Gofreerev.unix_timestamp() ;
             giftService.save_gift(gift) ;
         };
 
@@ -7216,7 +7431,7 @@ angular.module('gifts', ['ngRoute'])
         function get_deal_close_by_user_ids (gift, comment) {
             var pgm = controller + '.get_deal_closed_by_user_ids: ' ;
             if (comment.new_deal != true) return [] ;
-            if (typeof comment.accepted != 'undefined') return [] ; // already accepted or rejected
+            if (comment.new_deal_action) return [] ; // already cancelled, rejected or accepted
             if (gift.accepted_at_client || gift.accepted_cid) return [] ; // accepted
             // merge login users and creators of gift - minimum one login is required
             var login_user_ids = userService.get_login_userids() ;
@@ -7264,9 +7479,9 @@ angular.module('gifts', ['ngRoute'])
             else gift.giver_user_ids = user_ids ;
             gift.accepted_cid = comment.cid ;
             gift.accepted_at_client = Gofreerev.unix_timestamp() ;
-            comment.accepted = true ;
-            comment.accepted_by_user_ids = user_ids ;
-            comment.accepted_at_client = gift.accepted_at_client ;
+            comment.new_deal_action = 'accepted' ;
+            comment.new_deal_action_by_user_ids = user_ids ;
+            comment.new_deal_action_at_client = Gofreerev.unix_timestamp() ; ;
             giftService.save_gift(gift) ;
         };
 
@@ -7280,9 +7495,11 @@ angular.module('gifts', ['ngRoute'])
             if (user_ids.length == 0) return ;
             if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
             // reject deal
-            comment.accepted = false ;
-            comment.rejected_by_user_ids = user_ids ;
-            comment.rejected_at_client = Gofreerev.unix_timestamp() ;
+            comment.rejected_by_user_ids = user_ids ; // todo: remove
+            comment.rejected_at_client = Gofreerev.unix_timestamp() ; // todo: remove
+            comment.new_deal_action = 'rejected' ;
+            comment.new_deal_action_by_user_ids = user_ids ;
+            comment.new_deal_action_at_client = Gofreerev.unix_timestamp() ; ;
             giftService.save_gift(gift) ;
         };
 

@@ -282,8 +282,8 @@ class Gift < ActiveRecord::Base
   # verify gifts request from client - used when receiving new gifts from other clients - check server side sha256 signature and return true or false
   # sha256 is required and must be valid
   # sha256_deleted and sha256_accepted are optional in request and are validated if supplied
-  # client should supply sha256_accepted in request if gift has been accepted
-  # client should supply sha256_deleted in request if gift has been deleted
+  # client must supply sha256_accepted in request if gift has been accepted
+  # client must supply sha256_deleted in request if gift has been deleted
   # params:
   # - verify_gifts: array - see verify_gifts array in JSON_SCHEMA[:ping_request]
   # - login_user_ids: from session :user_ids array - logged in users

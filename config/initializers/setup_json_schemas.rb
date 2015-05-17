@@ -338,9 +338,11 @@ JSON_SCHEMA = {
                       :properties => {
                           # unique seq returned in response (cid is not guaranteed to be unique when receiving comments from other devices)
                           :seq => {:type => 'integer'},
+                          # optional server id for other Gofreerev server if comment has been created on an other Gofreerev server
+                          :server_id => {:type => 'integer', :minimum => 1},
                           # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :cid => {:type => 'string', :pattern => uid_pattern},
-                          # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price and currency)
+                          # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price, currency and new_deal)
                           :sha256 => {:type => 'string', :maxLength => 32},
                           # internal user ids for creator of comment (=login users) - todo: change to uid/provider format to support cross server replication?
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}}
@@ -996,20 +998,16 @@ JSON_SCHEMA = {
                                             :created_at_client => {:type => 'integer', :minimum => uid_from, :maximum => uid_to},
                                             # created at server - server number - 0 for current server - see also servers array for cross server messages
                                             :created_at_server => {:type => 'integer', :minimum => 0, :maximum => max_server_no},
-                                            # optional new_deal boolean - true if new deal proposal - false if cancelled new deal proposal
+                                            # optional new_deal boolean - true if commemt was created as a new deal proposal - false if comment
                                             :new_deal => {:type => %w(undefined boolean) },
+                                            # optional new_deal_action. Only used for new deal proposals.
+                                            :new_deal_action => {:type => %w(undefined string), :pattern => '^(cancelled|accepted|rejected)$'},
+                                            # optional new_deal_action user id, log in users for cancel, accept or reject action, subset of gift creator (accept, reject) or subset of comment creator (cancel)
+                                            :new_deal_action_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}},
+                                            # optional new_deal_action_at_client unix timestamp
+                                            :new_deal_action_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                             # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter
-                                            :deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
-                                            # optional accepted boolean - true if new proposal has been accepted by creator of gift/offer, false if new proposal has been rejected by creator of gift/offer
-                                            :accepted => {:type => %w(undefined boolean) },
-                                            # optional accepted at client unix timestamp - 10 decimals - used in comment signature on server
-                                            :accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
-                                            # optional updated_by - list with internal user id - users that have accepted - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
-                                            :accepted_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}},
-                                            # optional rejected at client unix timestamp - 10 decimals - used in comment signature on server
-                                            :rejected_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
-                                            # optional updated_by - list with internal user id - users that have rejected proposal - must be a subset of creators of gift - todo: change to uid/provider format to support cross server replication?
-                                            :rejected_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}}
+                                            :deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to}
                                         }, # comment properties
                                         :required => %w(cid user_ids comment created_at_client created_at_server),
                                         :additionalProperties => false

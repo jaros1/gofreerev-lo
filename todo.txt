@@ -1799,4 +1799,10 @@
 
 413) receive_message_send_gifts: max seconds to wait for remote gift and comment verification?
 
-select next issue to solve: (rand*414).floor+1
+414) todo: recalculate all comments sha256 signatures (client & server).
+
+415) client data migration.
+     accepted, accepted_by_user_ids, accepted_at_client, rejected_by_user_ids and rejected_at_client
+     have been replaced with new_deal_action, new_deal_action_by_user_ids and new_deal_action_at_client
+
+select next issue to solve: (rand*415).floor+1

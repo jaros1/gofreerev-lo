@@ -6137,11 +6137,14 @@ angular.module('gifts', ['ngRoute'])
             var counterpart_errors = [] ; // gid array with gifts with invalid counter part update (other user) - only allowed when acception a new deal
             var gifts_without_mutual_friends ; // array with gids - new gifts without mutual friends - ignore and report as warning in log
             var gifts_created = [] ; // array with gids - new created gifts
+            var create_gift_errors = [] ; // array with gids - invalid new gift could not be created. See more info in log
+            var create_comment_errors = [] ; // array with cids - invalid new comment could not be created. See more info in log
 
             var gid, index, old_gift, sha256_values, is_mutual_gift, user_id, cid, old_cids;
             var new_gift_creators, old_gift_creators, new_gift_counterpart, old_gift_counterpart;
             var old_gift_accepted, new_gift_accepted, gift_accept_action, gift_delete_action, gift_price_action, gift_like_action;
             var comments_pass, seconds ;
+            var gift, comment ;
 
 
             // gifts loop
@@ -6428,9 +6431,9 @@ angular.module('gifts', ['ngRoute'])
                 }
 
                 // pass 3 - create gift and valid comments
-                console.log(pgm + 'pass 3 - create gift and valid comments. gift = ' + JSON.stringify(new_gift));
+                console.log(pgm + 'pass 3 - create new gift = ' + JSON.stringify(new_gift));
                 // create gift with created_at_server property (not a new gift)
-                var gift = {
+                gift = {
                     gid: new_gift.gid,
                     direction: new_gift.direction,
                     giver_user_ids: new_gift.giver_user_ids,
@@ -6459,8 +6462,47 @@ angular.module('gifts', ['ngRoute'])
                 save_new_gift(gift);
                 new_gift.pass = 3 ;
                 gifts_created.push(gid) ;
+                if (!new_gift.comments || (new_gift.comments.length == 0)) continue ; // new gift without comments
 
-                console.log(pgm + 'pass 3 - todo: create valid comments. gift = ' + JSON.stringify(new_gift));
+                console.log(pgm + 'pass 3 - create comments for new gift. comments = ' + JSON.stringify(new_gift.comments));
+                // add valid comments for new gift
+                for (j = 0; j < new_gift.comments.length; j++) {
+                    new_comment = new_gift.comments[j];
+                    if (new_comment.verified_at_server) {
+                        // create comment with created_at_server property (not a new comment)
+                        cid = new_comment.cid;
+                        comment = {
+                            cid: new_comment.cid,
+                            user_ids: new_comment.user_ids,
+                            comment: new_comment.comment,
+                            price: new_comment.price,
+                            currency: new_comment.currency,
+                            created_at_client: new_comment.created_at_client,
+                            created_at_server: new_comment.created_at_server,
+                            new_deal: new_comment.new_deal
+                        } ;
+                        // todo: validate new comment - return any errors to UI
+                        // extra control. gifts have already been validated in validate_send_gifts_message
+                        if (errors = invalid_comment(comment, [])) {
+                            console.log(pgm + 'Could not create new comment: ' + errors);
+                            console.log(pgm + 'comment = ' + JSON.stringify(comment));
+                            create_comment_errors.push(new_comment.cid);
+                            continue;
+                        }
+                        // console.log(pgm + 'cid = ' + new_comment.cid) ;
+                        // console.log(pgm + 'created_at_client = ' + new_comment.created_at_client) ;
+                        var old_no_rows = new_gift.show_no_comments || self.default_no_comments ;
+                        if (!gift.hasOwnProperty('comments')) gift.comments = [] ;
+                        gift.comments.push(comment) ;
+                        // console.log(pgm + (gift.comments || []).length + ' comments after refresh and new comment') ;
+                        if (gift.comments.length > old_no_rows) {
+                            old_no_rows = old_no_rows + 1 ;
+                            gift.show_no_comments = old_no_rows ;
+                        }
+                        userService.add_new_login_users(comment.user_ids) ;
+                        save_gift(gift) ;
+                    } // if
+                } // for j (comments loop
 
             } // for i (gifts loop)
 

@@ -138,11 +138,11 @@ class Sequence < ActiveRecord::Base
   end # self.pseudo_session_id
 
 
-  # verify gifts seq - used in verify gifts message in server to server communication
+  # verify gifts seq - used in verify gift and verify comment messages in server to server communication
 
   private
-  def self.get_verify_gift_seq
-    name = 'verify_gift_seq'
+  def self.get_verify_seq
+    name = 'verify_seq'
     s = Sequence.find_by_name(name)
     if !s
       s = Sequence.new
@@ -151,17 +151,17 @@ class Sequence < ActiveRecord::Base
       s.save!
     end
     s
-  end # self.get_verify_gift_seq
+  end # self.get_verify_seq
 
   public
-  def self.next_verify_gift_seq
+  def self.next_verify_seq
     transaction do
-      s = Sequence.get_verify_gift_seq
+      s = Sequence.get_verify_seq
       s.value = s.value + 1
       s.save!
       return s.value
     end # do
-  end # self.verify_gift_seq
+  end # self.next_verify_seq
 
 
   # server mid (unique message id) - used in server to server communication

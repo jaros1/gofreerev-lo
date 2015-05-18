@@ -189,7 +189,7 @@ class Comment < ActiveRecord::Base
           next
         end
       else
-        # local gift verification
+        # local comment verification
         if seq < 0
           logger.error2 "cid #{cid}. Invalid request. seq must be postive for local comment verification"
           response << { :seq => seq, :cid => cid, :verified_at_server => false}
@@ -216,7 +216,7 @@ class Comment < ActiveRecord::Base
 
       # check if comment exists
       if !server_id
-        # local gifts verification - comment must exist
+        # local comments verification - comment must exist
         comment = comments[cid]
         if !comment
           # comment not found -
@@ -251,13 +251,13 @@ class Comment < ActiveRecord::Base
               user_ids << -user.id # unknown remote user
             end
           else
-            # local gift verification - use user id as it is
+            # local comment verification - use user id as it is
             user_ids << user.user_id
           end
           friend = friends[user.user_id]
           mutual_friend = true if friend and friend <= 2
         else
-          logger.warn2 "Gid #{cid} : user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown user ids."
+          logger.warn2 "Cid #{cid} : user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown user ids."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
           user_error = true
           break
@@ -287,7 +287,7 @@ class Comment < ActiveRecord::Base
         vg.client_seq = seq
         vg.server_id = server_id
         vg.cid = cid
-        vg.server_seq = Sequence.next_verify_comment_seq
+        vg.server_seq = Sequence.next_verify_seq
         vg.request_mid = server_mid[server_id]
         vg.save!
         # 2) insert verify_comments request in server_requests hash
@@ -348,9 +348,9 @@ class Comment < ActiveRecord::Base
       # no errors
       response << { :seq => seq, :cid => cid, :verified_at_server => true }
 
-    end # each new_gift
+    end # each new_comment
 
-    # any remote verify gift response ready for this client?
+    # any remote verify comment response ready for this client?
     vcs = VerifyComment.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
     if vcs.size > 0
       logger.debug2 "vcs.size = #{vcs.size}"
@@ -418,7 +418,7 @@ class Comment < ActiveRecord::Base
       m.save!
     end # each server_id, server_request
 
-    response.size == 0 ? nil : { :gifts => response }
+    response.size == 0 ? nil : { :comments => response }
 
   end # self.verify_comments
 

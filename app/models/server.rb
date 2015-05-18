@@ -2194,6 +2194,333 @@ class Server < ActiveRecord::Base
   end # receive_verify_gifts_message
 
 
+
+
+  # receive remote comment verification message (request and response)
+  # request: with login_users array and without verified_at_server boolean in verify_comments array
+  # response: without login_users array and with verified_at_server boolean in verify_comments array
+  private
+  def receive_verify_comments_req (mid, login_users, verify_comments)
+    # check and convert login users
+    # login users must be sha256 signature for a verified server user or a negative integer (unknown user)
+    # there must be minimum one verified server login user with valid sha256 signature in message
+    # user sha256 signature must match and user must be in server_users table as verified user
+    # changes sha256 user signatures
+    # - local changed signatures - wait for this server to refresh user info before processing verify comments request (keep verify request)
+    # - remote changed signatures - return verify comment request and wait for remote server to send a new verify comment request with correct user signatures
+    keep_message = false
+    error, login_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
+        from_sha256s_to_user_ids(login_users,
+                                 :seq => 3, :msg => 'verify_comments', :negative_user_ids => true,
+                                 :allow_changed_sha256 => 5.minutes.to_i, :field => :user_id)
+    return ["verify_comments request message was rejected. #{error}", keep_message] if error
+    return ["verify_comments request message was rejected. Message must have minimum one verified server user. login users = #{login_users}", keep_message] if login_user_ids.size == 0
+    logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+    local_changed_login_users = (no_local_changed_signatures > 0)
+    remote_changed_login_users = (no_remote_changed_signatures > 0)
+
+    # check verify_comments array
+    # seq must be unique - used in response
+    seqs = verify_comments.collect { |hash| hash['seq'] }.uniq
+    return ["verify_comments request message was rejected. seq in verify_comments array must be unique", keep_message] if seqs.size != verify_comments.size
+
+    # translate giver and receiver user ids from sha256 signatures and/or unknown user to user_ids
+    logger.debug2 "verify_comments (1) = #{verify_comments}"
+    no_errors = 0 # fatal errors - request not processed
+    verify_comments_response = [] # response to calling gofreerev server
+    request_on_hold = [] # keep request for later - must update user info on this gofreerev server before processing verify comment request
+    local_verify_comments_request = [] # request ready for local verification
+    verify_comments.each do |verify_comment|
+      seq = verify_comment['seq']
+      cid = verify_comment['cid']
+      comment_user_ids = verify_comment['user_ids']
+      local_changed_comment_users = remote_changed_comment_users = false
+      if comment_user_ids.class == Array and comment_user_ids.size > 0
+        # check and translate comment user ids
+        error, valid_comment_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
+            from_sha256s_to_user_ids(comment_user_ids,
+                                     :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
+                                     :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
+        if error
+          logger.debug2 "seq #{seq}: invalid users in #{comment_user_ids}: #{error}"
+          verify_comments_response.push({:seq => seq,
+                                      :gid => cid,
+                                      :verified_at_server => false,
+                                      :error => "invalid users in #{comment_user_ids}: #{error}" })
+          no_errors += 1
+          next
+        end
+        if comment_user_ids.size != valid_comment_user_ids.size
+          logger.debug2 "seq #{seq}: invalid users in #{comment_user_ids}"
+          verify_comments_response.push({:seq => seq,
+                                      :gid => cid,
+                                      :verified_at_server => false,
+                                      :error => "invalid users in #{comment_user_ids}" })
+          no_errors += 1
+          next
+        end
+        local_changed_comment_users = true if no_local_changed_signatures > 0
+        remote_changed_comment_users = true if no_remote_changed_signatures > 0
+      else
+        comment_user_ids = []
+      end
+      # move to relevant array
+      if remote_changed_login_users or remote_changed_comment_users
+        # sha256 changed user signature message will be sent to remote server
+        # wait for remote server to update user info and resend verify comments request with fresh user signatures
+        verify_comments_response.push({:seq => seq,
+                                    :cid => cid,
+                                    :sha256_changed => true})
+      else
+        # ready for local comment verification or waiting for local user info to be updated (changed sha256 signatures)
+        hash = {"seq" => seq,
+                "cid" => cid,
+                "sha256" => verify_comment['sha256']}
+        hash["sha256_action"] = verify_comment["sha256_action"] if verify_comment["sha256_action"]
+        hash["sha256_deleted"] = verify_comment["sha256_deleted"] if verify_comment["sha256_deleted"]
+        if local_changed_login_users or local_changed_comment_users
+          # wait for local server to update user info and process verify comments request later
+          hash["user_ids"] = comment_user_ids if user_ids.size > 0
+          request_on_hold.push(hash)
+        else
+          # ready to process verify comments request
+          hash["user_ids"] = valid_comment_user_ids
+          local_verify_comments_request.push(hash)
+        end
+      end
+    end # each verify_comment
+
+    logger.debug2 "no_errors = #{no_errors}, response.size = #{verify_comments_response.size}, request_on_hold.size = #{request_on_hold.size}, local_request.size = #{local_verify_comments_request.size}"
+    logger.debug2 "verify_comments (2) = #{verify_comments}"
+
+    if verify_comments.size == request_on_hold.size
+      # waiting for local user info update - keep verify comment message for next ping
+      keep_message = true
+      return [nil, keep_message]
+    end
+
+    if request_on_hold.size > 0
+      # some comments in verify comments requests are waiting for local user info update
+      # save request for next ping. Receiver is this current gofreerev server
+      message = {
+          :msgtype => 'verify_comments',
+          :login_users => login_users,
+          :verify_comments => request_on_hold
+      }
+      # validate json message before "sending"
+      json_schema = :verify_comments_request
+      if !JSON_SCHEMA.has_key? json_schema
+        return ["Could not validate verify_comments message with requests on hold. JSON schema definition #{json_schema.to_s} was not found.", false]
+      end
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+      if json_errors.size > 0
+        logger.error2 "Failed to \"save\" verify_comments message with requests on hold. Error in #{json_schema}"
+        logger.error2 "message = #{message}"
+        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+        logger.error2 "errors = #{json_errors.join(', ')}"
+        return "Failed to create verify_comments message with requests on hold: #{json_errors.join(', ')}"
+      end
+      # save server to server message - will be procesed in next ping
+      sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
+      sym_enc_message = Base64.encode64(sym_enc_message)
+      m = Message.new
+      m.from_did = servers[server_id].new_did
+      m.to_did = SystemParameter.did
+      m.server = true
+      m.encryption = 'sym'
+      m.message = sym_enc_message
+      m.save!
+    end
+
+    if local_verify_comments_request.size > 0
+      # comment verify requests ready for local verification
+      local_verify_comments_response = Comment.verify_comments(local_verify_comments_request, login_user_ids, nil, nil) # client_sid = client_sha256 = nil (local verification)
+      logger.debug2 "local_verify_comments_request = #{local_verify_comments_request}"
+      logger.debug2 "local_verify_comments_response = #{local_verify_comments_response}"
+      local_verify_comments_error = local_verify_comments_response[:error]
+      verify_comments_response += local_verify_comments_response[:comments] if local_verify_comments_response[:comments]
+    end
+
+    logger.debug2 "local_verify_comments_error = #{local_verify_comments_error}"
+    logger.debug2 "verify_comments_response = #{verify_comments_response}"
+
+    # format response - note - no login users array
+    message = {
+        :msgtype => 'verify_comments',
+        :verify_comments => verify_comments_response,
+        :mid => Sequence.next_server_mid,
+        :request_mid => mid
+    }
+    message[:error] = local_verify_comments_error if local_verify_comments_error
+
+    # validate json message before "sending"
+    json_schema = :verify_comments_response
+    if !JSON_SCHEMA.has_key? json_schema
+      return ["Could not validate verify_comments response. JSON schema definition #{json_schema.to_s} was not found.", false]
+    end
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+    if json_errors.size > 0
+      logger.error2 "Failed to return remote verify comments response. Error in #{json_schema}"
+      logger.error2 "message = #{message}"
+      logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+      logger.error2 "errors = #{json_errors.join(', ')}"
+      return "Failed to return remote verify comments response: #{json_errors.join(', ')}"
+    end
+    # save server to server message - will be procesed in next ping
+    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+    sym_enc_message = Base64.encode64(sym_enc_message)
+    m = Message.new
+    m.from_did = SystemParameter.did
+    m.to_did = self.new_did
+    m.server = true
+    m.encryption = 'sym'
+    m.message = sym_enc_message
+    m.mid = message[:mid]
+    m.save!
+
+  end # receive_verify_comments_req
+
+
+  # receive verify comments response from other Gofreerev server
+  def receive_verify_comments_res (mid, request_mid, verify_comments, error)
+    logger.debug2 "mid = #{mid}, request_mid = #{request_mid}"
+    logger.debug2 "verify_comments = #{verify_comments}"
+    logger.debug2 "error        = #{error} (#{error.class})"
+    logger.debug2 "error.size = #{error.size}" if error.class == Array
+
+    errors = []
+    errors << "empty verify_comments response message was rejected" unless verify_comments or error
+    errors << error if error
+
+    # seq in verify_comments must be unique
+    if verify_comments
+      server_seqs = verify_comments.collect { |hash| hash['seq'] }.uniq
+      if server_seqs.size != verify_comments.size
+        errors << "verify_comments response message was rejected. seq in verify_comments array must be unique"
+        verify_comments = nil
+      end
+    end
+    if !verify_comments or verify_comments.size == 0
+      logger.debug2 "errors = #{errors.join(', ')}"
+      return errors.size == 0 ? nil : errors.join(', ')
+    end
+
+    # seq must be in verify_comments table (see Comment.verify_comments)
+    vcs = {}
+    VerifyComment.where(:server_seq => server_seqs).each { |vc| vcs[vc.server_seq] = vc }
+    unknown_seq = []
+    invalid_server_id = []
+    invalid_cid = []
+    invalid_response = []
+    identical_response = []
+    ok_response = []
+    verify_comments.each do |verify_comment|
+      seq = verify_comment['seq']
+      cid = verify_comment['cid']
+      verified_at_server = verify_comment['verified_at_server']
+      error = verify_comment['error']
+      vc = vcs[seq]
+      if !vc
+        unknown_seq << verify_comment
+      elsif vc.server_id != self.id
+        invalid_server_id << verify_comment
+      elsif vc.cid != cid
+        invalid_cid << verify_comment
+      elsif vc.verified_at_server.class != NilClass
+        if (verified_at_server != vc.verified_at_server or error != vc.error)
+          # has already received a different response for this request
+          invalid_response << verify_comment
+        else
+          identical_response << verify_comment
+        end
+      else
+        # save response for remote gift verification. Response will be returned to client in next ping
+        ok_response << verify_comment
+        vc.verified_at_server = verified_at_server
+        vc.error = error
+        vc.save!
+      end
+    end # each verify_gift
+
+    logger.debug2 "verify_comments.size = #{verify_comments.size}, unknown_seq.size = #{unknown_seq.size}, " +
+                      "invalid_server_id.size = #{invalid_server_id.size}, invalid_cid.size = #{invalid_cid.size}, " +
+                      "invalid_response.size = #{invalid_response.size}, identical_response.size = #{identical_response.size}, " +
+                      "ok_response.size = #{ok_response.size}"
+
+    ok_response.each do |verify_comment|
+      seq = verify_comment['seq']
+      vc = vcs[seq]
+      vc.verified_at_server = verify_comment['verified_at_server']
+      vc.error = verify_comment['error'] if verify_comment['error']
+      vc.response_mid = mid
+      vc.save!
+    end
+
+    if unknown_seq.size + invalid_server_id.size + invalid_cid.size + invalid_response.size > 0
+      # send server to server error message
+      errors = [ "#{unknown_seq.size + invalid_server_id.size + invalid_cid.size + invalid_response.size} rows in verify gift response" ]
+      errors << "Unknown or deleted seqs: " + unknown_seq.collect { |vg| vg['seq'] }.join(', ') if unknown_seq.size > 0
+      errors << "Invalid seqs (other server): " + invalid_server_id.collect { |vg| vg['seq'] }.join(', ') if invalid_server_id.size > 0
+      errors << "Invalid cids: " + invalid_cid.collect { |vg| vg['seq'] }.join(', ') if invalid_cid.size > 0
+      errors << "Changed response: " + invalid_response.collect { |vg| vg['seq'] }.join(', ') if invalid_cid.size > 0
+      message = {
+          :msgtype => 'error',
+          :mid => Sequence.next_server_mid,
+          :request_mid => request_mid,
+          :response_mid => mid,
+          :error => errors.join(', ')
+      }
+      logger.debug2 "error message = #{message}"
+      sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
+      sym_enc_message = Base64.encode64(sym_enc_message)
+      m = Message.new
+      m.from_did = SystemParameter.did
+      m.to_did = self.new_did
+      m.server = true
+      m.encryption = 'sym'
+      m.message = sym_enc_message
+      m.mid = message.mid
+      m.save!
+      return errors.join(', ')
+    end
+
+    return nil
+  end # receive_verify_comments_res
+
+
+  public
+  def receive_verify_comments_msg(message)
+    # validate json (request with login user and comments info or response with verified_at_server boolean for each comment)
+    request = message.has_key?('login_users')
+    json_schema = request ? :verify_comments_request : :verify_comments_response
+    if !JSON_SCHEMA.has_key? json_schema
+      error = "Could not validate verify_comments message. JSON schema definition #{json_schema.to_s} was not found."
+      logger.error2 error
+      return error
+    end
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+    if json_errors.size > 0
+      logger.error2 "Invalid #{json_schema} message"
+      logger.error2 "message = #{message}"
+      logger.error2 "schema  = #{JSON_SCHEMA[json_schema]}"
+      logger.error2 "errors  = #{json_errors.join(', ')}"
+      return "Invalid #{json_schema} message : #{json_errors.join(', ')}"
+    end
+    # json ok - process verify comments request/response
+    mid, request_mid, login_users, verify_comments, error =
+        message['mid'], message['request_mid'], message['login_users'], message['verify_comments'], message['error']
+    if request
+      error, keep_message = receive_verify_comments_req(mid, login_users, verify_comments)
+      return [error, keep_message]
+    else
+      return [receive_verify_comments_res(mid, request_mid, verify_comments, error), false]
+    end
+  end # receive_verify_comments_msg
+  
+  
+  
+  
+  
   # return array with messages to server or nil
   # pseudo_user_ids: hash with user_ids in users message (if any). user_ids is checked when receiving response to users message
   # in memory hash only relevant in direct server to server user messages. cannot be used in forwarded user messages

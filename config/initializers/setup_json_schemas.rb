@@ -513,7 +513,7 @@ JSON_SCHEMA = {
                                   :seq => {:type => 'integer'},
                                   # gid - unique gift id - from verify_gifts request
                                   :gid => {:type => 'string', :pattern => uid_pattern},
-                                  # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
+                                  # verified_at_server - boolean - true if gift server side sha256 signature is correct
                                   :verified_at_server => {:type => 'boolean'}
                               },
                               :required => %w(seq gid verified_at_server),
@@ -595,8 +595,10 @@ JSON_SCHEMA = {
               :verify_comments => {
                   :type => 'object',
                   :properties => {
+                      # any fatal errors
+                      :error => {:type => 'string'},
                       # array with created_at_server boolean for rows in verify_comments request
-                      :data => {
+                      :comments => {
                           :type => 'array',
                           :items => {
                               :type => 'object',
@@ -605,10 +607,10 @@ JSON_SCHEMA = {
                                   :seq => {:type => 'integer'},
                                   # cid - unique comment id - from verify_comments request
                                   :cid => {:type => 'string', :pattern => uid_pattern},
-                                  # created_at_server - boolean - true if comment was created on this server and server side sha256 signature is correct
-                                  :created_at_server => {:type => 'boolean'}
+                                  # verified_at_server - boolean - true if comment server side sha256 signature is correct
+                                  :verified_at_server => {:type => 'boolean'}
                               },
-                              :required => %w(seq cid created_at_server),
+                              :required => %w(seq cid verified_at_server),
                               :additionalProperties => false
                           },
                           :minItems => 1
@@ -836,6 +838,106 @@ JSON_SCHEMA = {
         :additionalProperties => false
     },
 
+
+    # verify_comments server to server message
+    :verify_comments_request => {
+        :type => 'object',
+        :properties => {
+            :msgtype  => { :type => 'string', :pattern => '^verify_comments$' },
+            # mid - unique server to server message id
+            :mid => { :type => 'integer', :minimum => 1},
+            # array with logged in users - must be a hash with sha256, pseudo_user_id and sha256_updated_at
+            # (verified server user) or a negative integer (unknown user)
+            :login_users => {
+                :type => 'array',
+                :items => {
+                    :type => %w(object integer),
+                    :properties => { # if object - verified server user
+                                     :sha256 => { :type => 'string'},
+                                     :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                     :sha256_updated_at => { :type => 'integer'},
+                                     :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                     :additionalProperties => false
+                    },
+                    :maximum => -1, # if integer - unknown user
+                },
+                :minItems => 1
+            },
+            # array with verify comments request from clients
+            :verify_comments => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        # unique seq (Sequence.next_verify_seq) returned in response (cid is not guaranteed to be unique when receiving comments for verification).
+                        :seq => {:type => 'integer'},
+                        # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                        :cid => {:type => 'string', :pattern => uid_pattern},
+                        # required sha256 digest of client side comment information (unique gift id + created at client + comment + price + currency + new_deal)
+                        :sha256 => {:type => 'string', :maxLength => 32},
+                        # only used in new deal proposal actions (cancel, accept and reject) - sha256 digest of client side comment information (sha256 fields + new_deal_action + new_deal_action_at_client)
+                        :sha256_action => {:type => 'string', :maxLength => 32},
+                        # only used in delete_comments request - sha256 digest of client side comment information (sha256_action fields + deleted_at_client)
+                        :sha256_deleted => {:type => 'string', :maxLength => 32},
+                        # internal user ids for creator of comment
+                        :user_ids => {
+                            :type => %w(NilClass array),
+                            :items => {
+                                :type => %w(object integer),
+                                :properties => { # if object - verified server user
+                                                 :sha256 => { :type => 'string'},
+                                                 :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                                 :sha256_updated_at => { :type => 'integer'}
+                                },
+                                :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                :additionalProperties => false,
+                                :maximum => -1, # if integer - unknown user with negative user id
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        :required => %w(msgtype mid login_users verify_comments),
+        :additionalProperties => false
+    },
+
+    :verify_comments_response => {
+        :type => 'object',
+        :properties => {
+            :msgtype => {:type => 'string', :pattern => '^verify_comments$'},
+            # mid - unique server to server message id
+            :mid => { :type => 'integer', :minimum => 1},
+            # request mid - unique server to server message id - from verify comments request
+            :request_mid => { :type => 'integer', :minimum => 1},
+            # array with verify comments response to clients on other gofreerev server
+            :verify_comments => {
+                :type => 'array',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        # unique seq (Sequence.next_verify_seq) returned in response (cid is not guaranteed to be unique when receiving comments for verification).
+                        :seq => { :type => 'integer'},
+                        # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                        :cid => {:type => 'string', :pattern => uid_pattern},
+                        # verify comment request rejected due to changed user sha256 signatures. Server must process incoming sha256 changed signature message, update user info and resend verify comment request with up-to-date sha256 signatures
+                        :sha256_changed => { :type => 'boolean'},
+                        # true if verify comment request was ok. false if not. See more info in error field
+                        :verified_at_server => { :type => 'boolean'},
+                        # optional additional error info. Only "system" errors
+                        :error => { :type => 'string'}
+                    },
+                    :required => %w(seq),
+                    :additionalProperties => false
+                }
+            },
+            # optional error message.
+            :error => { :type => 'string' }
+        },
+        :required => %w(msgtype mid request_mid),
+        :additionalProperties => false
+    },
+
     # todo: client to client communication step 1 - symmetric password handshake
 
     # client to client communication step 2
@@ -957,7 +1059,7 @@ JSON_SCHEMA = {
                                 # created at server - server number - 0 for this server - see also servers array for cross server messages
                                 :created_at_server => {:type => 'integer', :minimum => 0, :maximum => max_server_no},
                                 # optional price - set when gift is created or when gift is accepted by a friend
-                                :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
+                                :price => {:type => %w(undefined null number), :minimum => 0, :multipleOf => 0.01 },
                                 # optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
                                 :currency => {:type => 'string', :pattern => '^[a-zA-Z]{3}$'},
                                 # direction. giver: was created by giver_user_ids as an offer. receiver: was created by receiver_user_ids as seeks

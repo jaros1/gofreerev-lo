@@ -529,7 +529,7 @@ class Gift < ActiveRecord::Base
         vg.client_seq = seq
         vg.server_id = server_id
         vg.gid = gid
-        vg.server_seq = Sequence.next_verify_gift_seq
+        vg.server_seq = Sequence.next_verify_seq
         vg.request_mid = server_mid[server_id]
         vg.save!
         # 2) insert verify_gifts request in server_requests hash

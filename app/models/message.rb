@@ -205,6 +205,11 @@ class Message < ActiveRecord::Base
       return error ? error : nil
     end
 
+    if message['msgtype'] == 'verify_comments'
+      error, self.keep_message = server.receive_verify_comments_msg(message)
+      return error ? error : nil
+    end
+
     logger.error2 "mstype #{message["msgtype"]} not implemented"
 
     return nil

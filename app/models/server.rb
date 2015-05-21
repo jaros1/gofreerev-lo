@@ -962,12 +962,15 @@ class Server < ActiveRecord::Base
     # remove server pings and remove "old" pings. only last ping for each did is relevant
     old_key = 'x'
     pings.delete_if do |p|
-      server = (p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\//)
+      server = (p.user_ids and p.user_ids.size == 1 and p.user_ids.first =~ /^http:\/\//)
       new_key = "#{p.session_id},#{p.client_userid}"
       if server or (new_key == old_key)
         true
       elsif !p.did
         logger.warn2 "ignoring ping without did: #{p.to_json}"
+        true
+      elsif !p.user_ids
+        logger.warn2 "ignoring ping without user_ids: #{p.to_json}"
         true
       else
         old_key = new_key

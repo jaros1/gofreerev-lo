@@ -30,54 +30,7 @@ Processing by UtilController#ping as JSON
 get_client_userid: session[:client_userid] = 1
 validate_json_request: params = {"client_userid":1,"sid":"14319575895383457279","client_timestamp":1431958207996,"verify_gifts":[{"gid":"14319577747931702396","sha256":"'ÊèÂi\u001Aoø¯ûç¾a3Ä»D#ÇCDÂ÷\n\u0006Ð\fõ","giver_user_ids":[2],"server_id":1,"seq":-61}],"controller":"util","action":"ping","format":"json","util":{"client_userid":1,"sid":"14319575895383457279","client_timestamp":1431958207996,"verify_gifts":[{"gid":"14319577747931702396","sha256":"'ÊèÂi\u001Aoø¯ûç¾a3Ä»D#ÇCDÂ÷\n\u0006Ð\fõ","giver_user_ids":[2],"server_id":1,"seq":-61}]}}
 validate_json_request: ping_request = {"client_userid"=>1, "sid"=>"14319575895383457279", "client_timestamp"=>1431958207996, "verify_gifts"=>[{"gid"=>"14319577747931702396", "sha256"=>"'ÊèÂi\u001Aoø¯ûç¾a3Ä»D\u0097#ÇCDÂ÷\n\u0006\u008D\u0097Ð\fõ", "giver_user_ids"=>[2], "server_id"=>1, "seq"=>-61}]}
-get_client_userid: session[:client_userid] = 1
-  Session Load (0.6ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '730f4aaf00667769df8bea8e5cba9367' AND `sessions`.`client_userid` = 1 LIMIT 1
-get_secret: secret = Q4oRoq8LuvQqsM6DmdcLWXySHj0GEpknBIhByuOxd24mYizNZ5mRoUhfazOm6h0NtIVblCtIiuQXQwDVhSdIhQVJwOXvvQZQQYYM6Piku7aB3veF87Aj5eipia0G5KYFyzIVhdXNyCCV6CYesoyNtvH6VlYCYn4KlnaAO67KqVWkDHvZ2mf6kaQWdq44i6QtpdD3QGTmWWg80gJOK4r2DthYF3QDycVBsf6sRbTIkbtzfrxwOiX5HPmzTyi0UWhj
-ping: server = false
-get_client_userid: session[:client_userid] = 1
-   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE `pings`.`session_id` = '730f4aaf00667769df8bea8e5cba9367' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14319575895383457279'
-  Ping Load (0.5ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = '730f4aaf00667769df8bea8e5cba9367' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14319575895383457279' ORDER BY `pings`.`last_ping_at` DESC LIMIT 1
-  Sequence Load (0.3ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_ping_cycle' LIMIT 1
-   (0.4ms)  SELECT COUNT(*) FROM `pings` WHERE (last_ping_at >= 1431958198.074 and server_id is null)
-ping: session.did = ping.did = 14281402123755149031
-check_expired_tokens: context = ping, refresh_tokens = []
-check_expired_tokens: client_timestamp = 1431958207, server_timestamp = 1431958208, timestamp_dif = 1, now = 1431958207
-ping: avg5 = 1.66, MAX_AVG_LOAD = 1.6
-ping: old server ping interval = 8000, new server ping interval = 8000
-ping: no_active_sessions = 1, avg_ping_interval = 8.0
-   (0.2ms)  BEGIN
-  SQL (2.5ms)  UPDATE `sessions` SET `client_timestamp` = 'JiaxwLWrOniBepyiWHxuijpjcnlwdF9rZWVwZXI6Ppw4DmiJ8uX4Y8/+o3g4\nwRNg9vVaYndb6Q9U5TeYs/c=\n', `updated_at` = '2015-05-18 14:10:08', `created` = NULL, `expires_at` = 'C8Y7T9v7ZiNR6n6y+3Jl4TpjcnlwdF9rZWVwZXI6hDrogEbQfqUoRPX+lAsF\nctzawbLdS58lrfcFoXSKPgPkGeTWXOZEJKLqlI9ARA3N\n', `flash_id` = NULL, `language` = 'sCteAhcFP1ELGxYq/Zf8GDpjcnlwdF9rZWVwZXI6IiQthrrZVtskmd5e80am\nutnpt2bABQcPaHClCxw6gIY=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'xxAwojr9E8YlsjUFfmEHGDpjcnlwdF9rZWVwZXI6luw0mCLYSUNfavSBb17i\nBYP8czsNDixDjfBgE0eVrM8=\n', `state` = NULL, `tokens` = 'j+VXD7LeGyrDoLNE6TQliDpjcnlwdF9rZWVwZXI61R9b5XufTnpi4ccCYBbT\nrW2QGxTbjcQ6rjLJmbBRAaJFVJftMZMV+7/5++DHad4a\n', `user_ids` = 'gZSDzxbqTQFFdqTAnaXNhDpjcnlwdF9rZWVwZXI6ahk8A6NO9vKz6L8a/wvT\nS2l4pJdcauXezkyCbmRGtBR5MDf6FofFwLw9TPxLOedhXmXaQ7fsq/EtAj7z\nSDNr7tb1zBq1bXdcJKF+7XhqjXU=\n', `did` = 'rL1Oxx7vPWIt9eqLzdmoAjpjcnlwdF9rZWVwZXI6qsKzK3293a16ugyceGvF\nRjlOSLT8wf2eE6xwVyT2BNU72QKzAszZB27RieQkEa5LmwHMurIe3y0GVvtw\neijSzw==\n', `client_secret` = 'nRNMhEt5ns5APJWDodjLRTpjcnlwdF9rZWVwZXI62KZ+NH89YgTe50bxf4IS\nSZWOncZzTrY7tTEACK4CPBkyalsKCaIZIt/s0a66OptE\n', `sha256` = 'r85sNHpfXJiDlOLnx3ty9TpjcnlwdF9rZWVwZXI6/OQmgHRl+rM/dRoBkkuk\nWoZ9FIzzvD4iuG8pAOK7BUVa+N93QcGVu3P6uKsIQmtpbmWQxgUhVTJwE7lL\nnWCls2Du2/TT3Hh/8YAApyNYUcg=\n' WHERE `sessions`.`id` = 131
-   (51.6ms)  COMMIT
-  Ping Load (0.8ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 125 and last_ping_at < 1431958208.074 and last_ping_at > 1431958192.142874 and server_id is null) ORDER BY last_ping_at desc LIMIT 1
-ping: no previous ping was found
-  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 125 and next_ping_at > 1431958208.074 and server_id is null) ORDER BY next_ping_at LIMIT 1
-ping: next ping was not found
-ping: next_ping_interval = 8.0
-ping: avg_ping_interval = 8.0
-   (0.6ms)  BEGIN
-  SQL (0.5ms)  UPDATE `pings` SET `last_ping_at` = 1431958208.074, `next_ping_at` = 1431958216.074 WHERE `pings`.`id` = 125
-   (50.7ms)  COMMIT
-ping: old client timestamp = 1431958199057, new client timestamp = 1431958207996, dif = 8939
-ping: previous_ping_interval = 8.0, next_ping_interval = 8.0, avg_ping_interval2 = 8.0, adjust_this_ping = 0.0
-   (0.6ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '730f4aaf00667769df8bea8e5cba9367' or client_userid <> 1) and (server_id is null and last_ping_at > 1431958192.2012632 or server_id is not null and last_ping_at > 1431958148.2013345))
-  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`user_id_giver` IN ('1616942831872982/facebook')
-  Ping Load (0.5ms)  SELECT `pings`.* FROM `pings` WHERE ((session_id <> '730f4aaf00667769df8bea8e5cba9367' or client_userid <> 1) and (server_id is null and last_ping_at > 1431958192.2012632 or server_id is not null and last_ping_at > 1431958148.2013345))
-  Server Load (0.2ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`id` IN (1)
-  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`user_id_giver` IN ('4878645699741/facebook')
-  User Load (0.2ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1616942831872982/facebook', '4878645699741/facebook')
-block in ping: login_user_ids = 1616942831872982/facebook
-block in ping: login_users_friends = 1616942831872982/facebook, 4878645699741/facebook
-block in ping: p.user_ids = 4878645699741/facebook
-block in ping: p.friends = 1616942831872982/facebook, 4878645699741/facebook
-block in ping: p.mutual_friends = 2, 3
-ping: @json[:online] = [{:did=>"14311621396607257930", :sha256=>"ZnDMJUWStVAS9Zmvzx7Z2GHUDkKgShIlRvxPNj1m5Uc=", :mutual_friends=>[2, 3], :server_id=>1}]
-  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
-  User Load (0.4ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1616942831872982/facebook')
-ping: remote_sha256_values_changed.size = 0
-ping: delete_gifts =  (NilClass)
-delete_gifts: delete_gifts = null
-delete_gifts: login_user_ids = ["1616942831872982/facebook"]
-ping: new_servers =  (NilClass)
+...
 ping: verify_gifts = [{"gid"=>"14319577747931702396", "sha256"=>"'ÊèÂi\u001Aoø¯ûç¾a3Ä»D\u0097#ÇCDÂ÷\n\u0006\u008D\u0097Ð\fõ", "giver_user_ids"=>[2], "server_id"=>1, "seq"=>-61}] (Array)
 verify_gifts: verify_gifts = [{"gid":"14319577747931702396","sha256":"'ÊèÂi\u001Aoø¯ûç¾a3Ä»D#ÇCDÂ÷\n\u0006Ð\fõ","giver_user_ids":[2],"server_id":1,"seq":-61}]
 verify_gifts: login_user_ids = ["1616942831872982/facebook"]
@@ -113,26 +66,7 @@ block in verify_gifts: verify_gifts message = {:msgtype=>"verify_gifts", :mid=>4
    (0.1ms)  BEGIN
   SQL (0.4ms)  INSERT INTO `messages` (`created_at`, `encryption`, `from_did`, `message`, `mid`, `server`, `to_did`, `updated_at`) VALUES ('2015-05-18 14:10:08', 'sym', '14316819464388304555', 'SGJZc0w0OVNIOG1Sc1dSTGpNdkx2UmdESjc2T21GVDVrdVVUWFZLTlVRU0E1\nM1pWRmQ2LzFUTFp6VFlKCk1ZeFdQWStENjBXRTFGSHpTTkdhSzNOMkJXOVlo\ncXVNaWpLOXZpdGxxUFpOQXE5SzVhZnR6a1dobHRXSwpKL09uZVdqclIyTHdN\nSFVFYmdJQ3p0UE9Ud2o2dGE5bndoR3o1TE15cUtpaVhrV2JQNEZQWE9CdWsy\nelMKUmZCaDc0MHZaRW54TWV0Wm9HTExQQjFsMWE5QVJHMGwwZjNLRXVSOEdU\nNm5zdXZIOTh6cGpacWN0Zk43ClhSeFkwT240dE1QZFBEOWdqQldRRFhoWk8z\nRHdncVBqSUxlSUExb2p6dFo4K09yV2JmOW9ZN3huZGdWOApMUXNwSXRDdWw0\nVTM5Z1k2WVhMMkRjaWhpMmdheVRaL09kMXlpRWNOcXpQN1p2bWw5ZnRwTXJC\nVGNLN3gKTFIvOGszVC9LbDZqUDRvV09HQmFGWmdyQ2Y3T0x1cHlQRnFRN293\nVFZvZ1Ztd3hmZ2xyZTVLelNmV1RBCng3L3ZRalRxYVVUbnZqMnczMGt5bUVC\nMndmVTdCaGxCL2VLSXRvSE1NNFZZMzNXWlZGU0E0WTNHUGdScQo4QU80MVpT\nZzJRMTJJaVpPMTRrVVJyeW1KeDZPekZmamtDK1lDa0p6S0FMellvZXh0OTlO\ndW9Ka1c5eTEKTHpPNjY5Mk1JTDJLb0FaQW0xa0dEdEU5Q3c9PQo=\n', 48, 1, '14316819442243593330', '2015-05-18 14:10:08')
    (44.7ms)  COMMIT
-ping: verify_comments =  (NilClass)
-verify_comments: verify_comments = null
-verify_comments: login_user_ids = ["1616942831872982/facebook"]
-   (0.2ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14319575895383457279' and client_sha256 = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=' and verified_at_server is not null)
-messages: sender_did    = 14281402123755149031
-messages: sender_sha256 = Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=
-messages: messages      =
-receive_messages: sender_did    = 14281402123755149031
-receive_messages: sender_sha256 = Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=
-receive_messages: messages      =
-  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
-  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'old_dids' LIMIT 1
-receive_messages: did = 14316819464388304555, old_dids = 14266761827510633285, 14266805497611556967, 14267567006038063688, 14280484799243646437, 14281361016413438378, 14282221960088687045, 14283071197400985992, 14284832560097966826, 14285682631599348591, 14286555117526436819, 14286775572812073760, 14287372641070802541, 14288303587695224481, 14292538940590388845, 14292566947241857516, 14293439094600897215, 14295123290747213389, 14295995219445438109, 14304764041521344251, 14308183006707797810, 14308901216421983040, 14310627931786225398, 14311620263236026089, 14313293259683533820, 14313347501646776660
-  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
-  Message Load (0.5ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14316819464388304555' AND `messages`.`server` = 1 ORDER BY `messages`.created_at ASC
-send_messages: sender_did    = 14281402123755149031
-send_messages: sender_sha256 = Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=
-  Message Load (0.4ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14281402123755149031' AND `messages`.`to_sha256` = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=' AND `messages`.`server` = 0 ORDER BY created_at, encryption desc
-  SQL (0.2ms)  DELETE FROM `messages` WHERE `messages`.`to_did` = '14281402123755149031' AND `messages`.`to_sha256` = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=' AND `messages`.`server` = 0
-messages: output_messages =
+...
 ping: @json = {:old_client_timestamp=>1431958199057, :interval=>8000, :online=>[{:did=>"14311621396607257930", :sha256=>"ZnDMJUWStVAS9Zmvzx7Z2GHUDkKgShIlRvxPNj1m5Uc=", :mutual_friends=>[2, 3], :server_id=>1}]}
 Completed 200 OK in 451ms (Views: 0.4ms | ActiveRecord: 319.3ms)
 
@@ -177,21 +111,22 @@ receive_verify_gifts_request: verify_gifts_response = [{:seq=>22, :gid=>"1431957
 
 server 2:
 
-receive_verify_gifts_response: mid = 44, request_mid = 46
-receive_verify_gifts_response: verify_gifts = [{"seq"=>20, "gid"=>"14319575639123588713", "verified_at_server"=>true}]
+receive_message: message_json = {"msgtype":"verify_gifts","verify_gifts":[{"seq":22,"gid":"14319577747931702396","verified_at_server":true}],"mid":46,"request_mid":48}
+receive_verify_gifts_response: mid = 46, request_mid = 48
+receive_verify_gifts_response: verify_gifts = [{"seq"=>22, "gid"=>"14319577747931702396", "verified_at_server"=>true}]
 receive_verify_gifts_response: error        =  (NilClass)
-  VerifyGift Load (1.3ms)  SELECT `verify_gifts`.* FROM `verify_gifts` WHERE `verify_gifts`.`server_seq` IN (20)
-   (0.2ms)  BEGIN
-  VerifyGift Exists (0.5ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`client_seq` = BINARY -58 AND `verify_gifts`.`id` != 17 AND `verify_gifts`.`client_sid` = '14319575895383457279' AND `verify_gifts`.`client_sha256` = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=') LIMIT 1
-  VerifyGift Exists (0.4ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`server_seq` = BINARY 20 AND `verify_gifts`.`id` != 17) LIMIT 1
-  SQL (0.5ms)  UPDATE `verify_gifts` SET `verified_at_server` = 1, `updated_at` = '2015-05-18 14:01:34' WHERE `verify_gifts`.`id` = 17
-   (41.5ms)  COMMIT
+  VerifyGift Load (0.4ms)  SELECT `verify_gifts`.* FROM `verify_gifts` WHERE `verify_gifts`.`server_seq` IN (22)
+   (0.1ms)  BEGIN
+  VerifyGift Exists (18.8ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`client_seq` = BINARY -61 AND `verify_gifts`.`id` != 18 AND `verify_gifts`.`client_sid` = '14319575895383457279' AND `verify_gifts`.`client_sha256` = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=') LIMIT 1
+  VerifyGift Exists (0.4ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`server_seq` = BINARY 22 AND `verify_gifts`.`id` != 18) LIMIT 1
+  SQL (0.4ms)  UPDATE `verify_gifts` SET `verified_at_server` = 1, `updated_at` = '2015-05-18 14:10:21' WHERE `verify_gifts`.`id` = 18
+   (73.4ms)  COMMIT
 receive_verify_gifts_response: verify_gifts.size = 1, unknown_seq.size = 0, invalid_server_id.size = 0, invalid_gid.size = 0, invalid_response.size = 0, identical_response.size = 0, ok_response.size = 1
-   (0.3ms)  BEGIN
-  VerifyGift Exists (0.5ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`client_seq` = BINARY -58 AND `verify_gifts`.`id` != 17 AND `verify_gifts`.`client_sid` = '14319575895383457279' AND `verify_gifts`.`client_sha256` = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=') LIMIT 1
-  VerifyGift Exists (0.4ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`server_seq` = BINARY 20 AND `verify_gifts`.`id` != 17) LIMIT 1
-  SQL (0.4ms)  UPDATE `verify_gifts` SET `response_mid` = 44, `updated_at` = '2015-05-18 14:01:34' WHERE `verify_gifts`.`id` = 17
-   (44.1ms)  COMMIT
+   (0.1ms)  BEGIN
+  VerifyGift Exists (0.4ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`client_seq` = BINARY -61 AND `verify_gifts`.`id` != 18 AND `verify_gifts`.`client_sid` = '14319575895383457279' AND `verify_gifts`.`client_sha256` = 'Jtx4PK3FK9i5eLwckERleN0QhYphIpH83EdilNRG2qA=') LIMIT 1
+  VerifyGift Exists (0.3ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`server_seq` = BINARY 22 AND `verify_gifts`.`id` != 18) LIMIT 1
+  SQL (0.4ms)  UPDATE `verify_gifts` SET `response_mid` = 46, `updated_at` = '2015-05-18 14:10:21' WHERE `verify_gifts`.`id` = 18
+   (45.2ms)  COMMIT
 
 
 client 2:

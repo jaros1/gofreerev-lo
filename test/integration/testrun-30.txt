@@ -1,0 +1,69 @@
+client 1:
+
+GiftService.sha256_gift: gid = 14319577747931702396, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.load_gifts: gift = {"gid":"14319577747931702396","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431957774,"currency":"usd","direction":"giver","description":"client 1 - e","show":true,"comments":[{"cid":"14319577831747091281","user_ids":[2],"comment":"client 1 - e","currency":"usd","created_at_client":1431957783,"created_at_server":0}],"created_at_server":0,
+                                "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.sha256_gift: gid = 14319575639123588713, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.load_gifts: gift = {"gid":"14319575639123588713","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431957563,"currency":"usd","direction":"giver","description":"client 1 - d","show":true,"comments":[{"cid":"14319575701483866322","user_ids":[2],"comment":"client 1 - d","currency":"usd","created_at_client":1431957570,"created_at_server":0}],"created_at_server":0,
+                                "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.sha256_gift: gid = 14319571254533652857, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.load_gifts: gift = {"gid":"14319571254533652857","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431957125,"currency":"usd","direction":"giver","description":"client 1 - c","show":true,"comments":[{"cid":"14319571318247090175","user_ids":[2],"comment":"client 1 - c","currency":"usd","created_at_client":1431957131,"created_at_server":0}],"created_at_server":0,
+                                "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.sha256_gift: gid = 14319404121313532052, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.load_gifts: gift = {"gid":"14319404121313532052","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431940412,"price":null,"currency":"usd","direction":"giver","description":"client 1 -b","show":true,"comments":[{"cid":"14319404192426008528","user_ids":[2],"comment":"client 1 - b","currency":"usd","created_at_client":1431940419,"created_at_server":0}],"created_at_server":0,
+                                "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.sha256_gift: gid = 14318503987470039958, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.load_gifts: gift = {"gid":"14318503987470039958","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431850398,"currency":"usd","direction":"giver","description":"client 1","show":true,"comments":[{"cid":"14318504067620296473","user_ids":[2],"comment":"client 1","currency":"usd","created_at_client":1431850406,"created_at_server":0}],"created_at_server":0,
+                                "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.load_gifts: gifts.length = 5
+GiftService.sha256_gift: gid = 14319577747931702396, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.sha256_gift: gid = 14319575639123588713, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.sha256_gift: gid = 14319571254533652857, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.sha256_gift: gid = 14319404121313532052, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.sha256_gift: gid = 14318503987470039958, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+
+
+client 2:
+
+GiftService.sha256_gift: gid = 14319577747931702396, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.load_gifts: gift = {"gid":"14319577747931702396","direction":"giver","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431957774,"created_at_server":1,"currency":"usd","description":"client 1 - e","show":true,"comments":[{"cid":"14319577831747091281","user_ids":[2],"comment":"client 1 - e","currency":"usd","created_at_client":1431957783,"created_at_server":1}],
+                                "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+                                "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.sha256_gift: gid = 14319575639123588713, comments_str = 0
+GiftService.load_gifts: gift = {"gid":"14319575639123588713","direction":"giver","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431957563,"created_at_server":1,"currency":"usd","description":"client 1 - d","show":true,"comments":[],
+                                "sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.sha256_gift: gid = 14319571254533652857, comments_str = 0
+GiftService.load_gifts: gift = {"gid":"14319571254533652857","direction":"giver","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431957125,"created_at_server":1,"currency":"usd","description":"client 1 - c","show":true,"comments":[],
+                                "sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.sha256_gift: gid = 14319404121313532052, comments_str = 0
+GiftService.load_gifts: gift = {"gid":"14319404121313532052","direction":"giver","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431940412,"created_at_server":1,"price":null,"currency":"usd","description":"client 1 -b","show":true,"comments":[],
+                                "sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.sha256_gift: gid = 14318503987470039958, comments_str = 0
+GiftService.load_gifts: gift = {"gid":"14318503987470039958","direction":"giver","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1431850398,"created_at_server":1,"currency":"usd","description":"client 1","show":true,"comments":[],
+                                "sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.sha256_gift: gid = 14308934920173320539, comments_str = 0
+GiftService.load_gifts: gift = {"gid":"14308934920173320539","giver_user_ids":[3],"receiver_user_ids":[],"created_at_client":1430893492,"currency":"usd","direction":"giver","description":"b","show":true,"comments":[],"created_at_server":0,
+                                "sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.sha256_gift: gid = 14281406632847658706, comments_str = 0
+GiftService.load_gifts: gift = {"gid":"14281406632847658706","giver_user_ids":[3],"receiver_user_ids":[],"created_at_client":1428140663,"currency":"usd","direction":"giver","description":"chrome","show":true,"comments":[],"created_at_server":0,
+                                "sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+                                "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.load_gifts: gifts.length = 7
+GiftService.sha256_gift: gid = 14319577747931702396, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³
+GiftService.sha256_gift: gid = 14319575639123588713, comments_str = 0
+GiftService.sha256_gift: gid = 14319571254533652857, comments_str = 0
+GiftService.sha256_gift: gid = 14319404121313532052, comments_str = 0
+GiftService.sha256_gift: gid = 14318503987470039958, comments_str = 0
+GiftService.sha256_gift: gid = 14308934920173320539, comments_str = 0
+GiftService.sha256_gift: gid = 14281406632847658706, comments_str = 0

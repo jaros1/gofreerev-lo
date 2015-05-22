@@ -6722,7 +6722,7 @@ angular.module('gifts', ['ngRoute'])
             // loop for all mailbox and process any messages in 1) inbox and 2) read
             // any new "read" messages generated when processing inbox messages will be processed after next ping
             var i, mailbox, old_read_length, msg, did, key, device;
-            for (i = 0; i < mailboxes.length; i++) {
+            for (i = 0; i < mailboxes.length; i++) { //x
                 mailbox = mailboxes[i];
                 if (mailbox.inbox.length + mailbox.read.length == 0) continue ;
                 did = mailbox.did ;

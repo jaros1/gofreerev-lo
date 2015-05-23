@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150517154125) do
+ActiveRecord::Schema.define(version: 20150523074734) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -255,7 +255,7 @@ ActiveRecord::Schema.define(version: 20150517154125) do
     t.string   "new_did",                     limit: 20
     t.decimal  "last_ping_at",                           precision: 13, scale: 3
     t.decimal  "next_ping_at",                           precision: 13, scale: 3
-    t.boolean  "secure"
+    t.boolean  "secure",                                                          default: true
     t.string   "old_did",                     limit: 20
     t.text     "old_pubkey"
     t.text     "new_pubkey"

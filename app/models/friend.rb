@@ -321,6 +321,13 @@ class Friend < ActiveRecord::Base
       # user.update_sha256(true)
       user.save!
       new_users[user_id] = user
+      # add dummy friend (giver=receiver=user)
+      f = Friend.new
+      f.user_id_giver = user_id
+      f.user_id_receiver = user_id
+      f.api_friend = 'Y'
+      f.app_friend = nil
+      f.save!
     end
 
     # loop for all old and new friends

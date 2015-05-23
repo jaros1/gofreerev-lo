@@ -2841,11 +2841,11 @@ angular.module('gifts', ['ngRoute'])
             }
             comments_sha256.unshift(comments.length.toString());
             var comments_str = comments_sha256.join(',');
-            console.log(pgm + 'gid = ' + gift.gid + ', comments_str = ' + comments_str) ;
             // return an array with 3 sha256 values. sha256 is the real/full sha256 value for gift. sha256_gift and sha256_comments are sub sha256 values used in gifts sync between devices
             var sha256 = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, gift.accepted_cid, gift.accepted_at_client, comments_str);
             var sha256_gift = Gofreerev.sha256(other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, gift.accepted_cid, gift.accepted_at_client);
             var sha256_comments = Gofreerev.sha256(comments_str);
+            console.log(pgm + 'gid = ' + gift.gid + ', comments_str = ' + comments_str + ', sha256 = ' + sha256 + ', sha256_gift = ' + sha256_gift + ', sha256_comments = ' + sha256_comments) ;
             return [sha256, sha256_gift, sha256_comments];
         }; // sha256_gift
 
@@ -5443,7 +5443,7 @@ angular.module('gifts', ['ngRoute'])
                         // check gift sha256 value
                         // send sub sha256 values to other device if difference in gift sha256 value
                         // the difference can be in gift and/or in comments
-                        if (compare.my_sha256 == compare.msg_sha256) ok_gids.push(gid) ;
+                        if (sha256_values.my_sha256 == sha256_values.msg_sha256) ok_gids.push(gid) ;
                         else check_gids.push(gid) ;
                         break ;
                 } // end compare switch
@@ -5623,7 +5623,7 @@ angular.module('gifts', ['ngRoute'])
                     gifts: []
                 } ;
                 for (i=0 ; i<check_gids.length ; i++) {
-                    gid = send_gids[i];
+                    gid = check_gids[i];
                     if (!gid_to_gifts_index.hasOwnProperty(gid)) {
                         console.log(pgm + 'Could not send gift ' + gid + ' sha256 values to other device. Index was not found.') ;
                         continue ;
@@ -6611,14 +6611,174 @@ angular.module('gifts', ['ngRoute'])
 
 
         // communication step 4 - sub message from receive_message_sync_gifts
-        // check gift sha256 sub values and return gift, comments or both to other device
+        // other client has detected different gift.sha256 values for one or more gifts
+        // compare gift sub sha256 values and send gift, comments or both to other client
         var receive_message_check_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_check_gifts: ' ;
             // console.log(pgm + 'device   = ' + JSON.stringify(device)) ;
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox)) ;
             console.log(pgm + 'msg      = ' + JSON.stringify(msg)) ;
+            // msg =
+            //   {"mid":"14320233440548746338","msgtype":"check_gifts",
+            //    "gifts":[{"gid":"14318503987470039958",
+            //              "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+            //              "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"},
+            //             {"gid":"14319404121313532052",
+            //              "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+            //              "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"},
+            //             {"gid":"14319571254533652857",
+            //              "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+            //              "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"},
+            //             {"gid":"14319575639123588713",
+            //              "sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+            //              "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}],
+            //    "request_mid":"14320233347208437968"}
+
+            // merge sha256 gift signatures for the two clients
+            var merge_gifts = {}, i, msg_gift, index, gid, my_gift, merge_gift ;
+            var invalid_gids = [] ; // array with unknown unique gift ids gid
+            var identical_gids = [] ; // array with gids for identical gift and comments
+            var j, msg_comment, cid, merge_comment, my_comment ;
+            var return_check_gift_message = false ;
+            for (i = 0; i < msg.gifts.length; i++) {
+                msg_gift = msg.gifts[i];
+                gid = msg_gift.gid;
+                if (gid_to_gifts_index.hasOwnProperty(gid)) {
+                    index = gid_to_gifts_index[gid];
+                    my_gift = gifts[index];
+                }
+                else {
+                    // error. todo: send error message? there must be an error in previous gifts_sha256 message!
+                    invalid_gids.push(gid);
+                    continue;
+                };
+                merge_gift = {
+                    msg_sha256: msg_gift.sha256,
+                    my_sha256: my_gift.sha256,
+                    msg_sha256_gift: msg_gift.sha256_gift,
+                    my_sha256_gift: my_gift.sha256_gift,
+                    msg_sha256_comments: msg_gift.sha256_comments,
+                    my_sha256_comments: my_gift.sha256_comments,
+                };
+                merge_gift.identical_gift = (merge_gift.my_sha256_gift == merge_gift.msg_sha256_gift) ;
+                merge_gift.identical_comments = (merge_gift.my_sha256_comments == merge_gift.msg_sha256_comments) ;
+                if (merge_gift.identical_gift & merge_gift.identical_comments) {
+                    identical_gids.push(gid) ;
+                    continue ;
+                }
+                if (!merge_gift.identical_comments) {
+                    // compare sha256 values for comments. My comments and any comments in check_gift message
+                    merge_gift.comments = {} ;
+                    if (msg_gift.hasOwnProperty('comments')) {
+                        // received check_gift message WITH sha256 signatures for comments (returned check_gift message)
+                        for (j=0 ; j<msg_gift.comments.length ; j++) {
+                            msg_comment = msg_gift.comments[j] ;
+                            cid = msg_comment.cid ;
+                            merge_comment = { msg_sha256: msg_comment.sha256 } ;
+                            merge_gift.comments[cid] = merge_comment ;
+                        } // for j (msg_gift.comments)
+                    }
+                    else {
+                        // incoming check_gifts message WITHOUT sha256 values for comments
+                        // return check_gifts message to other client WITH sha256 values for comments
+                        return_check_gift_message = true;
+                    }
+                    if (my_gift.comments) {
+                        for (j=0 ; j<my_gift.comments.length ; j++) {
+                            my_comment = my_gift.comments[j] ;
+                            cid = my_comment.cid ;
+                            merge_comment = merge_gift.comments[cid] || {} ;
+                            merge_comment.my_sha256 = my_comment.sha256 ;
+                            merge_gift.comments[cid] = merge_comment ;
+                        } // for j (my_gift.comments)
+                    } // if
+                } // if
+                merge_gifts[gid] = merge_gift;
+            } // for i (msg.gifts)
+            console.log(pgm + 'invalid_gids = ' + invalid_gids.join(', ')) ;
+            console.log(pgm + 'merge_gifts = ' + JSON.stringify(merge_gifts)) ;
+            console.log(pgm + 'return_check_gift_message = ' + return_check_gift_message) ;
+
+            if (return_check_gift_message) {
+                // received check_gift message WITHOUT sha256 values for comments.
+                // return check_gifts message (sync_gifts sub message) to other client WITH sha256 values for comments
+                var check_gift_message = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'check_comments',
+                    gifts: []
+                };
+                for (gid in merge_gifts) {
+                    merge_gift = merge_gifts[gid];
+                    if (merge_gift.identical_comments) continue ;
+                    msg_gift = {
+                        gid: gid,
+                        sha256: merge_gift.my_sha256,
+                        sha256_gift: merge_gift.my_sha256_gift,
+                        sha256_comments: merge_gift.my_sha256_comments,
+                        comments: []
+                    };
+                    for (cid in merge_gift.comments) {
+                        msg_comment = merge_gift.comments[cid] ;
+                        if (!msg_comment.hasOwnProperty('my_sha256')) continue ;
+                        msg_gift.comments.push({ cid: cid, sha256: msg_comment.my_sha256}) ;
+                    } // for cid (merge_gift.comments)
+                    check_gift_message.gifts.push(msg_gift) ;
+                } // for gid (merge_gifts)
+
+                var sync_gifts_message =
+                {
+                    mid: Gofreerev.get_new_uid(), // envelope mid
+                    request_mid: msg.mid,
+                    msgtype: 'sync_gifts',
+                    users: msg.users,
+                    check_gifts: check_gift_message // optional sub message 3)
+                };
+                // JS validate sync_gifts message before placing message in outbox
+                if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {
+                    // error message has already been written to log
+                    // send error message to other device
+                    var json_error = JSON.parse(JSON.stringify(tv4.error));
+                    delete json_error.stack;
+                    var json_errors = JSON.stringify(json_error) ;
+                    error = 'Could not process check_gifts return message. JSON schema validation error in sync_gifts message: ' + json_errors ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        request_mid: msg.mid,
+                        msgtype: 'error',
+                        error: error
+                    }) ;
+                    return ;
+                }
+
+                // todo: 2) check sub message request_gifts for logical errors
+
+                // send sync_gifts message
+                mailbox.outbox.push(sync_gifts_message) ;
+
+                return ;
+
+            } // if
+
+            // compare actions:
+            // - 00 : changed gift and comments - send check_comments message with gift
+            // - 01 : changed comments          - send check_comments message without gift
+            // - 10 : changed gift              - send send_gifts message without comments (minor gift change)
+            // - 11 : see identical_gids array  - no action
+            var check_comments_message = {
+                mid: Gofreerev.get_new_uid(),
+                msgtype: 'check_comments',
+                gifts: [],
+                users: []
+            };
+            for (i=0 ; i<merge_gifts.length ; i++) {
+                merge_gift = merge_gifts[i] ;
+            } // for i (merge_gifts)
+
+
             console.log(pgm + 'Error. Not implemented') ;
         }; // receive_message_check_gifts
+
 
         // receive encrypted messages from other devices
         // - process rsa password message

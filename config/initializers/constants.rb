@@ -134,6 +134,9 @@ COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd
                        "vi" => "usd", "vn" => "vnd", "wf" => "xpf", "ws" => "usd", "ye" => "yer", "yt" => "eur",
                        "za" => "zar", "zm" => "zmk", "zw" => "zwd"};
 
+# check if dalli memcache is available. Used for temporary password storage in memory
+raise "Please install dalli memcache: 'sudo apt-get install memcached'" unless Rails.cache.write "x", true
+
 # server to server communication. setup private key protection. Use 1-5 of the following encryption options
 # the keys offers no protection if unauthorized user has access to rails console on server
 # public private key pair is regenerated if encryption password changes and old private key is lost

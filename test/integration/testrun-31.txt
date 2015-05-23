@@ -1,0 +1,121 @@
+new clients and empty dbs
+replicating one new gift from client 1 on app 1 to client 2 on app 2.
+
+
+server 2:
+block in ping: login_user_ids = 1616942831872982/facebook
+block in ping: login_users_friends = 1616942831872982/facebook, 4878645699741/facebook
+block in ping: p.user_ids = 4878645699741/facebook
+block in ping: p.friends = 1616942831872982/facebook
+block in ping: p.mutual_friends = 2
+ping: @json[:online] = [{:did=>"14322883654942814019", :sha256=>"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=", :mutual_friends=>[2], :server_id=>1}]
+
+mutual_friends should have been [2,3]! a user is always friend with him self
+
+
+client 2:
+NavCtrl.do_tasks: start
+GiftService.update_mailboxes:
+New online mailbox
+  {"did":"14322883654942814019","sha256":"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","mutual_friends":[2],"server_id":1,
+   "key":"14322883654942814019PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[],"done":[],"error":[]}
+with mutual friends 2.
+Added message = {"mid":"14323048818086284744","msgtype":"users_sha256","users":[2]} to outbox
+
+console 2:
+2.0.0-p643 :033 >   pings[2]
+ => #<Ping id: 3, session_id: "2", client_userid: 1, client_sid: "2", last_ping_at: #<BigDecimal:5bb9e78,'0.1432305138 951E10',27(27)>,
+           next_ping_at: #<BigDecimal:5bb9d60,'0.1463927540 342E10',27(27)>, did: "14322883654942814019", user_ids: "---\n- 4878645699741/facebook\n",
+           sha256: "PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=", server_id: 1>
+Must by remote session from app 1. Login user 4878645699741/facebook Jan Roslind
+
+2.0.0-p643 :051 >   User.find(2)
+  User Load (0.4ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` = 2 LIMIT 1
+ => #<User id: 2, user_id: "1616942831872982/facebook", user_name: "iFkOJan Mobilos RoslindsaiT1U3Gd", created_at: "2015-05-22 10:51:11", updated_at: "2015-05-22 14:28:04", currency: "jMRrKCqHSACUSDrNAOqDpJEwoFD", balance: "1TkAXb7C6N---\nBALANCE: 0.0\nn5BRx2GuqF67FIFGJ8u", balance_at: "2015-05-22", permissions: "tNGZI6FCi--- []\nxEF0rh", no_api_friends: "MCtc2v4Eun1WuOPku", negative_interest: nil, api_profile_url: "CqZjCZeeShttps://www.facebook.com/1616942831872982l...", api_profile_picture_url: "iphDKVP3L3https://fbcdn-profile-a.akamaihd.net/hpro...", deleted_at: nil, last_login_at: "2015-05-22 10:51:11", deauthorized_at: nil, last_friends_find_at: "2015-05-22 10:51:11", language: "en", access_token: nil, access_token_expires: nil, refresh_token: nil, sha256: "FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs=", old_sha256: "FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs=", sha256_updated_at: "2015-05-22 14:27:14", friend_sha256_updated_at: nil, remote_sha256_updated_at: nil, remote_sha256_update_info: nil>
+2.0.0-p643 :052 > User.find(3)
+  User Load (0.7ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` = 3 LIMIT 1
+ => #<User id: 3, user_id: "4878645699741/facebook", user_name: "awNKlV7275BI5wfUJan Roslindqi221EliyTTkeWw", created_at: "2015-05-22 10:51:15", updated_at: "2015-05-22 14:27:14", currency: nil, balance: nil, balance_at: nil, permissions: nil, no_api_friends: nil, negative_interest: nil, api_profile_url: nil, api_profile_picture_url: "UfaJjMpMkdUphttps://fbcdn-profile-a.akamaihd.net/hp...", deleted_at: nil, last_login_at: nil, deauthorized_at: nil, last_friends_find_at: nil, language: nil, access_token: nil, access_token_expires: nil, refresh_token: nil, sha256: "uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=", old_sha256: "uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=", sha256_updated_at: "2015-05-22 14:27:14", friend_sha256_updated_at: nil, remote_sha256_updated_at: nil, remote_sha256_update_info: nil>
+
+console 1:
+2.0.0-p643 :036 >   local pings[0] session in app 1 = remote pings[2] session in app 2
+ => #<Ping id: 1, session_id: "8ce47d3ca2c1ed3c14459f752e170725", client_userid: 1, client_sid: "14322883654943037266",
+           last_ping_at: #<BigDecimal:48cee80,'0.1432305141 152E10',27(27)>, next_ping_at: #<BigDecimal:48ceb88,'0.1432305143 152E10',27(27)>, did: "14322883654942814019",
+           user_ids: "---\n- 1705481075/facebook\n", sha256: "PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=", server_id: nil>
+
+2.0.0-p643 :041 > User.find_by_user_id('1705481075/facebook')
+  User Load (0.3ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '1705481075/facebook' LIMIT 1
+ => #<User id: 2, user_id: "1705481075/facebook", user_name: "ViJan RoslindIdwEAW4fP5UiU", created_at: "2015-05-22 10:48:57", updated_at: "2015-05-22 14:27:59", currency: "qFQWGxUkJLR3GYZgUSD8", balance: "7aQ0lXfJHeeyVGHlZ---\nBALANCE: 0.0\nfT3Rb", balance_at: "2015-05-22", permissions: "gricZ4xoAquIQgRS--- []\n4cfzf1nw515gvga3", no_api_friends: "Nll8DuSlbA1s2gIYaDf", negative_interest: nil, api_profile_url: "BQqBjgepKk3n7yndgiKKhttps://www.facebook.com/170548...", api_profile_picture_url: "8UYY87OhB1YYojl0https://fbcdn-profile-a.akamaihd.ne...", deleted_at: nil, last_login_at: "2015-05-22 10:48:57", deauthorized_at: nil, last_friends_find_at: "2015-05-22 10:48:57", language: "en", access_token: nil, access_token_expires: nil, refresh_token: nil, sha256: "ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=", old_sha256: "ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=", sha256_updated_at: "2015-05-22 14:27:14", friend_sha256_updated_at: nil, remote_sha256_updated_at: nil, remote_sha256_update_info: nil>
+
+
+
+
+client 2:
+GiftService.send_messages: Wait. Public key has not yet been received for device 14322883654942814019
+GiftService.pubkeys_response: pubkeys = [{"did":"14322883654942814019","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----"}]
+Synchronous XMLHttpRequest on the main thread is deprecated because of its detrimental effects to the end user's experience. For more help, check http://xhr.spec.whatwg.org/.
+GiftsCtrl loaded
+GiftService.send_messages: symmetric password setup: generated password1
+GiftService.send_messages: symmetric password setup: sending rsa message
+GiftService.receive_messages: message_with_envelope = {"sender_did":"14322883654942814019","server":false,"encryption":"rsa","message":"XRwIU41qeFkoaTjL1oTy0F5UXJUgIGxKtUUk2ICksW2hnB+otBEy/krMT+tzrB4pe3cLAleBwjafECqn6OtWyQF3glpBGo4pi1/WCuCs5hwFgKU5F0bnX4LS6YDbS+BvKqgUNYd9LkTiOhnMb2I+8/O/nxV3HuLPqjAmGCmNRS2YFJGOMxXAvgQcjwUvKsBwIEEvltZX9iCJ3n+SMQB/fxDTNOTJLwQvWdq2skUmHEx1NFhsS4Lf0fkGQo64K7ZnUkpqAcj5eGh89r3MdMW+1z+NJ2SLmOD1wO5+T+mMGaG1PrHoN0sKldRAbxTBwuqUHj0v6tLh3LBRj6z4Hd/4JQ==","receiver_did":"14322883971308289539","sender_sha256":"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo="}
+GiftService.setup_device_password: device.password = S%|Www- 77Y3£[0cEkRcva/W!Rf5m=wt+_&tVN)4M])+X#uu-b1.rcbJ(ivRRGnhe-IDx1XdR.-&srII
+GiftService.receive_message_password: device.password = S%|Www- 77Y3£[0cEkRcva/W!Rf5m=wt+_&tVN)4M])+X#uu-b1.rcbJ(ivRRGnhe-IDx1XdR.-&srII
+GiftService.receive_message_password: symmetric password setup in progress.
+GiftService.receive_message_password: done = 0, md5_ok = false
+GiftService.receive_messages: device.password = undefined
+GiftService.setup_device_password: device.password = S%|Www- 77Y3£[0cEkRcva/W!Rf5m=wt+_&tVN)4M])+X#uu-b1.rcbJ(ivRRGnhe-IDx1XdR.-&srII
+GiftService.send_messages: symmetric password setup: sending rsa message
+GiftService.send_messages:
+msg = {"mid":"14323048818086284744","msgtype":"users_sha256","users":[2]}
+
+console 2:
+2.0.0-p643 :016 >   u = User.find(2)
+  User Load (67.2ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` = 2 LIMIT 1
+ => #<User id: 2, user_id: "1616942831872982/facebook", user_name: "iFkOJan Mobilos RoslindsaiT1U3Gd", created_at: "2015-05-22 10:51:11", updated_at: "2015-05-22 14:28:04", currency: "jMRrKCqHSACUSDrNAOqDpJEwoFD", balance: "1TkAXb7C6N---\nBALANCE: 0.0\nn5BRx2GuqF67FIFGJ8u", balance_at: "2015-05-22", permissions: "tNGZI6FCi--- []\nxEF0rh", no_api_friends: "MCtc2v4Eun1WuOPku", negative_interest: nil, api_profile_url: "CqZjCZeeShttps://www.facebook.com/1616942831872982l...", api_profile_picture_url: "iphDKVP3L3https://fbcdn-profile-a.akamaihd.net/hpro...", deleted_at: nil, last_login_at: "2015-05-22 10:51:11", deauthorized_at: nil, last_friends_find_at: "2015-05-22 10:51:11", language: "en", access_token: nil, access_token_expires: nil, refresh_token: nil, sha256: "FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs=", old_sha256: "FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs=", sha256_updated_at: "2015-05-22 14:27:14", friend_sha256_updated_at: nil, remote_sha256_updated_at: nil, remote_sha256_update_info: nil>
+2.0.0-p643 :017 > u.sha256
+ => "FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="
+2.0.0-p643 :018 >
+2.0.0-p643 :019 >
+2.0.0-p643 :020 >   u.debug_info
+ => "1616942831872982/facebook Jan R"
+2.0.0-p643 :021 > u.sha256
+ => "FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="
+
+client 2:
+GiftService.calc_sha256_for_user: No gifts was found for user_id 2  = 1705481075/facebook Jan Roslind
+
+console 2:
+2.0.0-p643 :058 >   User.find(2).calc_sha256(s.secret)
+  User Load (0.4ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` = 2 LIMIT 1
+ => "dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="
+
+GiftService.send_message_users_sha256:
+users_sha256_message = {
+  "msgtype":"users_sha256","mid":"14323048818086284744","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="}]}
+
+client 2:
+GiftService.send_messages:
+unencrypted message =
+  {"sent_at_client":1432304893250,
+   "messages":[{"msgtype":"users_sha256","mid":"14323048818086284744","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="}]}]
+  }
+
+
+client 1:
+
+GiftService.receive_message_users_sha256: msg     = {"msgtype":"users_sha256","mid":"14323048818086284744","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="}]}
+GiftService.receive_message_users_sha256: users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids
+GiftService.receive_message_users_sha256: msg.users (1) = [{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="}]
+GiftService.receive_message_users_sha256: translating sha256 user_id dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s= to internal user_id 3
+GiftService.receive_message_users_sha256: msg.users (2) = [{"user_id":3}]
+GiftService.receive_message_users_sha256: msg_users = [3], my_mutual_friends = [2], invalid_user_ids = [3]
+GiftService.receive_message_users_sha256: 1 rejected users(s) in users_sha256 message. Received sha256 user signatures: dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=. Received internal user ids: 3. Expected user ids: 2. Unknown mutual friends: 3
+GiftService.receive_message_users_sha256: msg_users.length = 0
+GiftService.receive_message_users_sha256: Could not receive users_sha256 message. User ids in message and mutual users in mailbox does not match
+
+
+client 2:
+
+GiftService.receive_message_error: mailbox = {"did":"14322883654942814019","sha256":"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","mutual_friends":[2],"server_id":1,"key":"14322883654942814019PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","online":true,"inbox":[],"read":[],"outbox":[{"mid":"14323049013521618708","request_mid":"14323048811062222707","msgtype":"error","error":"1 rejected users(s) in users_sha256 message. Received sha256 user signatures: uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=. Received internal user ids: 3. Expected user ids: 2. Unknown mutual friends: 3"}],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14323048818086284744","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="}]}],"done":[],"error":[]}
+GiftService.receive_message_error: msg     = {"mid":"14323048961681160890","request_mid":"14323048818086284744","msgtype":"error","error":"1 rejected users(s) in users_sha256 message. Received sha256 user signatures: dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=. Received internal user ids: 3. Expected user ids: 2. Unknown mutual friends: 3"}
+GiftService.receive_message_error: error = 1 rejected users(s) in users_sha256 message. Received sha256 user signatures: dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=. Received internal user ids: 3. Expected user ids: 2. Unknown mutual friends: 3
+GiftService.receive_message_error: Moving old users_sha256 message 14323048818086284744 from sent to error.

@@ -1,0 +1,19 @@
+one new comment from client 1 on app 1 to client 2 on app 2
+
+client 1:
+
+GiftService.sha256_gift: gid = 14323048627287885889, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³, sha256 = uzÌªs´IöÜÍnQ_¥»cij°ªÍrÁÍMá, sha256_gift = Ürn¥J9³¸Yhj
+óÅ? vböÞ/D1ø¶, sha256_comments = dlM<»0©Mã{U«	ï1³]Ó0,´Ùò«
+GiftService.load_gifts: gift = {"gid":"14323048627287885889","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1432304862,"currency":"usd","direction":"giver","description":"client 1","show":true,"comments":[{"cid":"14323680230743366185","user_ids":[2],"comment":"client 1","currency":"usd","created_at_client":1432368023,"created_at_server":0}],"created_at_server":0,"sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}
+GiftService.load_gifts: gifts.length = 1
+GiftService.sha256_gift: gid = 14323048627287885889, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³, sha256 = uzÌªs´IöÜÍnQ_¥»cij°ªÍrÁÍMá, sha256_gift = Ürn¥J9³¸Yhj
+óÅ? vböÞ/D1ø¶, sha256_comments = dlM<»0©Mã{U«	ï1³]Ó0,´Ùò«
+
+client 2:
+
+GiftService.sha256_gift: gid = 14323048627287885889, comments_str = 0, sha256 = 9mÙ@¥ÔÖûÊB«î¶Q:Èk[´vCÛPm, sha256_gift = Ürn¥J9³¸Yhj
+óÅ? vböÞ/D1ø¶, sha256_comments = _ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé
+GiftService.load_gifts: gift = {"gid":"14323048627287885889","direction":"giver","giver_user_ids":[3],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":1,"currency":"usd","description":"client 1","show":true,"comments":[],"sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
+GiftService.load_gifts: gifts.length = 1
+GiftService.sha256_gift: gid = 14323048627287885889, comments_str = 0, sha256 = 9mÙ@¥ÔÖûÊB«î¶Q:Èk[´vCÛPm, sha256_gift = Ürn¥J9³¸Yhj
+óÅ? vböÞ/D1ø¶, sha256_comments = _ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé

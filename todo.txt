@@ -1805,4 +1805,9 @@
      accepted, accepted_by_user_ids, accepted_at_client, rejected_by_user_ids and rejected_at_client
      have been replaced with new_deal_action, new_deal_action_by_user_ids and new_deal_action_at_client
 
+416) problem with sync_gifts message and mailbox folders
+     sync_gifts message is moved from sent to done/error when receiving first sub message response (send_gifts, request_gifts, check_gifts).
+     ok for first sub message. error for second sub message
+     also a problem for check_gifts return message with sha256 values for comments
+
 select next issue to solve: (rand*415).floor+1

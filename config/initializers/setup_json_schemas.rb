@@ -1038,6 +1038,7 @@ JSON_SCHEMA = {
             # optional sub message 1 - send_gifts - send missing gifts to other client
             :send_gifts => {
                 :type => 'object',
+                :title => 'send_gifts sub message. Send missing gifts to other client',
                 :properties => {
                     # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                     :mid => {:type => 'string', :pattern => uid_pattern},
@@ -1166,6 +1167,7 @@ JSON_SCHEMA = {
             # optional sub message 2 - request_gifts - request missing gifts from other client
             :request_gifts => {
                 :type => 'object',
+                :title => 'request_gifts sub message. Request missing gifts from other client',
                 :properties => {
                     # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                     :mid => {:type => 'string', :pattern => uid_pattern},
@@ -1184,6 +1186,7 @@ JSON_SCHEMA = {
             # optional sub message 3 - check_gifts - merge gifts - send array with gifts sub sha2546 values to other client
             :check_gifts => {
                 :type => 'object',
+                :title => 'check_gifts sub message. Send sha256 values for gift and comments to other client',
                 :properties => {
                     # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                     :mid => {:type => 'string', :pattern => uid_pattern},
@@ -1202,7 +1205,19 @@ JSON_SCHEMA = {
                                 # sha256 calculation for gift only
                                 :sha256_gift => {:type => 'string', :maxLength => 32},
                                 # sha256 calculation for comments only
-                                :sha256_comments => {:type => 'string', :maxLength => 32}
+                                :sha256_comments => {:type => 'string', :maxLength => 32},
+                                # optional array with sha256 signatures for comments. Used in check_gifts return message after receiving gift with changed sha256_comments signature
+                                :comments => {
+                                    :type => 'array',
+                                    :properties => {
+                                        # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                        :cid => { :type => 'string', :pattern => uid_pattern},
+                                        # sha256 calculation for comment
+                                        :sha256 => {:type => 'string', :maxLength => 32}
+                                    },
+                                    :required => %w(cid sha256),
+                                    :additionalProperties => false
+                                }
                             },
                             :required => %w(gid sha256 sha256_gift sha256_comments),
                             :additionalProperties => false

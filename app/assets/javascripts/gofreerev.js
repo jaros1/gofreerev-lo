@@ -4729,24 +4729,32 @@ angular.module('gifts', ['ngRoute'])
 
         // ping ok response. move messages from mailbox.sending to mailbox.sent
         var messages_sent = function () {
-            var mailbox;
-            for (var i = 0; i < mailboxes.length; i++) {
+            var mailbox, i, msg;
+            for (i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
-                for (var j = 0; j < mailbox.sending.length; j++) {
-                    mailbox.sent.push(mailbox.sending[j]);
+                while (mailbox.sending.length > 0) {
+                    msg = mailbox.sending.shift() ;
+                    if (msg.msgtype == 'sync_gifts') {
+                        // 1-3 responses for one sync_gifts message. add sub messages (send_gifts, request_gifts and check_gifts) to sent folder
+                        if (msg.send_gifts) mailbox.sent.push(msg.send_gifts);
+                        if (msg.request_gifts) mailbox.sent.push(msg.request_gifts);
+                        if (msg.check_gifts) mailbox.sent.push(msg.check_gifts);
+                    }
+                    else mailbox.sent.push(msg);
                     if (mailbox.sent.length > 5) mailbox.sent.shift(); // keep last 5 sent messages
-                } // for j
-                mailbox.sending.length = 0;
+                }
             } // for i
         }; // messages_sent
 
-        // ping error response. move messages from mailbox.sending to mailbox.outbox
+        // ping error response. move messages from mailbox.sending to mailbox.outbox. redo send operation in next ping
         var messages_not_sent = function () {
-            var mailbox;
-            for (var i = 0; i < mailboxes.length; i++) {
+            var mailbox, i, msg;
+            for (i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
-                for (var j = 0; j < mailbox.sending.length; j++) mailbox.outbox.push(mailbox.sending[j]);
-                mailbox.sending.length = 0;
+                while (mailbox.sending.length > 0) {
+                    msg = mailbox.sending.shift() ;
+                    mailbox.outbox.push(msg);
+                }
             } // for i
         }; // messages_sent
 
@@ -5857,8 +5865,24 @@ angular.module('gifts', ['ngRoute'])
                 }
             } // for i
 
-            // move previous gifts_sha256 message to done folder
-            if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', true)) return ; // ignore - not found in mailbox
+            // sync_gifts message is either:
+            //   1) response from previous gifts_sha256 message (sub messages send_gifts, request_gifts and check_gifts) or
+            //   2) returned check_gifts message with sha256 values for comments
+            var sync_gifts_msg_type = 1;
+            if (msg.check_gifts) {
+                for (i=0 ; i<msg.check_gifts.gifts.length ; i++) {
+                    if (msg.check_gifts.gifts[i].hasOwnProperty('comments')) sync_gifts_msg_type = 2 ;
+                } // for i (msg.check_gifts)
+            } // if
+            // console.log(pgm + 'sync_gifts_msg_type = ' + sync_gifts_msg_type);
+            if (sync_gifts_msg_type == 1) {
+                // move previous gifts_sha256 message to done folder
+                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', true)) return ; // ignore - not found in mailbox
+            }
+            else {
+                // move previous check_gifts message to done folder
+                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'check_gifts', true)) return ; // ignore - not found in mailbox
+            }
 
             // check for sync_gifts message from client on other Gofreerev server (using sha256 signature as user_id)
             var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
@@ -5944,6 +5968,7 @@ angular.module('gifts', ['ngRoute'])
             }
             if (msg.check_gifts) {
                 msg.check_gifts.request_mid = msg.request_mid ;
+                msg.check_gifts.users = msg_users ; // used if check_gifts message must be returned with sha256 values for comments
                 mailbox.inbox.push(msg.check_gifts) ;
             }
 
@@ -6704,7 +6729,7 @@ angular.module('gifts', ['ngRoute'])
                 // return check_gifts message (sync_gifts sub message) to other client WITH sha256 values for comments
                 var check_gift_message = {
                     mid: Gofreerev.get_new_uid(),
-                    msgtype: 'check_comments',
+                    msgtype: 'check_gifts',
                     gifts: []
                 };
                 for (gid in merge_gifts) {
@@ -6730,7 +6755,7 @@ angular.module('gifts', ['ngRoute'])
                     mid: Gofreerev.get_new_uid(), // envelope mid
                     request_mid: msg.mid,
                     msgtype: 'sync_gifts',
-                    users: msg.users,
+                    users: msg.users, // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
                     check_gifts: check_gift_message // optional sub message 3)
                 };
                 // JS validate sync_gifts message before placing message in outbox

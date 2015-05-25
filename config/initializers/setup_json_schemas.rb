@@ -1227,10 +1227,30 @@ JSON_SCHEMA = {
                     :required => %w(mid msgtype gifts),
                     :additionalProperties => false
                 }
+            },
+            # optional sub message 4 - request_comments - request missing comments from other client
+            :request_comments => {
+                :type => 'object',
+                :title => 'request_comments sub message. Request missing comments from other client',
+                :properties => {
+                    # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                    :mid => {:type => 'string', :pattern => uid_pattern},
+                    # msgtype = request_gifts
+                    :msgtype => {:type => 'string', :pattern => '^request_comments$'},
+                    # array with cid's for missing comments
+                    :comments => {
+                        :type => 'array',
+                        :items => {:type => 'string', :pattern => uid_pattern},
+                        :minItems => 1
+                    },
+                    :required => %w(mid msgtype comments),
+                    :additionalProperties => false
+                }
             }
+
         },
         :required => %w(mid request_mid msgtype users),
         :additionalProperties => false
-    }
+    },
 
 }

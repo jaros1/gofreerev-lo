@@ -2233,10 +2233,11 @@ angular.module('gifts')
                 while (mailbox.sending.length > 0) {
                     msg = mailbox.sending.shift() ;
                     if (msg.msgtype == 'sync_gifts') {
-                        // 1-3 responses for one sync_gifts message. add sub messages (send_gifts, request_gifts and check_gifts) to sent folder
+                        // 1-4 responses for one sync_gifts message. add sub messages (send_gifts, request_gifts, check_gifts and request_comments) to sent folder
                         if (msg.send_gifts) mailbox.sent.push(msg.send_gifts);
                         if (msg.request_gifts) mailbox.sent.push(msg.request_gifts);
                         if (msg.check_gifts) mailbox.sent.push(msg.check_gifts);
+                        if (msg.request_comments) mailbox.sent.push(msg.request_comments);
                     }
                     else mailbox.sent.push(msg);
                     if (mailbox.sent.length > 5) mailbox.sent.shift(); // keep last 5 sent messages
@@ -2291,16 +2292,42 @@ angular.module('gifts')
 
 
         // move previous message from sent to done or error
-        var move_previous_message = function (pgm, mailbox, request_mid, request_msgtype, done) {
-            if (!request_mid) return false ; // no previous message to move
+        // done: true - move to done folder, false - move to error folder
+        // todo: return nil (ok) or text string (fatal error)
+        var move_previous_message = function (pgm, mailbox, request_mid, response_msgtype, done) {
+            var pgm = service + '.move_previous_message: ' ;
+            if (!request_mid) {
+                console.log(pgm + 'no previous message')
+                return false ;
+            }
+            // request/response matrix. request message should be in sent folder
+            var request_msgtypes ;
+            switch (response_msgtype) {
+                case 'gifts_sha256':
+                    request_msgtypes = ['users_sha256'];
+                    break;
+                case 'sync_gifts' :
+                    request_msgtypes = ['gifts_sha256', 'check_gifts', 'request_comments'];
+                    break;
+                case 'error':
+                    request_msgtypes = ['users_sha256', 'gifts_sh256', 'send_gifts', 'request_gifts', 'check_gifts', 'request_comments'];
+                    break ;
+                default:
+                    request_msgtypes = [];
+            }; // switch
+            if (request_msgtypes.length == 0) {
+                console.log(pgm + 'Unknown response_msgtype ' + response_msgtype) ;
+                return false ;
+            }
             if ((typeof done == 'undefined') || (done == null)) done = true ;
             var folder = done ? mailbox.done : mailbox.error ;
-            var foldername = done ? 'done' : 'error' ;
+            var folder_name = done ? 'done' : 'error' ;
             var msg;
+            var index ;
             // check sent folder
             for (var i = 0; i < mailbox.sent.length; i++) {
-                if ((mailbox.sent[i].mid == request_mid) && (mailbox.sent[i].msgtype == request_msgtype)) {
-                    console.log(pgm + 'Moving old ' + request_msgtype + ' message ' + request_mid + ' from sent to ' + foldername + '.');
+                if ((mailbox.sent[i].mid == request_mid) && ((index=request_msgtypes.indexOf(mailbox.sent[i].msgtype)) != -1)) {
+                    console.log(pgm + 'Moving old ' + request_msgtypes[index] + ' message ' + request_mid + ' from sent to ' + folder_name + '.');
                     msg = mailbox.sent.splice(i, 1);
                     folder.push(msg[0]);
                     return true ;
@@ -2308,14 +2335,14 @@ angular.module('gifts')
             }
             // check outbox folder - normally not the case - sent messages should be in sent folder
             for (i = 0; i < mailbox.outbox.length; i++) {
-                if ((mailbox.outbox[i].mid == request_mid) && (mailbox.outbox[i].msgtype == request_msgtype)) {
-                    console.log(pgm + 'Warning. Moving old ' + request_msgtype + ' message ' + request_mid + ' from outbox to ' + foldername + '.');
+                if ((mailbox.outbox[i].mid == request_mid) && ((index=request_msgtypes.indexOf(mailbox.outbox[i].msgtype)) != -1)) {
+                    console.log(pgm + 'Warning. Moving old ' + request_msgtypes[index] + ' message ' + request_mid + ' from outbox to ' + folder_name + '.');
                     msg = mailbox.outbox.splice(i, 1);
                     folder.push(msg[0]);
                     return true ;
                 }
             }
-            console.log(pgm + 'Error. Old ' + request_msgtype + ' message with mid ' + request_mid + ' was not found in mailbox.');
+            console.log(pgm + 'Error. Old message with mid ' + request_mid + ' with response ' + response_msgtype + ' was not found in mailbox.');
             return false ;
         }; // move_previous_message
 
@@ -2755,7 +2782,7 @@ angular.module('gifts')
             // validate gifts_sha256 message before processing message
             if (Gofreerev.is_json_message_invalid(pgm,msg,'gifts_sha256','')) {
                 // move previous users_sha256 message to error folder
-                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'users_sha256', false)) return ; // ignore - not found in mailbox
+                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', false)) return ; // ignore - not found in mailbox
                 // return JSON error to other device
                 var json_error = JSON.parse(JSON.stringify(tv4.error));
                 delete json_error.stack;
@@ -2793,7 +2820,7 @@ angular.module('gifts')
             } // for i
 
             // move previous users_sha256 message to done folder
-            if (!move_previous_message(pgm, mailbox, msg.request_mid, 'users_sha256', true)) return ; // ignore - not found in mailbox
+            if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', true)) return ; // ignore - not found in mailbox
 
             // check for gifts_sha256 message from client on other Gofreerev server (using sha256 signature as user_id)
             var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
@@ -3326,7 +3353,7 @@ angular.module('gifts')
             // validate sync_gifts message before processing message
             if (Gofreerev.is_json_message_invalid(pgm,msg,'sync_gifts','')) {
                 // move previous gifts_sha256 message to error folder
-                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', false)) return ; // ignore - not found in mailbox
+                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'sync_gifts', false)) return ; // ignore - not found in mailbox
                 // send error message to other device
                 var json_error = JSON.parse(JSON.stringify(tv4.error));
                 delete json_error.stack;
@@ -3363,24 +3390,8 @@ angular.module('gifts')
                 }
             } // for i
 
-            // sync_gifts message is either:
-            //   1) response from previous gifts_sha256 message (sub messages send_gifts, request_gifts and check_gifts) or
-            //   2) returned check_gifts message with sha256 values for comments
-            var sync_gifts_msg_type = 1;
-            if (msg.check_gifts) {
-                for (i=0 ; i<msg.check_gifts.gifts.length ; i++) {
-                    if (msg.check_gifts.gifts[i].hasOwnProperty('comments')) sync_gifts_msg_type = 2 ;
-                } // for i (msg.check_gifts)
-            } // if
-            // console.log(pgm + 'sync_gifts_msg_type = ' + sync_gifts_msg_type);
-            if (sync_gifts_msg_type == 1) {
-                // move previous gifts_sha256 message to done folder
-                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'gifts_sha256', true)) return ; // ignore - not found in mailbox
-            }
-            else {
-                // move previous check_gifts message to done folder
-                if (!move_previous_message(pgm, mailbox, msg.request_mid, 'check_gifts', true)) return ; // ignore - not found in mailbox
-            }
+            // move previous gifts_sha256 message to done folder
+            if (!move_previous_message(pgm, mailbox, msg.request_mid, 'sync_gifts', true)) return ; // ignore - not found in mailbox
 
             // check for sync_gifts message from client on other Gofreerev server (using sha256 signature as user_id)
             var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
@@ -3453,7 +3464,7 @@ angular.module('gifts')
                 msg_users = $(msg_users).not(invalid_user_ids).get() ;
             }
 
-            // add sub messages (send_gifts, request_gifts and check_gifts) to inbox
+            // add sub messages (send_gifts, request_gifts. check_gifts and request_comments) to inbox
             // keep reference to previous gifts_sha256 message - now in mailbox.done array
             if (msg.send_gifts) {
                 msg.send_gifts.request_mid = msg.request_mid ;
@@ -3468,6 +3479,10 @@ angular.module('gifts')
                 msg.check_gifts.request_mid = msg.request_mid ;
                 msg.check_gifts.users = msg_users ; // used if check_gifts message must be returned with sha256 values for comments
                 mailbox.inbox.push(msg.check_gifts) ;
+            }
+            if (msg.request_comments) {
+                msg.request_comments.request_mid = msg.request_mid ;
+                mailbox.inbox.push(msg.request_comments) ;
             }
 
         } ; // receive_message_sync_gifts
@@ -3688,7 +3703,7 @@ angular.module('gifts')
                 if (gid_to_gifts_index.hasOwnProperty(gid)) {
                     // existing gift
                     index = gid_to_gifts_index[gid];
-                    if (!index || (index < 0) || (index >= gifts.length)) {
+                    if ((index < 0) || (index >= gifts.length)) {
                         // system error - error in javascript logic
                         index_system_errors.push(gid);
                         continue;
@@ -4044,7 +4059,7 @@ angular.module('gifts')
             if (index_system_errors.length > 0) {
                 // system error - error in javascript logic - abort processing of send_gifts message
                 error = 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ');
-                console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                console.log(pgm + error + '. msg = ' + JSON.stringify(msg));
                 mailbox.outbox.push({
                     mid: Gofreerev.get_new_uid(),
                     msgtype: 'error',
@@ -4118,7 +4133,7 @@ angular.module('gifts')
             if (!request_msgtype) return ; // no previous message
 
             // move previous message to error folder in mailbox
-            move_previous_message(pgm, mailbox, msg.request_mid, request_msgtype, false) ; // xxx
+            move_previous_message(pgm, mailbox, msg.request_mid, 'error', false) ;
         }; // receive_message_error
 
 

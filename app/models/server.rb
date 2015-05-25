@@ -2729,4 +2729,16 @@ class Server < ActiveRecord::Base
     return response
   end # new_servers
 
+  def ping_test_loop
+    self.login
+    loop do
+      res = self.ping
+      logger.debug2 "res = #{res}"
+      self.reload
+      interval = (res[:interval] || 6000) / 1000.0
+      logger.debug2 "sleep = #{interval}"
+      sleep interval
+    end
+  end
+
 end

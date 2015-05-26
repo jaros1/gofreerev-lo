@@ -1757,6 +1757,7 @@
 404) combine Gofreerev with a rich-poor dating app with onmiauth support
      connect rich cities, families, people with poor cities, families and people
 
+
 405) client verify gift request
      don't always trust verify gifts = true response from server
      mix real verify gift requests with fake verify gifts request and check that server response is false for all fake verify gifts requests
@@ -1789,25 +1790,18 @@
                   'verified_at is not null and remote_pseudo_user_id is not null and remote_sha256_updated_at is not null ' +
                       'and ( sha256_message_sent_at is null or sha256_message_sent_at < ? )', 2.minutes.ago)
               Server.save_sha256_changed_message(4, server_users) if server_users.size > 0
+     drop sym encryption and only use mix encryption
 
 408) firefox log: Password fields present on an insecure (http://) page. This is a security risk that allows user login credentials to be stolen.[Learn More]
      replace password field with text field + css to hide characters
      http://stackoverflow.com/questions/3574474/change-text-to-dots-in-text-field-with-css-javascript
 
-410) add server.ping_loop method : s = Server.first ; s.login ; loop do ; puts s.ping ; s.reload ; sleep 8 ; end
-     get interval from ping response
-
 413) receive_message_send_gifts: max seconds to wait for remote gift and comment verification?
 
-414) todo: recalculate all comments sha256 signatures (client & server).
+414) todo: recalculate all comments sha256 signatures (client & server). only old test environments (one laptop + cubox server)
 
 415) client data migration.
      accepted, accepted_by_user_ids, accepted_at_client, rejected_by_user_ids and rejected_at_client
      have been replaced with new_deal_action, new_deal_action_by_user_ids and new_deal_action_at_client
-
-416) problem with sync_gifts message and mailbox folders
-     sync_gifts message is moved from sent to done/error when receiving first sub message response (send_gifts, request_gifts, check_gifts).
-     ok for first sub message. error for second sub message
-     also a problem for check_gifts return message with sha256 values for comments
 
 select next issue to solve: (rand*415).floor+1

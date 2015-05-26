@@ -3857,43 +3857,91 @@ angular.module('gifts')
 
                     old_cids = [];
                     if (old_gift.comments) for (j = 0; j < old_gift.comments.length; j++) old_cids.push(old_gift.comments[j].cid);
-                    if (new_gift.comments) for (j = 0; j < new_gift.comments.length; j++) {
-                        new_comment = new_gift.comments[j];
-                        // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
-                        if (old_cids.indexOf(new_comment.cid) == -1) {
+                    comments_pass = 2 ;
+                    if (new_gift.comments) {
+                        for (j = 0; j < new_gift.comments.length; j++) {
+                            new_comment = new_gift.comments[j];
+                            // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
+                            if (old_cids.indexOf(new_comment.cid) == -1) {
 
-                            // new comment - must be verified before adding to gift
-                            if (!new_comment.hasOwnProperty('verify_seq')) {
-                                // new comment must be server validated before continuing (between pass 1 and pass 2)
-                                verify_new_comments += 1;
-                                verify_comments_add(gid, new_comment);
-                                continue; // wait for verify comments
-                            }
-                            if (!new_comment.hasOwnProperty('verified_at_server')) {
-                                // new comment already in queue for server verification (offline, server not responding or remote comment)
-                                // todo: how long time to wait for:
-                                //   a: offline client - no internet connection
-                                //   b: server not responding (error or timeout)
-                                //   c: remote comment verification (error or remote server not responding)
-                                seconds = Gofreerev.unix_timestamp() - new_comment.in_verify_comments ;
-                                console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification') ;
-                                verifying_new_comments += 1;
-                                continue; // wait for verify comments
-                            }
-                            if (!new_comment.verified_at_server) {
-                                // invalid signature for new comment - changed on other client or incorrect in message
-                                new_comments_invalid_sha.push(gid);
-                                continue;
-                            }
-                            // new comment ok - comment ready for pass 2
-                            console.log(pgm + 'new comment ' + new_comment.cid + ' ok - comment ready for pass 2') ;
+                                // new comment - should be from a friend or from a friend of a friend
+                                // - can also be a user from an other api provider
+                                // - can also be from a remove server where friend lists are not 100% synchronized
+
+                                // new comment - must be verified before adding to gift
+                                if (!new_comment.hasOwnProperty('verify_seq')) {
+                                    // new comment must be server validated before continuing (between pass 1 and pass 2)
+                                    verify_new_comments += 1;
+                                    verify_comments_add(gid, new_comment);
+                                    comments_pass = 1 ;
+                                    continue; // wait for verify comments
+                                }
+                                if (!new_comment.hasOwnProperty('verified_at_server')) {
+                                    // new comment already in queue for server verification (offline, server not responding or remote comment)
+                                    // todo: how long time to wait for:
+                                    //   a: offline client - no internet connection
+                                    //   b: server not responding (error or timeout)
+                                    //   c: remote comment verification (error or remote server not responding)
+                                    seconds = Gofreerev.unix_timestamp() - new_comment.in_verify_comments;
+                                    console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
+                                    verifying_new_comments += 1;
+                                    comments_pass = 1 ;
+                                    continue; // wait for verify comments
+                                }
+                                if (!new_comment.verified_at_server) {
+                                    // invalid signature for new comment - changed on other client or incorrect in message
+                                    new_comments_invalid_sha.push(gid);
+                                    continue;
+                                }
+                                // new comment ok - comment ready for pass 2
+                                console.log(pgm + 'new comment ' + new_comment.cid + ' ok - comment ready for pass 2');
 
 
-                        }
-                        else {
-                            // existing comment
-                        }
-                    }
+                                // create comment with created_at_server property (not a new comment)
+                                console.log(pgm + 'create new comment ' + new_comment.cid) ;
+                                cid = new_comment.cid;
+                                comment = {
+                                    cid: new_comment.cid,
+                                    user_ids: new_comment.user_ids,
+                                    comment: new_comment.comment,
+                                    price: new_comment.price,
+                                    currency: new_comment.currency,
+                                    created_at_client: new_comment.created_at_client,
+                                    created_at_server: new_comment.created_at_server,
+                                    new_deal: new_comment.new_deal
+                                } ;
+                                // todo: validate new comment - return any errors to UI
+                                // extra control. gifts have already been validated in validate_send_gifts_message
+                                if (errors = invalid_comment(comment, [])) {
+                                    console.log(pgm + 'Could not create new comment: ' + errors);
+                                    console.log(pgm + 'comment = ' + JSON.stringify(comment));
+                                    create_comment_errors.push(new_comment.cid);
+                                    continue;
+                                }
+                                // console.log(pgm + 'cid = ' + new_comment.cid) ;
+                                // console.log(pgm + 'created_at_client = ' + new_comment.created_at_client) ;
+                                var old_no_rows = old_gift.show_no_comments || self.default_no_comments ;
+                                if (!old_gift.hasOwnProperty('comments')) old_gift.comments = [] ;
+                                old_gift.comments.push(comment) ;
+                                // console.log(pgm + (old_gift.comments || []).length + ' comments after refresh and new comment') ;
+                                if (old_gift.comments.length > old_no_rows) {
+                                    old_no_rows = old_no_rows + 1 ;
+                                    old_gift.show_no_comments = old_no_rows ;
+                                }
+                                userService.add_new_login_users(comment.user_ids) ;
+                                save_gift(old_gift) ;
+
+
+
+                            }
+                            else {
+                                // existing comment
+                                console.log(pgm + 'merge existing comment not implemented') ;
+                            }
+                        } // for j (new_gift.comments)
+                    } // if comments
+                    if (comments_pass == 1) continue ; // wait for verify comments
+
                     // end update existing gift
                     continue;
                 }

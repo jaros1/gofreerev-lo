@@ -1,0 +1,6 @@
+testrun-35 ok
+
+client 1 on app 1: add one new comment for an old gift that must be replicated to client 2 on app 2.
+comment was replicated, remote verified and added to client 2.
+
+Almost same log as for testrun-34

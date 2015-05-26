@@ -1,0 +1,178 @@
+testrun-33
+
+client 1 on app 1: one new comment for an old gift that must be replicated to client 2 on app 2.
+check_gifts message ok. Failure when processing following send_gifts message (merge gift operation)
+
+
+client 1:
+GiftService.update_mailboxes: New online mailbox {"did":"14322883971308289539","sha256":"t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","mutual_friends":[2,3],"server_id":1,"key":"14322883971308289539t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[],"done":[],"error":[]} with mutual friends 2, 3. Added message = {"mid":"14325695263849843208","msgtype":"users_sha256","users":[2,3]} to outbox
+GiftService.send_messages: Wait. Public key has not yet been received for device 14322883971308289539
+GiftService.pubkeys_response: pubkeys = [{"did":"14322883971308289539","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6AldAH9+MYdhYD4rGZcv\nwSqgpmDn8Qvr8iqyChgpxKEFCIQLImR8iIW5Y1gN242q04kNnX/FplsV88ilBrat\nFwexaq0hrcz2C5QT7m+LSCg3qvUUWp/JImLGQHnG8D0gSxK1PAuzQ+nqy4PlBfOu\nEJ5D8Ane2N+/knx6N6gMu2rW5dQbJvrQYzbH/h6iHWpumeCfnaA39UqOPvNImov7\nrPg0DG6SCUtWNadPDZwibktGz55qKxBSHPyMbBW8+ZJW/9UkmSsjcPrYM/BfU/C0\neA28QwM/IsjD+MoNnB/9dZVO7YU60QNGqK9N7Ug++zMCNx77w05HK1kV88PLm0q4\neQIDAQAB\n-----END PUBLIC KEY-----"}]
+GiftService.receive_messages: Warning. Ignoring message from device 14322883971308289539. Password for symmetric communication was not found. Message = {"sender_did":"14322883971308289539","server":false,"encryption":"sym","message":"U2FsdGVkX19Af+V/dzfwVkJajuNx9brHyBhkMiDWARay2AMlV1wnuCIuCMorFadwPj+fA/WhOquYKsyW9gh5x4A2DsR0HPgIXKJs/55Tu0wex/FqyMqRdM0gjGcKkgPG+Bx3Lv1Zg8Q4h707pbjx0GhIlkku/eJ+cK2/5FkcxN0QvO6e1vpPsv7Y5lZrP12uHCxkQlrYZJp3hzG7Iv7i1aYmDwtGquuVy2gQZHRBRQtL9NSMp53+MVMZCDgLuI+UkVphES+kw+/L3xgyUNd1g0GkRuJqEa1t3NN/uipP5wyIE3btFAMzmupUf373Oa3wV9qyc/t6PgzAo9OWjUs3QNcuQQ5Sqrw60EblltAOKfUaKTmn9k82DgjP+auya0EihvMnDSrbdzrUZMDwRkR2ImJi+0GS9drg4XwnaSlFDM4=","receiver_did":"14322883654942814019","sender_sha256":"t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","received_at":1432569538}
+GiftService.send_messages: msg = {"mid":"14325695263849843208","msgtype":"users_sha256","users":[2,3]}
+GiftService.calc_sha256_for_user: No gifts was found for user_id 3
+GiftService.send_message_users_sha256: users_sha256_message = {"msgtype":"users_sha256","mid":"14325695263849843208","users":[{"user_id":"uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":"FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="}]}
+GiftService.send_messages: unencrypted message = {"sent_at_client":1432569544242,"messages":[{"msgtype":"users_sha256","mid":"14325695263849843208","users":[{"user_id":"uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":"FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="}]}]}
+
+
+client 2:
+- received users_sha256 message from client 1.
+- sents gifts_sha256 message to client 1.
+GiftService.receive_message_users_sha256: mailbox = {"did":"14322883654942814019","sha256":"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","mutual_friends":[2,3],"server_id":1,"key":"14322883654942814019PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","online":true,"inbox":[],"read":[],"outbox":[],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14325695228470083190","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="},{"user_id":"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=","sha256":"\"2L¸3´$\t,XÖc&à\u00158H\u0005V/öH&áZ¾\u0010S½ii"}]}],"done":[],"error":[]}
+GiftService.receive_message_users_sha256: msg     = {"msgtype":"users_sha256","mid":"14325695263849843208","users":[{"user_id":"uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":"FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="}]}
+GiftService.receive_message_users_sha256: users_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids
+GiftService.receive_message_users_sha256: msg.users (1) = [{"user_id":"uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":"FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="}]
+GiftService.receive_message_users_sha256: translating sha256 user_id FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs= to internal user_id 2
+GiftService.receive_message_users_sha256: translating sha256 user_id uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs= to internal user_id 3
+GiftService.receive_message_users_sha256: msg.users (2) = [{"user_id":3,"sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":2}]
+GiftService.receive_message_users_sha256: msg_users = [3,2], my_mutual_friends = [2,3], invalid_user_ids = []
+GiftService.calc_sha256_for_user: No gifts was found for user_id 2
+GiftService.receive_message_users_sha256: sha256_hash = {"2":{},"3":{"my_sha256":"\"2L¸3´$\t,XÖc&à\u00158H\u0005V/öH&áZ¾\u0010S½ii","msg_sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"}}
+GiftService.receive_message_users_sha256: user_ids = 3
+GiftService.receive_message_users_sha256: user_id_gifts_index[3].length = 1
+GiftService.receive_message_users_sha256: gifts_sha256_hash = {"14323048627287885889":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}
+GiftService.receive_message_users_sha256: gifts_sha256_message (1) = {"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":[3],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}
+GiftService.receive_message_users_sha256: gifts_sha256_message (2) = {"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}
+GiftService.send_messages: msg = {"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}
+GiftService.send_messages: unencrypted message = {"sent_at_client":1432569547361,"messages":[{"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}]}
+
+
+client 1:
+- received gifts_sha256 message from client 2
+- sents check_gifts message to client 2
+GiftService.receive_message_gifts_sha256: mailbox = {"did":"14322883971308289539","sha256":"t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","mutual_friends":[2,3],"server_id":1,"key":"14322883971308289539t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","online":true,"inbox":[{"msgtype":"users_sha256","mid":"14325695228470083190","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="},{"user_id":"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=","sha256":"\"2L¸3´$\t,XÖc&à\u00158H\u0005V/öH&áZ¾\u0010S½ii"}]}],"read":[],"outbox":[],"sending":[],"sent":[{"msgtype":"users_sha256","mid":"14325695263849843208","users":[{"user_id":"uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":"FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="}]}],"done":[],"error":[]}
+GiftService.receive_message_gifts_sha256: msg     = {"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]}
+GiftService.move_previous_message: Moving old users_sha256 message 14325695263849843208 from sent to done.
+GiftService.receive_message_gifts_sha256: gifts_sha256 message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids
+GiftService.receive_message_gifts_sha256: msg.users (1) = ["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="]
+GiftService.receive_message_gifts_sha256: translating sha256 user_id ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q= to internal user_id 2
+GiftService.receive_message_gifts_sha256: msg.users (2) = [2]
+GiftService.receive_message_gifts_sha256: user_id_gifts_index[2].length = 1
+GiftService.receive_message_gifts_sha256: check_gids = 14323048627287885889
+GiftService.receive_message_gifts_sha256:
+sync_gifts_message =
+  {"mid":"14325695503978802638","request_mid":"14325695453943335030","msgtype":"sync_gifts",
+   "users":[2],
+   "send_gifts":null,"request_gifts":null,
+   "check_gifts":{"mid":"14325695503970472228","msgtype":"check_gifts",
+                  "gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+                            "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}]}}
+GiftService.receive_message_gifts_sha256: sync_gifts_message (1) = {"mid":"14325695503978802638","request_mid":"14325695453943335030","msgtype":"sync_gifts","users":[2],"send_gifts":null,"request_gifts":null,"check_gifts":{"mid":"14325695503970472228","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}]}}
+GiftService.receive_message_gifts_sha256: sync_gifts_message (3) = {"mid":"14325695503978802638","request_mid":"14325695453943335030","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"send_gifts":null,"request_gifts":null,"check_gifts":{"mid":"14325695503970472228","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}]}}
+
+
+client 2:
+- received check_gifts message without array with sha256 signatures for comments from client 1
+- returns check_gifts message with sha256 signatures for comments to client 1 (empty array)
+GiftService.receive_message_check_gifts: mailbox  = {"did":"14322883654942814019","sha256":"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","mutual_friends":[2,3],"server_id":1,"key":"14322883654942814019PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","online":true,"inbox":[],"read":[],"outbox":[{"mid":"14325695565896301273","request_mid":"14325695504114509788","msgtype":"sync_gifts","users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"check_gifts":{"mid":"14325695565892627265","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}]}}],"sending":[],"sent":[],"done":[{"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]},{"msgtype":"users_sha256","mid":"14325695228470083190","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="},{"user_id":"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=","sha256":"\"2L¸3´$\t,XÖc&à\u00158H\u0005V/öH&áZ¾\u0010S½ii"}]}],"error":[]}
+GiftService.receive_message_check_gifts:
+msg =
+  {"mid":"14325695503970472228","msgtype":"check_gifts",
+   "gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+             "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}],
+   "request_mid":"14325695453943335030",
+   "users":[3]}
+GiftService.receive_message_check_gifts: my_gift.comments.length = 0
+GiftService.receive_message_check_gifts: my_gift.comments = []
+GiftService.receive_message_check_gifts: invalid_gids =
+GiftService.receive_message_check_gifts: merge_gifts = {"14323048627287885889":{"msg_sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","my_sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","msg_sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","my_sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","msg_sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«","my_sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","identical_gift":true,"identical_comments":false,"comments":{}}}
+GiftService.receive_message_check_gifts: return_check_gifts_message = true
+GiftService.receive_message_check_gifts:
+sync_gifts_message (1) =
+  {"mid":"14325695566089598296","request_mid":"14325695503970472228","msgtype":"sync_gifts",
+   "users":[3],
+   "check_gifts":{"mid":"14325695566071200806","msgtype":"check_gifts",
+                  "gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm",
+                            "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé",
+                            "comments":[]}]}}
+GiftService.send_messages: msg = {"mid":"14325695565896301273","request_mid":"14325695504114509788","msgtype":"sync_gifts","users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"check_gifts":{"mid":"14325695565892627265","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}]}}
+GiftService.send_messages: msg = {"mid":"14325695566089598296","request_mid":"14325695503970472228","msgtype":"sync_gifts","users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"check_gifts":{"mid":"14325695566071200806","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","comments":[]}]}}
+GiftService.send_messages: unencrypted message = {"sent_at_client":1432569558559,"messages":[{"mid":"14325695565896301273","request_mid":"14325695504114509788","msgtype":"sync_gifts","users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"check_gifts":{"mid":"14325695565892627265","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}]}},{"mid":"14325695566089598296","request_mid":"14325695503970472228","msgtype":"sync_gifts","users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"check_gifts":{"mid":"14325695566071200806","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","comments":[]}]}}]}
+
+
+client 1:
+- receive check_gifts message WITH empty comments array from client 2 - ok - comment only in client 1
+- sha256 signatures for gift are identical - sha256 signatures for comments are not identical
+- comment array from client 2 is empty - ok
+- send sync_gifts message with send_gifts sub message to client 2 - ok
+
+GiftService.receive_message_check_gifts: mailbox  = {"did":"14322883971308289539","sha256":"t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","mutual_friends":[2,3],"server_id":1,"key":"14322883971308289539t5HP7V58Ta6LW7R98LtpLkYgjzveJswACYZnqERap0k=","online":true,"inbox":[],"read":[],"outbox":[{"mid":"14325695624807088254","request_mid":"14325695565892627265","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"check_gifts":{"mid":"14325695624806624791","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«","comments":[{"cid":"14323680230743366185","sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}]}]}}],"sending":[],"sent":[],"done":[{"msgtype":"users_sha256","mid":"14325695263849843208","users":[{"user_id":"uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","sha256":"¨\u000e·é\u001e«Oìxkq\u000boù\u001cþDb²t]è|\u0004>À"},{"user_id":"FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="}]},{"mid":"14325695504114509788","request_mid":"14325695228470083190","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá"}]},{"mid":"14325695503970472228","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«"}]}],"error":[]}
+GiftService.receive_message_check_gifts:
+msg =
+  {"mid":"14325695566071200806","msgtype":"check_gifts",
+   "gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm",
+             "sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé",
+             "comments":[]}],
+   "request_mid":"14325695503970472228","users":[2]}
+GiftService.receive_message_check_gifts: msg_gift.comments.length = 0
+GiftService.receive_message_check_gifts: msg_gift.comments = []
+GiftService.receive_message_check_gifts: my_gift.comments.length = 1
+GiftService.receive_message_check_gifts: my_gift.comments = [{"cid":"14323680230743366185","user_ids":[2],"comment":"client 1","currency":"usd","created_at_client":1432368023,"created_at_server":0,"sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}]
+GiftService.receive_message_check_gifts: invalid_gids =
+GiftService.receive_message_check_gifts:
+merge_gifts =
+  {"14323048627287885889":
+     {"msg_sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","my_sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá",
+      "msg_sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","my_sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶",
+      "msg_sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","my_sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«",
+      "identical_gift":true,"identical_comments":false,
+      "comments": {"14323680230743366185":{"my_sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}}}}
+GiftService.receive_message_check_gifts: return_check_gifts_message = false
+GiftService.receive_message_check_gifts: gid = 14323048627287885889, send_gift = true
+GiftService.receive_message_check_gifts: cid = 14323680230743366185, send_comment = true, request_comment = false
+GiftService.invalid_gift: new_users_index = {}
+GiftService.invalid_comment: Not implemented
+GiftService.receive_message_check_gifts: send_gifts_sub_message = {"mid":"14325695624851442650","msgtype":"send_gifts","gifts":[{"gid":"14323048627287885889","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1","comments":[{"cid":"14323680230743366185","user_ids":[2],"currency":"usd","comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],"users":[]}
+GiftService.receive_message_check_gifts: request_comments_sub_message = null
+GiftService.receive_message_check_gifts: sync_gifts_message (1) = {"mid":"14325695624977140075","request_mid":"14325695566071200806","msgtype":"sync_gifts","users":[2],"send_gifts":{"mid":"14325695624851442650","msgtype":"send_gifts","gifts":[{"gid":"14323048627287885889","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1","comments":[{"cid":"14323680230743366185","user_ids":[2],"currency":"usd","comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],"users":[]},"request_comments":null}
+GiftService.receive_message_check_gifts: sync_gifts_message (2) = {"mid":"14325695624977140075","request_mid":"14325695566071200806","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"send_gifts":{"mid":"14325695624851442650","msgtype":"send_gifts","gifts":[{"gid":"14323048627287885889","giver_user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1","comments":[{"cid":"14323680230743366185","user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"currency":"usd","comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],"users":[]},"request_comments":null}
+GiftService.receive_message_check_gifts: sync_gifts_message (3) = {"mid":"14325695624977140075","request_mid":"14325695566071200806","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"send_gifts":{"mid":"14325695624851442650","msgtype":"send_gifts","gifts":[{"gid":"14323048627287885889","giver_user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1","comments":[{"cid":"14323680230743366185","user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"currency":"usd","comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],"users":[],"servers":[{"server_id":0,"sha256":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}]},"request_comments":null}
+GiftService.validate_send_gifts_message: validating send_gifts message before send
+GiftService.validate_send_gifts_message: mutual_friends = ["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs="]
+GiftService.validate_send_gifts_message: send_gifts_received_user_ids  =
+GiftService.validate_send_gifts_message: send_gifts_expected_user_ids  =
+GiftService.validate_send_gifts_message: send_gift_missing_user_ids    =
+GiftService.validate_send_gifts_message: send_gift_unexpected_user_ids =
+GiftService.send_messages: msg = {"mid":"14325695624807088254","request_mid":"14325695565892627265","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"check_gifts":{"mid":"14325695624806624791","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«","comments":[{"cid":"14323680230743366185","sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}]}]}}
+GiftService.send_messages: msg = {"mid":"14325695624977140075","request_mid":"14325695566071200806","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"send_gifts":{"mid":"14325695624851442650","msgtype":"send_gifts","gifts":[{"gid":"14323048627287885889","giver_user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1","comments":[{"cid":"14323680230743366185","user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"currency":"usd","comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],"users":[],"servers":[{"server_id":0,"sha256":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}]}}
+GiftService.send_messages: unencrypted message = {"sent_at_client":1432569565238,"messages":[{"mid":"14325695624807088254","request_mid":"14325695565892627265","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"check_gifts":{"mid":"14325695624806624791","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"\u0004uzÌªs´IöÜÍnQ\u001c\u001d\u001b_¥»cij°ªÍrÁÍMá","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"dlM<»0©Mã{U«\tï1³\u000b]Ó0,\u0000´\u001cÙò«","comments":[{"cid":"14323680230743366185","sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}]}]}},{"mid":"14325695624977140075","request_mid":"14325695566071200806","msgtype":"sync_gifts","users":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"send_gifts":{"mid":"14325695624851442650","msgtype":"send_gifts","gifts":[{"gid":"14323048627287885889","giver_user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"receiver_user_ids":[],"created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1","comments":[{"cid":"14323680230743366185","user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"currency":"usd","comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],"users":[],"servers":[{"server_id":0,"sha256":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}]}}]}
+
+
+client 2:
+- received send_gifts with gift and new comment from client 1
+- new comment must be server validated before adding to gift (remote verification)
+GiftService.receive_message_send_gifts: mailbox  = {"did":"14322883654942814019","sha256":"PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","mutual_friends":[2,3],"server_id":1,"key":"14322883654942814019PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=","online":true,"inbox":[],"read":[],"outbox":[{"mid":"14325695676560106857","request_mid":"14325695624806624791","msgtype":"sync_gifts","users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"request_comments":{"mid":"14325695676520634929","msgtype":"request_comments","comments":["14323680230743366185"]}}],"sending":[],"sent":[],"done":[{"mid":"14325695453943335030","request_mid":"14325695263849843208","msgtype":"gifts_sha256","ignore_invalid_gifts":[],"users":["ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="],"gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm"}]},{"msgtype":"users_sha256","mid":"14325695228470083190","users":[{"user_id":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="},{"user_id":"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=","sha256":"\"2L¸3´$\t,XÖc&à\u00158H\u0005V/öH&áZ¾\u0010S½ii"}]},{"mid":"14325695565892627265","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}]},{"mid":"14325695566071200806","msgtype":"check_gifts","gifts":[{"gid":"14323048627287885889","sha256":"9mÙ@¥ÔÖûÊ\u0010B«î¶Q:È\u0007k\u0013[´\u0019vCÛ\u0014Pm","sha256_gift":"Ürn¥J9³¸Yhj\u001d\róÅ? vböÞ/D1\u0019\u0016ø¶","sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé","comments":[]}]}],"error":[]}
+GiftService.receive_message_send_gifts:
+msg =
+  {"mid":"14325695624851442650","msgtype":"send_gifts",
+   "gifts":[{"gid":"14323048627287885889","giver_user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"receiver_user_ids":[],
+             "created_at_client":1432304862,"created_at_server":0,"currency":"usd","direction":"giver","description":"client 1",
+             "comments":[{"cid":"14323680230743366185","user_ids":["uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="],"currency":"usd",
+                          "comment":"client 1","created_at_client":1432368023,"created_at_server":0}]}],
+   "users":[],
+   "servers":[{"server_id":0,"sha256":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}],
+   "request_mid":"14325695566071200806",
+   "pass":0}
+GiftService.receive_message_send_gifts: msg.pass = 0
+GiftService.validate_send_gifts_message: validating send_gifts message after received
+GiftService.validate_send_gifts_message: mutual_friends = ["FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs=","FK/zQ7Y5DZWCQsVSsgt+sOQiTcPTji5GOVVCOwXTBJs=","uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs=","uTgju7GMXtAdMRivDIS8Ov7lQl+SFukaOYMfwb3czCs="]
+GiftService.validate_send_gifts_message: send_gifts_received_user_ids  =
+GiftService.validate_send_gifts_message: send_gifts_expected_user_ids  =
+GiftService.validate_send_gifts_message: send_gift_missing_user_ids    =
+GiftService.validate_send_gifts_message: send_gift_unexpected_user_ids =
+GiftService.invalid_gift: new_users_index = {}
+GiftService.invalid_comment: Not implemented
+GiftService.sha256_gift: gid = 14323048627287885889, comments_str = 1,¼õsZs¯±UÁ°®*µâóÇEÙAíøî³, sha256 = uzÌªs´IöÜÍnQ_¥»cij°ªÍrÁÍMá, sha256_gift = Ürn¥J9³¸Yhj
+óÅ? vböÞ/D1ø¶, sha256_comments = dlM<»0©Mã{U«	ï1³]Ó0,´Ùò«
+GiftService.receive_message_send_gifts: other_server_id_to_sha256 = {"0":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}
+TypeError: verify_new_comments.push is not a function
+    at receive_message_send_gifts (gofreerev-06-angular-giftservice.js?body=1:3866)
+    at Object.process_messages (gofreerev-06-angular-giftservice.js?body=1:4753)
+    at gofreerev-07-angular-navcontroller.js?body=1:104
+    at processQueue (angular.js?body=1:12915)
+    at angular.js?body=1:12931
+    at Scope.$eval (angular.js?body=1:14124)
+    at Scope.$digest (angular.js?body=1:13940)
+    at Scope.$apply (angular.js?body=1:14228)
+    at done (angular.js?body=1:9494)
+    at completeRequest (angular.js?body=1:9679)

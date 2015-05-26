@@ -2327,7 +2327,7 @@ angular.module('gifts')
             // check sent folder
             for (var i = 0; i < mailbox.sent.length; i++) {
                 if ((mailbox.sent[i].mid == request_mid) && ((index=request_msgtypes.indexOf(mailbox.sent[i].msgtype)) != -1)) {
-                    console.log(pgm + 'Moving old ' + request_msgtypes[index] + ' message ' + request_mid + ' from sent to ' + folder_name + '.');
+                    console.log(pgm + 'Moving old ' + request_msgtypes[index] + ' message ' + request_mid + ' from sent to ' + folder_name + ' folder.');
                     msg = mailbox.sent.splice(i, 1);
                     folder.push(msg[0]);
                     return true ;
@@ -2336,7 +2336,7 @@ angular.module('gifts')
             // check outbox folder - normally not the case - sent messages should be in sent folder
             for (i = 0; i < mailbox.outbox.length; i++) {
                 if ((mailbox.outbox[i].mid == request_mid) && ((index=request_msgtypes.indexOf(mailbox.outbox[i].msgtype)) != -1)) {
-                    console.log(pgm + 'Warning. Moving old ' + request_msgtypes[index] + ' message ' + request_mid + ' from outbox to ' + folder_name + '.');
+                    console.log(pgm + 'Warning. Moving old ' + request_msgtypes[index] + ' message ' + request_mid + ' from outbox to ' + folder_name + ' folder.');
                     msg = mailbox.outbox.splice(i, 1);
                     folder.push(msg[0]);
                     return true ;
@@ -3861,9 +3861,33 @@ angular.module('gifts')
                         new_comment = new_gift.comments[j];
                         // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
                         if (old_cids.indexOf(new_comment.cid) == -1) {
-                            // new comment
-                            verify_new_comments += 1; // xxx
-                            verify_new_comments.push({gid: gid, comment: new_comment});
+
+                            // new comment - must be verified before adding to gift
+                            if (!new_comment.hasOwnProperty('verify_seq')) {
+                                // new comment must be server validated before continuing (between pass 1 and pass 2)
+                                verify_new_comments += 1;
+                                verify_comments_add(gid, new_comment);
+                                continue; // wait for verify comments
+                            }
+                            if (!new_comment.hasOwnProperty('verified_at_server')) {
+                                // new comment already in queue for server verification (offline, server not responding or remote comment)
+                                // todo: how long time to wait for:
+                                //   a: offline client - no internet connection
+                                //   b: server not responding (error or timeout)
+                                //   c: remote comment verification (error or remote server not responding)
+                                seconds = Gofreerev.unix_timestamp() - new_comment.in_verify_comments ;
+                                console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification') ;
+                                verifying_new_comments += 1;
+                                continue; // wait for verify comments
+                            }
+                            if (!new_comment.verified_at_server) {
+                                // invalid signature for new comment - changed on other client or incorrect in message
+                                new_comments_invalid_sha.push(gid);
+                                continue;
+                            }
+                            // new comment ok - comment ready for pass 2
+                            console.log(pgm + 'new comment ' + new_comment.cid + ' ok - comment ready for pass 2') ;
+
 
                         }
                         else {

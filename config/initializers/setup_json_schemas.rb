@@ -373,6 +373,11 @@ JSON_SCHEMA = {
                   :minItems => 1,
                   :maxItems => 1
               },
+              # optional array with oauth authorization for one or more social networks (from localStorage)
+              # used for friend list update after detecting changed sha256 user signature in server to server communication
+              # see :refresh => true in short friends list in util_controller.ping
+              # see also server.from_sha256s_to_user_ids where changed sha256 signature in incoming server to server messages is detected
+              :oauths => oauths_type,
               # optional array with encrypted messages from client to other devices (users_sha256, todo: gifts_sha256, gifts etc)
               # temporary buffer on server until message is delivered or message is expired/too old
               :messages => {

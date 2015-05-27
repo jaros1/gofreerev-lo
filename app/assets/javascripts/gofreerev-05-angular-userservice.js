@@ -105,8 +105,14 @@ angular.module('gifts')
             check_friend_lists() ;
         }; // init_friends
 
+        // refresh friends list in next ping? Used when receiving :refresh => true for one or more friends in short friend list in ping
+        // server has detected out-of-date user info on this server in a incoming server to server message
+        // client most send oauth info to server in next ping and refresh friends information
+        self.refresh_friends_list = {} ;
+
         // update friends js array: replace: true: overwrite/replace old friends, false: add/keep old friends
         // called from do_tasks after api and device login. new friend lists downloaded from api provider
+        // friends_sha256_update_at == null : called from sync_friends (two or more identical logins in a browser)
         var update_friends = function (new_friends, replace, friends_sha256_update_at) {
             // new_friends is friends list returned from do_tasks / util.generic_post_login - executed at page startup and after api provider logins
             var pgm = service + '.update_friends: ' ;
@@ -135,6 +141,11 @@ angular.module('gifts')
                 new_friend = new_friends[i];
                 // add download unix timestamp to friend info. not used in friends array but used in users array if friend user id is used in gifts or comments
                 if (!new_friend.hasOwnProperty('verified_at')) new_friend.verified_at = Gofreerev.unix_timestamp();
+                // refresh friend list in next ping?
+                if (new_friend.refresh && !self.refresh_friends_list.hasOwnProperty(new_friend.provider)) {
+                    self.refresh_friends_list[new_friend.provider] = Gofreerev.unix_timestamp() ;
+                }
+                // old or new friend?
                 if (friends_index_by_user_id.hasOwnProperty(new_friend.user_id)) {
                     // old friend - update changed fields
                     j = friends_index_by_user_id[new_friend.user_id];
@@ -216,6 +227,7 @@ angular.module('gifts')
             }
             Gofreerev.setItem('friends', JSON.stringify(friends)) ;
             console.log(pgm + 'friends = ' + JSON.stringify(friends)) ;
+            console.log(pgm + 'refresh_friends_list = ' + JSON.stringify(self.refresh_friends_list)) ;
             check_friend_lists() ;
         }; // update_friends
 
@@ -792,7 +804,33 @@ angular.module('gifts')
                     return $q.reject(JSON.stringify(error)) ;
                 }) ;
 
-        };
+        }; // send_oauth
+
+        // send_oauth hash but used in ping for friend list update
+        // used after detection out-of-date user info in incoming server to server message
+        // client must update friend list to bring user info up-to-date for server to server communication
+        var refresh_friends_list_request = function () {
+            var pgm = service + '.refresh_friends_list_request: ' ;
+            if (Object.keys(self.refresh_friends_list).length == 0) return null ;
+            console.log(pgm + 'refresh_friends_list = ' + JSON.stringify(self.refresh_friends_list)) ;
+            // get oauth
+            var oauth_str = Gofreerev.getItem('oauth') ;
+            var oauth_hash = JSON.parse(oauth_str) ;
+            // convert to array. but only providers in refresh_friend_list hash
+            var oauth, oauth_array = [] ;
+            for (var provider in oauth_hash) {
+                if (!oauth_hash.hasOwnProperty(provider)) continue ;
+                if (!self.refresh_friends_list.hasOwnProperty(provider)) continue ;
+                oauth = oauth_hash[provider] ;
+                oauth.provider = provider ;
+                oauth_array.push(oauth) ;
+            };
+            if (oauth_array.length == 0) {
+                console.log(pgm + 'Oauth information for ' + refresh_tokens_request.keys.join(', ') + ' was not found') ;
+                return null ;
+            };
+            return oauth_array ;
+        }; // refresh_friends_list_request
 
         var check_logged_in_providers = function (now) {
             var logged_in_provider = false; // true if one not expired api login
@@ -1070,6 +1108,7 @@ angular.module('gifts')
             add_oauth: add_oauth,
             remove_oauth: remove_oauth,
             send_oauth: send_oauth,
+            refresh_friends_list_request: refresh_friends_list_request,
             cache_oauth_info: cache_oauth_info,
             check_logged_in_providers: check_logged_in_providers,
             expired_tokens_response: expired_tokens_response,

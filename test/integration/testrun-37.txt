@@ -1,0 +1,261 @@
+testrun-37 error
+changed user signature detected
+
+
+client 1:
+- start login. friends info should be up-to-date on server after client login
+UserService.send_oauth: login_request = {"client_userid":1,"client_secret":"8840278417","client_timestamp":1432715075386,"oauths":[{"user_id":"1705481075/facebook","token":"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU","expires_at":1437475694,"provider":"facebook"}],"did":"14322883654942814019","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----"}
+AuthCtrl loaded
+
+
+server 1:
+- login. receives oauth info from client, downloads friend list from api, updates user info and returns friend list to client
+- friends info should be up-to-date after login
+Started POST "/util/login.json" for 127.0.0.1 at 2015-05-27 10:24:35 +0200
+Processing by UtilController#login as JSON
+  Parameters: {"client_userid"=>1, "client_secret"=>"8840278417", "client_timestamp"=>1432715075386, "oauths"=>[{"user_id"=>"1705481075/facebook", "token"=>"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU", "expires_at"=>1437475694, "provider"=>"facebook"}], "did"=>"14322883654942814019", "pubkey"=>"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----", "util"=>{"client_userid"=>1, "client_secret"=>"8840278417", "client_timestamp"=>1432715075386, "oauths"=>[{"user_id"=>"1705481075/facebook", "token"=>"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU", "expires_at"=>1437475694, "provider"=>"facebook"}], "did"=>"14322883654942814019", "pubkey"=>"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----"}}
+get_client_userid: session[:client_userid] = 1
+validate_json_request: params = {"client_userid":1,"client_secret":"8840278417","client_timestamp":1432715075386,"oauths":[{"user_id":"1705481075/facebook","token":"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU","expires_at":1437475694,"provider":"facebook"}],"did":"14322883654942814019","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----","controller":"util","action":"login","format":"json","util":{"client_userid":1,"client_secret":"8840278417","client_timestamp":1432715075386,"oauths":[{"user_id":"1705481075/facebook","token":"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU","expires_at":1437475694,"provider":"facebook"}],"did":"14322883654942814019","pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----"}}
+validate_json_request: login_request = {"client_userid"=>1, "client_secret"=>"8840278417", "client_timestamp"=>1432715075386, "oauths"=>[{"user_id"=>"1705481075/facebook", "token"=>"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU", "expires_at"=>1437475694, "provider"=>"facebook"}], "did"=>"14322883654942814019", "pubkey"=>"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvuJAcgGVR7p8b08g2rh1\nDNGf2KaflccxUTOIXF8y+Pth7Womx57rz5ldR65lI6HcoHUISqzis8ft0A6mZ4mT\nF6/mdDdlHnpC2SdsE0PfAYR3M+gSZM9rqqaMfggO3PIc0y6rRxIOzrtXJ9Spwp8D\nveZCY6ZoZG/XuGahJkme5fIZmvyAN2avSb2ITPgWtZEVHHZsSAK2NnWH5X67e2z/\no/9lQPv2aotn7obgm+Gd0OnS6k1T/dfZVmmoHS1qHE+3fcwTPYlNRchGNAbYFAMs\n01h6FTs3Ci9CwJaVMsunpDymz5w8Fz8fG2eHJ7xgChUWbaSA2mJm3tt/tuNG0d1z\nfQIDAQAB\n-----END PUBLIC KEY-----"}
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.6ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = 'd3132c1c9fae0245c8d99c62e7cba843' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 7gnDYhPZQcWZ4M0QwWYz7cgd7JbXZNs6RrJvm5RmlzH0EpiMf58lpFnKRGTe5eh6NDg1S071VBaif5UxlPvRI4Tat0MWopRLGvX3HEiOzMsdkLemK4cQGDJGhtXxWXoFmr32GcbkrShTn3I3g6c8t4sgBI7qaS06gk6A2e5FRJsEm2CBXKOikzs1nntmALbgcQEG6KJfnwGq6j1oAmhsac2wbm831TEyfOmv2krPYn3dCtwKnPirozZtVE7kXsqF
+get_client_userid: session[:client_userid] = 1
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  INSERT INTO `sessions` (`client_secret`, `client_timestamp`, `client_userid`, `created`, `created_at`, `did`, `expires_at`, `flash_id`, `language`, `last_row_at`, `last_row_id`, `refresh_tokens`, `session_id`, `sha256`, `state`, `tokens`, `updated_at`, `user_ids`) VALUES (NULL, NULL, 1, NULL, '2015-05-27 08:24:35', 'n8ojeibVBQWUUNXcqkItDjpjcnlwdF9rZWVwZXI6rJ5lXNZ6Jyniwk08mNFk\n4y+g7QURZ60NQEYnItp7xYfFNGssynV/ybWjI629GBGK\n', NULL, NULL, NULL, NULL, NULL, NULL, 'd3132c1c9fae0245c8d99c62e7cba843', NULL, NULL, NULL, '2015-05-27 08:24:35', NULL)
+   (5.7ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.9ms)  UPDATE `sessions` SET `client_secret` = 'Qi3EE0aaO9Dup+qTgkgR/TpjcnlwdF9rZWVwZXI65ENmj4EEV9n1GoWuu0Rh\nr3pNH4ZG/QxPmJfg8gshTmE=\n', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = NULL, `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = NULL, `state` = NULL, `tokens` = NULL, `user_ids` = NULL, `did` = '3eciOkY4zqhQR/AponT/EDpjcnlwdF9rZWVwZXI6a2gyazyUf4goMpjcuJak\nLYiyxzF30D0J81TqEzzicc9tk5zM63vwaLeXX3VzgiaS\n', `client_timestamp` = NULL, `sha256` = NULL WHERE `sessions`.`id` = 77
+   (3.3ms)  COMMIT
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `system_secret_updated_at` = '2015-05-22 13:10:45', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = NULL, `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = NULL, `state` = NULL, `tokens` = NULL, `user_ids` = NULL, `did` = 'vGmMIk9HAogROxkncpI7ITpjcnlwdF9rZWVwZXI6qjsQA6HrdCaYzr0KXOnq\nxylYjPEDxrAdiLoS3EiaRe/SzFfjXRqRghwRu8bX1X93\n', `client_timestamp` = NULL, `client_secret` = '7Tki5Z7AeHsi6u/H6uolPjpjcnlwdF9rZWVwZXI61rp0uthBN4LyVSiBNdjc\nd5KLy5bIkDEOZ+V2HC47zVA=\n', `sha256` = NULL WHERE `sessions`.`id` = 77
+   (4.5ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `sessions` SET `server` = 0, `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = NULL, `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = NULL, `state` = NULL, `tokens` = NULL, `user_ids` = NULL, `did` = '3On8EVJnMj5xIoNMqzQAljpjcnlwdF9rZWVwZXI6Ywgz3/+HTqZ66t4HMqrx\nuumycI3KgKW+gizzfVQmQMt5Q2T86qHO1CpaFtFv84mJ\n', `client_timestamp` = NULL, `client_secret` = 'EUuaNfaT7qy8VVQ+V54ZszpjcnlwdF9rZWVwZXI67SmVsQ55J/HUgZzuBED0\n9zdkcDQaG6DHdB2cOefGYzo=\n', `sha256` = NULL WHERE `sessions`.`id` = 77
+   (3.1ms)  COMMIT
+  Pubkey Load (0.2ms)  SELECT `pubkeys`.* FROM `pubkeys` WHERE `pubkeys`.`did` = '14322883654942814019' LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `sessions` SET `tokens` = '8cjj2/lqa2iYazJU7+7rLzpjcnlwdF9rZWVwZXI6+lSflJ3WoIFZGhyIC5KN\nFTLfAl+bgosV05ShMe1vEHGiEkLGqr1q+vH4kCgBQ2Yue0lvmfhE2jseHbu0\nVd402G5gFBpBmnyivaDW2GWBRGicJgAT6fZe3san/jWNNnnfd9U9oiB3WZHk\n3dW75ygx5BgZA5qTjgofldOHzpzHPZe7VUMxm+nqJXEvhMske8xptEJbRtFO\nW5DfP3k7KB0/mbhCNX2puj7Fpe7fd6JOtNZLJIiWiZwhydhY53VGCwpq1ZVH\nsMeNR2dqsT0E3Blhqibg8mMB5EZIUgzPG7wICJBMiZ7noQMmbsixaR/rEhOJ\nCcPyZbyuurWIwg03cmHXZA==\n', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = NULL, `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = NULL, `state` = NULL, `user_ids` = NULL, `did` = 'A3wduiEIRhc7frofAh0CbTpjcnlwdF9rZWVwZXI6PM5nc2aQmog4k8GLybol\ns9zmTfDw3Ppv1uis1oTU66JGUJd8g8CJW3KOxb88GjNj\n', `client_timestamp` = NULL, `client_secret` = 'FNx9DdxaGFKxcKIFCBT5hDpjcnlwdF9rZWVwZXI66AfBI2Iyv83I/3B0bn0M\nOwF37smkbBhlsDYkgbPtj6U=\n', `sha256` = NULL WHERE `sessions`.`id` = 77
+   (4.0ms)  COMMIT
+   (0.3ms)  BEGIN
+  SQL (2.8ms)  UPDATE `sessions` SET `expires_at` = 'x0amqkuZpTvtE+qM7HjAhzpjcnlwdF9rZWVwZXI6qV8WyG6IxFyulqEgcs/u\nonlEDqiXmtp61TLdH1n8mYiQqGF1ZjXyc8azn0ksfOjG\n', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = NULL, `state` = NULL, `tokens` = 'WjlZJsZdbEPeyX56JV8O/DpjcnlwdF9rZWVwZXI6K4NddJxmg1+lAZfidaxj\nwX220KRzK4MbkASuuthDNJB2K61t/RBka6NFVRtPw5eZgTPgV2tLFND9afMZ\nMzS0D8ib1RTANKh+tFWMp4/J024oLuURCOGgWLVBy9oqOEQL77x7dUDCqAnc\nf2zOleLYSjzSD6aSXoKOn85xTjqVUadVE/n1IzSqx6hbgDFkDAe69GRCIarb\nJckpgqzmweeE92+mY//KyNZmN009326v/f/ptueO3zpjidn/50xoGB7hDjau\nogL2A8J61wrDLHPVoDUrQ+fCfeOaxbDL+3PXVZZEAopqC0cJQ655t51m4RWl\nl0lE0Nb/cl2eRreGOVD9LA==\n', `user_ids` = NULL, `did` = 'j5tBHn98aC5rAqpxlnowrjpjcnlwdF9rZWVwZXI6fE7PQTzdX2lQC174yjiz\nzBvvEh45wKpporbwVXYL9g/dU6Y4ChcTcg1pMQ5zNm5p\n', `client_timestamp` = NULL, `client_secret` = 'KtmN/KIGOVuil96HnVETRTpjcnlwdF9rZWVwZXI6shmVt8BuFveNoHIVDdBd\nQWrfddNEGR1uIM46dfpcZGk=\n', `sha256` = NULL WHERE `sessions`.`id` = 77
+   (3.7ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.7ms)  UPDATE `sessions` SET `user_ids` = 'KgOo1ilWfsoZKkfPteDG0zpjcnlwdF9rZWVwZXI6gcPRYFCudFFvvS/bk0HW\nGjoGAIB3BIIwOnb1tIsYRFCmOwSeENx/tkRvpNqdxmQz\n', `sha256` = 'voAVB5GdDaUVjL0x7Uh92DpjcnlwdF9rZWVwZXI6GX86KY0djIio/IgqxnpD\nqqvP9p+q5l746Z2dYz7DLUmLjzK/VAl5oPcM/a9DfoCjzPSZxlA+Ulnebf21\nOusm79RlGRxAyBG8VvsalirA0bc=\n', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = '2mgDH/Y4LIjKqnEtbqu8bDpjcnlwdF9rZWVwZXI6U2YjEI0Z72JPKRFlWQEg\n8dQtWJlzImqzm2KL6AcE8T7RwrTBVOGEeGQz6JrxUj6V\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = NULL, `state` = NULL, `tokens` = 'htc9ZEjEhRyDQ/Fz/nFy6DpjcnlwdF9rZWVwZXI6YuH7BuIMflWCNTCFZJUT\nxGlYiJG5xPLJX9SnsYf3QuVtj7/k0wqBzZeeEhfRcwM+1jL+R8/cQ5LVw6go\nJRUyo20KMrDNEu/WdZynzKVmVs9tBstyEuAI73fQ/thX6xmQ6qlzFRJnzzUb\ntDR03otN9TMeIrncT2zkQr330A7RqbHJVDMlB9Z17BtGonckVkO52M0bXbAC\nAZH8fW4OW1mpfeG8TahLNh/pPkrGcNanSUL6k2yPlAiDZWlf2N+V6DYY7lYm\ne4HpaKwlrCzYQAtB2mBCvMhpi8OXMpdlQv7W7UCv5pkq7gWQACQGYfcSb1LQ\nuL97icIKpTGWbdAeS4XjJA==\n', `did` = 'adwQ29T+7AzZ/42reCpT1DpjcnlwdF9rZWVwZXI6YIFAHRHRaVV30I3irFpB\n8N1xJwSHWXneokxLs1Z3cJDlLYtX+Ipi5bthB1VMurXh\n', `client_timestamp` = NULL, `client_secret` = 'D8fuvAQicidDWRVOx2dLDzpjcnlwdF9rZWVwZXI6BT/uiQAVYl1Hx9QT7I/e\naifQD3DOogdi/zYyBL1dIGE=\n' WHERE `sessions`.`id` = 77
+   (3.4ms)  COMMIT
+fetch_users: start
+   (0.3ms)  BEGIN
+  SQL (0.8ms)  UPDATE `sessions` SET `refresh_tokens` = '0gBl1+jfyq8aPAmCGI/ZvzpjcnlwdF9rZWVwZXI6bZwD18IyEsvSgxp/F2MJ\nV2aD7oisD1tVwtsbC7OjjRBSzfCt4qasUg139C1vlO7I\n', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = 'o35wenvQie5+FcfrZbCVITpjcnlwdF9rZWVwZXI6VWI27PyMBprgJpogmvbN\nsf/u9qI+6GLmiBCCRkgJyq9UW+06649ALx3xvoX9eX/e\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `state` = NULL, `tokens` = 'PpCOmzpydeCvk8wgnWBsxDpjcnlwdF9rZWVwZXI62ENCSSY49TfmjUDxr6iM\nMC7inn+kZS/PBW2nw0y/BcSFmc+Ruy8a8wQ0FbGzqM/HhxVNl2os4kvHBqAG\n4R8TFx8cZhTA4yuPOz2Shu00vrDB57I0UdoE15LMe/HhujjXUUxhLlu/8XX9\nZx99koFf0zwKK1NuNwoB1+ImjlOQL6FT6xrZylIPIVH6Ff2zeO2alfKXdfW7\n0uYHHT8cLgce+5CFIJjxjJKxHftdoM84DbQ4+UzN3SMAbj4k6hlJEFabc+Yz\nYQRcXeP5heDHmV4X/6qyBPsl7E0sFO9fWhcYwCXr40pHqtk+ZRT5xsBmmnsH\n7Aasy8fQbdzCoc/jUggddg==\n', `user_ids` = 'DKF19sJTRmy/MSplqjlckjpjcnlwdF9rZWVwZXI6EEsOjeZfjlYquMeeQ2bO\n7clr30KrTMxyf/J/Fe4XR2nyDIktifJsscoJU/mQ/yME\n', `did` = 'N67cnk84XYLa4k7vQZDlejpjcnlwdF9rZWVwZXI68X7BgRarSQjxVMBhNn/K\nVbl1I+c9kPCwXp9KG+t2gX5AvIrw+6tCukRJbt/ybAhS\n', `client_timestamp` = NULL, `client_secret` = 'dwcaoh2y3ymnt3RfUGrLbTpjcnlwdF9rZWVwZXI6EvBZ3HwWWBeGSWuMZZJE\ngZJhzArNfYFqdIPxypMJkO4=\n', `sha256` = 'CNaPfMbbBPQTJ0ZotfDX8jpjcnlwdF9rZWVwZXI6e7ZVHAbQtReXEtcPEkeR\nCbMTWnry7Iln7B4A0G3stUa2Z1tOqR0hWD66cXUD2mKpzSXweJn+HHzOnSoY\n6IdwGFLisaxRYtSBFNBj2s8FY/c=\n' WHERE `sessions`.`id` = 77
+   (4.5ms)  COMMIT
+check_expired_tokens: context = login, refresh_tokens = []
+check_expired_tokens: context=login. refresh_tokens from session = []
+check_expired_tokens: client_timestamp = 1432715075, server_timestamp = 1432715075, timestamp_dif = 0, now = 1432715075
+  User Load (2.0ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('1705481075/facebook'))
+  Friend Load (0.3ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook'))
+  Friend Load (1.8ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1563545817212684/facebook','1705481075/facebook'))
+block in fetch_users: user_id = 1705481075/facebook, user_name = Jan Roslind, currency = USD
+fetch_users: @user_currency_separator = ., @user_currency_delimiter = ,
+logged_in?: login_user_ids.class = Array
+  Sequence Load (1.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  Sequence Load (1.3ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+  Task Load (0.6ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = 'd3132c1c9fae0245c8d99c62e7cba843' and task = 'fetch_exchange_rates') ORDER BY `tasks`.`id` ASC LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  INSERT INTO `tasks` (`created_at`, `priority`, `session_id`, `task`, `task_data`, `updated_at`) VALUES ('2015-05-27 08:24:35', 10, 'd3132c1c9fae0245c8d99c62e7cba843', 'fetch_exchange_rates', NULL, '2015-05-27 08:24:35')
+   (4.5ms)  COMMIT
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '1705481075/facebook' LIMIT 1
+get_login_user_and_api_client: provider = facebook, token = CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU
+post_login_update_friends: debug 1: key =  (NilClass)
+   (0.2ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `tokens` = '+ylwAkUCenyy18qzRZhL7TpjcnlwdF9rZWVwZXI6NonWsuHKPvlulfYK57OE\nkg==\n', `updated_at` = '2015-05-27 08:24:35', `created` = NULL, `expires_at` = 'QTEZWzcl/9PS237TAI1yXzpjcnlwdF9rZWVwZXI6OpPwayze06TEHP+gdk71\nkPMidP24Zb5LNLOHOs3obsBQVQugUC5VCEG8x+5gdcXg\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'kpHjYt4MREl2QStRIkWvhTpjcnlwdF9rZWVwZXI6KmZN3Sxt3UT4FjBlYW/5\nlEry2ptD91gC5mFlVDlqkimGbEQnwjTRNDhoyxGoesHg\n', `state` = NULL, `user_ids` = 'C2+ZhaHaSfDWVvASrY9n2TpjcnlwdF9rZWVwZXI6F1emKIgG9EFujVZqmqIV\nbMp/jINc5U1SQrQMPdmP87dc31fsbZQupoMZuP8TBB5K\n', `did` = 'Bddng/qPOpDZIqc1qiol3zpjcnlwdF9rZWVwZXI695G+ncaTwZ2HQgkuJDx0\nYVusm0sJ0Iu01qlMOQTPyvHpWbsDfcj3R78GWpRT2fDZ\n', `client_timestamp` = NULL, `client_secret` = 'tuyUSuLYziBaThSLC9ZBTDpjcnlwdF9rZWVwZXI6F3W9jsb0OqHfw5mqnbSn\ngtCSzBS1TqqorN2NIjvrfY8=\n', `sha256` = 'VdBbhsn99LyqWHrNcGq2czpjcnlwdF9rZWVwZXI6tjj3NNHCf9BiOvmpL4cK\nqyZJbZW5bnI7nN7m5jTE7pN5fweJ8aQlezUB1Wo87zWYnD2KNOH2KOwlBSqY\nEOs7oFDmNzYxF5Lo1hcxQdGs50E=\n' WHERE `sessions`.`id` = 77
+   (5.2ms)  COMMIT
+block in init_api_client_facebook: api_request = me?fields=picture.width(100).height(100)
+D, [2015-05-27T10:24:39.067634 #14130] DEBUG -- : GET: /v2.2/me?fields=picture.width(100).height(100) params: {"access_token"=>"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU"}
+block in init_api_client_facebook: api_response = {"picture"=>{"data"=>{"height"=>100, "is_silhouette"=>false, "url"=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62", "width"=>100}}, "id"=>"1705481075"}
+post_login_update_friends: user_hash = {:api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62"}, key = , options =
+post_login_update_friends: debug 2: key =  (NilClass)
+update_api_user_from_hash: user_hash = {:api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62"}
+update_api_user_from_hash: update profile picture: api_profile_picture_url = https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62
+  User Load (0.3ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '1705481075/facebook' LIMIT 1
+update_profile_image: update profile picture: url = https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62
+  SystemParameter Load (0.3ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+post_login_update_friends: debug 3: key =  (NilClass)
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE `users`.`id` = 2 LIMIT 1
+post_login_update_friends: api_profile_picture_url = https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62
+D, [2015-05-27T10:24:39.938074 #14130] DEBUG -- : GET: /v2.2/me/friends?fields=name,id,picture.width(100).height(100) params: {"access_token"=>"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU"}
+post_login_update_friends: debug 5: key =  (NilClass)
+post_login_update_friends: debug 7: key =  (NilClass)
+update_api_friends_from_hash: fields = name, api_profile_picture_url
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE ((user_id_giver = '1705481075/facebook' or user_id_receiver = '1705481075/facebook') and user_id_giver <> user_id_receiver)
+  User Load (1.6ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1563545817212684/facebook', '1705481075/facebook')
+update_api_friends_from_hash: new_friends.keys = 1563545817212684/facebook
+update_api_friends_from_hash: old_friends.keys = 1563545817212684/facebook
+update_api_friends_from_hash: new_user_ids     =
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+update_api_friends_from_hash: old_friends.size = 1, new_friends.size = 1, new_user = false
+post_login_update_friends: debug 8: key =  (NilClass)
+  Friend Load (1.6ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook'))
+  Friend Load (0.3ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1563545817212684/facebook','1705481075/facebook'))
+  SystemParameter Load (1.9ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE (name = 'secret' and updated_at > '2015-05-27 08:21:39') ORDER BY `system_parameters`.`id` ASC LIMIT 1
+  User Load (1.8ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1705481075/facebook', '1563545817212684/facebook')
+  ServerUser Load (0.5ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` IN (2, 3)
+  Server Load (0.5ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`id` IN (1)
+Completed 200 OK in 4942ms (Views: 0.9ms | ActiveRecord: 87.8ms)
+
+
+client 1:
+- end login. friends info should be up-to-date on server after client login
+UserService.send_oauth: ok response. friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…f8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62","sha256":"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=","remote_sha256":[{"server_id":1,"sha256":"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="}]},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…5144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a","sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","remote_sha256":[{"server_id":1,"sha256":"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="}]}]
+UserService.init_friends: friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…f8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62","sha256":"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=","remote_sha256":{"1":"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="}},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…5144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a","sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","remote_sha256":{"1":"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="}}]
+AuthCtrl.login_or_register: send_oauth ok
+
+
+server 1:
+- ping from client 1 - detected one user with changed sha256 signature / updated user info
+- ( facebook has changed api_profile_picture_url used in sha256 signature )
+- todo: not important but refresh = true should be for both users 2 and 3 in short friend list
+- todo: client 1  and client 2 have just completed login. friends info should be up-to-date in app 1 and app 2
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-05-27 10:24:40 +0200
+Processing by UtilController#ping as JSON
+  Parameters: {"client_userid"=>1, "sid"=>"14327150753276061888", "client_timestamp"=>1432715076318, "util"=>{"client_userid"=>1, "sid"=>"14327150753276061888", "client_timestamp"=>1432715076318}}
+get_client_userid: session[:client_userid] = 1
+validate_json_request: params = {"client_userid":1,"sid":"14327150753276061888","client_timestamp":1432715076318,"controller":"util","action":"ping","format":"json","util":{"client_userid":1,"sid":"14327150753276061888","client_timestamp":1432715076318}}
+validate_json_request: ping_request = {"client_userid"=>1, "sid"=>"14327150753276061888", "client_timestamp"=>1432715076318}
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.6ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = 'd3132c1c9fae0245c8d99c62e7cba843' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 7gnDYhPZQcWZ4M0QwWYz7cgd7JbXZNs6RrJvm5RmlzH0EpiMf58lpFnKRGTe5eh6NDg1S071VBaif5UxlPvRI4Tat0MWopRLGvX3HEiOzMsdkLemK4cQGDJGhtXxWXoFmr32GcbkrShTn3I3g6c8t4sgBI7qaS06gk6A2e5FRJsEm2CBXKOikzs1nntmALbgcQEG6KJfnwGq6j1oAmhsac2wbm831TEyfOmv2krPYn3dCtwKnPirozZtVE7kXsqF
+ping: server = false
+get_client_userid: session[:client_userid] = 1
+   (0.4ms)  SELECT COUNT(*) FROM `pings` WHERE `pings`.`session_id` = 'd3132c1c9fae0245c8d99c62e7cba843' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14327150753276061888'
+  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = 'd3132c1c9fae0245c8d99c62e7cba843' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14327150753276061888' ORDER BY `pings`.`last_ping_at` DESC LIMIT 1
+  Sequence Load (0.3ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_ping_cycle' LIMIT 1
+   (0.3ms)  BEGIN
+  SQL (0.5ms)  UPDATE `sequences` SET `value` = 6000, `updated_at` = '2015-05-27 08:24:40' WHERE `sequences`.`id` = 3
+   (7.1ms)  COMMIT
+   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE (last_ping_at >= 1432715071.471 and server_id is null)
+get_client_userid: session[:client_userid] = 1
+   (0.2ms)  BEGIN
+  SQL (2.2ms)  INSERT INTO `pings` (`client_sid`, `client_userid`, `last_ping_at`, `next_ping_at`, `session_id`) VALUES ('14327150753276061888', 1, 1432715073.471, 1432715080.471, 'd3132c1c9fae0245c8d99c62e7cba843')
+   (3.4ms)  COMMIT
+ping: session.did = ping.did = 14322883654942814019
+check_expired_tokens: context = ping, refresh_tokens = []
+check_expired_tokens: client_timestamp = 1432715076, server_timestamp = 1432715080, timestamp_dif = 4, now = 1432715076
+ping: avg5 = 0.76, MAX_AVG_LOAD = 1.6
+ping: old server ping interval = 7000, new server ping interval = 6000
+ping: no_active_sessions = 1, avg_ping_interval = 6.0
+   (0.2ms)  BEGIN
+  SQL (1.6ms)  UPDATE `sessions` SET `client_timestamp` = 'qvFYMNJR4hZrjJ4cdQ+VtDpjcnlwdF9rZWVwZXI6TTe8vK2PWtu3qhJtH9gv\nJ/lbAmSngFYusWfZK1Ec6+K2kHSAHJj2qGUIUt/+HROw\n', `updated_at` = '2015-05-27 08:24:40', `created` = NULL, `expires_at` = 'IGvQFALi5DUNQN21FYGPBjpjcnlwdF9rZWVwZXI6ABXFNhmqf5Y5x6sIX1oV\nrlgJjUxYNu33PzVPEgDaSLlSTENmvnhAdTWVkpgDQrz7\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'Ns4MufU5stjQsE1b/pmdBzpjcnlwdF9rZWVwZXI62L5BnVgsAechkSWgj5QK\n/gkU+4USV0vWWX6AnpxoXGx9jSXkMDkMmMJtRvoFlXcd\n', `state` = NULL, `tokens` = 'aRofVbBwKVFyDZPjk86pdDpjcnlwdF9rZWVwZXI6tuxBuUlMRfhsJuluBuBP\nWg==\n', `user_ids` = 'wtMRb4DZLkad8Yo0SIZEUDpjcnlwdF9rZWVwZXI6VC+Z46hYG2CsaJM8OvGZ\nH3zLLXNbjRi55NO6lg3VFqNUajFUmarokwBOb5Csiq/9\n', `did` = '7lOpKzVyaPJ/5KO5UhKmdTpjcnlwdF9rZWVwZXI6Nb3szvJgqPDBmDcyqszL\nCps38XCxHm3qWdSVk6bBABWLttTKvQjImJ0LGn92d5sO\n', `client_secret` = 'sC5S03U6JAIbdINVM69ASjpjcnlwdF9rZWVwZXI6IQ8kpnt6be8sZCltR2zu\niuDwTICt1LpxvzKgH98lCNk=\n', `sha256` = 'ds0r5bepbxRZN7A4fs78YTpjcnlwdF9rZWVwZXI6dP72Tewid0ZEHQaYEr4S\n8lrO3S8KDwl7YMzgM4YC3SGEVoM96Q4B1Fdm0MgGKD13lUAMVzWOhROTjL12\nCRMzqMT4ITAMpSLev609imEEfQA=\n' WHERE `sessions`.`id` = 77
+   (3.9ms)  COMMIT
+  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 75 and last_ping_at < 1432715080.471 and last_ping_at > 1432715066.5577025 and server_id is null) ORDER BY last_ping_at desc LIMIT 1
+ping: no previous ping was found
+  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 75 and next_ping_at > 1432715080.471 and server_id is null) ORDER BY next_ping_at LIMIT 1
+ping: next ping was not found
+ping: next_ping_interval = 6.0
+ping: avg_ping_interval = 6.0
+   (0.2ms)  BEGIN
+  SQL (0.7ms)  UPDATE `pings` SET `did` = '14322883654942814019', `user_ids` = '---\n- 1705481075/facebook\n', `sha256` = 'PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=', `last_ping_at` = 1432715080.471, `next_ping_at` = 1432715086.471 WHERE `pings`.`id` = 75
+   (5.3ms)  COMMIT
+ping: old client timestamp = , new client timestamp = 1432715076318, dif =
+ping: previous_ping_interval = 6.0, next_ping_interval = 6.0, avg_ping_interval2 = 6.0, adjust_this_ping = 0.0
+   (0.6ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> 'd3132c1c9fae0245c8d99c62e7cba843' or client_userid <> 1) and (server_id is null and last_ping_at > 1432715066.5720332 or server_id is not null and last_ping_at > 1432715020.5721588))
+  CACHE (0.0ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> 'd3132c1c9fae0245c8d99c62e7cba843' or client_userid <> 1) and (server_id is null and last_ping_at > 1432715066.5720332 or server_id is not null and last_ping_at > 1432715020.5721588))
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (0.5ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1705481075/facebook')
+  SQL (0.9ms)  SELECT `friends`.`id` AS t0_r0, `friends`.`user_id_giver` AS t0_r1, `friends`.`user_id_receiver` AS t0_r2, `friends`.`created_at` AS t0_r3, `friends`.`updated_at` AS t0_r4, `friends`.`api_friend` AS t0_r5, `friends`.`app_friend` AS t0_r6, `friends`.`friend_id` AS t0_r7, `users`.`id` AS t1_r0, `users`.`user_id` AS t1_r1, `users`.`user_name` AS t1_r2, `users`.`created_at` AS t1_r3, `users`.`updated_at` AS t1_r4, `users`.`currency` AS t1_r5, `users`.`balance` AS t1_r6, `users`.`balance_at` AS t1_r7, `users`.`permissions` AS t1_r8, `users`.`no_api_friends` AS t1_r9, `users`.`negative_interest` AS t1_r10, `users`.`api_profile_url` AS t1_r11, `users`.`api_profile_picture_url` AS t1_r12, `users`.`deleted_at` AS t1_r13, `users`.`last_login_at` AS t1_r14, `users`.`deauthorized_at` AS t1_r15, `users`.`last_friends_find_at` AS t1_r16, `users`.`language` AS t1_r17, `users`.`access_token` AS t1_r18, `users`.`access_token_expires` AS t1_r19, `users`.`refresh_token` AS t1_r20, `users`.`sha256` AS t1_r21, `users`.`old_sha256` AS t1_r22, `users`.`sha256_updated_at` AS t1_r23, `users`.`friend_sha256_updated_at` AS t1_r24, `users`.`remote_sha256_updated_at` AS t1_r25, `users`.`remote_sha256_update_info` AS t1_r26 FROM `friends` LEFT OUTER JOIN `users` ON `users`.`user_id` = `friends`.`user_id_receiver` WHERE `friends`.`user_id_giver` = '1705481075/facebook' AND (users.remote_sha256_update_info is not null)
+ping: remote_sha256_values_changed.size = 1
+block in ping: user 1563545817212684/facebook Jan R, remote_sha256_update_info = {:remote_sha256=>"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=", :remote_sha256_updated_at=>1432626460, :system_secret=>"RUpsAk53wl", :friends=>["1705481075/facebook"], :index=>0, :status=>0, :status_at=>2015-05-27 08:24:11 UTC}
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook'))
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1563545817212684/facebook','1705481075/facebook'))
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `sessions` SET `last_short_friends_list_at` = '2015-05-27 08:24:40', `updated_at` = '2015-05-27 08:24:40', `created` = NULL, `expires_at` = 'ZTHtj8HuqTBE+V0keC+SezpjcnlwdF9rZWVwZXI6CnaVuP/7UHBMK9DVJMK+\nH+oGRYlHEoiV631cIXTWPzNJxEvMShYYhIJmFPiTh46b\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'JJKqQ6QkCz4OfazohEo5TDpjcnlwdF9rZWVwZXI6m3mUraWPy0xXUIBL4O3c\nwZMtzK6fUGeUQ9rVPb0PwiDoGex6DM2IKYp0G6D4/ZX9\n', `state` = NULL, `tokens` = 'v+5MaW/cPAjsGjkv+5RQKTpjcnlwdF9rZWVwZXI68bolPZhf4AQy00WV410e\nUA==\n', `user_ids` = 'bl2vOXDGAzrm2EsflR0OWzpjcnlwdF9rZWVwZXI6Zp5xRoXowbWKFzttSgNF\nR6ka65bUgGiukyj0YaL/VfWPoKIuRe+zf3O5lf71K5HC\n', `did` = 'LRKsE8Bi826P9OdNuOtdODpjcnlwdF9rZWVwZXI67YVzeWmQ1baWIKhCCDTk\n/K+A8PI6Az3n3kZgGK59ZRTEF0O4wYnTLcScqgySbKYW\n', `client_timestamp` = 'OCQKJeFtT7GQ8lhNrc3DSDpjcnlwdF9rZWVwZXI6U7aldtd4gzVL8PbDc6bk\nAM808bMjv/cLOXH0YGKS8bj6FvV8zU6dBgGpOHJQ/K0y\n', `client_secret` = 'W/BIjUJ6FRuiu+UpGKTW1jpjcnlwdF9rZWVwZXI6vs4fmpHU7ndw7A5SiRWn\n7nK5UUlH76JUXxDxEVjGZ/4=\n', `sha256` = '96zdDpZ5/RFbjFWfUF8RijpjcnlwdF9rZWVwZXI6wfEvjBhQDnsKwZIMgpeM\ntgfiS1A/Y7Z6RxdfSEETrOvX0QxK7+Xfai4FOWVHvIxxq3h2rX9ArBR4DEVz\n0TvdctWSKJ7+CYX7CmvthqZGIsg=\n' WHERE `sessions`.`id` = 77
+   (3.7ms)  COMMIT
+  SQL (1.5ms)  SELECT `users`.`id` AS t0_r0, `users`.`user_id` AS t0_r1, `users`.`user_name` AS t0_r2, `users`.`created_at` AS t0_r3, `users`.`updated_at` AS t0_r4, `users`.`currency` AS t0_r5, `users`.`balance` AS t0_r6, `users`.`balance_at` AS t0_r7, `users`.`permissions` AS t0_r8, `users`.`no_api_friends` AS t0_r9, `users`.`negative_interest` AS t0_r10, `users`.`api_profile_url` AS t0_r11, `users`.`api_profile_picture_url` AS t0_r12, `users`.`deleted_at` AS t0_r13, `users`.`last_login_at` AS t0_r14, `users`.`deauthorized_at` AS t0_r15, `users`.`last_friends_find_at` AS t0_r16, `users`.`language` AS t0_r17, `users`.`access_token` AS t0_r18, `users`.`access_token_expires` AS t0_r19, `users`.`refresh_token` AS t0_r20, `users`.`sha256` AS t0_r21, `users`.`old_sha256` AS t0_r22, `users`.`sha256_updated_at` AS t0_r23, `users`.`friend_sha256_updated_at` AS t0_r24, `users`.`remote_sha256_updated_at` AS t0_r25, `users`.`remote_sha256_update_info` AS t0_r26, `server_users`.`id` AS t1_r0, `server_users`.`server_id` AS t1_r1, `server_users`.`user_id` AS t1_r2, `server_users`.`verified_at` AS t1_r3, `server_users`.`created_at` AS t1_r4, `server_users`.`updated_at` AS t1_r5, `server_users`.`pseudo_user_id` AS t1_r6, `server_users`.`remote_pseudo_user_id` AS t1_r7, `server_users`.`remote_sha256_updated_at` AS t1_r8, `server_users`.`sha256_message_sent_at` AS t1_r9, `server_users`.`sha256_signature_received_at` AS t1_r10, `servers`.`id` AS t2_r0, `servers`.`site_url` AS t2_r1, `servers`.`created_at` AS t2_r2, `servers`.`updated_at` AS t2_r3, `servers`.`new_did` AS t2_r4, `servers`.`last_ping_at` AS t2_r5, `servers`.`next_ping_at` AS t2_r6, `servers`.`secure` AS t2_r7, `servers`.`old_did` AS t2_r8, `servers`.`old_pubkey` AS t2_r9, `servers`.`new_pubkey` AS t2_r10, `servers`.`key` AS t2_r11, `servers`.`secret` AS t2_r12, `servers`.`last_checked_user_id` AS t2_r13, `servers`.`last_changed_user_sha256_at` AS t2_r14 FROM `users` LEFT OUTER JOIN `server_users` ON `server_users`.`user_id` = `users`.`id` LEFT OUTER JOIN `server_users` `server_users_users_join` ON `server_users_users_join`.`user_id` = `users`.`id` LEFT OUTER JOIN `servers` ON `servers`.`id` = `server_users_users_join`.`server_id` WHERE `users`.`user_id` IN ('1705481075/facebook', '1563545817212684/facebook') AND (server_users.verified_at is not null)
+  Server Load (0.5ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`id` = 1 ORDER BY `servers`.`id` ASC LIMIT 1
+  CACHE (0.0ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`id` = 1 ORDER BY `servers`.`id` ASC LIMIT 1  [["id", 1]]
+check_changed_remote_sha256: short_friends_list = [{:user_id=>2, :uid=>"1705481075", :provider=>"facebook", :user_name=>"Jan Roslind", :friend=>1, :sha256=>"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=", :old_sha256=>"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=", :api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62", :remote_sha256=>[{:server_id=>1, :sha256=>"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="}]}, {:user_id=>3, :uid=>"1563545817212684", :provider=>"facebook", :user_name=>"Jan Mobilos Roslind", :friend=>2, :sha256=>"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=", :old_sha256=>"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=", :api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=99c76f7a33dc1f261f9bc65144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a", :remote_sha256=>[{:server_id=>1, :sha256=>"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="}]}]
+check_changed_remote_sha256: login_users = #<ActiveRecord::Relation::ActiveRecord_Relation_User:0x007f036402ad50>
+check_changed_remote_sha256: pending_users.size = 1
+block in check_changed_remote_sha256: pending_user = {"id":3,"user_id":"1563545817212684/facebook","user_name":"Jan Mobilos Roslind","created_at":"2015-05-22T10:49:01.000Z","updated_at":"2015-05-27T08:24:11.000Z","currency":null,"balance":null,"balance_at":null,"permissions":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":null,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=99c76f7a33dc1f261f9bc65144828325\u0026oe=55C02AF9\u0026__gda__=1441935660_6228560bd0e7ff41f49aab850078527a","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","old_sha256":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=","sha256_updated_at":"2015-05-26T07:47:21.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":"2015-05-27T08:24:11.000Z","remote_sha256_update_info":{"remote_sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","remote_sha256_updated_at":1432626460,"system_secret":"RUpsAk53wl","friends":["1705481075/facebook"],"index":0,"status":0,"status_at":"2015-05-27T08:24:11Z"}}
+block in check_changed_remote_sha256: check status 0 for friend 1705481075/facebook
+   (0.2ms)  BEGIN
+  User Exists (0.5ms)  SELECT 1 AS one FROM `users` WHERE (`users`.`sha256` = BINARY 'k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=' AND `users`.`id` != 3) LIMIT 1
+  SQL (0.6ms)  UPDATE `users` SET `remote_sha256_update_info` = '---\n:remote_sha256: k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=\n:remote_sha256_updated_at: 1432626460\n:system_secret: RUpsAk53wl\n:friends:\n- 1705481075/facebook\n:index: 0\n:status: 1\n:status_at: 2015-05-27 08:24:40.651046025 Z\n', `updated_at` = '2015-05-27 08:24:40', `user_name` = 'Ymj4FpX5hlJu8XpT/OLFbzpjcnlwdF9rZWVwZXI6rQLUKr0vjYzECb1M0nGb\n5/PVHBNjlBUohRIGG3q1dha1QD3dvGtuyxYYkJ9FLIaX\n', `currency` = NULL, `balance` = NULL, `permissions` = NULL, `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = NULL, `api_profile_picture_url` = 'tz4gEPTVF8uoKY4bde2qyTpjcnlwdF9rZWVwZXI6VoqWMeHu89BKEdil5sMf\n4kQwnWRJqwiTj67hZ2kGG5X06AKK+EwvYh7wXpzdR/q8KmRIBZvgXzIoNhKP\nHQ7KeSF8SCSyb3HoKxYp/Nd5A5Dw3h5+ewDhLqlQgS2fBb/P9hGeXvcf3IOQ\n16A0yUvDXFZ+K4E7NORqO4OJtqyTrs+tSWNZtG0wLt8HPHscSRBnSeq0LadN\n7K+XJrNlAd1Pg3nrabUNKy9q8PkT9Zzgjk//rJPNbVizCUhYrWjlR+2VwWsM\nfOCMx7otvrKv2YAkzA3J5DIVtlvpq26x6du54SLgI5Uo+c0QTMrpG2/uQHCl\nnW821ud36EXvFK3XcpifcIfC/y6aKtWgKi3RmpYGd1s=\n' WHERE `users`.`id` = 3
+   (3.4ms)  COMMIT
+check_changed_remote_sha256: refresh = true. client must start friend list update sequence or friend list update already started
+check_changed_remote_sha256: short_friends_list = [{:user_id=>2, :uid=>"1705481075", :provider=>"facebook", :user_name=>"Jan Roslind", :friend=>1, :sha256=>"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=", :old_sha256=>"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=", :api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62", :remote_sha256=>[{:server_id=>1, :sha256=>"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="}], :refresh=>true}, {:user_id=>3, :uid=>"1563545817212684", :provider=>"facebook", :user_name=>"Jan Mobilos Roslind", :friend=>2, :sha256=>"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=", :old_sha256=>"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=", :api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=99c76f7a33dc1f261f9bc65144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a", :remote_sha256=>[{:server_id=>1, :sha256=>"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="}]}]
+ping: elapsed = 0.056229591369628906
+ping: delete_gifts =  (NilClass)
+delete_gifts: delete_gifts = null
+delete_gifts: login_user_ids = ["1705481075/facebook"]
+ping: new_servers =  (NilClass)
+ping: verify_gifts =  (NilClass)
+verify_gifts: verify_gifts = null
+verify_gifts: login_user_ids = ["1705481075/facebook"]
+   (0.5ms)  SELECT COUNT(*) FROM `verify_gifts` WHERE (client_sid = '14327150753276061888' and client_sha256 = 'PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=' and verified_at_server is not null)
+ping: verify_comments =  (NilClass)
+verify_comments: verify_comments = null
+verify_comments: login_user_ids = ["1705481075/facebook"]
+   (0.4ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14327150753276061888' and client_sha256 = 'PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=' and verified_at_server is not null)
+messages: sender_did    = 14322883654942814019
+messages: sender_sha256 = PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=
+messages: messages      =
+receive_messages: sender_did    = 14322883654942814019
+receive_messages: sender_sha256 = PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=
+receive_messages: messages      =
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'old_dids' LIMIT 1
+receive_messages: did = 14324491152048728746, old_dids = 14323002456762964119, 14323046623583097069
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  Message Load (0.5ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14324491152048728746' AND `messages`.`server` = 1 ORDER BY `messages`.created_at ASC
+send_messages: sender_did    = 14322883654942814019
+send_messages: sender_sha256 = PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=
+  Message Load (0.5ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14322883654942814019' AND `messages`.`to_sha256` = 'PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=' AND `messages`.`server` = 0 ORDER BY created_at, encryption desc
+  SQL (0.2ms)  DELETE FROM `messages` WHERE `messages`.`to_did` = '14322883654942814019' AND `messages`.`to_sha256` = 'PLgfzS8/kVm910QDHvi9QV/GW4QOCPf4k9rdRVhxPEo=' AND `messages`.`server` = 0
+messages: output_messages =
+ping: @json =
+  {:interval=>6000,
+   :friends=>[
+      {:user_id=>2, :uid=>"1705481075", :provider=>"facebook", :user_name=>"Jan Roslind", :friend=>1,
+       :sha256=>"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=", :old_sha256=>"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=",
+       :api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ead1ee223e65209c725c2ef8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62",
+       :remote_sha256=>[{:server_id=>1, :sha256=>"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="}],
+       :refresh=>true},
+      {:user_id=>3, :uid=>"1563545817212684", :provider=>"facebook", :user_name=>"Jan Mobilos Roslind", :friend=>2,
+       :sha256=>"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=", :old_sha256=>"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=",
+       :api_profile_picture_url=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=99c76f7a33dc1f261f9bc65144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a",
+       :remote_sha256=>[{:server_id=>1, :sha256=>"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="}]}],
+   :friends_sha256_update_at=>1432300245}
+Completed 200 OK in 443ms (Views: 1.1ms | ActiveRecord: 53.1ms)
+
+
+client 1:
+- ping response. short friends list with refresh = true for user id 2.
+- todo: client must set refresh=true or refresh=unix timestamp for one or more providers.
+- todo: client must sent oauth array in next ping. add :oauth to :ping_request json
+- todo: server must download, update friends info and return friend list to client. add friend list update to util_controller.ping
+NavCtrl.ping: ok.
+friends = [
+  {"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,
+   "sha256":"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=","old_sha256":"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q=",
+   "api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…f8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62",
+   "remote_sha256":[{"server_id":1,"sha256":"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="}],
+   "refresh":true},
+  {"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,
+   "sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","old_sha256":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=",
+   "api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…5144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a",
+   "remote_sha256":[{"server_id":1,"sha256":"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="}]}]
+UserService.update_friends:
+friends = [
+  {"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,
+   "api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…f8d6eb9b4f&oe=55C8AF27&__gda__=1438696074_67cc531ceae9031ca74bbe4d8c3b1e62",
+   "sha256":"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=",
+   "remote_sha256":{"1":"pKRnHDC/xYY4o/tkeqyhcMfxzETbhUK++Bqq+t2UGh4="},
+   "verified_at":1432715175,"short_user_name":"Jan R",
+   "old_sha256":"ZvP+yO00weiFWvUiZE9VnlykWgKIL1bVzVZyd8u2N1Q="},
+  {"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,
+   "api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…5144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a",
+   "sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=",
+   "remote_sha256":{"1":"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="},
+   "verified_at":1432715175,"short_user_name":"Jan M","old_sha256":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s="}]
+

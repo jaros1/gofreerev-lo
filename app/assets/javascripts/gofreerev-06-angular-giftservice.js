@@ -3619,10 +3619,10 @@ angular.module('gifts')
                     var no_unknown_servers = 0, sha256 ;
                     for (i = 0; i < msg.servers.length; i++) {
                         sha256 = msg.servers[i].sha256 ;
-                        if (sha256_to_server_id(sha256)) continue ; // known server
+                        if (sha256_to_server_id(sha256) != null) continue ; // known server
                         no_unknown_servers += 1 ;
                         if (!unknown_servers.hasOwnProperty(sha256)) unknown_servers[sha256] = null ;
-                        console.log(pgm + 'unknown_servers[' + sha256 + '] = ' + unknown_servers[sha256]) ;
+                        console.log(pgm + 'unknown_servers["' + sha256 + '"] = ' + unknown_servers[sha256]) ;
                     } // for i
                     if (no_unknown_servers > 0) {
                         // unknown server. Push back to read folder at check after next ping

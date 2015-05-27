@@ -997,6 +997,7 @@ class Server < ActiveRecord::Base
     ServerUser.where('server_id = ? and verified_at is not null', self.id).includes(:user).where('users.user_id' => online_user_ids).each do |su|
       verified_users[su.user.user_id] = {
           :sha256 => su.user.calc_sha256(self.secret),
+          :sha256_updated_at => su.user.sha256_updated_at,
           :pseudo_user_id => su.remote_pseudo_user_id
       }
     end
@@ -1155,6 +1156,11 @@ class Server < ActiveRecord::Base
           su.sha256_signature_received_at = nil if su.sha256_signature_received_at
           su.sha256_message_sent_at = nil if su.sha256_message_sent_at
           user.update_attribute :remote_sha256_updated_at, nil if user.remote_sha256_updated_at
+          # todo: blank user.remote_sha256_update_info?
+          logger.debug2 "user = #{user.to_json}"
+        elsif !sha_signature['sha256_updated_at']
+          invalid_sha_signatures << sha_signature
+          logger.error2 "invalid signature #{sha_signature} without sha256_updated_at timestamp in incoming changed sha256 message" if sha256_msg
         elsif sha_signature['sha256_updated_at'] > now.to_i
           # identical pseudo user id - changed sha256 signature but with invalid sha256_updated_at timestamp
           logger.error2 "#{msg} message. rejected changed sha256 signature #{sha_signature} with sha256_updated_at in the future. now = #{now.to_i}"

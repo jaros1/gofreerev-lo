@@ -2477,7 +2477,6 @@ class User < ActiveRecord::Base
   # check if friends list(s) must be updated
   # returns true if refresh was set to true for one or more users
   # returns false if no refresh operation for this client
-
   def self.check_changed_remote_sha256 (short_friends_list, login_users, pending_users)
     logger.debug2 "short_friends_list = #{short_friends_list}"
     logger.debug2 "login_users = #{login_users}"
@@ -2541,6 +2540,11 @@ class User < ActiveRecord::Base
         logger.error2 "status #{status} not implemented"
         next
       end
+    end
+
+    if refresh
+      logger.debug2 "refresh = true. client must start friend list update sequence or friend list update already started"
+      logger.debug2 "short_friends_list = #{short_friends_list}"
     end
 
     return refresh

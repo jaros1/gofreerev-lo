@@ -35,6 +35,7 @@ angular.module('gifts')
             // make ping request
             var sid = Gofreerev.getItem('sid') ;
             // todo: add accept_gifts request and response
+            // todo: add friend list update (changed signatures)
             var ping_request = {
                 client_userid: userid,
                 sid: sid,
@@ -47,6 +48,7 @@ angular.module('gifts')
                 verify_comments: giftService.verify_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request,
+                oauths: userService.refresh_friends_list_request(),
                 messages: giftService.send_messages()
             };
             for (var key in ping_request) if (ping_request[key] == null) delete ping_request[key] ;
@@ -74,7 +76,7 @@ angular.module('gifts')
                     if (response.data.friends) {
                         // system secret and friends sha256 signatures has been changed. update friend with new information
                         // old sha256 signature is valid for 3 minutes after friends_sha256_update_at unix timestamp
-                        // console.log(pgm + 'ok. friends = ' + JSON.stringify(response.data.friends)) ;
+                        console.log(pgm + 'ok. friends = ' + JSON.stringify(response.data.friends)) ;
                         // console.log(pgm + 'ok. friends_sha256_update_at = ' + JSON.stringify(response.data.friends_sha256_update_at)) ;
                         userService.update_friends(response.data.friends, false, response.data.friends_sha256_update_at) ; // replace=false - add new friends
                     }

@@ -767,6 +767,123 @@ class UtilController < ApplicationController
     logger.debug2 "params = #{params}"
   end
 
+
+  # called from login and ping.
+  # login = true if called from login - disconnect any old logins from other api providers
+  # login = false if called from ping - keep any old logins from other api providers
+  private
+  def load_oauth_and_update_friends (login)
+    oauths = params[:oauths] # array with oauth authorization
+    # tokens = get_session_value(:tokens)
+    # expires_at = get_session_value(:expires_at)
+    # refresh_tokens = get_session_value(:refresh_tokens)
+    # logger.secret2 "old tokens = #{tokens}"
+    # logger.debug2 "old expires_at = #{expires_at}"
+    # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
+
+    # insert oauth received from client local storage into server session
+    providers = []
+    new_user_ids = []
+    oauths.each do |oauth|
+      provider = oauth['provider']
+      if providers.index(provider)
+        @json[:error] = "Dublicate provider #{provider} in oauths array"
+        next
+      end
+      providers << provider
+      # logger.secret2 "oauth[#{provider}] = #{oauth[provider]}"
+      new_user_ids << oauth["user_id"]
+      set_session_array_value(:tokens, oauth["token"], provider)
+      set_session_array_value(:expires_at, oauth["expires_at"], provider)
+      set_session_array_value(:refresh_tokens, oauth["refresh_token"], provider) if provider == 'google_oauth2'
+    end
+    set_session_value(:user_ids, new_user_ids)
+
+    if login
+      # remove any old not authorized providers from server session (missing or failed server logout)
+      tokens = get_session_value(:tokens) || {}
+      (tokens.keys - providers).each { |provider| delete_session_array_value(:tokens, provider) }
+      expires_at = get_session_value(:expires_at) || {}
+      (expires_at.keys - providers).each { |provider| delete_session_array_value(:expires_at, provider) }
+      refresh_tokens = get_session_value(:refresh_tokens) || {}
+      (refresh_tokens.keys - providers).each { |provider| delete_session_array_value(:refresh_tokens, provider) }
+      # logger.secret2 "new tokens = #{tokens}"
+      # logger.debug2 "new expires_at = #{expires_at}"
+      # logger.secret2 "new refresh_tokens = #{refresh_tokens}"
+      # update and download friends information
+    end
+
+    # check tokens / get updated friends info after new login
+
+    # get login users, check expired providers, refresh google access token
+    expired_providers, oauths_response = fetch_users :login
+    @json[:expired_tokens] = expired_providers if expired_providers
+    if login_user_ids.size < providers.size
+      logger.debug2 "One or more expired providers was removed from session user ids array."
+      logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+      logger.debug2 "old providers  = #{providers.join(', ')}"
+      providers = login_user_ids.collect { |user_id| user_id.split('/').last }
+      logger.debug2 "new providers  = #{providers.join(', ')}"
+    end
+
+    # update friends list from login providers and user info to client
+    @json[:friends] = []
+    providers.each do |provider|
+      # get hash with user_id and friend category
+      login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
+      if key
+        add_error_key(key, options)
+        # check for AppNotAuthorized response in post_login_update_friends. user removed from user_ids.
+        is_provider_logged_in = login_user_ids.find { |user_id| user_id.split('/').last == provider }
+        if (!is_provider_logged_in)
+          logger.debug2 "added provider #{provider} with authorization error to @json[:expired_tokens] response"
+          @json[:expired_tokens] = [] unless @json[:expired_tokens]
+          @json[:expired_tokens] << provider
+        end
+        next
+      end
+      # return json object with relevant user info. see list with friends categories in User.cache_friend_info
+      User.cache_friend_info([login_user])
+      secret_just_changed = SystemParameter.where("name = 'secret' and updated_at > ?", 3.minutes.ago).first
+      if secret_just_changed
+        @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
+      end
+      users = User.where(:user_id => login_user.friends_hash.keys).includes(:server_users, :servers)
+      @json[:friends] += users.collect do |user|
+        hash = {:user_id => user.id,
+                :uid => user.uid,
+                :provider => user.provider,
+                :user_name => user.user_name,
+                :friend => login_user.friends_hash[user.user_id]}
+        hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+        # include sha256 signature for friends on other Gofreerev servers.
+        # used as user_id when receiving messages from online users on other Gofreerev servers
+        verified_server_users = user.server_users.find_all { |v| v.verified_at }
+        if verified_server_users.size > 0
+          hash[:sha256] = user.sha256
+          hash[:old_sha256] = user.old_sha256 if secret_just_changed
+          hash[:remote_sha256] = verified_server_users.collect do |v|
+            { :server_id => v.server_id,
+              :sha256 => user.calc_sha256(v.server.secret) }
+          end
+        end
+        hash
+      end
+    end # each provider
+
+    # todo: remove oauth authorization (tokens, expires_at and refresh_tokens) from sessions table
+    # should only be used to download friend lists from apis
+    # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
+
+    # oauths array (returned from post_login_update_friends) is irrelevant in this context
+    @json.delete :oauths
+
+    # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
+    @json[:oauths] = oauths_response if oauths_response # only google+
+
+  end # load_oauth_and_update_friends
+
+
   # client login. receive oauth hash from client, insert oauth in server session and update/download friends information
   # server login. receive did, client_secret and
   public
@@ -875,111 +992,118 @@ class UtilController < ApplicationController
         return
       end
 
-      oauths = params[:oauths] # array with oauth authorization
-      # tokens = get_session_value(:tokens)
-      # expires_at = get_session_value(:expires_at)
-      # refresh_tokens = get_session_value(:refresh_tokens)
-      # logger.secret2 "old tokens = #{tokens}"
-      # logger.debug2 "old expires_at = #{expires_at}"
-      # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
+      # refactored to load_oauth_and_update_friends ==>
+      # oauths = params[:oauths] # array with oauth authorization
+      # # tokens = get_session_value(:tokens)
+      # # expires_at = get_session_value(:expires_at)
+      # # refresh_tokens = get_session_value(:refresh_tokens)
+      # # logger.secret2 "old tokens = #{tokens}"
+      # # logger.debug2 "old expires_at = #{expires_at}"
+      # # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
+      #
+      # # insert oauth received from client local storage into server session
+      # providers = []
+      # new_user_ids = []
+      # oauths.each do |oauth|
+      #   provider = oauth['provider']
+      #   if providers.index(provider)
+      #     @json[:error] = "Dublicate provider #{provider} in oauths array"
+      #     next
+      #   end
+      #   providers << provider
+      #   # logger.secret2 "oauth[#{provider}] = #{oauth[provider]}"
+      #   new_user_ids << oauth["user_id"]
+      #   set_session_array_value(:tokens, oauth["token"], provider)
+      #   set_session_array_value(:expires_at, oauth["expires_at"], provider)
+      #   set_session_array_value(:refresh_tokens, oauth["refresh_token"], provider) if provider == 'google_oauth2'
+      # end
+      # set_session_value(:user_ids, new_user_ids)
+      #
+      # # remove any old not authorized providers from server session (missing or failed server logout)
+      # tokens = get_session_value(:tokens) || {}
+      # (tokens.keys - providers).each { |provider| delete_session_array_value(:tokens, provider) }
+      # expires_at = get_session_value(:expires_at) || {}
+      # (expires_at.keys - providers).each { |provider| delete_session_array_value(:expires_at, provider) }
+      # refresh_tokens = get_session_value(:refresh_tokens) || {}
+      # (refresh_tokens.keys - providers).each { |provider| delete_session_array_value(:refresh_tokens, provider) }
+      # # logger.secret2 "new tokens = #{tokens}"
+      # # logger.debug2 "new expires_at = #{expires_at}"
+      # # logger.secret2 "new refresh_tokens = #{refresh_tokens}"
+      # # update and download friends information
+      #
+      # # check tokens / get updated friends info after new login
+      #
+      # # get login users, check expired providers, refresh google access token
+      # expired_providers, oauths_response = fetch_users :login
+      # @json[:expired_tokens] = expired_providers if expired_providers
+      # if login_user_ids.size < providers.size
+      #   logger.debug2 "One or more expired providers was removed from session user ids array."
+      #   logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
+      #   logger.debug2 "old providers  = #{providers.join(', ')}"
+      #   providers = login_user_ids.collect { |user_id| user_id.split('/').last }
+      #   logger.debug2 "new providers  = #{providers.join(', ')}"
+      # end
+      #
+      # # update friends list from login providers and user info to client
+      # @json[:friends] = []
+      # providers.each do |provider|
+      #   # get hash with user_id and friend category
+      #   login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
+      #   if key
+      #     add_error_key(key, options)
+      #     # check for AppNotAuthorized response in post_login_update_friends. user removed from user_ids.
+      #     is_provider_logged_in = login_user_ids.find { |user_id| user_id.split('/').last == provider }
+      #     if (!is_provider_logged_in)
+      #       logger.debug2 "added provider #{provider} with authorization error to @json[:expired_tokens] response"
+      #       @json[:expired_tokens] = [] unless @json[:expired_tokens]
+      #       @json[:expired_tokens] << provider
+      #     end
+      #     next
+      #   end
+      #   # return json object with relevant user info. see list with friends categories in User.cache_friend_info
+      #   User.cache_friend_info([login_user])
+      #   secret_just_changed = SystemParameter.where("name = 'secret' and updated_at > ?", 3.minutes.ago).first
+      #   if secret_just_changed
+      #     @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
+      #   end
+      #   users = User.where(:user_id => login_user.friends_hash.keys).includes(:server_users, :servers)
+      #   @json[:friends] += users.collect do |user|
+      #     hash = {:user_id => user.id,
+      #             :uid => user.uid,
+      #             :provider => user.provider,
+      #             :user_name => user.user_name,
+      #             :friend => login_user.friends_hash[user.user_id]}
+      #     hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+      #     # include sha256 signature for friends on other Gofreerev servers.
+      #     # used as user_id when receiving messages from online users on other Gofreerev servers
+      #     verified_server_users = user.server_users.find_all { |v| v.verified_at }
+      #     if verified_server_users.size > 0
+      #       hash[:sha256] = user.sha256
+      #       hash[:old_sha256] = user.old_sha256 if secret_just_changed
+      #       hash[:remote_sha256] = verified_server_users.collect do |v|
+      #         { :server_id => v.server_id,
+      #           :sha256 => user.calc_sha256(v.server.secret) }
+      #       end
+      #     end
+      #     hash
+      #   end
+      # end # each provider
+      #
+      # # todo: remove oauth authorization (tokens, expires_at and refresh_tokens) from sessions table
+      # # should only be used to download friend lists from apis
+      # # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
+      #
+      # # oauths array (returned from post_login_update_friends) is irrelevant in this context
+      # @json.delete :oauths
+      #
+      # # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
+      # @json[:oauths] = oauths_response if oauths_response # only google+
+      # <== refactored to load_oauth_and_update_friends
 
-      # insert oauth received from client local storage into server session
-      providers = []
-      new_user_ids = []
-      oauths.each do |oauth|
-        provider = oauth['provider']
-        if providers.index(provider)
-          @json[:error] = "Dublicate provider #{provider} in oauths array"
-          next
-        end
-        providers << provider
-        # logger.secret2 "oauth[#{provider}] = #{oauth[provider]}"
-        new_user_ids << oauth["user_id"]
-        set_session_array_value(:tokens, oauth["token"], provider)
-        set_session_array_value(:expires_at, oauth["expires_at"], provider)
-        set_session_array_value(:refresh_tokens, oauth["refresh_token"], provider) if provider == 'google_oauth2'
-      end
-      set_session_value(:user_ids, new_user_ids)
-
-      # remove any old not authorized providers from server session (missing or failed server logout)
-      tokens = get_session_value(:tokens) || {}
-      (tokens.keys - providers).each { |provider| delete_session_array_value(:tokens, provider) }
-      expires_at = get_session_value(:expires_at) || {}
-      (expires_at.keys - providers).each { |provider| delete_session_array_value(:expires_at, provider) }
-      refresh_tokens = get_session_value(:refresh_tokens) || {}
-      (refresh_tokens.keys - providers).each { |provider| delete_session_array_value(:refresh_tokens, provider) }
-      # logger.secret2 "new tokens = #{tokens}"
-      # logger.debug2 "new expires_at = #{expires_at}"
-      # logger.secret2 "new refresh_tokens = #{refresh_tokens}"
-      # update and download friends information
-
-      # check tokens / get updated friends info after new login
-
-      # get login users, check expired providers, refresh google access token
-      expired_providers, oauths_response = fetch_users :login
-      @json[:expired_tokens] = expired_providers if expired_providers
-      if login_user_ids.size < providers.size
-        logger.debug2 "One or more expired providers was removed from session user ids array."
-        logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
-        logger.debug2 "old providers  = #{providers.join(', ')}"
-        providers = login_user_ids.collect { |user_id| user_id.split('/').last }
-        logger.debug2 "new providers  = #{providers.join(', ')}"
-      end
-
-      # update friends list from login providers and user info to client
-      @json[:friends] = []
-      providers.each do |provider|
-        # get hash with user_id and friend category
-        login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-        if key
-          add_error_key(key, options)
-          # check for AppNotAuthorized response in post_login_update_friends. user removed from user_ids.
-          is_provider_logged_in = login_user_ids.find { |user_id| user_id.split('/').last == provider }
-          if (!is_provider_logged_in)
-            logger.debug2 "added provider #{provider} with authorization error to @json[:expired_tokens] response"
-            @json[:expired_tokens] = [] unless @json[:expired_tokens]
-            @json[:expired_tokens] << provider
-          end
-          next
-        end
-        # return json object with relevant user info. see list with friends categories in User.cache_friend_info
-        User.cache_friend_info([login_user])
-        secret_just_changed = SystemParameter.where("name = 'secret' and updated_at > ?", 3.minutes.ago).first
-        if secret_just_changed
-          @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
-        end
-        users = User.where(:user_id => login_user.friends_hash.keys).includes(:server_users, :servers)
-        @json[:friends] += users.collect do |user|
-          hash = {:user_id => user.id,
-                  :uid => user.uid,
-                  :provider => user.provider,
-                  :user_name => user.user_name,
-                  :friend => login_user.friends_hash[user.user_id]}
-          hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
-          # include sha256 signature for friends on other Gofreerev servers.
-          # used as user_id when receiving messages from online users on other Gofreerev servers
-          verified_server_users = user.server_users.find_all { |v| v.verified_at }
-          if verified_server_users.size > 0
-            hash[:sha256] = user.sha256
-            hash[:old_sha256] = user.old_sha256 if secret_just_changed
-            hash[:remote_sha256] = verified_server_users.collect do |v|
-              { :server_id => v.server_id,
-                :sha256 => user.calc_sha256(v.server.secret) }
-            end
-          end
-          hash
-        end
-      end # each provider
-
-      # todo: remove oauth authorization (tokens, expires_at and refresh_tokens) from sessions table
-      # should only be used to download friend lists from apis
-      # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
-
-      # oauths array (returned from post_login_update_friends) is irrelevant in this context
-      @json.delete :oauths
-
-      # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
-      @json[:oauths] = oauths_response if oauths_response # only google+
+      # load oauths array into sessions table, disconnect old not used providers, check expired access tokens,
+      # download friend list from api provider, update friends info in db and return @json[:friends] array
+      # login=true: new login - disconnect old not used providers
+      load_oauth_and_update_friends(true)
 
       validate_json_response
       format_response
@@ -1152,9 +1276,12 @@ class UtilController < ApplicationController
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token
-      expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens]) unless server
-      @json[:expired_tokens] = expired_providers if expired_providers
-      @json[:oauths] = oauths if oauths # only google+
+      if !params.has_key?(:oauths)
+        # received oauths array from client - see later - calling load_oauth_and_update_friends(false) for friend list update
+        expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens]) unless server
+        @json[:expired_tokens] = expired_providers if expired_providers
+        @json[:oauths] = oauths if oauths # only google+
+      end
 
       # copy login user ids from sessions to pings table (user_ids is stored encrypted in sessions but unencrypted in pings)
 
@@ -1280,98 +1407,113 @@ class UtilController < ApplicationController
           logger.debug2 "@json[:online] = #{@json[:online]}"
         end
 
-        # return short friends list with sha256 signatures (signatures for users on one or more other gofreerev servers)
-        # 1) return short friends list after changed system secret
-        # 2) return short friends list after changed sha256 values for login users, friends of login users or friend of friends of login users
-        system_secret_changed = false
-        sha256_values_changed = false
-        remote_sha256_values_changed = []
         if !server
-          system_secret_at = SystemParameter.secret_at
-          system_secret_changed = (system_secret_at != get_session_value(:system_secret_updated_at))
-          if !system_secret_changed
-            # check if user sha256 signatures have changed since list short friends list download
-            last_short_friends_list_at = get_session_value(:last_short_friends_list_at)
-            if last_short_friends_list_at
-              login_users = User.where(:user_id => login_user_ids)
-              login_users.each do |user|
-                sha256_values_changed = true if user.sha256_updated_at and user.sha256_updated_at >= last_short_friends_list_at
-                sha256_values_changed = true if user.friend_sha256_updated_at and user.friend_sha256_updated_at >= last_short_friends_list_at
-                break if sha256_values_changed
-              end
-            else
-              sha256_values_changed = true
-            end
-          end
-          # check remote_sha256_updated_at. user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
-          login_users = User.where(:user_id => login_user_ids) unless login_users
-          login_users.each do |user|
-            next unless user.remote_sha256_updated_at
-            friends = Friend.where(:user_id_giver => user.user_id).includes(:friend).where('users.remote_sha256_update_info is not null').references(:users)
-            friends = friends.find_all { |friend| friend.friend_status_code == 'Y' }
-            if friends.size == 0
-              # no pending update user info operation was found
-              logger.debug "no pending user update operation was found for #{user.debug_info}"
-              user.update_attributes :remote_sha256_updated_at => nil, :remote_sha256_update_info => nil
-              next
-            end
-            friends.each do |friend|
-              remote_sha256_values_changed << friend.friend if friend.friend_status_code == 'Y'
-            end
-          end
-          logger.debug2 "remote_sha256_values_changed.size = #{remote_sha256_values_changed.size}"
-          remote_sha256_values_changed.each do |user|
-            logger.debug2 "user #{user.debug_info}, remote_sha256_update_info = #{user.remote_sha256_update_info}"
-          end if remote_sha256_values_changed.size > 0
+          if params.has_key?(:oauths)
+            # received oauths array from client. return full friends list for api providers in oauths array
+            # used after detecting changed sha256 user signatures in server to server messages
 
+            # load oauths array into sessions table, disconnect old not used providers, check expired access tokens,
+            # download friend list from api provider, update friends info in db and return @json[:friends] array
+            # login=false: keep old logins (providers not in oauths array)
+            load_oauth_and_update_friends(false)
+
+          else
+
+            # return short friends list with sha256 signatures (signatures for users on one or more other gofreerev servers)
+            # 1) return short friends list after changed system secret
+            # 2) return short friends list after changed sha256 values for login users, friends of login users or friend of friends of login users
+            system_secret_changed = false
+            sha256_values_changed = false
+            remote_sha256_values_changed = []
+            system_secret_at = SystemParameter.secret_at
+            system_secret_changed = (system_secret_at != get_session_value(:system_secret_updated_at))
+            if !system_secret_changed
+              # check if user sha256 signatures have changed since list short friends list download
+              last_short_friends_list_at = get_session_value(:last_short_friends_list_at)
+              if last_short_friends_list_at
+                login_users = User.where(:user_id => login_user_ids)
+                login_users.each do |user|
+                  sha256_values_changed = true if user.sha256_updated_at and user.sha256_updated_at >= last_short_friends_list_at
+                  sha256_values_changed = true if user.friend_sha256_updated_at and user.friend_sha256_updated_at >= last_short_friends_list_at
+                  break if sha256_values_changed
+                end
+              else
+                sha256_values_changed = true
+              end
+            end
+            # check remote_sha256_updated_at. user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
+            login_users = User.where(:user_id => login_user_ids) unless login_users
+            login_users.each do |user|
+              next unless user.remote_sha256_updated_at
+              friends = Friend.where(:user_id_giver => user.user_id).includes(:friend).where('users.remote_sha256_update_info is not null').references(:users)
+              friends = friends.find_all { |friend| friend.friend_status_code == 'Y' }
+              if friends.size == 0
+                # no pending update user info operation was found
+                logger.debug "no pending user update operation was found for #{user.debug_info}"
+                user.update_attributes :remote_sha256_updated_at => nil, :remote_sha256_update_info => nil
+                next
+              end
+              friends.each do |friend|
+                remote_sha256_values_changed << friend.friend if friend.friend_status_code == 'Y'
+              end
+            end
+            logger.debug2 "remote_sha256_values_changed.size = #{remote_sha256_values_changed.size}"
+            remote_sha256_values_changed.each do |user|
+              logger.debug2 "user #{user.debug_info}, remote_sha256_update_info = #{user.remote_sha256_update_info}"
+            end if remote_sha256_values_changed.size > 0
+
+            if system_secret_changed or sha256_values_changed or remote_sha256_values_changed.size > 0
+              time1 = Time.zone.now
+              # system secret and/or sha256 signatures for users has changed since last client ping
+              # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)
+              login_users = User.where(:user_id => login_user_ids) unless login_users
+              # cache friends info. for friends and people in network
+              User.cache_friend_info(login_users)
+              # find friends on other Gofreerev servers (must have minimum one verified user in server_users table)
+              friends_hash = {}
+              login_users.each { |login_user| friends_hash.merge!(login_user.friends_hash) }
+              set_session_value(:last_short_friends_list_at, Time.zone.now)
+              users = User.where(:user_id => friends_hash.keys).includes(:server_users, :servers).where('server_users.verified_at is not null').references(:server_users)
+              # return json
+              @json[:friends] = users.collect do |user|
+                hash = {:user_id => user.id,
+                        :uid => user.uid,
+                        :provider => user.provider,
+                        :user_name => user.user_name,
+                        :friend => friends_hash[user.user_id],
+                        :sha256 => user.sha256} # signature on this Gofreerev server
+                hash[:old_sha256] = user.old_sha256 if user.old_sha256 # old signature on this gofreerev server
+                hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
+                # add array with signatures on other Gofreerev servers
+                hash[:remote_sha256] = user.server_users.collect do |v|
+                  {:server_id => v.server_id,
+                   :sha256 => user.calc_sha256(v.server.secret)}
+                end
+                hash
+              end
+              # check sha256 signature changed on other gofreerev servers (remote_sha256_updated_at)
+              # user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
+              # ( see server.from_sha256s_to_user_ids where incoming sha256 signatures are translated to internal user ids )
+              if remote_sha256_values_changed.size > 0
+                # set refresh = true if friend list update operation should be started by client
+                if !User.check_changed_remote_sha256(@json[:friends], login_users, remote_sha256_values_changed) and !system_secret_changed and !sha256_values_changed
+                  @json.delete(:friends)
+                end
+              end
+              if @json[:friends]
+                # old sha256 signatures are valid for 3 minutes after update of system secret
+                set_session_value :system_secret_updated_at, system_secret_at if system_secret_changed
+                @json[:friends_sha256_update_at] = system_secret_at.to_i
+              end
+              time2 = Time.zone.now
+              elapsed = (time2-time1)
+              logger.debug2 "elapsed = #{elapsed}"
+            end # short friends list
+
+
+          end
         end
-        if system_secret_changed or sha256_values_changed or remote_sha256_values_changed.size > 0
-          time1 = Time.zone.now
-          # system secret and/or sha256 signatures for users has changed since last client ping
-          # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)
-          login_users = User.where(:user_id => login_user_ids) unless login_users
-          # cache friends info. for friends and people in network
-          User.cache_friend_info(login_users)
-          # find friends on other Gofreerev servers (must have minimum one verified user in server_users table)
-          friends_hash = {}
-          login_users.each { |login_user| friends_hash.merge!(login_user.friends_hash)}
-          set_session_value(:last_short_friends_list_at, Time.zone.now)
-          users = User.where(:user_id => friends_hash.keys).includes(:server_users, :servers).where('server_users.verified_at is not null').references(:server_users)
-          # return json
-          @json[:friends] = users.collect do |user|
-            hash = { :user_id => user.id,
-                     :uid => user.uid,
-                     :provider => user.provider,
-                     :user_name => user.user_name,
-                     :friend => friends_hash[user.user_id],
-                     :sha256 => user.sha256 } # signature on this Gofreerev server
-            hash[:old_sha256] = user.old_sha256 if user.old_sha256 # old signature on this gofreerev server
-            hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
-            # add array with signatures on other Gofreerev servers
-            hash[:remote_sha256] = user.server_users.collect do |v|
-              { :server_id => v.server_id,
-                :sha256 => user.calc_sha256(v.server.secret) }
-            end
-            hash
-          end
-          # check sha256 signature changed on other gofreerev servers (remote_sha256_updated_at)
-          # user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
-          # ( see server.from_sha256s_to_user_ids where incoming sha256 signatures are translated to internal user ids )
-          if remote_sha256_values_changed.size > 0
-            # set refresh = true if friend list update operation should be started by client
-            if !User.check_changed_remote_sha256(@json[:friends], login_users, remote_sha256_values_changed) and !system_secret_changed and !sha256_values_changed
-              @json.delete(:friends)
-            end
-          end
-          if @json[:friends]
-            # old sha256 signatures are valid for 3 minutes after update of system secret
-            set_session_value :system_secret_updated_at, system_secret_at if system_secret_changed
-            @json[:friends_sha256_update_at] = system_secret_at.to_i
-          end
-          time2 = Time.zone.now
-          elapsed = (time2-time1)
-          logger.debug2 "elapsed = #{elapsed}"
-        end # short friends list
+
 
         # process additional ping operations (new gifts, public keys, sync gifts between clients etc)
 

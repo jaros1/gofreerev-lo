@@ -76,7 +76,7 @@ angular.module('gifts')
                     if (response.data.friends) {
                         // system secret and friends sha256 signatures has been changed. update friend with new information
                         // old sha256 signature is valid for 3 minutes after friends_sha256_update_at unix timestamp
-                        console.log(pgm + 'ok. friends = ' + JSON.stringify(response.data.friends)) ;
+                        // console.log(pgm + 'ok. friends = ' + JSON.stringify(response.data.friends)) ;
                         // console.log(pgm + 'ok. friends_sha256_update_at = ' + JSON.stringify(response.data.friends_sha256_update_at)) ;
                         userService.update_friends(response.data.friends, false, response.data.friends_sha256_update_at) ; // replace=false - add new friends
                     }

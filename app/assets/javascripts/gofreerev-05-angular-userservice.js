@@ -137,14 +137,14 @@ angular.module('gifts')
             // insert or update
             var refresh_index = false ;
             var new_friend, j, old_friend, remote_sha256 ;
+            var refresh_provider = {} ; // provider => boolean. true if friend list for provider must be refresh in next ping
             for (i = 0; i < new_friends.length; i++) {
                 new_friend = new_friends[i];
                 // add download unix timestamp to friend info. not used in friends array but used in users array if friend user id is used in gifts or comments
                 if (!new_friend.hasOwnProperty('verified_at')) new_friend.verified_at = Gofreerev.unix_timestamp();
-                // refresh friend list in next ping?
-                if (new_friend.refresh && !self.refresh_friends_list.hasOwnProperty(new_friend.provider)) {
-                    self.refresh_friends_list[new_friend.provider] = Gofreerev.unix_timestamp() ;
-                }
+                // refresh friend list in next ping? true if receiving refresh=true for one or more friends
+                if (!refresh_provider.hasOwnProperty(new_friend.provider)) refresh_provider[new_friend.provider] = false ;
+                if (new_friend.refresh) refresh_provider[new_friend.provider] = true ;
                 // old or new friend?
                 if (friends_index_by_user_id.hasOwnProperty(new_friend.user_id)) {
                     // old friend - update changed fields
@@ -227,7 +227,25 @@ angular.module('gifts')
             }
             Gofreerev.setItem('friends', JSON.stringify(friends)) ;
             console.log(pgm + 'friends = ' + JSON.stringify(friends)) ;
-            console.log(pgm + 'refresh_friends_list = ' + JSON.stringify(self.refresh_friends_list)) ;
+            // refresh friend lists?
+            console.log(pgm + 'old refresh_friends_list = ' + JSON.stringify(self.refresh_friends_list)) ;
+            var provider ;
+            for (provider in self.refresh_friends_list) {
+                if (!refresh_provider.hasOwnProperty(provider)) console.log(pgm + 'Error. Expected friend list was not received for ' + provider) ;
+                else if (refresh_provider[provider] == false) {
+                    console.log(pgm + 'Ok. received expected friend list for ' + provider) ;
+                    delete self.refresh_friends_list[provider] ;
+                    delete refresh_provider[provider] ;
+                }
+                else {
+                    console.log(pgm + 'Error. Expected full friend list. Received short friend list with refresh = true for provider ' + provider) ;
+                }
+            } // for provider
+            for (provider in refresh_provider) {
+                if (self.refresh_friends_list.hasOwnProperty(provider)) continue ;
+                self.refresh_friends_list[provider] = Gofreerev.unix_timestamp() ;
+            }
+            console.log(pgm + 'new refresh_friends_list = ' + JSON.stringify(self.refresh_friends_list)) ;
             check_friend_lists() ;
         }; // update_friends
 
@@ -806,7 +824,7 @@ angular.module('gifts')
 
         }; // send_oauth
 
-        // send_oauth hash but used in ping for friend list update
+        // send_oauth array in ping for friend list update
         // used after detection out-of-date user info in incoming server to server message
         // client must update friend list to bring user info up-to-date for server to server communication
         var refresh_friends_list_request = function () {
@@ -818,17 +836,16 @@ angular.module('gifts')
             var oauth_hash = JSON.parse(oauth_str) ;
             // convert to array. but only providers in refresh_friend_list hash
             var oauth, oauth_array = [] ;
-            for (var provider in oauth_hash) {
-                if (!oauth_hash.hasOwnProperty(provider)) continue ;
-                if (!self.refresh_friends_list.hasOwnProperty(provider)) continue ;
+            for (var provider in self.refresh_friends_list) {
+                if (!oauth_hash.hasOwnProperty(provider)) {
+                    console.log(pgm + 'Error. Cannot refresh friend list for not logged in provider ' + provider) ;
+                    continue;
+                }
                 oauth = oauth_hash[provider] ;
                 oauth.provider = provider ;
                 oauth_array.push(oauth) ;
             };
-            if (oauth_array.length == 0) {
-                console.log(pgm + 'Oauth information for ' + refresh_tokens_request.keys.join(', ') + ' was not found') ;
-                return null ;
-            };
+            if (oauth_array.length == 0) return null ;
             return oauth_array ;
         }; // refresh_friends_list_request
 

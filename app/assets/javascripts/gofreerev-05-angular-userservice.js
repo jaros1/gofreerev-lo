@@ -109,6 +109,7 @@ angular.module('gifts')
         // server has detected out-of-date user info on this server in a incoming server to server message
         // client most send oauth info to server in next ping and refresh friends information
         self.refresh_friends_list = {} ;
+        self.refresh_friends_list_nid = null ;
 
         // update friends js array: replace: true: overwrite/replace old friends, false: add/keep old friends
         // called from do_tasks after api and device login. new friend lists downloaded from api provider
@@ -236,6 +237,11 @@ angular.module('gifts')
                     console.log(pgm + 'Ok. received expected friend list for ' + provider) ;
                     delete self.refresh_friends_list[provider] ;
                     delete refresh_provider[provider] ;
+                    // add notification
+                    self.refresh_friends_list_nid = notiService.add_notification({
+                            notitype: 'friend_list', key: 'updated', options: {provider: provider},
+                            nid: self.refresh_friends_list_nid,
+                            url:'todo: add angular user settings url'}) ;
                 }
                 else {
                     console.log(pgm + 'Error. Expected full friend list. Received short friend list with refresh = true for provider ' + provider) ;
@@ -827,6 +833,8 @@ angular.module('gifts')
         // send_oauth array in ping for friend list update
         // used after detection out-of-date user info in incoming server to server message
         // client must update friend list to bring user info up-to-date for server to server communication
+        // todo: add user notification when friend list update is started from server
+        // todo: add user setting. allow/prevent friend list update requested by server
         var refresh_friends_list_request = function () {
             var pgm = service + '.refresh_friends_list_request: ' ;
             if (Object.keys(self.refresh_friends_list).length == 0) return null ;

@@ -24,7 +24,8 @@ angular.module('gifts')
         // hash with known notification types. save=true => save in localStorage
         var notification_types = {
             add_noti: { title: I18n.t('js.noti_title.add_noti'), save: false },
-            delete_gift: { title: I18n.t('js.noti_title.delete_gift'), save: true }
+            delete_gift: { title: I18n.t('js.noti_title.delete_gift'), save: true },
+            friend_list: { title: I18n.t('js.noti_title.friend_list'), save: false }
         } ;
 
         // add notification - returns an nid (unique notification id) - used as id for repeating notifications - for example ping errors

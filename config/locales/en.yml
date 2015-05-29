@@ -1304,8 +1304,9 @@ en:
         zmk: "Zambian kwacha"
         zwd: "Zimbabwean dollar"
      noti_title: # title for notification types
-        add_noti: "Systemfejl med tilføjelse af notifikation"
+        add_noti: "Add notification system error"
         delete_gift: "Gift delete rejected by server"
+        friend_list: "Friend list update"
      noti: # notifications. format <notitype>_<key>
         addnoti_req: "System error. Missing required arguments notitype and key when calling \"add_notification\". args = %{args}"
         addnoti_notitype: "System error. Unknown notification type %{notitype} when calling \"add_notification\"."
@@ -1318,3 +1319,4 @@ en:
         delete_gift_syserr5: "System error when deleting gift %{gid}. Gift deleted was rejected by server but no error information was returned."
         delete_gift_syserr6: "System error when deleting gift %{gid}. Gift deleted was rejected by server but inconsistent error information was returned. error=%{error}, key=%{key}, options=%{options}."
         delete_gift_error: "Gift delete was rejected by server. %{error}" # cross server error format
+        friend_list_updated: "%{provider} friend list was updated on request by server. The update is used in communication with other Gofreerev servers with sha256 user signatures."

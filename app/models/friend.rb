@@ -241,6 +241,8 @@ class Friend < ActiveRecord::Base
   #                     ...
   #                     useridn => { ...}
   #                   }
+  # - login: true if called from login. false if called from ping (refresh friend list requested by server)
+  #   server must write a warning if user info update was requested and user info was up-to-date
   # not all fields are available for all login providers
   # do not include field in hash if field should not be updated
   # include field in hash if field should be updated (nil is allowed)
@@ -249,6 +251,7 @@ class Friend < ActiveRecord::Base
     # get params
     login_user_id = options[:login_user_id]
     new_friends = options[:friends_hash]
+    login = options[:login]
     # logger.debug2 "friends_hash = #{new_friends}"
 
     # get provider - friends concept - mutual friends in facebook and linkedin - followers/stalkers in google+, instagram and twitter
@@ -383,6 +386,11 @@ class Friend < ActiveRecord::Base
         # logger.debug2 "old_friends = #{old_friends.keys.join(', ')}"
         # logger.debug2 "user_id     = #{user_id}"
         friend_user = new_users[user_id] || old_friends[user_id].friend
+
+        # update friend list operation in progress? !login <=> called from ping with full friend list update/download
+        friend_user_refresh = (!login and friend_user.remote_sha256_update_info.class)
+        friend_user_old_sha256 = friend_user.sha256 if friend_user_refresh
+
         hash = new_friends[user_id]
         if hash.has_key?(:name)
           # update name
@@ -416,6 +424,10 @@ class Friend < ActiveRecord::Base
         end
         friend_user.update_sha256(false)
         friend_user.save! if friend_user.changed?
+
+        friend_user_new_sha256 = friend_user.sha256 if friend_user_refresh
+        logger.warn2 "Server detected out-of-date user info for friend #{friend_user.debug_info} but user info is up-to-date" if friend_user_refresh and friend_user_old_sha256 == friend_user_new_sha256
+
       end
 
       # update api friend status

@@ -204,8 +204,9 @@ class UtilController < ApplicationController
   # returns [login_user, api_client, friends_hash, new_user, key, options] array
   # key + options are used as input to translate after errors
   # login:
-  # - true: normal client login. called from util_controller.login
+  # - true:  normal client login. called from util_controller.login or generic_post_login.
   # - false: refresh friend list. called from util_controller.ping - used after detecting out-of-date user info in incoming server to server messages
+  #          write warning in log if expected out-of-date friend was up-to-date (unnecessary friend list refresh update started by server)
   private
   def post_login_update_friends (provider, login)
     friends_hash = new_user = nil
@@ -237,12 +238,18 @@ class UtilController < ApplicationController
       logger.debug2 "user_hash = #{user_hash}, key = #{key}, options = #{options}"
       logger.debug2 "debug 2: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options] if key
+      # update friend list operation in progress? !login <=> called from ping with full friend list update/download
+      login_user_refresh = (!login and login_user.remote_sha256_update_info.class)
+      login_user_old_sha256 = login_user.sha256 if login_user_refresh
       # update user
       key, options = login_user.update_api_user_from_hash user_hash
       logger.debug2 "debug 3: key = #{key} (#{key.class})"
       return [login_user, api_client, friends_hash, new_user, key, options] if key
       login_user.reload
       logger.debug2 "api_profile_picture_url = #{login_user.api_profile_picture_url}"
+      login_user_new_sha256 = login_user.sha256 if login_user_refresh
+      # todo: user name used in sha256 signature could also be out-of-date
+      logger.warn2 "Server detected out-of-date user info for login user #{login_user.debug_info} but user info is up-to-date" if login_user_refresh and login_user_old_sha256 == login_user_new_sha256
     else
       logger.debug "no gofreerev_get_user method was found for #{provider} api client"
     end
@@ -271,7 +278,7 @@ class UtilController < ApplicationController
     logger.debug2 "debug 7: key = #{key} (#{key.class})"
 
     # update friends list in db (api friend = Y/N)
-    new_user, key, options = Friend.update_api_friends_from_hash :login_user_id => login_user_id, :friends_hash => friends_hash
+    new_user, key, options = Friend.update_api_friends_from_hash :login_user_id => login_user_id, :friends_hash => friends_hash, :login => login
     logger.debug2 "debug 8: key = #{key} (#{key.class})"
     [login_user, api_client, friends_hash, new_user, key, options]
   end # post_login_update_friends
@@ -283,7 +290,7 @@ class UtilController < ApplicationController
     begin
       # get login user, initialize api client, get and update friends information
       # also initialized @json[:oauths] array with oauth information to client (stored encrypted in localStorage)
-      login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
+      login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider, true) # login = true
       #logger.debug2 "login_user   = #{login_user}"
       #logger.debug2 "api_client   = #{api_client}"
       logger.debug2 "friends_hash = #{friends_hash}"
@@ -659,114 +666,6 @@ class UtilController < ApplicationController
         format_response
         return
       end
-
-      # refactored to load_oauth_and_update_friends ==>
-      # oauths = params[:oauths] # array with oauth authorization
-      # # tokens = get_session_value(:tokens)
-      # # expires_at = get_session_value(:expires_at)
-      # # refresh_tokens = get_session_value(:refresh_tokens)
-      # # logger.secret2 "old tokens = #{tokens}"
-      # # logger.debug2 "old expires_at = #{expires_at}"
-      # # logger.secret2 "old refresh_tokens = #{refresh_tokens}"
-      #
-      # # insert oauth received from client local storage into server session
-      # providers = []
-      # new_user_ids = []
-      # oauths.each do |oauth|
-      #   provider = oauth['provider']
-      #   if providers.index(provider)
-      #     @json[:error] = "Dublicate provider #{provider} in oauths array"
-      #     next
-      #   end
-      #   providers << provider
-      #   # logger.secret2 "oauth[#{provider}] = #{oauth[provider]}"
-      #   new_user_ids << oauth["user_id"]
-      #   set_session_array_value(:tokens, oauth["token"], provider)
-      #   set_session_array_value(:expires_at, oauth["expires_at"], provider)
-      #   set_session_array_value(:refresh_tokens, oauth["refresh_token"], provider) if provider == 'google_oauth2'
-      # end
-      # set_session_value(:user_ids, new_user_ids)
-      #
-      # # remove any old not authorized providers from server session (missing or failed server logout)
-      # tokens = get_session_value(:tokens) || {}
-      # (tokens.keys - providers).each { |provider| delete_session_array_value(:tokens, provider) }
-      # expires_at = get_session_value(:expires_at) || {}
-      # (expires_at.keys - providers).each { |provider| delete_session_array_value(:expires_at, provider) }
-      # refresh_tokens = get_session_value(:refresh_tokens) || {}
-      # (refresh_tokens.keys - providers).each { |provider| delete_session_array_value(:refresh_tokens, provider) }
-      # # logger.secret2 "new tokens = #{tokens}"
-      # # logger.debug2 "new expires_at = #{expires_at}"
-      # # logger.secret2 "new refresh_tokens = #{refresh_tokens}"
-      # # update and download friends information
-      #
-      # # check tokens / get updated friends info after new login
-      #
-      # # get login users, check expired providers, refresh google access token
-      # expired_providers, oauths_response = fetch_users :login
-      # @json[:expired_tokens] = expired_providers if expired_providers
-      # if login_user_ids.size < providers.size
-      #   logger.debug2 "One or more expired providers was removed from session user ids array."
-      #   logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
-      #   logger.debug2 "old providers  = #{providers.join(', ')}"
-      #   providers = login_user_ids.collect { |user_id| user_id.split('/').last }
-      #   logger.debug2 "new providers  = #{providers.join(', ')}"
-      # end
-      #
-      # # update friends list from login providers and user info to client
-      # @json[:friends] = []
-      # providers.each do |provider|
-      #   # get hash with user_id and friend category
-      #   login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
-      #   if key
-      #     add_error_key(key, options)
-      #     # check for AppNotAuthorized response in post_login_update_friends. user removed from user_ids.
-      #     is_provider_logged_in = login_user_ids.find { |user_id| user_id.split('/').last == provider }
-      #     if (!is_provider_logged_in)
-      #       logger.debug2 "added provider #{provider} with authorization error to @json[:expired_tokens] response"
-      #       @json[:expired_tokens] = [] unless @json[:expired_tokens]
-      #       @json[:expired_tokens] << provider
-      #     end
-      #     next
-      #   end
-      #   # return json object with relevant user info. see list with friends categories in User.cache_friend_info
-      #   User.cache_friend_info([login_user])
-      #   secret_just_changed = SystemParameter.where("name = 'secret' and updated_at > ?", 3.minutes.ago).first
-      #   if secret_just_changed
-      #     @json[:friends_sha256_update_at] = secret_just_changed.updated_at.to_i
-      #   end
-      #   users = User.where(:user_id => login_user.friends_hash.keys).includes(:server_users, :servers)
-      #   @json[:friends] += users.collect do |user|
-      #     hash = {:user_id => user.id,
-      #             :uid => user.uid,
-      #             :provider => user.provider,
-      #             :user_name => user.user_name,
-      #             :friend => login_user.friends_hash[user.user_id]}
-      #     hash[:api_profile_picture_url] = user.api_profile_picture_url if user.api_profile_picture_url
-      #     # include sha256 signature for friends on other Gofreerev servers.
-      #     # used as user_id when receiving messages from online users on other Gofreerev servers
-      #     verified_server_users = user.server_users.find_all { |v| v.verified_at }
-      #     if verified_server_users.size > 0
-      #       hash[:sha256] = user.sha256
-      #       hash[:old_sha256] = user.old_sha256 if secret_just_changed
-      #       hash[:remote_sha256] = verified_server_users.collect do |v|
-      #         { :server_id => v.server_id,
-      #           :sha256 => user.calc_sha256(v.server.secret) }
-      #       end
-      #     end
-      #     hash
-      #   end
-      # end # each provider
-      #
-      # # todo: remove oauth authorization (tokens, expires_at and refresh_tokens) from sessions table
-      # # should only be used to download friend lists from apis
-      # # only exception could be google+ where refresh token is used to get a new token once every hour (old gofreerev-fb app)
-      #
-      # # oauths array (returned from post_login_update_friends) is irrelevant in this context
-      # @json.delete :oauths
-      #
-      # # but return new google+ oauth to client (see fetch_users => check_expired_tokens => google refresh token)
-      # @json[:oauths] = oauths_response if oauths_response # only google+
-      # <== refactored to load_oauth_and_update_friends
 
       # load oauths array into sessions table, disconnect old not used providers, check expired access tokens,
       # download friend list from api provider, update friends info in db and return @json[:friends] array

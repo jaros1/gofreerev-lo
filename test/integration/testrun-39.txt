@@ -1,0 +1,46 @@
+testrun-39 - follow up on server initiated friend list update when detecting changed sha256 user signatures
+
+
+
+
+client 1:
+- received friend with :refresh => true, sents oauth to server in next ping and receives full friend list without :refresh => true
+- expected notification has been created
+UserService.update_friends: friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…92490eefcc&oe=55F03C27&__gda__=1438696074_a8efc103ba4b17d10bb62a30e7b4976c","sha256":"7TXVE0hsVwC9iJneZ9MjESM2qG+go3VZ6fg1a4Y3Pbw=","remote_sha256":{"1":"bx+oakmT5rJZi+VuqD+ehbFisGHGY5/+2b1Vg8eLTrg="},"old_sha256":"JjZ4ZOdkRDDDV/9D3Em2FeEB7R1uYzbcNQIeI5wZuzw=","verified_at":1432889484},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…5144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a","sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","remote_sha256":{"1":"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="},"old_sha256":"dVIs6NpcIhNp5uzErjQRPy76VDtbitbRVnDXcR5422s=","verified_at":1432889484}]
+UserService.update_friends: old refresh_friends_list = {}
+UserService.update_friends: new refresh_friends_list = {"facebook":1432889484}
+UserService.refresh_friends_list_request: refresh_friends_list = {"facebook":1432889484}
+
+
+
+
+server 1:
+post_login_update_friends: api_profile_picture_url = https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=228acdadfea9672b98b35c92490eefcc&oe=55F03C27&__gda__=1438696074_a8efc103ba4b17d10bb62a30e7b4976c
+post_login_update_friends: Server detected out-of-date user info for login user 1705481075/facebook Jan R but user info is up-to-date
+D, [2015-05-29T10:51:28.918826 #11445] DEBUG -- : GET: /v2.2/me/friends?fields=name,id,picture.width(100).height(100) params: {"access_token"=>"CAAFjZBGzzOkcBAEun7R4yc2UcS8ji7YaZC1IXxOOu6il152atpA2W3vK0x7iYBoG5DZBjve7rz91w7c35stdbnSKuIl1oZAZARjXpzTZAJKrskLC5m5AHD4j36pX8xyMUyeOvZCau9MsOlOg6bVdNZBYKQMqgFxHsKZB6yphnMRNSq0JxyquOdeYa61FPQkhb7TFlCqE2v89zJfZA58QRUDzfU"}
+post_login_update_friends: debug 5: key =  (NilClass)
+post_login_update_friends: debug 7: key =  (NilClass)
+update_api_friends_from_hash: fields = name, api_profile_picture_url
+  Friend Load (0.5ms)  SELECT `friends`.* FROM `friends` WHERE ((user_id_giver = '1705481075/facebook' or user_id_receiver = '1705481075/facebook') and user_id_giver <> user_id_receiver)
+  User Load (0.7ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1563545817212684/facebook', '1705481075/facebook')
+update_api_friends_from_hash: new_friends.keys = 1563545817212684/facebook
+update_api_friends_from_hash: old_friends.keys = 1563545817212684/facebook
+update_api_friends_from_hash: new_user_ids     =
+  CACHE (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 1563545817212684/facebook Jan R but user info is up-to-date
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 1563545817212684/facebook Jan R but user info is up-to-date
+update_api_friends_from_hash: old_friends.size = 1, new_friends.size = 1, new_user = false
+...
+ping: item 417 - verify that oauth information has been removed from sessions table
+ping: tokens = {}
+ping: expires_at = {"facebook"=>1437475694}
+ping: refresh_tokens = {}
+
+
+client 1:
+UserService.update_friends: friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…92490eefcc&oe=55F03C27&__gda__=1438696074_a8efc103ba4b17d10bb62a30e7b4976c","sha256":"7TXVE0hsVwC9iJneZ9MjESM2qG+go3VZ6fg1a4Y3Pbw=","remote_sha256":{"1":"bx+oakmT5rJZi+VuqD+ehbFisGHGY5/+2b1Vg8eLTrg="},"verified_at":1432889489},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…5144828325&oe=55C02AF9&__gda__=1441935660_6228560bd0e7ff41f49aab850078527a","sha256":"k+CdHUUyHnycPKgufzOseRtR7ke5ZJjSE/8MuPm1Dv4=","remote_sha256":{"1":"52Ttg9kp44sagYYRF12gmCC8lDosQk2eyhSmEQ3Qc8M="},"verified_at":1432889489}]
+UserService.update_friends: old refresh_friends_list = {"facebook":1432889484}
+UserService.update_friends: Ok. received expected friend list for facebook
+NotiService.add_notification: js.noti.friend_list_updated = facebook friend list was updated on request by server. The update is used in communication with other Gofreerev servers with sha256 user signatures.
+UserService.update_friends: new refresh_friends_list = {}

@@ -1308,8 +1308,9 @@ da:
         zmk: "Kwacha"
         zwd: "Zimbabwiske dollar"
      noti_title: # title for notification types
-        add_noti: "Add notification system error"
+        add_noti: "Systemfejl ved tilføjelse af notifikation"
         delete_gift: "Gift delete rejected by server"
+        friend_list: "Opdatering af venneliste"
      noti: # notifications. format <notitype>_<key>
         addnoti_req: "Systemfejl. Manglende krævede parametre ved kald af \"add_notification\". Parametre = %{args}"
         addnoti_notitype: "Systemfejl. Ukendt notifikationstype %{notitype} ved kald af \"add_notification\"."
@@ -1322,3 +1323,4 @@ da:
         delete_gift_syserr5: "Systemfejl ved sletning af opslag %{gid}. Sletning af opslag blev afvist af server, men uden fejl information."
         delete_gift_syserr6: "Systemfejl ved sletning af opslag %{gid}. Sletning af opslag blev afvist af server, men med inkonsistent fejl information. error=%{error}, key=%{key}, options=%{options}."
         delete_gift_error: "Sletning af opslag blev afvist af server. %{error}" # cross server error format
+        friend_list_updated: "%{provider} venneliste blev opdateret på anmodning af server. Opdateringen anvendes i kommunikeres med andre Gofreerev servers vha. sha256 bruger signaturer."

@@ -250,6 +250,9 @@ class UtilController < ApplicationController
       login_user_new_sha256 = login_user.sha256 if login_user_refresh
       # todo: user name used in sha256 signature could also be out-of-date
       logger.warn2 "Server detected out-of-date user info for login user #{login_user.debug_info} but user info is up-to-date" if login_user_refresh and login_user_old_sha256 == login_user_new_sha256
+
+      logger.debug2 "item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)"
+      logger.debug2 "login_user = #{login_user.to_json}"
     else
       logger.debug "no gofreerev_get_user method was found for #{provider} api client"
     end
@@ -972,8 +975,10 @@ class UtilController < ApplicationController
           logger.debug2 "@json[:online] = #{@json[:online]}"
         end
 
-        if !server
+        if !server # short or full friend list only relevant for clients
+
           if params.has_key?(:oauths)
+
             # received oauths array from client. return full friends list for api providers in oauths array
             # used after detecting changed sha256 user signatures in server to server messages
 
@@ -981,12 +986,6 @@ class UtilController < ApplicationController
             # download friend list from api provider, update friends info in db and return @json[:friends] array
             # login=false: keep old logins (providers not in oauths array)
             load_oauth_and_update_friends(false) # login = false. keep existing logins for other api providers
-
-            # item 417 - verify that oauth information has been removed from sessions table
-            logger.debug2 "item 417 - verify that oauth information has been removed from sessions table"
-            logger.secret2 "tokens = #{get_session_value(:tokens)}"
-            logger.debug2 "expires_at = #{get_session_value(:expires_at)}"
-            logger.secret2 "refresh_tokens = #{get_session_value(:refresh_tokens)}"
 
           else
 

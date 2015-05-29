@@ -1795,10 +1795,12 @@
 416) testrun-38 - server 1 should not start friend list update sequence. user info is up-to-date
 
 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+     ready for test
 
 419) testrun-38 - server must send a changed sha256 message to other server when changing user information
+     add to later test case
 
-420) testrun-38 - maybe ask the client before updating friend list / sending oauth information to server
+420) ask the client before updating friend list / sending oauth information to server
      add user setting page. allow/prevent/ask when friend list update is requested by server
      add angular url in friend_list_updated notification
 

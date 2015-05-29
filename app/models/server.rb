@@ -1091,6 +1091,7 @@ class Server < ActiveRecord::Base
   #   - :allow_changed_sha256: integer. 0: not allowed, >0: max number of seconds to wait for valid sha256 signature
   #   - :field: :id or :user_id - return user_ids for logged in users. return ids for givers/receivers
   # returns error and user_ids
+  # add field status (valid, invalid, old, new) to signatures in user_signatures array
   # todo: login users - return user_id (uid/provider). givers/receivers - return id
   private
   def from_sha256s_to_user_ids (user_signatures, options = {})
@@ -1145,25 +1146,29 @@ class Server < ActiveRecord::Base
         su = server_users.find { |su2| su2.pseudo_user_id == sha_signature['pseudo_user_id'] } unless su
         user = su.user if su
         if !su
+          sha_signature['status'] = 'invalid'
           invalid_sha_signatures << sha_signature
           logger.error2 "unknown signature #{sha_signature} in incoming changed sha256 message" if sha256_msg
         elsif su.user.sha256 == sha_signature['sha256']
           # received valid signature from other gofreerev server
+          sha_signature['status'] = 'valid'
           valid_sha_signatures << su.user[field]
-          logger.warn2 "warning. valid signature #{sha_signature} in incoming changed sha256 message" if sha256_msg
+          logger.warn2 "warning. valid up-to-date user signature #{sha_signature} in incoming changed sha256 message" if sha256_msg
           # blank any old changed signature information
           su.remote_sha256_updated_at = nil if su.remote_sha256_updated_at
           su.sha256_signature_received_at = nil if su.sha256_signature_received_at
           su.sha256_message_sent_at = nil if su.sha256_message_sent_at
           user.update_attribute :remote_sha256_updated_at, nil if user.remote_sha256_updated_at
-          # todo: blank user.remote_sha256_update_info?
+          user.update_attribute :remote_sha256_update_info, nil if user.remote_sha256_update_info
           logger.debug2 "user = #{user.to_json}"
         elsif !sha_signature['sha256_updated_at']
+          sha_signature['status'] = 'invalid'
           invalid_sha_signatures << sha_signature
           logger.error2 "invalid signature #{sha_signature} without sha256_updated_at timestamp in incoming changed sha256 message" if sha256_msg
         elsif sha_signature['sha256_updated_at'] > now.to_i
           # identical pseudo user id - changed sha256 signature but with invalid sha256_updated_at timestamp
           logger.error2 "#{msg} message. rejected changed sha256 signature #{sha_signature} with sha256_updated_at in the future. now = #{now.to_i}"
+          sha_signature['status'] = 'invalid'
           invalid_sha_signatures << sha_signature
         else
           # identical pseudo user id - changed sha256 signature - changed user information on this or on other gofreerev server
@@ -1177,9 +1182,11 @@ class Server < ActiveRecord::Base
               # a client of this gofreerev server must download fresh user info from login provider
               # user sha256 signature on this server must change and sha256 message will be sent to other gofreerev server
               # push verify gifts request back in messages and wait for updated user info
+              sha_signature['status'] = 'old'
               user.set_changed_remote_sha256(sha_signature)
             elsif sha256_msg
               errors << "Incoming sha256 changed message with old signature #{sha_signature}. user.sha256_updated_at = #{user.sha256_updated_at.to_i}, sha256_signature['sha256_updated_at'] = #{sha_signature['sha256_updated_at']}"
+              sha_signature['status'] = 'invalid'
               invalid_sha_signatures << sha_signature
               next
             else
@@ -1190,6 +1197,7 @@ class Server < ActiveRecord::Base
               # other server must ask a client to download and update user info
               # user sha256 signature on other gofreerev server must change and sha256 changed signature message will be sent to this gofreerev server
               # other server must resend verify gifts request with new correct sha256 signatures
+              sha_signature['status'] = 'new'
               su.sha256_message_sent_at = nil
             end
             su.save!
@@ -1454,9 +1462,11 @@ class Server < ActiveRecord::Base
       logger.debug2 "su = #{su.to_json}"
       sha_signature = users.find { |user| user["pseudo_user_id"] == su.pseudo_user_id }
       logger.debug2 "sha_signature = #{sha_signature}"
-      u.set_changed_remote_sha256(sha_signature)
+      logger.debug2 "u.sha256_updated_at = #{u.sha256_updated_at}, sha_signature['sha256_updated_at'] = #{Time.at(sha_signature['sha256_updated_at'])}"
+      # u.set_changed_remote_sha256(sha_signature) - already set in from_sha256s_to_user_ids call
     end if user_ids.size > 0
-    return "receive_sha256_changed_message not implemented: user_ids = #{user_ids}, error = #{error}"
+    # return "receive_sha256_changed_message not implemented: user_ids = #{user_ids}, error = #{error}"
+    return nil
   end # receive_sha256_changed_message
 
 

@@ -428,6 +428,9 @@ class Friend < ActiveRecord::Base
         friend_user_new_sha256 = friend_user.sha256 if friend_user_refresh
         logger.warn2 "Server detected out-of-date user info for friend #{friend_user.debug_info} but user info is up-to-date" if friend_user_refresh and friend_user_old_sha256 == friend_user_new_sha256
 
+        logger.debug2 "item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)"
+        logger.debug2 "friend_user = #{friend_user.to_json}"
+
       end
 
       # update api friend status

@@ -384,13 +384,14 @@ class ApplicationController < ActionController::Base
   # check get-more-rows ajax request for errors before fetching users or gifts
   # called in start of gifts/index, users/index and users/show and before calling get_next_set_of_rows
   # last_low_id must be correct - max one get-more-rows ajax request every GET_MORE_ROWS_INTERVAL seconds
-  # todo: remove
+  # todo: et_next_set_of_rows_error? - was used in gofreerev-fb version - not relevant for angularJS version
   private
   def get_next_set_of_rows_error?(last_row_id)
     return false
   end # get_next_set_of_rows_error?
 
   # used in ajax expanding pages (gifts/index, users/index and users/show pages)
+  # todo: drop get_next_set_of_rows - was used in gofreerev-fb version - not relevant for angularJS version
   private
   def get_next_set_of_rows (rows, last_row_id, no_rows=nil)
     logger.debug2  "last_row_id (input) = #{last_row_id}"
@@ -406,7 +407,7 @@ class ApplicationController < ActionController::Base
         logger.debug2  "invalid last_row_id - or row is no longer in rows - ignore error and return first 10 rows"
         last_row_id = nil
       end
-      last_row_id = nil unless from # invalid last_row_id - deleted row or changed permissions - ignore error and return first 10 rows
+      last_row_id = nil unless from # invalid last_row_id - deleted row  - ignore error and return first 10 rows
     end
     rows = rows[from+1..-1] if from # valid ajax request - ignore first from rows - already in client page
     if rows.size > no_rows
@@ -552,7 +553,6 @@ class ApplicationController < ActionController::Base
     country = options[:country]
     language = options[:language]
     profile_url = options[:profile_url]
-    permissions = options[:permissions]
     # create/update user from information received from login provider
     # returns user (ok) or an array with translate key and options for error message
     user = User.find_or_create_user :provider => provider,
@@ -563,8 +563,7 @@ class ApplicationController < ActionController::Base
                                     :image => image,
                                     :country => country,
                                     :language => language,
-                                    :profile_url => profile_url,
-                                    :permissions => permissions
+                                    :profile_url => profile_url
     return user unless user.class == User # error: key + options
     # user login ok
     first_login = !logged_in?
@@ -704,8 +703,6 @@ class ApplicationController < ActionController::Base
   # state is set before calling login provider
   # state is checked when returning from login provider
   # used in LinkedInController
-  # todo: ajax set state in links (request publish_actions and read_stream) so
-  #       that old pages (used has used back bottom in browser) still is working
   # three methods that saves state in session cookie store
   private
   def set_state_cookie_store (context)

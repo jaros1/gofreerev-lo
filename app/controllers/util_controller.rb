@@ -109,7 +109,6 @@ class UtilController < ApplicationController
   # that is tasks that could slow request/response cycle or information that is not available on server (client timezone)
   # tasks:
   # - download user profile image from login provider after login (ok)
-  # - get permissions from login provider after login (todo: twitter)
   # - get friend lists from login provider after login (ok)
   # - get currency rates for a new date (ok)
   # - upload post and optional picture to login provider (ok)
@@ -204,8 +203,11 @@ class UtilController < ApplicationController
   
   # returns [login_user, api_client, friends_hash, new_user, key, options] array
   # key + options are used as input to translate after errors
+  # login:
+  # - true: normal client login. called from util_controller.login
+  # - false: refresh friend list. called from util_controller.ping - used after detecting out-of-date user info in incoming server to server messages
   private
-  def post_login_update_friends (provider)
+  def post_login_update_friends (provider, login)
     friends_hash = new_user = nil
     login_user, api_client, key, options = get_login_user_and_api_client(provider, __method__)
     logger.debug2 "debug 1: key = #{key} (#{key.class})"
@@ -380,340 +382,6 @@ class UtilController < ApplicationController
   end # recalculate_user_balance
 
 
-  # get url for api gift picture on facebook wall - size >= 200 x 200
-  # used in post_in_facebook and in missing_api_picture_urls
-  # raises ApiPostNotFoundException if post/picture was not found (missing permission or post/picture has been deleted)
-  # that is - get_api_picture_url_facebook is also used to check for missing read stream permission
-  # return nil (ok) or [key, options] error input to translate
-  # params:
-  # - just_posted - true if called from post_on_facebook - false if called from missing_api_picture_urls
-  # - api_client - koala api client
-  private
-  def get_api_picture_url_facebook (api_gift, just_posted=true, api_client) # api is Koala API client
-
-    return nil if api_gift.deleted_at_api == 'Y' # ignore - post/picture has been deleted from facebook wall
-
-    provider = "facebook"
-    login_user, token, key, options = get_login_user_and_token(provider, __method__)
-    return [key, options] if key
-
-    #if !api_client
-    #  # get access token and initialize koala api client
-    #  raise "api_client is nil"
-    #  api_client = init_api_client_facebook(token)
-    #end
-
-    # two koala api request. 1) get picture and object_id, 2) get an array with different size pictures
-
-    # 1) get picture and object id
-    object_id = nil
-    begin
-      # check read access to facebook wall and get object_id for next api request (only for post with picture)
-      res1 = api_client.get_object api_gift.api_gift_id
-      # logger.debug2 "res1 = #{res1}"
-      api_gift.api_gift_url = res1['link']
-      object_id, picture = res1['object_id'], res1['picture']
-      image_type = FastImage.type(picture) if picture.to_s != ""
-      logger.debug2 "first lookup: object_id = #{object_id}, picture = #{picture}, image type = #{image_type}"
-      if api_gift.picture?
-        if %w(jpg jpeg gif png bmp).index(image_type.to_s)
-          # valid (small) picture url received from facebook
-          api_gift.api_picture_url = picture
-          api_gift.api_picture_url_updated_at = Time.now
-          api_gift.api_picture_url_on_error_at = nil
-        else
-          # unexpected error - found post, but did not get a valid picture url
-          logger.debug2 "Did not get a picture url from api. Must be problem with missing access token, picture != Y or deleted_at_api == Y"
-          logger.debug2 "res1 = #{res1}"
-          return ['.no_api_picture_url', {:apiname => login_user.apiname}]
-        end
-      end
-      api_gift.save!
-    rescue Koala::Facebook::ClientError => e
-      if e.fb_error_type == 'GraphMethodException' and e.fb_error_code == 100
-        # identical error response if picture is deleted or if user is not allowed to see picture
-        # picture not found - maybe picture has been deleted - maybe a permission problem
-        # granting read_stream or changing visibility of app setting to public can solve the problem
-        # read_stream permission will be requested if error is raise when posting on facebook wall
-        logger.debug2 "Handling Koala::Facebook::ClientError, GraphMethodException' with FB error code 100."
-        logger.debug2 "just_posted = #{just_posted}"
-
-        # problem with upload and permissions
-        # could not get full_picture url for an uploaded picture
-        # the problem appeared after changing app visibility from friends to only me
-        # that is - app is not allowed to get info about the uploaded picture!!
-
-        if !FACEBOOK_READ_STREAM
-          # facebook oauth 2.2 - read_stream priv. requires special approval process - skip request.
-          api_gift.deleted_at_api = 'Y'
-          api_gift.save!
-          if just_posted
-            return ['.fb_pic_post_declined_permission_html', {:appname => APP_NAME, :apiname => login_user.apiname} ]
-          else
-            return nil
-          end
-        end
-
-        # just display a warning and continue. Request read_stream permission from user if read_stream priv. is missing
-        api_gift.deleted_at_api = 'Y' if just_posted
-        api_gift.save!
-        # (re)check permissions
-        if login_user.read_gifts_allowed?
-          # check if user has removed read stream priv.
-          login_user.get_permissions_facebook(api_client)
-        end
-        if login_user.read_gifts_allowed?
-          if !just_posted
-            # called from missing_api_picture_urls - user has deleted post on api wall
-            logger.debug2 "user has deleted post on api wall - ok"
-            return nil
-          end
-          # just posted + read permission to call - error - this should not happen.
-          logger.debug2 "just posted + read permission to call - error - this should not happen"
-          key = api_gift.picture? ? '.fb_pic_post_unknown_problem' : '.fb_msg_post_unknown_problem'
-          return [key, {:appname => APP_NAME, :apiname => login_user.apiname}]
-        else
-          # message with link to grant missing read stream priv.
-          logger.debug2 "user.permissions = #{login_user.permissions}"
-          # check if user has declined read_stream permission
-          if api_gift.picture? and login_user.permissions.find { |p| p['permission'] == 'read_stream' and p['status'] == 'declined'}
-            # used has declined read_stream permissions and fb dialog can not be used to get read_stream permission.
-            key =  '.fb_pic_' + (just_posted ? 'post' : 'check') + '_declined_permission_html'
-            return [key, {:appname => APP_NAME, :apiname => login_user.apiname }]
-          end
-
-          oauth = Koala::Facebook::OAuth.new(API_ID[provider], API_SECRET[provider], API_CALLBACK_URL[provider])
-          url = oauth.url_for_oauth_code(:permissions => 'read_stream', :state => set_state_cookie_store('read_stream'))
-          logger.debug2 "url = #{url}"
-          # note: 4 translations:
-          # - fb_msg_post_missing_permission_html - just posted - without picture
-          # - fb_pic_post_missing_permission_html - just posted - with picture - missing read permission
-          # - fb_msg_check_missing_permission_html - not used
-          # - fb_pic_check_missing_permission_html - old post - check picture url - missing read permission
-          key =  '.fb_' + (api_gift.picture? ? 'pic' : 'msg') + '_' + (just_posted ? 'post' : 'check') + '_missing_permission_html'
-          return [key, {:appname => APP_NAME, :apiname => login_user.apiname, :url => url}]
-        end
-
-      elsif e.fb_error_type == 'OAuthException' and e.fb_error_code == 190 and [460, 458].index(e.fb_error_subcode)
-        # Koala::Facebook::ClientError
-        # 1) fb_error_type    = OAuthException (String)
-        #    fb_error_code    = 190 (Fixnum)
-        #    fb_error_subcode = 460 (Fixnum)
-        #    fb_error_message = Error validating access token: The session has been invalidated because the user has changed the password. (String)
-        #    http_status      = 400 (Fixnum)
-        #    response_body    = {"error":{"message":"Error validating access token: The session has been invalidated because the user has changed the password.","type":"OAuthException","code":190,"error_subcode":460}}
-        # 2) fb_error_type    = OAuthException (String)
-        #    Koala::Facebook::ClientError
-        #    fb_error_code    = 190 (Fixnum)
-        #    fb_error_subcode = 458 (Fixnum)
-        #    fb_error_message = Error validating access token: The user has not authorized application 391393607629383. (String)
-        #    http_status      = 400 (Fixnum)
-        #    response_body    = {"error":{"message":"Error validating access token: The user has not authorized application 391393607629383.","type":"OAuthException","code":190,"error_subcode":458}}
-        raise AppNotAuthorized ;
-      else
-        # unhandled koala / facebook exception
-        e.logger = logger
-        e.puts_exception("#{__method__}: ")
-        raise
-      end
-    end # rescue
-    return nil unless object_id # post without picture
-
-    if object_id
-      # post with picture
-      # 2) get best size picture from facebook. picture with size >= 200 x 200 or largest picture
-      # picture must be min 200 x 200 for open graph links on facebook
-      # https://developers.facebook.com/tools/debug)
-      begin
-        res2 = api_client.get_object object_id
-        # logger.debug2 "res2 = #{res2}"
-        images = res2["images"]
-        if images.class == Array and images.size > 0
-          logger.debug2 "second lookup: images = #{images}"
-          image = nil
-          images.each do |hash|
-            image = hash["source"] if hash["height"].to_i >= 200 and hash["width"].to_i >= 200
-          end
-          image = images.first["source"] unless image
-          logger.debug2 "image = #{image}"
-          api_gift.api_picture_url = image
-          api_gift.save!
-        else
-          logger.warn2 "second lookup: no images array was returned from facebook API request. Keeping old picture"
-          logger.warn2 "res2 = #{res2}"
-        end
-      rescue Koala::Facebook::ClientError => e
-        # unhandled koala / facebook exception
-        e.logger = logger
-        e.puts_exception("#{__method__}: ")
-        raise
-      end
-    end
-
-    # ok
-    nil
-
-  end # get_api_picture_url_facebook
-
-  # get url for api gift picture on flickr wall - size >= 200 x 200
-  # used in post_in_flickr and in missing_api_picture_urls
-  # raises ApiPostNotFoundException if post/picture was not found (missing permission or post/picture has been deleted)
-  # that is - get_api_picture_url_flickr is also used to check for missing read permission
-  # return nil (ok) or [key, options] error input to translate
-  # params:
-  # - just_posted - true if called from post_on_flickr - false if called from missing_api_picture_urls
-  # - api_client - flickraw api client
-  private
-  def get_api_picture_url_flickr (api_gift, just_posted, api_client) # api is flickraw API client
-
-    provider = "flickr"
-
-    images = nil
-    begin
-      # http://www.flickr.com/services/api/flickr.photos.getSizes.html
-      images = api_client.photos.getSizes :photo_id => api_gift.api_gift_id
-    rescue FlickRaw::FailedResponse => e
-      #   1: Photo not found - The photo id passed was not a valid photo id.
-      #   2: Permission denied - The calling user does not have permission to view the photo.
-      # 100: Invalid API Key - The API key passed was not valid or has expired.
-      # 105: Service currently unavailable - The requested service is temporarily unavailable.
-      # 106: Write operation failed - The requested operation failed due to a temporary issue.
-      # 111: Format "xxx" not found - The requested response format was not found.
-      # 112: Method "xxx" not found - The requested method was not found.
-      # 114: Invalid SOAP envelope - The SOAP envelope send in the request could not be parsed.
-      # 115: Invalid XML-RPC Method Call - The XML-RPC request document could not be parsed.
-      # 116: Bad URL found - One or more arguments contained a URL that has been used for abuse on Flickr.
-      # exception: 'flickr.photos.getSizes' - Photo not found
-      # e.methods = !, !=, !~, <=>, ==, ===, =~, __debug_binding, __debug_context, __debug_file, __debug_line, __id__, __send__, `, acts_like?, as_json, backtrace,
-      # binding_n, blame_file!, blamed_files, blank?, breakpoint, capture, class, class_eval, clone, code, copy_blame!, debugger, deep_dup, define_singleton_method, describe_blame, display, dup,
-      # duplicable?, enable_warnings, enum_for, eql?, equal?, exception, extend, freeze, frozen?, gem, hash, html_safe?, in?, inspect, instance_eval, instance_exec, instance_of?, instance_values,
-      # instance_variable_defined?, instance_variable_get, instance_variable_names, instance_variable_set, instance_variables, is_a?, kind_of?, load, load_dependency, message, method, methods, msg,
-      # nil?, object_id, presence, present?, pretty_inspect, pretty_print, pretty_print_cycle, pretty_print_inspect, pretty_print_instance_variables, private_methods, protected_methods, psych_to_yaml,
-      # public_method, public_methods, public_send, quietly, remove_instance_variable, require, require_dependency, require_or_load, respond_to?, send, set_backtrace, silence, silence_stderr,
-      # silence_stream, silence_warnings, singleton_class, singleton_methods, suppress, suppress_warnings, taint, tainted?, tap, to_enum, to_json, to_param, to_query, to_s, to_yaml,
-      # to_yaml_properties, trust, try, try!, unloadable, untaint, untrust, untrusted?, with_options, with_warnings
-      # e.code = 1
-      if e.code == 1 and !just_posted
-        # 1: Photo not found - The photo id passed was not a valid photo id.
-        # mark api gift as deleted at api. util.missing_api_picture_urls may replace deleted flickr picture with picture from an other login provider
-        logger.debug2 "user has deleted post on api wall - ok"
-        api_gift.deleted_at_api = 'Y'
-        api_gift.save!
-        return nil
-      end
-      raise AppNotAuthorized if e.code == 100 # 100: Invalid API Key - The API key passed was not valid or has expired. Reconnect is required
-      # other flickr exceptions - display flickr exception to user
-      logger.error2 "exception: #{e.message}"
-      logger.error2 "e.code = #{e.code}"
-      raise
-    end
-
-    if images.class == FlickRaw::ResponseList and images.length > 0
-      logger.debug2 "images = #{images}"
-      image = nil
-      images.reverse_each do |hash|
-        image = hash.source if hash.height.to_i >= 200 and hash.width.to_i >= 200
-      end
-      image = images.last.source unless image
-      logger.debug2 "image = #{image}"
-      api_gift.api_picture_url = image
-      api_gift.save!
-    else
-      logger.warn2 "no images array was returned from flickr API request. Keeping old picture"
-      logger.warn2 "images = #{images}"
-    end
-
-    # ok
-    nil
-
-  end # get_api_picture_url_flickr
-
-
-  # get_api_picture_url_linkedin is not relevant. Picture is stored in Gofreerev for Linkedin.
-
-
-  # recheck post on twitter
-  # mark as deleted if post has been deleted
-  # get new api_picture_url if picture url has changed
-  # called from missing_api_picture_urls if image has been moved or deleted
-  private
-  def get_api_picture_url_twitter (api_gift, just_posted=true, api_client) # api is twitter API client
-
-    provider = "twitter"
-
-    # check twitter post
-    begin
-      x = api_client.status api_gift.api_gift_id
-      logger.debug2 "x = #{x}"
-      logger.debug2 "x.class = #{x.class}"
-      api_gift.api_picture_url = x.media.first.media_url.to_s if api_gift.picture?
-    rescue Twitter::Error::NotFound => e # todo: other twitter exceptions?
-      logger.debug2 "Exception: e = #{e.message} (#{e.class})"
-      if just_posted
-        raise
-      else
-        api_gift.deleted_at_api = 'Y'
-      end
-    end
-    api_gift.save!
-
-    # ok
-    nil
-
-  end # get_api_picture_url_twitter
-
-
-  # recheck post on vkontakte
-  # mark as deleted if post has been deleted
-  # get new api_picture_url if picture url has changed
-  # called from missing_api_picture_urls if image has been moved or deleted
-  private
-  def get_api_picture_url_vkontakte (api_gift, just_posted=true, api_client) # api is vkontakte API client
-
-    # check vkontakte post
-    begin
-      x = api_client.photos.getById :photos => api_gift.api_gift_id
-      if x.class != Array or x.length != 1
-        raise VkontaktePhotoGet.new "Expected array with one photo. Response = #{x} (#{x.class})"
-      end
-      x = x.first
-      if x.class != Hash or !x.has_key?('src_big')
-        raise VkontaktePhotoGet.new "Expected hash with scr_big. Response = #{x} (#{x.class})"
-      end
-      api_gift.api_picture_url = x['src_big']
-    rescue Vkontakte::App::VkException => e
-      logger.debug2 "Exception: e = #{e.message} (#{e.class})"
-      logger.debug2 "e.methods = #{e.methods.sort.join(', ')}"
-      # todo: check exception. Only ok if picture has been deleted at VK and !just_posted
-      api_gift.deleted_at_api = 'Y'
-    end
-    api_gift.save!
-    logger.debug2 "api_gift.api_picture_url = #{api_gift.api_picture_url}"
-
-    # ok
-    nil
-
-  end # get_api_picture_url_vkontakte
-  
-  
-  # generic get_api_picture_url_<provider>
-  # just_posted: true if called from generic_post_on_wall, false if called from missing_api_picture_urls
-  private
-  def get_api_picture_url (provider, api_gift, just_posted, api_client)
-
-    return nil if api_gift.deleted_at_api == 'Y' # ignore - post/picture has been deleted
-
-    method = "get_api_picture_url_#{provider}".to_sym
-    if !private_methods.index(method)
-      logger.error2 "System error. private method #{method} was not found in app. controller"
-      return ['util.do_tasks.get_api_picture_url_missing',
-              {:provider => provider, :apiname => provider_downcase(provider), :appname => APP_NAME} ]
-    end
-    logger.debug2 "calling #{method}"
-    send(method, api_gift, just_posted, api_client)
-  end # get_api_picture_url
-
-
   # wrapper for User.find_friends_batch
   # run as a batch task without login user array.
   # error message is not relevant for current login user(s)
@@ -769,8 +437,8 @@ class UtilController < ApplicationController
 
 
   # called from login and ping.
-  # login = true if called from login - disconnect any old logins from other api providers
-  # login = false if called from ping - keep any old logins from other api providers
+  # login = true if called from login - normal client login - disconnect any old logins from other api providers
+  # login = false if called from ping - refresh friend list - keep any old logins from other api providers
   private
   def load_oauth_and_update_friends (login)
     oauths = params[:oauths] # array with oauth authorization
@@ -830,7 +498,7 @@ class UtilController < ApplicationController
     @json[:friends] = []
     providers.each do |provider|
       # get hash with user_id and friend category
-      login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider)
+      login_user, api_client, friends_hash, new_user, key, options = post_login_update_friends(provider, login)
       if key
         add_error_key(key, options)
         # check for AppNotAuthorized response in post_login_update_friends. user removed from user_ids.
@@ -1102,8 +770,7 @@ class UtilController < ApplicationController
 
       # load oauths array into sessions table, disconnect old not used providers, check expired access tokens,
       # download friend list from api provider, update friends info in db and return @json[:friends] array
-      # login=true: new login - disconnect old not used providers
-      load_oauth_and_update_friends(true)
+      load_oauth_and_update_friends(true) # login = true. disconnect old logins for other api providers
 
       validate_json_response
       format_response
@@ -1277,14 +944,13 @@ class UtilController < ApplicationController
 
       # check for expired api access tokens + refresh google+ access token
       if !params.has_key?(:oauths)
-        # received oauths array from client - see later - calling load_oauth_and_update_friends(false) for friend list update
+        # received oauths array from client (expired api token check is also done in load_oauth_and_update_friends(false) - full friend list)
         expired_providers, oauths = check_expired_tokens(:ping, params[:refresh_tokens]) unless server
         @json[:expired_tokens] = expired_providers if expired_providers
         @json[:oauths] = oauths if oauths # only google+
       end
 
       # copy login user ids from sessions to pings table (user_ids is stored encrypted in sessions but unencrypted in pings)
-
       if login_user_ids.class == Array and login_user_ids.size > 0
         ping.user_ids = login_user_ids
       else
@@ -1415,7 +1081,13 @@ class UtilController < ApplicationController
             # load oauths array into sessions table, disconnect old not used providers, check expired access tokens,
             # download friend list from api provider, update friends info in db and return @json[:friends] array
             # login=false: keep old logins (providers not in oauths array)
-            load_oauth_and_update_friends(false)
+            load_oauth_and_update_friends(false) # login = false. keep existing logins for other api providers
+
+            # item 417 - verify that oauth information has been removed from sessions table
+            logger.debug2 "item 417 - verify that oauth information has been removed from sessions table"
+            logger.secret2 "tokens = #{get_session_value(:tokens)}"
+            logger.debug2 "expires_at = #{get_session_value(:expires_at)}"
+            logger.secret2 "refresh_tokens = #{get_session_value(:refresh_tokens)}"
 
           else
 

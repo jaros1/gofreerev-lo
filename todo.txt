@@ -631,18 +631,6 @@
 164) gifts/index create post.
      display field with providers where post on wall is selected and authorized so that user can see where gift is posted
 
-167) util.get_api_picture_url_vkontakte
-     better VK exception handling (now almost none)
-     a) deleted picture
-     b) authorization error
-     c) other errors
-
-168) util.get_api_picture_url_twitter
-     better twitter exception handling
-     a) deleted picture
-     b) authorization error
-     c) other errors
-
 169) how to handle mouse over texts on touch screens
      http://www.paciellogroup.com/blog/2013/01/using-the-html-title-attribute-updated/
      http://stackoverflow.com/questions/12539006/tooltips-for-mobile-browsers
@@ -1804,4 +1792,20 @@
      accepted, accepted_by_user_ids, accepted_at_client, rejected_by_user_ids and rejected_at_client
      have been replaced with new_deal_action, new_deal_action_by_user_ids and new_deal_action_at_client
 
-select next issue to solve: (rand*415).floor+1
+416) testrun-38 - server 1 should not start friend list update sequence. user info is up-to-date
+
+417) testrun-38 - check that server removes oauth information from sessions table after friend list update
+
+418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+
+419) testrun-38 - server must send a changed sha256 message to other server when changing user information
+
+420) testrun-38 - maybe ask the client before updating friend list / sending oauth information to server
+
+421) testrun-38 - check block in ping_test_loop: res = {:error=>"receive_sha256_changed_message not implemented: user_ids = [3], error = ", :interval=>2000}
+
+422) testrun-38 - server should write a warning in log when receiving af friend list refresh and user information already is up-to-date
+
+423) user - drop field permissions
+
+select next issue to solve: (rand*423).floor+1

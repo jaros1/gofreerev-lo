@@ -54,7 +54,7 @@ class User < ActiveRecord::Base
   # https://github.com/jmazzi/crypt_keeper - text columns are encrypted in database
   # encrypt_add_pre_and_postfix/encrypt_remove_pre_and_postfix added in setters/getters for better encryption
   # this is different encrypt for each attribute and each db row
-  crypt_keeper :user_name, :currency, :balance, :permissions, :no_api_friends, :negative_interest,
+  crypt_keeper :user_name, :currency, :balance, :no_api_friends, :negative_interest,
                :api_profile_url, :api_profile_picture_url, :encryptor => :aes, :key => ENCRYPT_KEYS[0]
 
 
@@ -166,37 +166,6 @@ class User < ActiveRecord::Base
   # 5) balance_at. Date. Not encrypted. Date for last balance calculation. Normally today.
   # validates_presence_of :balance_at # todo: only required for gofreerev users / not required for friends not using gofreerev
 
-  # 6) permissions. Optional. Any Ruby type in model (hash with privs. for facebook users). Encrypted text in db
-  # facebook: hash with grants privs {"installed"=>1, "basic_info"=>1, "bookmarked"=>1}
-  # google+: empty - readonly api - any priv. error will be reported at login
-  # linkedin: r_basicprofile,r_network (default/first login) or r_basicprofile,r_network,rw_nus (second login with rw_nus priv)
-  # google+: todo
-  # permissions is fetched at login and checked before operations (post to api wall)
-  def permissions
-    return nil unless (extended_permissions = read_attribute(:permissions))
-    # todo: no type check for permissions!
-    YAML::load(encrypt_remove_pre_and_postfix(extended_permissions, 'permissions', 12))
-  end
-
-  # permissions
-  def permissions=(new_permissions)
-    if new_permissions
-      write_attribute :permissions, encrypt_add_pre_and_postfix(new_permissions.to_yaml, 'permissions', 12)
-    else
-      write_attribute :permissions, nil
-    end
-  end
-
-  # permissions
-  alias_method :permissions_before_type_cast, :permissions
-
-  def permissions_was
-    return permissions unless permissions_changed?
-    return nil unless (extended_permissions = attribute_was(:permissions))
-    YAML::load(encrypt_remove_pre_and_postfix(extended_permissions, 'permissions', 12))
-  end
-
-  # permissions_was
 
   # 7) no_api_friends. Fixnum in Model. Encrypted text in db.
   # for example number of facebook friends for a facebook user
@@ -599,7 +568,6 @@ class User < ActiveRecord::Base
       logger.debug2 "invalid profile url '#{profile_url}' was received from login provider #{provider}"
       profile_url = nil
     end
-    permissions = options[:permissions]
     # create/update user
     user_id = "#{uid}/#{provider}"
     user = User.find_by_user_id(user_id)
@@ -614,7 +582,6 @@ class User < ActiveRecord::Base
     user = User.new unless user
     user.user_id = user_id
     user.user_name = user_name
-    user.permissions = permissions
     user.api_profile_url = profile_url if profile_url
     # user.sha256 signature must be unique. generate new secret if doublet sha256 signatures is found
     loop do
@@ -885,7 +852,7 @@ class User < ActiveRecord::Base
   # called from generic_post_login / post_login_update_friends if api_client instance method gofreerev_get_user exists
   def update_api_user_from_hash (user_hash)
     logger.debug2 "user_hash = #{user_hash}"
-    allowed_fields = [:permissions, :api_profile_picture_url]
+    allowed_fields = [:api_profile_picture_url]
     invalid_fields = user_hash.keys - allowed_fields
     if invalid_fields.size > 0
       return ['.post_login_user_invalid_field',
@@ -893,8 +860,6 @@ class User < ActiveRecord::Base
                :userid => user_id, :field => invalid_fields.first}]
 
     end
-    # permissions
-    update_attribute(:permissions, user_hash[:permissions]) if user_hash.has_key? :permissions
     # profile picture
     if user_hash.has_key?(:api_profile_picture_url)
       logger.debug2 "update profile picture: api_profile_picture_url = #{user_hash[:api_profile_picture_url]}"
@@ -1030,21 +995,6 @@ class User < ActiveRecord::Base
   # def self.post_image_allowed? (login_users)
   #   (Picture.find_picture_store(login_users) != nil)
   # end # post_image_allowed?
-
-  # "permissions"=>{"data"=>[{"installed"=>1, "basic_info"=>1, "read_stream"=>1, "publish_actions"=>1, "photo_upload"=>1, "video_upload"=>1, "create_note"=>1 ...
-  def read_gifts_allowed?
-    permissions = self.permissions
-    case provider
-      when 'facebook'
-        return true if permissions.find { |p| p['permission'] == 'read_stream' and p['status'] == 'granted'}
-        false
-      else
-        logger.error2 "read_wall_allowed? not implemented for #{provider} users"
-        false
-    end
-  end
-
-  # read_gifts_allowed?
 
 
   # relation helpers
@@ -2100,26 +2050,6 @@ class User < ActiveRecord::Base
   end
 
   # self.inbox_new_notifications
-
-  # refresh user permisssions
-  # called in error handling after picture upload with ApiPostNotFoundException error
-  # see api_gifts/create
-  def get_permissions_facebook(api_client)
-    api_request = 'me?fields=permissions'
-    logger.debug2 "api_request = #{api_request}"
-    begin
-      api_response = api_client.get_object(api_request)
-    rescue Koala::Facebook::ClientError => e
-      e.logger = logger
-      e.puts_exception("#{__method__}: ")
-      raise
-    end # rescue
-    logger.debug2 "api_response = #{api_response}"
-    self.permissions = api_response['permissions']['data']
-    save!
-    self
-  end # get_api_permissions
-
 
 
   ## cache mutual friends lookup in @mutual_friends hash index by login_user.id

@@ -89,7 +89,7 @@
 <% end -%>
 <% if (@page_values[:apiname] == 'facebook') or (@users.size == 1 and @users.first.provider == 'facebook') -%>
     <div style="width: 100%"><br /></div>
-    <div style="width: 100%"><%= t ".fb_friend_list_#{facebook_friend_list}", :apiname => provider_downcase(:facebook), :appname => APP_NAME %></div>
+    <div style="width: 100%"><%= t ".fb_friend_list_false", :apiname => provider_downcase(:facebook), :appname => APP_NAME %></div>
 <% end -%>
 <div style="width: 100%">
   <table style="width: 100%">

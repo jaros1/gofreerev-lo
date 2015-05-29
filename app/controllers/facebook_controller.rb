@@ -14,7 +14,7 @@ class FacebookController < ApplicationController
   #   example: hash = { "algorithm"=>"HMAC-SHA256",
   #                     "issued_at"=>1373284394,
   #                     "user"=>{"country"=>"dk", "locale"=>"da_DK", "age"=>{"min"=>21}}}
-  #   action: redirect to https://www.facebook.com/dialog/oauth?client_id=<client_id>&redirect_uri=<current_url>&scope=read_stream for FB app logn / authorization
+  #   action: redirect to https://www.facebook.com/dialog/oauth?client_id=<client_id>&redirect_uri=<current_url> for FB app logn / authorization
   #           must be a redirect to top frame (top.location.href)
   # Signature 2: when an authorized user starts the app from facebook
   #   Parameters: {"signed_request"=>"8AsUxKh02db56T9oVjnCe3EfaNUXw8qqHNHmcQaDhgA.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImV4cGlyZXMiOjEzOTY0MjU2MDAsImlzc3VlZF9hdCI6MTM5NjQyMTM1Miwib2F1dGhfdG9rZW4iOiJDQUFGalpCR3p6T2tjQkFQSkNMUXZma3BoNjBmbUl1WkJJUUVpeFpDa1ByQXQzbURJRnpiUHUxeGpxMlZlNkZqUldvM3huUWdXWW1EM3V3ekJzWkJzRGFRNzNXeFZQbDNaQkVzTVpCREFGQm9lR0VKWkJ2SHdmS2hiblZQWkJVVExNRWdXREJSUXBjTUp2Ym1UWkMyR0VNelZzMDcyVlczWkFkS3BYY0owZENuWkNsM1d1QVVXdFlLVjh0c00xOVFzbWowZzZFWkQiLCJ1c2VyIjp7ImNvdW50cnkiOiJkayIsImxvY2FsZSI6ImVuX0dCIiwiYWdlIjp7Im1pbiI6MjF9fSwidXNlcl9pZCI6IjE3MDU0ODEwNzUifQ",
@@ -118,10 +118,8 @@ class FacebookController < ApplicationController
       user.update_attribute(:deauthorized_at, Time.new) if user
     else
       # FB authorization with minimal permissions (information already public)
-      # More permissions will be requested later when they are needed and the user can understand why
       # note that there are problems with cookie store and IE10 when login starts from facebook (session[:state] not preserved)
       # tasks table is used for temporary store of state in facebook/index => autologin => FB => facebook/index sequence
-      # @auth_url =  oauth.url_for_oauth_code(:permissions=>"read_stream")
       if signature == 4
         context = 'friends_find'
       else
@@ -148,9 +146,8 @@ class FacebookController < ApplicationController
     # where is request comming from?
     # login - login starter from facebook - previous request was post facebook/create
     # publish_actions - return from publish_actions priv. request (link in gifts/index page - inserted from util.post_on_facebook)
-    # read_stream - return from read_stream priv. request (link in gifts/index page - inserted from util.post_on_facebook)
     context = params[:state].to_s.from(31)
-    context = 'other' unless %w(login friends_find publish_actions read_stream).index(context)
+    context = 'other' unless %w(login friends_find publish_actions).index(context)
 
     # Cross-site Request Forgery check
     # note that there are problems with cookie store and IE10 when login starts from facebook (session[:state] not preserved)
@@ -169,7 +166,7 @@ class FacebookController < ApplicationController
       # Parameters: {"error_code"=>"2",
       #              "error_message"=>"This feature is temporarily unavailable at the moment: There was an error processing this request. Please try again later",
       #              "state"=>"BlGyeeW7Nd5lebhCkNeUCCo26hdpQY-publish_actions"}
-      # grant extra privs. failed (publish_actions or read_stream)
+      # grant extra privs. failed (publish_actions)
       save_flash_key ".#{context}_failed", :appname => APP_NAME, :error => params[:error_message]
       redirect_to :controller => :gifts
       return
@@ -240,8 +237,7 @@ class FacebookController < ApplicationController
                 :image => image, # only used for new facebook users
                 :country => api_response['locale'].to_s.last(2),
                 :language => api_response['locale'].to_s.first(2),
-                :profile_url => api_response['link'],
-                :permissions => api_response['permissions']['data']
+                :profile_url => api_response['link']
     if !res
       # login ok
       user_id = "#{api_response['id']}/#{provider}"
@@ -249,23 +245,6 @@ class FacebookController < ApplicationController
       if context == 'login'
         no_friends = user.friends.size-1
         context = 'login_new_user' if no_friends == 0
-      end
-      if context == 'read_stream'
-        # logger.debug2  "api_response = #{api_response.to_s}"
-        # api_response = {"name"=>"Jan Roslind", "locale"=>"en_GB", "link"=>"http://www.facebook.com/1705481075",
-        #                 "picture"=>{"data"=>{"height"=>100, "is_silhouette"=>false, "url"=>"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xpf1/v/t1.0-1/p100x100/996138_4574555377673_8850863452088448507_n.jpg?oh=ad61040224149a3f56f2c0b4e1bf9519&oe=54DB6127&__gda__=1424339048_6c52fc9e2b892549f0c907b075124494", "width"=>100}},
-        #                 "permissions"=>{"data"=>[{"permission"=>"public_profile", "status"=>"granted"}, {"permission"=>"read_stream", "status"=>"granted"}, {"permission"=>"publish_actions", "status"=>"granted"}, {"permission"=>"user_friends", "status"=>"granted"}]},
-        #                 "id"=>"1705481075"}
-        permissions = api_response["permissions"]["data"] if api_response["permissions"]
-        # logger.debug2 "permissions = #{permissions}"
-        permission = permissions.find { |h| h["permission"] == 'read_stream'}
-        logger.debug2 "permission = #{permission}"
-        # permission = {"permission"=>"read_stream", "status"=>"declined"}
-        status = permission["status"] if permission.class == Hash
-        # logger.debug2 "status = #{status}"
-        # user.permissions = api_response['permissions']['data']
-        # user.save
-        context = 'read_stream_skip' unless status == 'granted'
       end
       save_flash_key ".ok_#{context}", user.app_and_apiname_hash
       if context == 'friends_find'

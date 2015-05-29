@@ -859,7 +859,6 @@ en:
         api_profile_link_not_implemented: "link to %{apiname} user profile not implemented"
         find_friends_not_allowed: "Find friends function is not available. Find friends make friend suggestions by comparing your friends from multiple access providers with your friends of friends of the same login providers. To use find friends you must be logged with multiple login providers at once and you should have chosen \"Share accounts?\" in the login page."
         find_friends_no_rows: "Sorry. No friend suggestions. You can increase the chance of friend suggestions by logging in with multiple log providers, with X in \"Share accounts?\" in the login page, and by encouraging your friends to do the same."
-        fb_friend_list_true: "Only your %{apiname} friends that also are using %{appname} are displayed in %{appname}."
         fb_friend_list_false: "%{appname} are not using your %{apiname} friends list and your %{apiname} friends are not displayed in %{appname}."
      menu_friends_yes_no_links:
         friends_filter_prompt: "Friends:" # appname, appname_camelized
@@ -962,24 +961,6 @@ en:
         linkedin_access_denied: "Error when fetching connections from LinkedIn API. Access to connections denied. Check list: 1) scope r_network maybe  missing in provider setup for LinkedIn"
         post_login_new_user: "Your friend list is ready. Please refresh page to see any posts from your friends."
         post_login_no_friends: "Your %{apiname} friend list is empty or %{appname} is not authorized to see your %{apiname} friend list. No %{apiname} friends and no post from %{apiname} friends are displayed in %{appname}."
-        # post on wall
-        api_client_gofreerev_post_on_wall: "System error. Cannot post on %{apiname} wall. Instance method gofreerev_post_on_wall is missing for %{apiname} API client."
-        post_on_api_unknown_gift_id: "System error. Unknown post id %{id} when posting on %{provider} wall."
-        post_on_api_invalid_gift_id: "Invalid post id %{id} when posting on %{provider} wall (1)."
-        post_on_api_old_gift: "System error. Old post id %{id} when posting on %{provider} wall."
-        post_on_api_deleted_gift: "Id %{id} for deleted post when posting on %{provider} wall."
-        get_api_picture_url_missing: "System error. Posted on %{apiname} wall but did not found method get_api_picture_%{provider}. Photo cannot be displayed in %{appname}."
-        no_api_picture_url: "Picture uploaded, but did not get a picture url from #{apiname}"
-        fb_pic_post_declined_permission_html: "Gift was posted on your %{apiname} wall but picture cannot be displayed on your %{appname} wall. %{appname} do not have permission to read posts on your %{apiname} wall."
-        fb_pic_check_declined_permission_html: "Your %{apiname} pictures can not be displayed on your %{appname} wall. %{appname} do not have permission to read posts on your %{apiname} wall."
-        fb_pic_post_missing_permission_html: "<div title='Picture was uploaded to your %{apiname} but %{appname} lack permission to read posts on your %{apiname} wall and pictures on your %{apiname} wall can not be displayed on your %{appname} wall. You can change visibility for %{appname} posts to public or you could grant %{appname} permission to read posts on your wall. %{appname} will only use read permission to display pictures in %{appname}.'>Gift was posted on your %{apiname} wall but picture cannot be displayed on your %{appname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
-        fb_msg_post_missing_permission_html: "<div title='Gift was posted on your %{apiname} wall but %{appname} lack access to read posts on your %{apiname} wall. You can change visibility for %{appname} posts to public or you could grant %{appname} permission to read posts on your wall.'>Gift was posted on your %{apiname} but %{appname} lacks permission to see post on your %{apiname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
-        fb_pic_check_missing_permission_html: "<div title='One or more pictures have previously been uploaded to your %{apiname} wall but %{appname} lack access to read posts on your %{apiname} wall and pictures can not be displayed on your %{appname} wall. You can change visibility for %{appname} posts to public or you could grant %{appname} permission to read posts on your wall. %{appname} will only use read permission to display pictures in %{appname}.'>Your %{apiname} pictures can not be displayed on your %{appname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
-        fb_msg_check_missing_permission_html: "<div title='One or more gifts have previously been posted on your %{apiname} wall but %{appname} lack access to see posts on your %{apiname} wall. You can change visibility for %{appname} posts to public or you could allow %{appname} to see posts on your wall.'>%{appname} lacks permission to see post on your %{apiname} wall. <a href=\"javascript: {top.location.href='%{url}'}\">Allow %{appname} to read posts on my %{apiname} wall!</a></p>"
-        fb_pic_post_unknown_problem: "Gift was posted in here and on your %{apiname} wall. Picture was uploaded to your %{apiname} wall but %{appname} did not have permission to read the picture on your %{apiname} wall and cannot display the picture in here. Maybe you have changed permissions for %{appname}."
-        fb_msg_post_unknown_problem: "Gift was posted in here and on your %{apiname} wall. Picture was uploaded to your %{apiname} wall but %{appname} did not have permission to read the picture on your %{apiname} wall and cannot display the picture in here. Maybe you have changed permissions for %{appname}."
-        no_local_picture: "System error. Invalid id %{id} when posting on %{provider} wall (2)."
-        local_picture_not_found: "Invalid id %{id} when posting on %{provider} wall (3)."
      cancel_new_deal:
         invalid_action: "System error. Cannot cancel proposal. Invalid action. More information in server log."
         not_logged_in: "Cannot cancel proposal. You are not logged in. Please refresh page."

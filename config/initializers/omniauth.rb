@@ -62,19 +62,12 @@ API_ID     = api_id.with_indifferent_access     # A
 API_SECRET = api_secret.with_indifferent_access # B
 API_TOKEN  = api_token.with_indifferent_access
 
-# facebook oauth 2.2 - facebook friends list is empty in oauth 2.x - friend list only includes friends that also are app users
-# - false : don't ask for user_friends permission
-# - true  : ask for user_friends permission
-FACEBOOK_USER_FRIENDS = true
-# facebook oauth 2.2 - read_stream priv. requires special approval process - false - don't ask for read stream priv.
-FACEBOOK_READ_STREAM = false
-
 # C) - omniauth setup
 Rails.application.config.middleware.use OmniAuth::Builder do
-  # facebook oauth 2.2 - note that facebook friends list is empty in oauth 2.x - friend list only include friends that also are app users
+  # facebook oauth 2.2 - note that facebook friends list is almost empty in oauth 2.x - friend list only include friends that also are app users
   provider :facebook, API_ID[:facebook], API_SECRET[:facebook],
-           :scope => ('public_profile' + case when FACEBOOK_USER_FRIENDS then ',user_friends' else '' end),
-           :image_size => :normal, :info_fields => "name,permissions,friends,picture,timezone",
+           :scope => ('public_profile,user_friends'),
+           :image_size => :normal, :info_fields => "name,friends,picture,timezone",
            :client_options => {
                :site => 'https://graph.facebook.com',
                :authorize_url => "https://www.facebook.com/v2.2/dialog/oauth",
@@ -141,19 +134,7 @@ API_MUTUAL_FRIENDS = {:facebook => true,
                       :twitter => false,
                       :vkontakte => true}.with_indifferent_access
 
-# H) default user permissions after login.
-# facebook: koala me?fields=permissions request is used to check facebook permissions after login
-# twitter: authorization with write access, but user must enable post on twitter before write permission is used
-API_DEFAULT_PERMISSIONS = {:facebook => {},
-                           :flickr => 'read',
-                           :foursquare => 'read',
-                           :google_oauth2 => 'read',
-                           :instagram => 'read',
-                           :linkedin => 'r_basicprofile,r_network',
-                           :twitter => 'read',
-                           :vkontakte => 'read'}.with_indifferent_access
-
-# I) link to API app settings so that user easy can review and change permissions
+# I) link to API app settings so that user easy can review permissions
 API_APP_SETTING_URL = {:facebook => 'https://www.facebook.com/settings?tab=applications',
                        :flickr => 'http://www.flickr.com/services/auth/list.gne',
                        :foursquare => 'https://foursquare.com/settings/connections',
@@ -259,7 +240,6 @@ compare_keys 'API_ID', 'API_URL'
 compare_keys 'API_ID', 'API_CALLBACK_URL'
 compare_keys 'API_ID', 'API_POST_PERMITTED'
 compare_keys 'API_ID', 'API_MUTUAL_FRIENDS'
-compare_keys 'API_ID', 'API_DEFAULT_PERMISSIONS'
 compare_keys 'API_ID', 'API_APP_SETTING_URL'
 compare_keys 'API_ID', 'API_DOWNCASE_NAME'
 compare_keys 'API_ID', 'API_CAMELIZE_NAME'
@@ -353,12 +333,6 @@ class OmniAuth::AuthHash
     return eval(method) if respond_to? method.to_sym
     profile_url = self[:extra][:raw_info][:link] if self[:extra] and self[:extra][:raw_info]
     profile_url
-  end
-  def get_permissions
-    provider = get_provider()
-    method = "get_permissions_#{provider}"
-    return eval(method) if respond_to? method.to_sym # facebook
-    API_DEFAULT_PERMISSIONS[provider] || 'read'
   end
 end # OmniAuth::AuthHash
 

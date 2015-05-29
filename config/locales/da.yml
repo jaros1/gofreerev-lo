@@ -864,7 +864,6 @@ da:
         find_friends_not_allowed: "Find venner kan desværre ikke benyttes. Find venner laver venneforslag ved at sammenligne dine venner fra flere login udbydere med dine venners venner for de samme login udbydere. For at bruge find venner skal du være logget ind med flere login udbydere på en gang og du skal have valgt \"Saml konti\" i login side."
         find_friends_no_rows: "Desværre endnu ingen venneforslag. Du kan øge chancen for venneforslag ved at logge ind med flere login udbydere, ved at sætte X i \"Saml konti?\" i log ind siden og ved at opfordre dine venner til at gøre det tilsvarende."
         fb_friend_list_false: "%{appname} har desværre ikke adgang til din %{apiname} venneliste og dine %{apiname} venner vises derfor ikke i %{appname}."
-        fb_friend_list_true: "Kun %{apiname} venner der også anvender %{appname} vises in %{appname}."
      menu_friends_yes_no_links:
         friends_filter_prompt: "Venner:" # appname, appname_camelized
         friends_yes_link_text: "ja"
@@ -966,24 +965,6 @@ da:
         linkedin_access_denied: "Fejl ved hentning af connections fra LinkedIn API. Access to connections denied. Tjek liste ved API opsætning. 1) scope r_network mangler i provider opsætning for linkedin"
         post_login_new_user: "Din venneliste er klar til brug. Opdater siden, så du kan se eventuelle opslag fra dine venner."
         post_login_no_friends: "Din %{apiname} venneliste er tom eller %{appname} har ikke adgang til at se din %{apiname} venneliste. I %{appname} vises derfor ingen %{apiname} venner eller opslag fra %{apiname} venner."
-        # post on wall
-        api_client_gofreerev_post_on_wall: "Systemfejl. Kan ikke lave opslag på %{apiname} væg da instance metode gofreerev_post_on_wall for %{apiname} API klient."
-        post_on_api_unknown_gift_id: "Systemfejl. Ukendt opslag-id %{id} ved opslag på %{provider} væg."
-        post_on_api_invalid_gift_id: "Ugyldigt opslag-id %{id} ved opslag på %{provider} væg (1)."
-        post_on_api_old_gift: "Systemfejl. Gammelt opslag-id %{id} ved opslag på %{provider} væg."
-        post_on_api_deleted_gift: "Id %{id} for slettet opslag ved opslag på %{provider} væg."
-        get_api_picture_url_missing: "Systemfejl. Opslag på %{apiname} væg, men fandt ikke metode get_api_picture_%{provider}. Foto kan ikke vises i %{appname}."
-        no_api_picture_url: "Foto blev uploaded, men ingen URL til foto blev modtaget fra %{apiname}."
-        fb_pic_post_declined_permission_html: "Opslag blev oprettet på din %{apiname} væg, men foto kan ikke vises på din %{appname} væg. Gofreerev har ikke tilladelse til at læse opslag på din %{apiname} væg."
-        fb_pic_check_declined_permission_html: "Dine %{apiname} foto kan ikke vises på din %{appname} væg. Gofreerev har ikke tilladelse til at læse opslag på din %{apiname} væg."
-        fb_pic_post_missing_permission_html: "<div title='Foto blev uploaded til din %{apiname} væg, men %{appname} mangler rettigheder til at se billedet på din %{apiname} væg og kan derfor ikke vise foto på din %{appname} væg. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg. %{appname} vil kun anvende læseadgang til opslag på din %{apiname} væg at vise de uploadede foto i %{appname}'>Opslag blev oprettet på din %{apiname} væg, men foto kan ikke vises på din %{appname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv Gofreerev lov til at læse opslag på min væg!</a></div>"
-        fb_msg_post_missing_permission_html: "<div title='Opslag blev oprettet på din %{apiname} væg, men %{appname} mangler rettigheder til at se opslaget på din %{apiname}. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg.'>Opslag oprettet på din %{apiname} væg, men %{appname} mangler læseadgang til din %{apiname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv %{apiname} lov til at læse opslag på din væg!</a></div>"
-        fb_pic_check_missing_permission_html: "<div title='Et eller flere foto er tidligere blevet uploaded til din %{apiname} væg, men %{appname} mangler rettigheder til at se din %{apiname} væg og kan derfor ikke vise foto herinde på din %{appname} væg. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg.'>Dine %{apiname} foto kan ikke vises på din %{appname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv Gofreerev lov til at læse opslag på min væg!</a></div>"
-        fb_msg_check_missing_permission_html: "<div title='Et eller flere opslag er tidligere blevet oprettet på din %{apiname} væg, men %{appname} mangler rettigheder til at se opslag på din %{apiname}. Du kan løse dette problem ved enten at ændre synlighed for %{appname} opslag til offentlig eller ved at give %{appname} lov til at læse opslag på din %{apiname} væg.'>%{appname} mangler adgang til at se opslag på din %{apiname} væg. <a href=\"javascript: {top.location.href='%{url}'}\">Giv %{apiname} lov til at læse opslag på din væg!</a></div>"
-        fb_pic_post_unknown_problem: "Opslag oprettet her og på din %{apiname} væg. Foto blev uploaded til din %{apiname} væg, men %{appname} mangler rettigheder til at se billedet på din %{apiname} væg og kan derfor ikke vise foto herinde. Måske du har ændret rettighedsindstillinger for %{appname}."
-        fb_msg_post_unknown_problem: "Opslag oprettet her og på din %{apiname} væg, men %{appname} mangler rettigheder til at se opslaget på din %{apiname} væg. Måske du har ændret rettighedsindstillinger for %{appname}."
-        no_local_picture: "Systemfejl. Ugyldigt opslag id %{id} ved opslag på %{provider} væg (2)."
-        local_picture_not_found: "Systemfejl. Ugyldigt opslag id %{id} ved opslag på %{provider} væg (3)."
      cancel_new_deal:
         invalid_action: "Systemfejl. Kan ikke fortryde forslag. Ugyldig aktion. Mere information i server log."
         not_logged_in: "Kan ikke fortryde forslag. Du er ikke logget ind. Opdater venligst siden."

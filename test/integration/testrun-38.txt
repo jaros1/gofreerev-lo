@@ -9,6 +9,7 @@ todo 3: user update. must clear all fields user in friend list update operation 
 todo 4: server must send a changed sha256 message to other server when changing user information
 todo 5: maybe ask the client before updating friend list / sending oauth information to server
 todo 6: check block in ping_test_loop: res = {:error=>"receive_sha256_changed_message not implemented: user_ids = [3], error = ", :interval=>2000}
+todo 7: server should write a warning in log when receiving af friend list refresh and user information already is up-to-date
 
 
 server 1:

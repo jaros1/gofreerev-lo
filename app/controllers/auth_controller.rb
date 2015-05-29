@@ -87,8 +87,7 @@ class AuthController < ApplicationController
                 :image => auth_hash.get_image,
                 :country => auth_hash.get_country,
                 :language => auth_hash.get_language,
-                :profile_url => auth_hash.get_profile_url,
-                :permissions => auth_hash.get_permissions
+                :profile_url => auth_hash.get_profile_url
     if !res
       # login ok - flash message has been set in login method
       user_id = login_user_ids.find { |userid2| userid2.split('/').last == provider }

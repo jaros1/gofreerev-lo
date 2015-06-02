@@ -1788,14 +1788,12 @@
 
 414) todo: recalculate all comments sha256 signatures (client & server). only old test environments (one laptop + cubox server)
 
-415) client data migration.
+415) client javascript data migration.
      accepted, accepted_by_user_ids, accepted_at_client, rejected_by_user_ids and rejected_at_client
      have been replaced with new_deal_action, new_deal_action_by_user_ids and new_deal_action_at_client
 
-416) testrun-38 - server 1 should not start friend list update sequence. user info is up-to-date
-
 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
-     ready for test
+     ready for test. keep for later test case
 
 419) testrun-38 - server must send a changed sha256 message to other server when changing user information
      add to later test case
@@ -1804,10 +1802,36 @@
      add user setting page. allow/prevent/ask when friend list update is requested by server
      add angular url in friend_list_updated notification
 
-421) testrun-38 - check block in ping_test_loop: res = {:error=>"receive_sha256_changed_message not implemented: user_ids = [3], error = ", :interval=>2000}
-
 424) testcase: change user name on api, reconnect on app 1 and start test.
      refresh user friends sequence started by server should also update user name
      see gofreerev_get_user
 
-select next issue to solve: (rand*424).floor+1
+425) test client device login and server offline
+     ( maybe only relevant in development/test environment )
+     added post_login_fl_server_offline response for facebook.
+     old error message was: Name or service not known (Faraday::ConnectionFailed)
+     new error message is: Could not update user info and friend list. Server not connected to internet or no connection to login api provider
+     test/implement for other login providers
+
+426) add like/unlike comment?
+     true/false for current user but must be an array of user ids for cross client communication
+     likes not included in server side signature
+     should only replicate likes direct between clients
+     A likes B's comment,B likes A's comment. Not A <=> B message with user C likes comment x
+     likes must be from a friend
+
+427) currency check in invalid_gift and invalid_comment
+     Gofreerev.rails['VALID_CURRENCIES'] can be different on different Gofreerev servers
+     Gofreerev.rails['VALID_CURRENCIES'] can also change over time on one Gofreerev server
+     should only validate currency when creating new gift/comment
+     should not validate currency when receiving gift/comment from other gofreerev servers - use verify gift/comment
+     currency is readonly and included in server side signature
+
+428) validate_send_gifts_message: add invalid_gift validation?
+
+429) allow server to buffer some types of client to client messages.
+     for example gift likes/unlike that must be replicated direct from client to client
+     or comments. client A creates comment when client B is offlline and client B receives comment when client A is offline
+     encryption must be mix. symmetric password can not be used between offline clients.
+
+select next issue to solve: (rand*429).floor+1

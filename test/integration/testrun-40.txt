@@ -1,0 +1,37 @@
+testrun-40 (continue from testrun-34/35)
+
+comment has been deleted in client 1 / app 1
+deleted comment must be replicated to client 2 / app 2
+must be remove verified and deleted comment must be "merged" in client 2
+
+
+
+client 2:
+- todo: problem with user_ids for old comment. Should be [3]. info must have be overwritten in a previous send message operation (referenced object)
+- todo: use array.slice(0) when cloning user ids arrays in clone gigt and clone comment
+- todo: invalid_comment function (not implemented) should have detected invalid user ids in comment
+- todo: how to prevent invalid update of gift and comments in localStorage/js. Is verified after create gift/comment but not later (errors will be detected in a later check gifts / merge operation)
+GiftService.receive_message_send_gifts: other_server_id_to_sha256 = {"0":"KRM0c5eHrFpuQ3yGvHZdBPpGednZCjFsMpQzHTtVvAM="}
+GiftService.receive_message_send_gifts:
+old_comment =
+  {"cid":"14323680230743366185",
+   "user_ids":["7TXVE0hsVwC9iJneZ9MjESM2qG+go3VZ6fg1a4Y3Pbw="],
+   "comment":"client 1",
+   "currency":"usd",
+   "created_at_client":1432368023,
+   "created_at_server":1,
+   "sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}
+
+GiftService.receive_message_send_gifts:
+new_comment =
+  {"cid":"14323680230743366185",
+   "user_ids":[3],
+   "currency":"usd",
+   "comment":"client 1",
+   "created_at_client":1432368023,
+   "created_at_server":1,
+   "deleted_at_client":1432646850,
+   "sha256":"\u0006:ÑxV!!\t«¾!Nï?\f\nR\u0000Ðô]7\u001cÚ5è?ØW\u001f"}
+
+
+GiftService.receive_message_send_gifts: merge existing comment not implemented

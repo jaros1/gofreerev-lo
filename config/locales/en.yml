@@ -955,6 +955,7 @@ en:
         post_login_fl_missing_field: "System error. Cannot update %{apiname} friend list. Field %{field} was not found for user id %{userid}."
         post_login_fl_invalid_field: "System error. Cannot update %{apiname} friend list. Invalid field %{field} for user id %{userid}."
         post_login_fl_not_authorized: "Cannot download %{apiname} friend list. You have removed %{appname} from %{apiname} and you no longer have access to %{appname} using your %{apiname} account. You should refresh the page as access rights changed."
+        post_login_fl_server_offline: "Could not update user info and friend list. Server not connected to internet or no connection to login api provider"
         google_access_not_configured: "Error when fetching friend list from Google+ API. Access Not Configured. Check list: 1) Status is ON for Google+ API in Google Cloud Console"
         google_insufficient_permission: "Error when fetching friend list from Google+ API. API. Insufficient Permission. Check list: 1) scope plus.login maybe missing in provider setup for google+"
         google_other_errors: "Error when fetching friend list from Google+ API. \"%{error}\""
@@ -1003,9 +1004,9 @@ en:
         not_logged_in: "Could not check link. You are not logged in. Please refresh page."
         exception: "System error. Could not check link. %{error}. More information in server log."
      login:
-        exception: "System error. Could not complete log in on server. %{error}. More information in server log."
+        exception: "System error. Could not complete log in process on server. %{error}. More information in server log."
      logout:
-        exception: "System error. Could not complete log out on server. %{error}. More information in server log."
+        exception: "System error. Could not complete log out process on server. %{error}. More information in server log."
      ping:
         exception: "System error in server ping. %{error}. More information in server log."
 

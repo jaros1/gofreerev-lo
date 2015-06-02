@@ -959,6 +959,7 @@ da:
         post_login_fl_missing_field: "Systemfejl. Kan ikke opdaterer %{apiname} venneliste. Felt %{field} mangler for bruger id. %{userid}."
         post_login_fl_invalid_field: "Systemfejl. Kan ikke opdaterer %{apiname} venneliste. Ukendt felt %{field} for bruger id. %{userid}."
         post_login_fl_not_authorized: "Kan ikke hente %{apiname} venneliste. Du har fjernet %{appname} fra %{apiname}, og du har derfor ikke længere adgang til %{appname} vha. din %{apiname} konto. Du bør opdatere siden, da adgangsrettigheder er blevet ændret."
+        post_login_fl_server_offline: "Kunne ikke opdaterer bruger oplysninger og venneliste. Server har ikke forbindelse til nettet og api login provider"
         google_access_not_configured: "Fejl ved hentning af venneliste fra Google+ API. Access Not Configured. Tjek-liste ved API opsætning: 1) Tjek log for mere information. 2) Tjek at application_name og application_version sættes, når Google::APIClient initialiseres. 3) Tjek at status er ON for Google+ API i Google Cloud Console"
         google_insufficient_permission: "Fejl ved hentning af venneliste fra Google+ API. Manglende adgang. Tjek liste ved API opsætning: 1) scope plus.login mangler i provider opsætning for google"
         google_other_errors: "Fejl ved hentning af venneliste fra Google+ API. \"%{error}\""
@@ -1007,9 +1008,9 @@ da:
         not_logged_in: "Kan ikke tjekke link. Du er ikke logget ind. Opdater venligst siden."
         exception: "Systemfejl. Kunne ikke tjekke link. %{error}. Mere information i server log."
      login:
-        exception: "Systemfejl. Kunne ikke fuldføre log ind på server. %{error}. Mere information i server log."
+        exception: "Systemfejl. Kunne ikke fuldføre log ind procedure på server. %{error}. Mere information i server log."
      logout:
-        exception: "Systemfejl. Kunne ikke fuldføre log ud på server. %{error}. Mere information i server log."
+        exception: "Systemfejl. Kunne ikke fuldføre log ud procedure på server. %{error}. Mere information i server log."
      ping:
         exception: "Systemfejl ved ping af server. %{error}. Mere information i server log."
 

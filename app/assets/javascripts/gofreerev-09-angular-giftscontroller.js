@@ -611,7 +611,7 @@ angular.module('gifts')
             if (gift.direction == 'giver') gift.giver_user_ids = userService.get_login_userids() ;
             else gift.receiver_user_ids = userService.get_login_userids() ;
             var errors ;
-            if (errors=giftService.invalid_gift(gift, [])) {
+            if (errors=giftService.invalid_gift(gift, [], 'create', null)) {
                 self.new_gift.errors = 'Could not create new gift: ' + errors ;
                 console.log(pgm + 'Could not create gift: ' + self.new_gift.errors) ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
@@ -645,7 +645,13 @@ angular.module('gifts')
                 created_at_client: Gofreerev.unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
-            // todo: validate new comment - return any errors to UI
+            var errors ;
+            if (errors=giftService.invalid_comment(new_comment, [], 'create', null)) {
+                gift.new_comment.errors = 'Could not create new comment: ' + errors ;
+                console.log(pgm + 'Could not create comment: ' + gift.new_comment.errors) ;
+                console.log(pgm + 'comment = ' + JSON.stringify(comment)) ;
+                return ;
+            }
             // console.log(pgm + 'cid = ' + new_comment.cid) ;
             // resize comment textarea after current digest cycle is finish
             resize_textarea(new_comment.comment) ;

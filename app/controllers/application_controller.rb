@@ -940,7 +940,14 @@ class ApplicationController < ActionController::Base
       # get user information - picture
       api_request = 'me?fields=picture.width(100).height(100)'
       logger.debug2  "api_request = #{api_request}"
-      api_response = api_client.get_object api_request
+      begin
+        api_response = api_client.get_object api_request
+      rescue Faraday::ConnectionFailed => e
+        # server offline. post login error or friend list update error. cannot download user info and friend list
+        logger.error2 "Exception #{e.class}: #{e.message}"
+        return [nil, 'util.do_tasks.post_login_fl_server_offline']
+        raise
+      end
       logger.debug2  "api_response = #{api_response}"
       image = api_response['picture']['data']['url'] if api_response['picture'] and api_response['picture']['data']
       user_hash[:api_profile_picture_url] = image if image

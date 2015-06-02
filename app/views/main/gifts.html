@@ -380,6 +380,10 @@
                     </form>
                 </td>
             </tr>
+            <tr ng-show="gift.new_comment.errors">
+                <td colspan="2"></td>
+                <td colspan="2"><span ng-bind="gift.new_comment.errors"></span></td>
+            </tr>
 
             <tr>
                 <td colspan="4">

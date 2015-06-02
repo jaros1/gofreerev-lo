@@ -449,6 +449,7 @@ class UtilController < ApplicationController
   # called from login and ping.
   # login = true if called from login - normal client login - disconnect any old logins from other api providers
   # login = false if called from ping - refresh friend list - keep any old logins from other api providers
+  # receive oauths array, check expired access tokens, download friend from api provider, update friends info & return friend list to client
   private
   def load_oauth_and_update_friends (login)
     oauths = params[:oauths] # array with oauth authorization
@@ -548,6 +549,9 @@ class UtilController < ApplicationController
         hash
       end
     end # each provider
+
+    # don't download a short friend list after first login with full friend list
+    set_session_value(:last_short_friends_list_at, Time.zone.now) unless get_session_value(:last_short_friends_list_at)
 
     # todo: remove oauth authorization (tokens, expires_at and refresh_tokens) from sessions table
     # should only be used to download friend lists from apis
@@ -981,10 +985,12 @@ class UtilController < ApplicationController
 
             # received oauths array from client. return full friends list for api providers in oauths array
             # used after detecting changed sha256 user signatures in server to server messages
+            # a client on this gofreerev server must refresh user information for out-of-date user info
 
             # load oauths array into sessions table, disconnect old not used providers, check expired access tokens,
             # download friend list from api provider, update friends info in db and return @json[:friends] array
             # login=false: keep old logins (providers not in oauths array)
+            logger.debug2 "returning full friend list"
             load_oauth_and_update_friends(false) # login = false. keep existing logins for other api providers
 
           else
@@ -1010,6 +1016,7 @@ class UtilController < ApplicationController
               else
                 sha256_values_changed = true
               end
+              logger.debug2 "last_short_friends_list_at = #{last_short_friends_list_at}, sha256_values_changed = #{sha256_values_changed}"
             end
             # check remote_sha256_updated_at. user or friend of user must refresh user info (invalid sha256 signature in incoming server to server message)
             login_users = User.where(:user_id => login_user_ids) unless login_users
@@ -1033,6 +1040,8 @@ class UtilController < ApplicationController
             end if remote_sha256_values_changed.size > 0
 
             if system_secret_changed or sha256_values_changed or remote_sha256_values_changed.size > 0
+              logger.debug2 "returning short friend list"
+              logger.debug2 "system_secret_changed = #{system_secret_changed}, sha256_values_changed = #{sha256_values_changed}, remote_sha256_values_changed.size = #{remote_sha256_values_changed.size}"
               time1 = Time.zone.now
               # system secret and/or sha256 signatures for users has changed since last client ping
               # return SHORT friend list (only friends on other gofreerev servers - must have a verified_at row in server_users)

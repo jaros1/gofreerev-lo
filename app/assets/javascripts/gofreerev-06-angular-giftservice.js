@@ -13,10 +13,186 @@ angular.module('gifts')
         // todo: add comment validations.
         // - invalid_comment is called from create_new_comment, when receiving new comments from other clients and before sending comments to other clients
         // - invalid_comment_change is called in any local updates and when merging comment information from other clients into local comment
-        var invalid_comment = function (comment) {
+        // new_users is an optional array with new users (used when validating new gifts received from other clients)
+        // context - validating context - create, receive, send - not all validations are relevant in all contexts
+        // server_id - mailbox.server_id - null for within server messages - >0 for messages to/from clients on other gofreerev servers
+        var invalid_comment = function (comment, new_users, context, server_id) {
             var pgm = service + '.invalid_comment: ' ;
-            console.log(pgm + 'Not implemented') ;
-            return null ;
+            var errors = [] ;
+            // fields to validate:
+            // -  1) cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            // -  2) user_ids - internal user ids for creator of comment - todo: change to uid/provider format to support cross server replication?
+            // -  3) price - optional price - can be set when creation a proposal (new_deal = true) comment) for gift/offer
+            // -  4) currency - optional currency - can be set when creation a proposal (new_deal = true) for gift/offer - iso4217 with restrictions
+            // -  5) comment
+            // -  6) created_at_client - created at client unix timestamp - 10 decimals - used in comment signature on server
+            // -  7) created_at_server - server number - 0 for current server - see also servers array for cross server messages
+            // -  8) likes - array with likes from friends. boolean in message. array in localStorage / JS
+            // -  9) new_deal- optional new_deal boolean - true if commemt was created as a new deal proposal - false if comment
+            // - 10) new_deal_action - optional new_deal_action. Only used for new deal proposals.
+            // - 11) new_deal_action_by_user_ids - optional new_deal_action user id, log in users for cancel, accept or reject action, subset of gift creator (accept, reject) or subset of comment creator (cancel)
+            // - 12) new_deal_action_at_client - optional new_deal_action_at_client unix timestamp
+            // - 13) deleted_at_client - optional deleted at timestamp if comment has been deleted by giver, receiver or commenter
+
+            // new_users from send_gifts sub message (sync_gifts) - fallback information used in case of unknown user
+            var new_users_index = {} ;
+            for (var i=0 ; i<new_users.length ; i++) new_users_index[new_users[i].user_id] = new_users[i] ;
+            console.log(pgm + 'new_users_index = ' + JSON.stringify(new_users_index)) ;
+            if (new_users.length > 0) {
+                if (context == 'create') errors.push('System error. Invalid "invalid_comment" call. new_users parameter should only be used when sending and receiving gifts') ;
+            };
+            // context: create, send or receive
+            if (['create', 'send', 'receive'].indexOf(context) == -1) errors.push('System error. Invalid "invalid_comment" call. context must be create, send or receive') ;
+            // server_id - mailbox.server_id - must be undefined, null or an integer > 0
+            if ((typeof server_id == 'undefined') || (server_id == null) || ((typeof server_id == 'number') && (server_id >= 1) && (server_id == Math.round(server_id)))) null ;
+            else errors.push('System error. Invalid "invalid_comment" call. server_id (mailbox.server_id) must be null or an integer >= 1') ;
+            
+            // -  1) cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            var from_unix_timestamp = Math.floor((new Date('2014-01-01')).getTime()/1000) ;
+            var to_unix_timestamp =  Math.floor((new Date).getTime()/1000) + 24*60*60;
+            if (!comment.hasOwnProperty('cid')) errors.push('Required cid (unique comment id) is missing') ;
+            else if (typeof comment.cid != 'string') errors.push('Invalid cid (unique comment id). Cid must be a string with 20 digits') ;
+            else if (!comment.cid.match(/^[0-9]{20}$/)) errors.push('Invalid cid (unique comment id). Cid must be a string with 20 digits') ;
+            else if (parseInt(comment.cid.substr(0,10)) < from_unix_timestamp) errors.push('Invalid cid (unique comment id). The first 10 digits must be a valid unix timestamp') ;
+            else if (parseInt(comment.cid.substr(0,10)) > to_unix_timestamp) errors.push('Invalid cid (unique comment id). The first 10 digits must be a valid unix timestamp') ;
+            
+            // -  2) user_ids - internal user ids for creator of comment
+            // - normally from a friend or from a friend of other part in a closed deal
+            // - can also be from "unknown" users from other api providers (friend with other api provider logins)
+
+            if (comment.hasOwnProperty(('user_ids') || comment.user_ids.length == 0)) errors.push('Comment without user ids is not allowed') ;
+            var user_ids, providers, user_id, user ;
+            user_ids = [] ;
+            providers = [] ;
+            var logged_in_user = false ;
+            var friend = false ;
+            for (i=0 ; i<comment.user_ids.length ; i++) {
+                user_id = comment.user_ids[i] ;
+                if (user_ids.indexOf(user_id) != -1) {
+                    errors.push('User ids is invalid. Doublet user ids in ' + comment.user_ids.join(', ')) ;
+                    break ;
+                }
+                // lookup user: 1) friends array, 2) users array, 3) new_users array
+                user = userService.get_friend(user_id) ;
+                if (!user) user = userService.get_user(user_id) ;
+                if (!user) user = new_users_index[user_id] ;
+                if (!user) {
+                    errors.push('User is invalid. Unknown user id ' + user_id + ' in user_ids ' + comment.user_ids.join(', ')) ;
+                    break ;
+                }
+                if (providers.indexOf(user.provider) != -1) {
+                    errors.push('User ids is invalid. Doublet provider in user_ids' + comment.user_ids.join(', ')) ;
+                    break ;
+                }
+                providers.push(user.provider) ;
+                if (user.hasOwnProperty('friend')) {
+                    if (user.friend == 1) logged_in_user = true ;
+                    if (user.friend <= 2) friend = true ;
+                }
+            } // for i
+
+            // -  3) price - optional price - can be set when creation a proposal (special comment) for gift/offer
+            //  {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
+            // console.log(pgm + 'price = ' + comment.price + ', typeof price = ' + typeof comment.price) ;
+            if ((typeof comment.price != 'undefined') && (comment.price != null)) {
+                if (typeof comment.price != 'number') errors.push('Price is invalid. Must be an number >= 0') ;
+                else if (comment.price < 0) errors.push('Price is invalid. Must be an number >= 0') ;
+                else if (comment.price != Math.round(comment.price, 2)) errors.push('Price is invalid. Max 2 decimals are allowed in prices') ;
+            }
+            
+            // -  4) currency - optional currency - can be set when creation a proposal (new_deal = true) for gift/offer - iso4217 with restrictions
+            // Gofreerev.rails['VALID_CURRENCIES'] is a list with currencies from country to currency hash (from money gem)
+            // not all currencies in list is active and not all currencies have exchange rates from default money bank
+            // validate currency iso4217 only when creating comment.
+            // dont validate when sending/receiving comments. Is readonly. Use verify_comment when receiving comments
+            // (list with valid iso4217 can change over time and can be different on different Gofreerev servers)
+            if ((typeof comment.price == 'number') && (!comment.hasOwnProperty('currency'))) errors.push('Required currency is missing') ;
+            if (comment.hasOwnProperty('currency')) {
+                if (typeof comment.currency != 'string') errors.push('Currency is invalid. Must be a 3 letters string with valid iso4217 currency code') ;
+                else if (!comment.currency.match(/^[a-z]{3}$/)) errors.push('Currency is invalid. Must be a 3 letters string with valid iso4217 currency code') ;
+                else if ((context == 'create') && (Gofreerev.rails['VALID_CURRENCIES'].indexOf(comment.currency) == -1)) errors.push('Unknown currency ' + comment.currency) ;
+            }
+            
+            // -  5) comment - required
+            if ((typeof comment.comment != 'string') || (comment.comment == '')) errors.push('Required comment is missing') ;
+
+            // -  6) created_at_client - created at client unix timestamp - 10 decimals - used in comment signature on server
+            if (!comment.created_at_client) errors.push('Required created_at_client unix timestamp is missing') ;
+            else if (comment.created_at_client < from_unix_timestamp) errors.push('Invalid created_at_client unix timestamp') ;
+            else if (comment.created_at_client > to_unix_timestamp) errors.push('Invalid created_at_client unix timestamp') ;
+
+            // -  7) created_at_server - server number - 0 for current server -  >0 for comments from other Gofreerev servers
+            // blank when creating comment, 0 when server signature for comment has been created
+            if (!comment.hasOwnProperty('created_at_server') || (comment.created_at_server == null)) {
+                // must be a newly created comment waiting for server signature
+                if (context != 'create') errors.push('Created_at_server is missing') ;
+            }
+            else if ((typeof comment.created_at_server != 'number') && (comment.created_at_server < 0) && (Math.round(comment.created_at_server) != comment.created_at_server)) {
+                errors.push('Created_at_server is invalid. Must be null or an integer >= 0') ;
+            }
+            else {
+                if (context == 'create') errors.push('Created_at_server is invalid. Must be null when creating a new comment') ;
+            }
+
+            // -  8) todo: likes - array with likes from friends. boolean in message. array in localStorage / JS
+
+            // -  9) new_deal- optional new_deal boolean - true if commemt was created as a new deal proposal - null or false if comment
+            if ((typeof comment.new_deal != 'undefined') && (comment.new_deal != null) && (typeof comment.new_deal != 'boolean')) {
+                errors.push('new_deal is invalid. Must be null or a boolean') ;
+            }
+
+            // 10), 11) and 12). validate three additional new_deal fields (new_deal_action, new_deal_action_by_user_ids and deal_action_at_client)
+            if (comment.new_deal == true) {
+                // new deal proposal.
+
+                // the three new_deal fields must all be null or must all have valid values
+                if (((typeof comment.new_deal_action == 'undefined') || (comment.new_deal_action == null)) &&
+                    ((typeof comennt.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) &&
+                    ((typeof comennt.new_deal_action_at_client == 'undefined') || (comment.new_deal_action_at_client == null))) {
+                    // no new_deal_action
+                    null ;
+                }
+                else {
+                    // new_deal_action
+                    // - 10) new_deal_action - optional new_deal_action. Only used for new deal proposals (new_deal = true)
+                    if ((typeof comment.new_deal_action == 'undefined') || (comment.new_deal_action == null)) errors.push('new_deal_action is missing') ;
+                    else if ((typeof comment.new_deal_action != 'string') || (['cancel','accept','reject'].indexOf(comment.new_deal_action) == -1)) {
+                        errors.push('new_deal_action is invalid. Allowed values are cancel, accept or reject') ;
+                    }
+                    // - 11) new_deal_action_by_user_ids - optional new_deal_action user id, log in users for cancel, accept or reject action, subset of gift creator (accept, reject) or subset of comment creator (cancel)
+                    if ((typeof comment.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) errors.push('new_deal_action_by_user_ids is missing') ;
+                    else if ((!$.isArray(comment.new_deal_action_by_user_ids)) || (comment.new_deal_action_by_user_ids.length == 0)) errors.push('new_deal_action_by_user_ids is invalid. Must be null or an not empty array');
+                    // - 12) new_deal_action_at_client - optional new_deal_action_at_client unix timestamp
+                    if ((typeof comment.new_deal_action_at_client == 'undefined') || (comment.new_deal_action_at_client == null)) errors.push('new_deal_action_at_client is missing') ;
+                    else if (comment.new_deal_action_at_client < from_unix_timestamp) errors.push('Invalid new_deal_action_at_client unix timestamp') ;
+                    else if (comment.new_deal_action_at_client > to_unix_timestamp) errors.push('Invalid new_deal_action_at_client unix timestamp') ;
+                }
+
+            }
+            else {
+                // comment.
+
+                // - 10) new_deal_action must be null
+                if ((typeof comment.new_deal_action != 'undefined') && (comment.new_deal_action != null)) {
+                    errors.push('new_deal_action is invalid. Must be null for comments') ;
+                }
+                // - 11) new_deal_action_by_user_ids must be null
+                if ((typeof comment.new_deal_action_by_user_ids != 'undefined') && (comment.new_deal_action_by_user_ids != null)) {
+                    errors.push('new_deal_action_by_user_ids is invalid. Must be null for comments') ;
+                }
+                // - 12) new_deal_action_at_client must be null
+                if ((typeof comment.new_deal_action_at_client != 'undefined') && (comment.new_deal_action_at_client != null)) {
+                    errors.push('new_deal_action_at_client is invalid. Must be null for comments') ;
+                }
+            }
+
+            if (errors.size > 0) {
+                console.log(pgm + 'Error for comment ' + JSON.stringify(comment)) ;
+                console.log(pgm + 'Error: ' + errors.join('. ')) ;
+                return errors.join('. ') ;
+            }
+            else return null ;
+
         };
         var invalid_comment_change = function (old_comment, new_comment) {
             var pgm = service + '.invalid_changed_comment: ' ;
@@ -27,28 +203,31 @@ angular.module('gifts')
         // todo: add gift validations.
         // - invalid_gift is called from create_new_gift, when receiving new gifts from other clients and before sending gifts to other clients
         // - invalid_gift_change is called in any local updates and when merging gift information from other clients into local gift
-        // user_users is an optional array with new users (used when validating new gifts received from other clients)
-        var invalid_gift = function (gift, new_users) {
+        // new_users is an optional array with new users (used when validating new gifts received from other clients)
+        // context: "create" : create gift on this client, "receive" : receive gift from other client or "send" : send gift to other client
+        // server_id: mailbox.server_id. null for within server messages. >0 for messages to/from other Gofreerev servers
+        var invalid_gift = function (gift, new_users, context, server_id) {
             var pgm = service + '.invalid_gift: ' ;
             var errors = [] ;
             // fields to validate:
             //  1) gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             //  2) giver_user_ids and/or receiver_user_ids
             //  3) created_at_client unix timestamp - 10 decimals - used in gift signature on server
-            //  4) price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
-            //  5) currency: optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
-            //  6) direction: giver or receiver
-            //  7) description   :description => {:type => 'string'},
-            //  8) open_graph_url => {:type => %w(undefined string) },
-            //  9) open_graph_title => {:type => %w(undefined string) },
-            // 10) open_graph_description => {:type => %w(undefined string) },
-            // 11) open_graph_image => {:type => %w(undefined string) },
-            // 12) like - todo: must be changed to an array with user ids and like/unlike timestamps
-            // 13) deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
-            // 14) accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
-            // 15) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
-            // 16) comments array
-
+            //  4) created_at_server - null or an integer - 0 for current server - >0 for gifts from other Gofreerev servers
+            //  5) price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
+            //  6) currency: optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with restrictions
+            //  7) direction: giver or receiver (creator of gift)
+            //  8) description   :description => {:type => 'string'},
+            //  9) open_graph_url => {:type => %w(undefined string) },
+            // 10) open_graph_title => {:type => %w(undefined string) },
+            // 11) open_graph_description => {:type => %w(undefined string) },
+            // 12) open_graph_image => {:type => %w(undefined string) },
+            // 13) like - todo: must be changed to an array with user ids and like/unlike timestamps
+            // 14) deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            // 15) accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
+            // 16) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            // 17) comments array
+            
             // new_users from send_gifts sub message (sync_gifts) - fallback information used in case of unknown user
             var new_users_index = {} ;
             for (var i=0 ; i<new_users.length ; i++) new_users_index[new_users[i].user_id] = new_users[i] ;
@@ -79,6 +258,7 @@ angular.module('gifts')
                     errors.push('Giver is invalid. Doublet user ids in giver_user_ids' + giver_user_ids.join(', ')) ;
                     break ;
                 }
+                user_ids.push(user_id) ;
                 // lookup user: 1) friends array, 2) users array, 3) new_users array
                 user = userService.get_friend(user_id) ;
                 if (!user) user = userService.get_user(user_id) ;
@@ -124,7 +304,7 @@ angular.module('gifts')
                 }
             } // for i
             if ($(giver_user_ids).filter(receiver_user_ids).length > 0) {
-                errors.push('Giver/receiver is invalid. Found common user id in giver and receiver user ids. A user cannot be both giver and receiver of a gift') ;
+                errors.push('Giver/receiver is invalid. Found identical user id in giver and receiver user ids. A user cannot be both giver and receiver of a gift') ;
             }
             if ((giver_user_ids.length == 0) && (gift.direction == 'giver')) {
                 errors.push('Giver is invalid. Cannot be empty for direction=giver') ;
@@ -144,7 +324,20 @@ angular.module('gifts')
             else if (gift.created_at_client < from_unix_timestamp) errors.push('Invalid created_at_client unix timestamp') ;
             else if (gift.created_at_client > to_unix_timestamp) errors.push('Invalid created_at_client unix timestamp') ;
 
-            //  4) price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
+            //  4) created_at_server - null or an integer - 0 for current server - >0 for gifts from other Gofreerev servers
+            // blank when creating gift, 0 when server signature for gift has been created
+            if (!gift.hasOwnProperty('created_at_server') || (gift.created_at_server == null)) {
+                // must be a newly created gift waiting for server signature
+                if (context != 'create') errors.push('Created_at_server is missing') ;
+            }
+            else if ((typeof gift.created_at_server != 'number') && (gift.created_at_server < 0) && (Math.round(gift.created_at_server) != gift.created_at_server)) {
+                errors.push('Created_at_server is invalid. Must be null or an integer >= 0') ;
+            }
+            else {
+                if (context == 'create') errors.push('Created_at_server is invalid. Must be null when creating a new gift') ;
+            }
+
+            //  5) price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01 },
             // console.log(pgm + 'price = ' + gift.price + ', typeof price = ' + typeof gift.price) ;
             if ((typeof gift.price != 'undefined') && (gift.price != null)) {
                 if (typeof gift.price != 'number') errors.push('Price is invalid. Must be an number >= 0') ;
@@ -152,7 +345,7 @@ angular.module('gifts')
                 else if (gift.price != Math.round(gift.price, 2)) errors.push('Price is invalid. Max 2 decimals are allowed in prices') ;
             }
 
-            //  5) currency: optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with some restrictions
+            //  6) currency: optional currency - set when gift is created or when gift is accepted by a friend - iso4217 with some restrictions
             // Gofreerev.rails['VALID_CURRENCIES'] is a list with currencies from country to currency hash (from money gem)
             // not all currencies in list is active and not all currencies have exchange rates from default money bank
             if ((typeof gift.price == 'number') && (!gift.currency)) errors.push('Required currency is missing') ;
@@ -165,44 +358,45 @@ angular.module('gifts')
                 if (typeof gift.price == 'number') errors.push('Required currency is missing') ;
             }
 
-            //  6) direction: giver or receiver
+            //  7) direction: giver or receiver (creator of gift)
             if (!gift.direction) errors.push('Required direction is missing') ;
             else if (typeof gift.direction != 'string') errors.push('Direction is invalid. Must be giver or receiver') ;
             else if (['giver', 'receiver'].indexOf(gift.direction) == -1) errors.push('Direction is invalid. Must be giver or receiver') ;
             else if ((gift.direction == 'giver') && (giver_user_ids.length == 0)) errors.push('Direction is giver but no giver user ids was found') ;
             else if ((gift.direction == 'receiver') && (receiver_user_ids.length == 0)) errors.push('Direction is receiver but no receiver user ids was found') ;
 
-            //  7) description   :description => {:type => 'string'},
+            //  8) description   :description => {:type => 'string'},
             if ((typeof gift.description != 'string') || (gift.description == '')) errors.push('Required description is missing') ;
 
-            //  8) open_graph_url => {:type => %w(undefined string) },
+            //  9) open_graph_url => {:type => %w(undefined string) },
             if (gift.open_graph_url) {
                 if (typeof gift.open_graph_url != 'string') errors.push('Open graph link is invalid. Must be an http url') ;
                 else if (!gift.open_graph_url.match(/^https?:\/\//)) errors.push('Open graph link is invalid. Must be an http url') ;
                 else if (!gift.open_graph_title && !gift.open_graph_description && !gift.open_graph_image) errors.push('Open graph link is invalid. Open graph must have a title, a description and/or an image') ;
             }
 
-            //  9) open_graph_title => {:type => %w(undefined string) },
+            // 10) open_graph_title => {:type => %w(undefined string) },
             if (gift.open_graph_title && (typeof gift.open_graph_title != 'string')) errors.push('Invalid open graph title. Must be blank or a string') ;
 
-            // 10) open_graph_description => {:type => %w(undefined string) },
+            // 11) open_graph_description => {:type => %w(undefined string) },
             if (gift.open_graph_description && (typeof gift.open_graph_description != 'string')) errors.push('Invalid open graph description. Must be blank or a string') ;
 
-            // 11) open_graph_image => {:type => %w(undefined string) },
+            // 12) open_graph_image => {:type => %w(undefined string) },
             if (gift.open_graph_image) {
                 if (typeof gift.open_graph_image != 'string') errors.push('Open graph image is invalid. Must be an http url') ;
                 else if (!gift.open_graph_image.match(/^https?:\/\//)) errors.push('Open graph image is invalid. Must be an http url') ;
             }
             
-            // 12) like - todo: must be changed to an array with user ids and like/unlike timestamps
-            
-            // 13) deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            // 13) like - todo: must be changed to an array with user ids and like/unlike timestamps
+            // likes are not server validated and should only be replicated direct from client to client
+
+            // 14) deleted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
             if (gift.deleted_at_client) {
                 if (gift.deleted_at_client < from_unix_timestamp) errors.push('Invalid deleted_at_client unix timestamp') ;
                 else if (gift.deleted_at_client > to_unix_timestamp) errors.push('Invalid deleted_at_client unix timestamp') ;
             }
             
-            // 14) accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
+            // 15) accepted_cid => {:type => %w(undefined string), :pattern => uid_pattern},
             if (gift.accepted_cid) {
                 if (typeof gift.accepted_cid != 'string') errors.push('Invalid accepted cid (unique comment id). Cid must be a string with 20 digits') ;
                 else if (!gift.accepted_cid.match(/^[0-9]{20}$/)) errors.push('Invalid accepted cid (unique comment id). Cid must be a string with 20 digits') ;
@@ -225,7 +419,7 @@ angular.module('gifts')
                 }
             }
 
-            // 15) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
+            // 16) accepted_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
             if (gift.accepted_at_client) {
                 if (gift.accepted_at_client < from_unix_timestamp) errors.push('Invalid accepted_at_client unix timestamp') ;
                 else if (gift.accepted_at_client > to_unix_timestamp) errors.push('Invalid accepted_at_client unix timestamp') ;
@@ -239,16 +433,20 @@ angular.module('gifts')
 
             }
 
-            // 16) comments array
+            // 17) comments array
             var comments = gift.comments ;
             var no_comments_errors = 0 ;
             if (comments) {
-                for (i=0 ; i<comments.length ; i++) if (invalid_comment(comments[i])) no_comments_errors += 1 ;
+                for (i=0 ; i<comments.length ; i++) if (invalid_comment(comments[i], new_users, context, server_id)) no_comments_errors += 1 ;
                 if (no_comments_errors > 0) errors.push(no_comments_errors + ' invalid comments') ;
             }
 
-            if (errors.size > 0) console.log(pgm + 'Gift with errors. gift = ' + JSON.stringify(gift)) ;
-            return (errors.size == 0 ? null : errors.join('. ')) ;
+            if (errors.size > 0) {
+                console.log(pgm + 'Error for gift ' + JSON.stringify(gift)) ;
+                console.log(pgm + 'Error: ' + errors.join('. ')) ;
+                return errors.join('. ') ;
+            }
+            else return null ;
         };
         var invalid_gift_change = function (old_gift, new_gift) {
             var pgm = service + '.invalid_changed_gift: ' ;
@@ -258,17 +456,17 @@ angular.module('gifts')
 
         // calculate sha256 value for comment. used when comparing gift and comments between clients. replicate gifts with changed sha256 value between clients
         // readonly fields used in server side sha256 signature - update is NOT allowed - not included in sha256 calc for comment
-        // - created_at_client    - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
-        // - comment              - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
-        // - price                - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
-        // - currency             - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
-        // - new_deal             - readonly - used in client part of server side sha256 signature - not included in comment sha256 calculation
-        // - user_ids             - readonly - used in server side sha256 signature - not included in comment sha256 calculation
-        // - created_at_server    - server number - returned from new comments request and not included in comment sha256 calculation
-        // - new_deal_action      - blank, cancelled, accepted or rejected - only used for new deal proposals (new_deal=true), include in comment sha256 calculation
-        // - new_deal_action_by_user_ids - relevant login user ids for new_deal_action (cancel, accept, reject) - subset of comment or gift creators - include in comment sha256 calculation
-        // - new_deal_action_at_client - new deal action client unix timestamp - cancel, accept or reject - include in comment sha256 calculation
-        // - deleted_at_client    - deleted at client unix timestamp - include in comment sha256 calculation
+        // - created_at_client    - readonly - used in client part of server side sha256 signature - not included in calc_sha256_for_comment
+        // - comment              - readonly - used in client part of server side sha256 signature - not included in calc_sha256_for_comment
+        // - price                - readonly - used in client part of server side sha256 signature - not included in calc_sha256_for_comment
+        // - currency             - readonly - used in client part of server side sha256 signature - not included in calc_sha256_for_comment
+        // - new_deal             - readonly - used in client part of server side sha256 signature - not included in calc_sha256_for_comment
+        // - user_ids             - readonly - used in server side sha256 signature - not included in calc_sha256_for_comment
+        // - created_at_server    - server number - returned from new comments request and not included in calc_sha256_for_comment
+        // - new_deal_action      - blank, cancelled, accepted or rejected - only used for new deal proposals (new_deal=true), include in calc_sha256_for_comment
+        // - new_deal_action_by_user_ids - relevant login user ids for new_deal_action (cancel, accept, reject) - subset of comment or gift creators - include in calc_sha256_for_comment
+        // - new_deal_action_at_client - new deal action client unix timestamp - cancel, accept or reject - include in calc_sha256_for_comment
+        // - deleted_at_client    - deleted at client unix timestamp - include in calc_sha256_for_comment
         var calc_sha256_for_comment = function (comment) {
             var pgm = service + '.calc_sha256_for_comment: ';
             if (!comment.hasOwnProperty('created_at_server')) return null; // wait - no server side sha256 signature
@@ -619,24 +817,6 @@ angular.module('gifts')
                 //        }
                 //    }
                 //}
-                // gift data migration - change gift.created_at_server from a unix timestamp to an integer - server number - 1 for current server
-                //if (gift.hasOwnProperty('created_at_server')) {
-                //    if (gift.created_at_server.toString().length == 10) {
-                //        gift.created_at_server = 1 ;
-                //        migration = true ;
-                //    }
-                //}
-                // comment data migration - change comment.created_at_server from a unix timestamp to an integer - server number - 1 for current server
-                //if ((gift.hasOwnProperty('comments')) && (typeof gift.comments == 'object') && (gift.comments.length > 0)) {
-                //    for (j=0 ; j<gift.comments.length ; j++) {
-                //        comment = gift.comments[j] ;
-                //        if (comment.hasOwnProperty('created_at_server')) {
-                //            if (comment.created_at_server.toString().length == 10) {
-                //                comment.created_at_server = 1 ;
-                //                migration = true ;
-                //            }
-                //        }                    }
-                //}
                 // gifts data migration. empty fields (fx open graph) removed from end of all sha256 signatures. recreate all server side gift signatures
                 //if (gift.created_at_server) {
                 //    delete gift.created_at_server ;
@@ -696,19 +876,6 @@ angular.module('gifts')
                     comment = gift.comments[j] ;
                     add_user_ids_to_array(comment.user_ids, migration_user_ids) ;
                 }
-
-                // migration. change created_at_server from 1 to 0. gifts and comments. 0 = current server
-                //if (gift.created_at_server == 1) {
-                //    gift.created_at_server = 0 ;
-                //    migration = true ;
-                //}
-                //if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
-                //    comment = gift.comments[j] ;
-                //    if (comment.created_at_server == 1) {
-                //        comment.created_at_server = 0 ;
-                //        migration = true ;
-                //    }
-                //}
 
                 // save migrated gift
                 if (migration) Gofreerev.setItem(keys[i], JSON.stringify(gift)) ;
@@ -1372,7 +1539,7 @@ angular.module('gifts')
         }; // verify_gifts_response
 
 
-        // todo: remember delete request for remote gifts? this is gifts with created_at_server != 1. verification of remote gifts can take some time
+        // todo: remember delete request for remote gifts? this is gifts with created_at_server != 0. verification of remote gifts can take some time
 
         // send meta-data for deleted gifts to server and get gift.deleted_at_server response (boolean) from server.
         // called from UserService.ping
@@ -2632,10 +2799,11 @@ angular.module('gifts')
         // logical validate "send_gifts" message before send (receive_message_sync_gifts) and after receive (receive_message_send_gifts)
         // called after json validation but before sending send_gifts message / processing information in received send_gifts message
         // returns nil or error message
-        // params: send: true: sending message, false: receiving message
-        var validate_send_gifts_message = function (mailbox, send_gifts, send) {
+        // params:
+        // - context: 'send' : sending message, 'receive' : receiving message
+        var validate_send_gifts_message = function (mailbox, send_gifts, context) {
             var pgm = service + '.validate_send_gifts_message: ' ;
-            if (send) console.log(pgm + 'validating send_gifts message before send') ;
+            if (context == 'send') console.log(pgm + 'validating send_gifts message before send') ;
             else console.log(pgm + 'validating send_gifts message after received') ;
 
             // check missing gifts array
@@ -2702,7 +2870,7 @@ angular.module('gifts')
             var mutual_friends, friend ;
             if (cross_server_message) {
                 // send_gifts message to/from other Gofreerev server using sha256 signatures instead of internal user ids
-                if (send) {
+                if (context == 'send') {
                     // sending send_gifts message using remote sha256 signatures for users
                     mutual_friends = JSON.parse(JSON.stringify(mailbox.mutual_friends)) ;
                     userService.user_ids_to_remote_sha256(mutual_friends, mailbox.server_id, send_gifts, false) ;
@@ -2830,7 +2998,6 @@ angular.module('gifts')
 
                 // keep a copy of old sha256 user ids before translation (for debug and error messages)
                 var msg_users_sha256 = [] ;
-                var i ;
                 for (i=0 ; i<msg.users.length ; i++) msg_users_sha256.push(msg.users[i]) ;
 
                 //// print debug information for user id 2, 3, 920, 1126. todo: remove
@@ -3019,7 +3186,7 @@ angular.module('gifts')
                     gifts: [],
                     users: []
                 };
-                var index, gift_clone, users = [], gift_users = [], user ;
+                var gift_clone, users = [], gift_users = [], user, send_invalid_gids = [] ;
                 for (i=0 ; i<send_gids.length ; i++) {
                     gid = send_gids[i];
                     if (!gid_to_gifts_index.hasOwnProperty(gid)) {
@@ -3037,11 +3204,12 @@ angular.module('gifts')
                         continue ;
                     }
                     // validate gift before cloning for send_gifts sub message
-                    error = invalid_gift(gift, []) ;
+                    error = invalid_gift(gift, [], 'send', mailbox.server_id) ;
                     if (error) {
                         console.log(pgm + 'Warning. Invalid gift was not added to send_gifts sub message.') ;
                         console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
                         console.log(pgm + 'Error message: ' + error) ;
+                        send_invalid_gids.push(gid) ;
                         continue ;
                     }
 
@@ -3049,6 +3217,7 @@ angular.module('gifts')
                     // todo: 1 - change like from boolean to an array  with user ids and like/unlike timestamps for merge operation
                     // todo: 2 - add server side sha256_deleted signature to gift. Server could validate client_deleted_at and know that gift has been deleted
                     // todo: 3 - add url with optional file attachment (file upload has not been implemented yet)
+                    // todo: 4 - clone user id arrays if sending gift to other gofreerev server (user id is replaced with sha256 signature)
                     gift_clone =
                     {
                         gid: gift.gid,
@@ -3083,6 +3252,7 @@ angular.module('gifts')
                             // todo: 1 - add server side sha256_deleted and/or sha256_accepted signature
                             //           a comment cannot be both accepted and deleted (delete gift to remove accepted deals)
                             //           it should be enough with one client side deleted_at_server=accepted_at_server field
+                            // todo: 2 - clone user_ids array if sending message to other gofreerev server (user id is replaced with sha256 signature)
 
                             gift_clone.comments.push({
                                 cid: comment.cid,
@@ -3105,15 +3275,17 @@ angular.module('gifts')
                         } // for j (comments loop)
                     } // if comments
                     // validate gift_clone before adding gift to send_gifts sub message
-                    error = invalid_gift(gift_clone, []) ;
+                    error = invalid_gift(gift_clone, [], 'send', mailbox.server_id) ;
                     if (error) {
                         console.log(pgm + 'System error when adding gift to send_gifts sub message.') ;
                         console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
                         console.log(pgm + 'Error message: ' + error) ;
-                        continue ;
+                        send_invalid_gids.push(gid) ;
+                        continue ; //
                     }
                     send_gifts_sub_message.gifts.push(gift_clone) ;
                 } // for i (send_gids loop)
+                if (send_invalid_gids.length > 0) console.log(pgm + 'Gifts with gid ' + send_invalid_gids.join(', ') + ' were not added to send_gifts message. See previous error messages i log.') ;
 
                 // add relevant users to send_gifts message - used as fallback information in case of "unknown user" error on receiving client
                 for (j=0 ; j<gift_users.length ; j++) {
@@ -3312,7 +3484,7 @@ angular.module('gifts')
             // 1) check sub message send_gifts for logical errors
             if (sync_gifts_message.send_gifts) {
                 // logical validate send_gifts sub messsage before sending sync_gifts message
-                error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, true) ; // true: sending message
+                error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, 'send') ;
                 if (error) {
                     var error = 'Could not process gifts_sha256 message. Logical error in sync_gifts response (send_gifts sub message) : ' + error ;
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
@@ -3524,7 +3696,7 @@ angular.module('gifts')
                 // 1) gid and cid must be unique
                 // 2) users in msg.users array must be unique and be correct (all user ids in msg.users array except mutual friends)
                 // 3) sha256 signatures for servers must be in msg.servers array
-                var error = validate_send_gifts_message(mailbox, msg, false) ; // false: receiving message
+                var error = validate_send_gifts_message(mailbox, msg, 'receive') ;
                 if (error) {
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
                     mailbox.outbox.push({
@@ -3575,7 +3747,7 @@ angular.module('gifts')
 
                     // note msg.users as second argument 2 to invalid_gift call
                     // allows gift validation to use msg.users as fallback information in case of unknown users in givers, receivers or comments
-                    error = invalid_gift(new_gift, msg.users) ;
+                    error = invalid_gift(new_gift, msg.users, 'receive', mailbox.server_id) ;
                     if (error) errors.push('gid=' + new_gift.gid + ', error=' + error ) ;
                 } // for i (gifts)
                 if (errors.length > 0) {
@@ -3590,7 +3762,7 @@ angular.module('gifts')
                     return;
                 }
 
-                // calc sha256 values for new gifts received from other client
+                // calc sha256 values for gifts received from other client
                 var sha256_calc_errors = 0 ;
                 for (i = 0; i < msg.gifts.length; i++) {
                     new_gift = msg.gifts[i] ;
@@ -3598,7 +3770,14 @@ angular.module('gifts')
                     new_gift.sha256 = sha256_values[0] ;
                     new_gift.sha256_gift = sha256_values[1] ;
                     new_gift.sha256_comments = sha256_values[2] ;
-                    if (!new_gift.sha256) sha256_calc_errors += 1 ;
+                    if (!new_gift.sha256) {
+                        sha256_calc_errors += 1 ;
+                        continue ; }
+                    if (!new_gift.hasOwnProperty('comments')) continue ;
+                    for (j=0 ; j<new_gift.comments.length ; j++) {
+                        new_comment = new_gift.comments[j] ;
+                        new_comment.sha256 = calc_sha256_for_comment(new_comment) ;
+                    }
                 }
                 if (sha256_calc_errors > 0) {
                     error = 'Found ' + sha256_calc_errors + ' gifts where sha256 calculation failed.';
@@ -3677,8 +3856,9 @@ angular.module('gifts')
             var verify_new_comments = 0; // number of new comments that must be server validated
             var verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
             var new_comments_invalid_sha = []; // array with cids
-            var index_system_errors = []; // gid array with gift index system errors - fatal javascript error
+            var gift_index_system_errors = []; // gid array with gift index system errors - fatal javascript error
             var validation_system_errors = []; // gid array with sha validation system errors - fatal javascript error
+            var comment_index_system_errors = [] ; // cid array with comment index sytsem errors - fatal javascript errors
             var counterpart_errors = [] ; // gid array with gifts with invalid counter part update (other user) - only allowed when acception a new deal
             var gifts_without_mutual_friends ; // array with gids - new gifts without mutual friends - ignore and report as warning in log
             var gifts_created = [] ; // array with gids - new created gifts
@@ -3689,7 +3869,7 @@ angular.module('gifts')
             var new_gift_creators, old_gift_creators, new_gift_counterpart, old_gift_counterpart;
             var old_gift_accepted, new_gift_accepted, gift_accept_action, gift_delete_action, gift_price_action, gift_like_action;
             var comments_pass, seconds ;
-            var gift, comment ;
+            var gift, comment, old_comment, k ;
 
 
             // gifts loop
@@ -3705,13 +3885,13 @@ angular.module('gifts')
                     index = gid_to_gifts_index[gid];
                     if ((index < 0) || (index >= gifts.length)) {
                         // system error - error in javascript logic
-                        index_system_errors.push(gid);
+                        gift_index_system_errors.push(gid);
                         continue;
                     }
                     old_gift = gifts[index];
                     if (!old_gift || (old_gift.gid != gid)) {
                         // system error - error in javascript
-                        index_system_errors.push(gid);
+                        gift_index_system_errors.push(gid);
                         continue;
                     }
                     // compare old (this client) and new gift (from other client)
@@ -3861,6 +4041,57 @@ angular.module('gifts')
                     if (new_gift.comments) {
                         for (j = 0; j < new_gift.comments.length; j++) {
                             new_comment = new_gift.comments[j];
+
+                            if (old_cids.indexOf(new_comment.cid) == -1) {
+                                // lookup old comment
+                                old_comment = null ;
+                                for (var k=0 ; k < old_gift.comments.length ; k++) {
+                                    if (old_gift.comments[k].cid == new_comment.cid) old_comment = old_gift.comments[k] ;
+                                } ;
+                                if (old_comment == null) {
+                                    console.log(pgm + 'System error for cid ' + new_comment.cid + '. Found in old_cids array but not found in old gift comments array') ;
+                                    comment_index_system_errors.push(new_comment.cid) ;
+                                    continue ;
+                                } ;
+                            }
+                            else {
+                                // new comment
+                                old_comment = null ;
+                            }
+
+
+
+                            // todo: ignore unchanged comments
+
+
+                            // new_comment - must be verified before adding/merge operation
+
+
+                            if (!new_comment.hasOwnProperty('verify_seq')) {
+                                // new comment must be server validated before continuing (between pass 1 and pass 2)
+                                verify_new_comments += 1;
+                                verify_comments_add(gid, new_comment);
+                                comments_pass = 1 ;
+                                continue; // wait for verify comments
+                            }
+                            if (!new_comment.hasOwnProperty('verified_at_server')) {
+                                // new comment already in queue for server verification (offline, server not responding or remote comment)
+                                // todo: how long time to wait for:
+                                //   a: offline client - no internet connection
+                                //   b: server not responding (error or timeout)
+                                //   c: remote comment verification (error or remote server not responding)
+                                seconds = Gofreerev.unix_timestamp() - new_comment.in_verify_comments;
+                                console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
+                                verifying_new_comments += 1;
+                                comments_pass = 1 ;
+                                continue; // wait for verify comments
+                            }
+                            if (!new_comment.verified_at_server) {
+                                // invalid signature for new comment - changed on other client or incorrect in message
+                                new_comments_invalid_sha.push(gid);
+                                continue;
+                            }
+
                             // todo: add device.ignore_invalid_comments list? a gift could be correct except a single invalid comment!
                             if (old_cids.indexOf(new_comment.cid) == -1) {
 
@@ -3868,31 +4099,6 @@ angular.module('gifts')
                                 // - can also be a user from an other api provider
                                 // - can also be from a remove server where friend lists are not 100% synchronized
 
-                                // new comment - must be verified before adding to gift
-                                if (!new_comment.hasOwnProperty('verify_seq')) {
-                                    // new comment must be server validated before continuing (between pass 1 and pass 2)
-                                    verify_new_comments += 1;
-                                    verify_comments_add(gid, new_comment);
-                                    comments_pass = 1 ;
-                                    continue; // wait for verify comments
-                                }
-                                if (!new_comment.hasOwnProperty('verified_at_server')) {
-                                    // new comment already in queue for server verification (offline, server not responding or remote comment)
-                                    // todo: how long time to wait for:
-                                    //   a: offline client - no internet connection
-                                    //   b: server not responding (error or timeout)
-                                    //   c: remote comment verification (error or remote server not responding)
-                                    seconds = Gofreerev.unix_timestamp() - new_comment.in_verify_comments;
-                                    console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
-                                    verifying_new_comments += 1;
-                                    comments_pass = 1 ;
-                                    continue; // wait for verify comments
-                                }
-                                if (!new_comment.verified_at_server) {
-                                    // invalid signature for new comment - changed on other client or incorrect in message
-                                    new_comments_invalid_sha.push(gid);
-                                    continue;
-                                }
                                 // new comment ok - comment ready for pass 2
                                 console.log(pgm + 'new comment ' + new_comment.cid + ' ok - comment ready for pass 2');
 
@@ -3912,7 +4118,7 @@ angular.module('gifts')
                                 } ;
                                 // todo: validate new comment - return any errors to UI
                                 // extra control. gifts have already been validated in validate_send_gifts_message
-                                if (errors = invalid_comment(comment, [])) {
+                                if (errors = invalid_comment(comment, [], 'receive', mailbox.server_id)) {
                                     console.log(pgm + 'Could not create new comment: ' + errors);
                                     console.log(pgm + 'comment = ' + JSON.stringify(comment));
                                     create_comment_errors.push(new_comment.cid);
@@ -3936,7 +4142,43 @@ angular.module('gifts')
                             }
                             else {
                                 // existing comment
+                                old_comment = null ;
+                                for (var k=0 ; k < old_gift.comments.length ; k++) {
+                                    if (old_gift.comments[k].cid == new_comment.cid) old_comment = old_gift.comments[k] ;
+                                } ;
+                                if (old_comment == null) {
+                                    console.log(pgm + 'System error for cid ' + new_comment.cid + '. Found in old_cids array but not found in old gift comments array') ;
+                                    comment_index_system_errors.push(new_comment.cid) ;
+                                    continue ;
+                                } ;
+
+                                if (old_comment.sha256 == new_comment.sha256) continue ; // ignore identical comments
+                                console.log(pgm + 'old_comment = ' + JSON.stringify(old_comment)) ;
+                                console.log(pgm + 'new_comment = ' + JSON.stringify(new_comment)) ;
+                                //old_comment =
+                                //  {"cid":"14323680230743366185",
+                                //    "user_ids":["7TXVE0hsVwC9iJneZ9MjESM2qG+go3VZ6fg1a4Y3Pbw="],
+                                //    "comment":"client 1",
+                                //    "currency":"usd",
+                                //    "created_at_client":1432368023,
+                                //    "created_at_server":1,
+                                //    "sha256":"¼õsZ\u001es¯\u000f\u000e±UÁ°®\u001f*µâ\u0000óÇEÙAíøî³"}
+                                //new_comment =
+                                //  {"cid":"14323680230743366185",
+                                //    "user_ids":[3],
+                                //    "currency":"usd",
+                                //    "comment":"client 1",
+                                //    "created_at_client":1432368023,
+                                //    "created_at_server":1,
+                                //    "deleted_at_client":1432646850,
+                                //    "sha256":"\u0006:ÑxV!!\t«¾!Nï?\f\nR\u0000Ðô]7\u001cÚ5è?ØW\u001f"}
+
                                 console.log(pgm + 'merge existing comment not implemented') ;
+
+                                // few changes are allowed for a gift:
+                                // 1) cancel, accept or reject proposal (only if comment was created with new_deal = true)
+                                // 2) delete comment
+                                // 3) todo:
                             }
                         } // for j (new_gift.comments)
                     } // if comments
@@ -4069,7 +4311,7 @@ angular.module('gifts')
                     new_comment: {comment: ""}
                 };
                 // extra control. gifts have already been validated in validate_send_gifts_message
-                if (errors = invalid_gift(gift, [])) {
+                if (errors = invalid_gift(gift, [], 'receive', mailbox.server_id)) {
                     console.log(pgm + 'Could not create new gift: ' + errors);
                     console.log(pgm + 'gift = ' + JSON.stringify(gift));
                     create_gift_errors.push(new_gift.gid);
@@ -4100,7 +4342,7 @@ angular.module('gifts')
                         } ;
                         // todo: validate new comment - return any errors to UI
                         // extra control. gifts have already been validated in validate_send_gifts_message
-                        if (errors = invalid_comment(comment, [])) {
+                        if (errors = invalid_comment(comment, [], 'receive', mailbox.server_id)) {
                             console.log(pgm + 'Could not create new comment: ' + errors);
                             console.log(pgm + 'comment = ' + JSON.stringify(comment));
                             create_comment_errors.push(new_comment.cid);
@@ -4128,9 +4370,9 @@ angular.module('gifts')
             // check result of pass 1, 2 and 3 / continue with next pass if ok
 
             // check for system errors - write message in log, send error message and abort
-            if (index_system_errors.length > 0) {
+            if (gift_index_system_errors.length > 0) {
                 // system error - error in javascript logic - abort processing of send_gifts message
-                error = 'System error. Invalid gifts index. Gifts: ' + index_system_errors.join(', ');
+                error = 'System error. Invalid gifts index. Gifts: ' + gift_index_system_errors.join(', ');
                 console.log(pgm + error + '. msg = ' + JSON.stringify(msg));
                 mailbox.outbox.push({
                     mid: Gofreerev.get_new_uid(),
@@ -4453,8 +4695,8 @@ angular.module('gifts')
                     gift_clone =
                     {
                         gid: my_gift.gid,
-                        giver_user_ids: my_gift.giver_user_ids,
-                        receiver_user_ids: my_gift.receiver_user_ids,
+                        giver_user_ids: my_gift.giver_user_ids.slice(0),
+                        receiver_user_ids: my_gift.receiver_user_ids.slice(0),
                         created_at_client: my_gift.created_at_client,
                         created_at_server: my_gift.created_at_server,
                         price: my_gift.price,
@@ -4529,7 +4771,7 @@ angular.module('gifts')
 
                 if (send_gift) {
                     // validate gift_clone before adding gift to send_gifts sub message
-                    error = invalid_gift(gift_clone, []) ;
+                    error = invalid_gift(gift_clone, [], 'send', mailbox.server_id) ;
                     if (error) {
                         console.log(pgm + 'System error when adding gift to send_gifts sub message.') ;
                         console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
@@ -4662,7 +4904,7 @@ angular.module('gifts')
             // 1) check sub message send_gifts for logical errors
             if (sync_gifts_message.send_gifts) {
                 // logical validate send_gifts sub messsage before sending sync_gifts message
-                error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, true) ; // true: sending message
+                error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, 'send') ;
                 if (error) {
                     var error = 'Could not process gifts_sha256 message. Logical error in sync_gifts response (send_gifts sub message) : ' + error ;
                     console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;

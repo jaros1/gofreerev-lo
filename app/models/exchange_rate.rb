@@ -171,8 +171,13 @@ class ExchangeRate < ActiveRecord::Base
         exchange_rate = Money.default_bank.get_rate(from_currency, to_currency)
         exchange_rates[to_currency] = exchange_rate
       rescue Money::Bank::UnknownRate => e
+        logger.warn2 "Ignoring exception #{e.class}: #{e.message}"
         nil
       rescue Money::Bank::GoogleCurrencyFetchError => e
+        logger.warn2 "Ignoring exception #{e.class}: #{e.message}"
+        nil
+      rescue SocketError => e
+        logger.warn2 "Ignoring exception #{e.class}: #{e.message}"
         nil
       end
     end # each

@@ -160,6 +160,7 @@ class Comment < ActiveRecord::Base
       seqs[seq] = true
       cids << new_comment["cid"]
       comments_user_ids += new_comment["user_ids"]
+      comments_user_ids += new_comment["new_deal_action_by_user_ids"] if new_comment["new_deal_action_by_user_ids"]
       server_id = new_comment['server_id']
       server_ids << server_id if server_id and !server_ids.index(server_id)
     end
@@ -214,6 +215,27 @@ class Comment < ActiveRecord::Base
         next
       end
 
+      if verify_comment["new_deal_action_by_user_ids"] and verify_comment["new_deal_action_by_user_ids"].size > 0
+        new_deal_action_by_user_ids1 = verify_comment["new_deal_action_by_user_ids"]
+      else
+        new_deal_action_by_user_ids1 = []
+      end
+      if verify_comment["sha256_action"].to_s != '' and new_deal_action_by_user_ids1.size == 0
+        logger.error2 "cid #{cid}. Invalid request. new_deal_action_by_user_ids is missing."
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
+      if verify_comment["sha256_action"].to_s == '' and new_deal_action_by_user_ids1.size > 0
+        logger.error2 "cid #{cid}. Invalid request. sha256_action is missing."
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
+      if new_deal_action_by_user_ids1.size != new_deal_action_by_user_ids1.uniq.size
+        logger.error2 "cid #{cid}. Invalid request. User ids in new_deal_action_by_user_ids must be unique."
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
+
       # check if comment exists
       if !server_id
         # local comments verification - comment must exist
@@ -232,7 +254,7 @@ class Comment < ActiveRecord::Base
       user_ids = []
       user_error = false
       comment_user_ids.each do |user_id|
-        if server_id and user_id < 0 # unknown remote user
+        if server_id and user_id < 0 # unknown remote user - used negative user id as it is
           user_ids << user_id
           next
         end
@@ -267,6 +289,45 @@ class Comment < ActiveRecord::Base
       user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
       user_ids.sort! unless server_id
 
+      # todo: prepare new_deal_action_by_user_ids. only used for comments with a new_deal_action / sha256_action signature.
+      new_deal_action_by_user_ids2 = []
+      user_error = false
+      new_deal_action_by_user_ids1.each do |user_id|
+        if server_id and user_id < 0 # unknown remote user - used negative user id as it is
+          new_deal_action_by_user_ids2 << user_id
+          next
+        end
+        user = users[user_id]
+        if user
+          if server_id
+            # remote comment verification
+            su = user.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+            if su
+              # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
+              new_deal_action_by_user_ids2.push({ :sha256 => user.calc_sha256(servers[server_id].secret),
+                              :pseudo_user_id => su.remote_pseudo_user_id,
+                              :sha256_updated_at => user.sha256_updated_at.to_i
+                            })
+            else
+              new_deal_action_by_user_ids2 << -user.id # unknown remote user
+            end
+          else
+            # local comment verification - use user id as it is
+            new_deal_action_by_user_ids2 << user.user_id
+          end
+          friend = friends[user.user_id]
+          mutual_friend = true if friend and friend <= 2
+        else
+          logger.warn2 "Cid #{cid} : user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown new_deal_action_user_ids."
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          user_error = true
+          break
+        end
+      end
+      next if user_error
+      new_deal_action_by_user_ids2.uniq! # todo: should return an error if doublets in giver_user_ids array
+      new_deal_action_by_user_ids2.sort! unless server_id
+
       if !mutual_friend
         logger.warn2 "cid #{cid} is not from a friend"
         # response << { :seq => seq, :gid => cid }
@@ -297,6 +358,7 @@ class Comment < ActiveRecord::Base
         hash[:sha256_action] = verify_comment["sha256_action"] if verify_comment["sha256_action"]
         hash[:sha256_deleted] = verify_comment["sha256_deleted"] if verify_comment["sha256_deleted"]
         hash[:user_ids] = user_ids
+        hash[:new_deal_action_by_user_ids] = new_deal_action_by_user_ids2 if verify_comment["sha256_action"]
         server_requests[server_id] = [] unless server_requests.has_key? server_id
         server_requests[server_id].push(hash)
         next

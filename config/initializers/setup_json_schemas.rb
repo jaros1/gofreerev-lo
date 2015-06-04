@@ -273,7 +273,7 @@ JSON_SCHEMA = {
                           :sha256_deleted => {:type => 'string', :maxLength => 32},
                           # only used in accepted_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
                           :sha256_accepted => {:type => 'string', :maxLength => 32},
-                          # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                          # internal user ids for either giver or receiver
                           :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
                           :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
                       },
@@ -344,8 +344,14 @@ JSON_SCHEMA = {
                           :cid => {:type => 'string', :pattern => uid_pattern},
                           # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price, currency and new_deal)
                           :sha256 => {:type => 'string', :maxLength => 32},
-                          # internal user ids for creator of comment (=login users) - todo: change to uid/provider format to support cross server replication?
-                          :user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                          # sha256 client digest if new deal proposal (new_deal=true) has been cancelled, accepted or rejected (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action and new_deal_action_at_client)
+                          :sha256_action => {:type => 'string', :maxLength => 32},
+                          # sha256 client digest if comment has been deleted (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action, new_deal_action_at_client and deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # internal user ids for creator of comment (=login users)
+                          :user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                          # optional internal user ids for any new_deal_action (cancel, accept or reject) for new deal proposal.
+                          :new_deal_action_by_user_ids => {:type => 'array', :items => {:type => 'integer'}}
                       },
                       :required => %w(seq cid sha256 user_ids),
                       :additionalProperties => false

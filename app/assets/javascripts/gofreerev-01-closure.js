@@ -348,7 +348,7 @@ var Gofreerev = (function() {
             return ;
         }
         delete_old_error(table, error) ;
-        var length = table.rows.size ;
+        var length = table.rows.length ;
         add2log(pgm + 'length = ' + length) ;
         var row = table.insertRow(length) ;
         var cell1 = row.insertCell(0) ;

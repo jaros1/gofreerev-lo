@@ -1017,10 +1017,12 @@ angular.module('gifts')
 
         // load users from localStorage
         var load_users = function () {
+            var pgm = service + '.load_users: ' ;
             var users_tmp = Gofreerev.getItem('users') ;
             if (users_tmp) users = JSON.parse(users_tmp) ;
             else users = [] ;
             init_users_index() ;
+            console.log(pgm + 'users = ' + JSON.stringify(users)) ;
         };
         load_users();
 
@@ -1047,7 +1049,7 @@ angular.module('gifts')
         var add_new_login_users = function (login_user_ids) {
             var pgm = service + '.add_new_login_users: ' ;
             if ((typeof login_user_ids == 'undefine') || (login_user_ids == null)) return ;
-            if (login_user_ids.size == 0) return ;
+            if (login_user_ids.length == 0) return ;
             var save = false, user_id, friend ;
             for (var i=0 ; i<login_user_ids.length ; i++) {
                 user_id = login_user_ids[i] ;
@@ -1078,7 +1080,7 @@ angular.module('gifts')
         var add_friends_to_users = function (user_ids) {
             var pgm = service + '.add_friends_to_users: ' ;
             if ((typeof user_ids == 'undefine') || (user_ids == null)) return ;
-            if (user_ids.size == 0) return ;
+            if (user_ids.length == 0) return ;
             var save = false, user_id, friend ;
             for (var i=0 ; i<user_ids.length ; i++) {
                 user_id = user_ids[i] ;

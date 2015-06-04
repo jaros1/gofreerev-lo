@@ -1834,4 +1834,8 @@
      or comments. client A creates comment when client B is offlline and client B receives comment when client A is offline
      encryption must be mix. symmetric password can not be used between offline clients.
 
+430) how to replicate gift and comment likes?
+     add likes table and server side signatures for likes?
+     lid (unique like id), sha256 and sha256_deleted
+
 select next issue to solve: (rand*429).floor+1

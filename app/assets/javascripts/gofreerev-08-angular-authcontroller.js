@@ -42,7 +42,11 @@ angular.module('gifts')
             if (!logged_in) return ;
             console.log('AuthCtrl.logout: debug 2') ;
             userService.logout(provider) ;
-            if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) giftService.load_gifts() ;
+            if ((typeof provider == 'undefined') || (provider == null) || (provider == 'gofreerev')) {
+                // login changed. reload users and gifts
+                userService.load_users() ;
+                giftService.load_gifts() ;
+            }
             console.log('AuthCtrl.logout: debug 3') ;
             $location.path('/auth/0') ;
             $location.replace() ;
@@ -81,6 +85,7 @@ angular.module('gifts')
                 // cache some oauth information used in ping.
                 userService.cache_oauth_info() ;
                 // console.log('AuthCtrl.login_or_register: userid = ' + userid) ;
+                userService.load_users() ;
                 giftService.load_gifts() ;
                 // send old oauth to server for recheck and copy to session
                 // todo: userService should return a promise, and this promise should be used to inject any error messages into auth page
@@ -88,6 +93,8 @@ angular.module('gifts')
                 set_login_or_register_error('') ;
                 userService.send_oauth().then(function (response) {
                     console.log(pgm + 'send_oauth ok') ;
+                    // friend list received from server - copy any missing users to users js array / localStorage - all user ids in gifts and comments must be in users
+                    giftService.add_friends_to_users() ;
                 }, function (error) {
                     console.log(pgm + 'send oauth error = ' + error) ;
                     set_login_or_register_error(error) ;

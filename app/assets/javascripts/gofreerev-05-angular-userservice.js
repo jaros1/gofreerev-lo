@@ -1027,8 +1027,10 @@ angular.module('gifts')
         load_users();
 
         var save_users = function () {
+            var pgm = service + '.save_users: ' ;
+            console.log(pgm + 'users = ' + JSON.stringify(users)) ;
             Gofreerev.setItem('users', JSON.stringify(users)) ;
-        };
+        }; // save_users
 
         // return user from users array
         var get_user = function (user_id) {
@@ -1084,7 +1086,11 @@ angular.module('gifts')
             var save = false, user_id, friend ;
             for (var i=0 ; i<user_ids.length ; i++) {
                 user_id = user_ids[i] ;
-                if (users_index_by_user_id.hasOwnProperty(user_id)) continue ; // already in users js/localStorage
+                if (users_index_by_user_id.hasOwnProperty(user_id)) {
+                    // already in users js/localStorage
+                    // todo: check for changed fields
+                    continue ;
+                }
                 friend = get_friend(user_id) ;
                 if (!friend) {
                     console.log(pgm + 'Invalid call. ' + user_id + ' was not found in friend lists') ;
@@ -1113,6 +1119,7 @@ angular.module('gifts')
 
         return {
             providers: providers,
+            load_users: load_users,
             is_logged_in: is_logged_in,
             is_logged_in_with_device: is_logged_in_with_device,
             is_logged_in_with_provider: is_logged_in_with_provider,

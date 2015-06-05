@@ -736,6 +736,7 @@ angular.module('gifts')
         } // get_gift_keys
 
         // helper function. collect user ids used in gifts and comments and append to array
+        // should normally be a list of integers
         // send in load_gifts, validate_send_gifts_message etc
         function add_user_ids_to_array (user_ids, array) {
             if (!user_ids) return ;
@@ -746,6 +747,41 @@ angular.module('gifts')
                 if (array.indexOf(user_id) == -1) array.push(user_id) ;
             }
         } // add_user_ids_to_array
+
+
+        // post load_gifts / post login - copy friends used in gifts and comments to users (localStorage and JS)
+        // users array should normally be up-to-date
+        var add_friends_to_users = function () {
+            var pgm = service + '.add_friends_to_users: ' ;
+            var migration_user_ids = [] ;
+            var i, gift, comment ;
+
+            // find relevant user ids
+            for (i=0 ; i<gifts.length ; i++) {
+                gift = gifts[i] ;
+                // migration_user_ids - friends used in gifts and comments must be in users
+                add_user_ids_to_array(gift.giver_user_ids, migration_user_ids) ;
+                add_user_ids_to_array(gift.receiver_user_ids, migration_user_ids) ;
+                if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
+                    comment = gift.comments[j] ;
+                    add_user_ids_to_array(comment.user_ids, migration_user_ids) ;
+                    add_user_ids_to_array(comment.new_deal_action_by_user_ids, migration_user_ids) ;
+                }
+            }; // for i
+
+            // remove any invalid user ids (must be integer >= 1)
+            var user_id ;
+            for (i=migration_user_ids.length-1 ; i>= 0 ; i--) {
+                user_id = migration_user_ids[i];
+                if ((typeof user_id != 'number') || (Math.round(user_id) != user_id) || (user_id < 1)) {
+                    console.log(pgm + 'Error. Ignoring invalid user id ' + user_id + ' in copy friends to users operation') ;
+                    migration_user_ids.splice(i,1) ;
+                }
+            }; // for i
+
+            if (migration_user_ids.length > 0) userService.add_friends_to_users(migration_user_ids) ;
+        }; // add_friends_to_users
+
 
         // load/reload gifts and comments from localStorage - used at startup and after login/logout
         //var seq_to_gid = {} ; // localStorage: from gift_<seq> in localStorage to gid
@@ -763,13 +799,9 @@ angular.module('gifts')
             user_id_to_gifts = {};
             seq_to_gid = {} ;
             gid_to_seq = {} ;
-            
-            // todo: data migration. collect user ids used in gifts and comments and add to migration_user_id
-            var migration_user_ids = [] ;
-            var sha256_values ;
 
             // loop for all gifts
-            var gift, j, comment, migration, seq, k, errors ;
+            var gift, j, comment, migration, seq, k, errors, sha256_values ;
             for (var i=0 ; i<keys.length ; i++) {
 
                 seq = keys[i].split('_')[1] ;
@@ -873,13 +905,6 @@ angular.module('gifts')
                     }
                 }
                 
-                // migration_user_ids - friends used in gifts and comments must be in users
-                add_user_ids_to_array(gift.giver_user_ids, migration_user_ids) ;
-                add_user_ids_to_array(gift.receiver_user_ids, migration_user_ids) ;
-                if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
-                    comment = gift.comments[j] ;
-                    add_user_ids_to_array(comment.user_ids, migration_user_ids) ;
-                }
 
                 // save migrated gift
                 if (migration) Gofreerev.setItem(keys[i], JSON.stringify(gift)) ;
@@ -905,32 +930,12 @@ angular.module('gifts')
                 gid_to_seq[gift.gid] = seq ;
                 seq_to_gid[seq] = gift.gid ;
 
-            }
+            } // for i
             console.log(pgm + 'gifts.length = ' + gifts.length);
             init_gifts_index();
 
-            // data migration. add missing users from friends to users array. todo: remove
-            // console.log(pgm + 'migration_user_ids = ' + migration_user_ids.join(', ')) ;
-            var user_id, migration_user ;
-            for (i=migration_user_ids.length-1 ; i>= 0 ; i--) {
-                user_id = migration_user_ids[i] ;
-                migration_user = userService.get_user(user_id) ;
-                if (migration_user) {
-                    // already in users array
-                    console.log(pgm + 'user_id ' + user_id + ' already in users array') ;
-                    migration_user_ids.splice(i,1) ;
-                    continue ;
-                }
-                migration_user = userService.get_friend(user_id) ;
-                if (!migration_user) {
-                    console.log(pgm + 'user_id ' + user_id + ' is missing in both users and friends JS arrays') ;
-                    migration_user_ids.splice(i,1) ;
-
-                }
-                // keep in migration_user_ids array
-            } // for i (migration_user_ids)
-            console.log(pgm + 'migration_user_ids.length = ' + migration_user_ids.length) ;
-            if (migration_user_ids.length > 0) userService.add_friends_to_users(migration_user_ids) ;
+            // data migration. add missing users from friends to users array.
+            add_friends_to_users() ;
         };
         load_gifts();
 
@@ -5206,6 +5211,7 @@ angular.module('gifts')
             invalid_comment_change: invalid_comment_change,
             invalid_gift: invalid_gift,
             invalid_gift_change: invalid_gift_change,
+            add_friends_to_users: add_friends_to_users,
             load_gifts: load_gifts,
             refresh_gift: refresh_gift,
             refresh_gift_and_comment: refresh_gift_and_comment,

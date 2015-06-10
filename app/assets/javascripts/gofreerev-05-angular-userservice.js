@@ -926,7 +926,8 @@ angular.module('gifts')
         // returns nil (ok) or an error message
         var user_ids_to_remote_sha256 = function (user_ids, array_name, server_id, msg, force) {
             var pgm = service + '.user_ids_to_remote_sha256: ' ;
-            if ((typeof user_ids == 'undefined') || (user_ids == null)) return true ; // null array ok (receiver_user_ids, new_deal_action_by_user_ids etc)
+            if ((typeof user_ids == 'undefined') || (user_ids == null)) return null ; // null array ok (receiver_user_ids, new_deal_action_by_user_ids etc)
+            console.log(pgm + array_name + ' = ' + JSON.stringify(user_ids) + ', typeof user_ids = ' + typeof user_ids) ; // todo: remove debugging
             var remote_sha256_values = [] ;
             var i, user_id, friend, remote_sha256, error ;
             for (i=0 ; i<user_ids.length ; i++) {
@@ -980,7 +981,7 @@ angular.module('gifts')
 
             // translate ok. overwrite values in input array.
             for (i=0 ; i<user_ids.length ; i++) user_ids[i] = remote_sha256_values[i] ;
-            return nil ;
+            return null ;
         }; // user_ids_to_remote_sha256;
 
 

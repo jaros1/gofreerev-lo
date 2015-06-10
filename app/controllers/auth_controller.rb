@@ -37,6 +37,8 @@ class AuthController < ApplicationController
 
   # omniauth callback on success (login was started from rails)
   def create
+    # todo: debug problems with missing did after login
+    logger.debug2 "get_session_value(:did) = #{get_session_value(:did)}"
     @auth_hash = auth_hash
     client_userid = get_client_userid()
 

@@ -2673,11 +2673,11 @@ class Server < ActiveRecord::Base
     # send ping request
     logger.warn2 "unsecure post #{url}" unless secure
     res = client.post(url, :body => ping_request.to_json, :header => header)
-    logger.debug2 "res = #{res}"
+    logger.debug2 "res = #{res}" # todo: only dump res and res.body in log if JSON.parse fails
     FileUtils.rm signature_filename
     return { :error => "post #{url.to_s} failed with status #{res.status}" } unless res.status == 200
     client.cookie_manager.save_all_cookies(true, true, true)
-    logger.debug2 "res.body = #{res.body}"
+    logger.debug2 "res.body = #{res.body}" # todo: only dump res and res.body in log if JSON.parse fails
 
     # json validate ping response
     ping_response = JSON.parse(res.body)
@@ -2688,7 +2688,8 @@ class Server < ActiveRecord::Base
     end
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_response)
     return { :error => "Invalid ping json response: #{json_errors.join(', ')}" } unless json_errors.size == 0
-    return { :error => ping_response['error'] } if ping_response['error']
+    errors = [] # collect errors from ping response, messages array and processed messages
+    errors << "ping error from server: #{ping_response['error']}" if ping_response['error']
 
     # process ping response from other Gofreerev server
     # 1) interval in milliseconds between ping requests
@@ -2696,15 +2697,16 @@ class Server < ActiveRecord::Base
     self.save!
     # 2) receive and process any messages
     if ping_response["messages"]
-      return { :error => ping_response["messages"]["error"], :interval => ping_response["interval"]} if ping_response["messages"].has_key? "error"
+      errors << "messages error from server: #{ping_response["messages"]["error"]}" if ping_response["messages"].has_key? "error"
       # client=true: called from Server.ping. received messages are server messages
       error = Message.receive_messages true, self.new_did, nil, pseudo_user_ids, ping_response["messages"]["messages"]
-      return { :error => error, :interval => ping_response["interval"] } if error
+      errors << "process messages error: #{error}" if error
     end
     self.reload
-    # 3) todo: etc
-    { :interval => ping_response["interval"] }
-
+    # 3)
+    { :interval => ping_response['interval'],
+      :error => errors.length == 0 ? nil : errors.join('. ')
+    }
   end # ping
 
 

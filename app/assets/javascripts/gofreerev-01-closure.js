@@ -1064,6 +1064,16 @@ var Gofreerev = (function() {
         return seq ;
     } // get_next_seq
 
+    function clone_array (array) {
+        var pgm = 'Gofreerev.clone_array: ' ;
+        if ((typeof array == 'undefined') || (array == null)) return array ;
+        if (!$.isArray (array)) {
+            console.log(pgm + 'Invalid call. array = ' + JSON.stringify(array)) ;
+            return array ;
+        };
+        return array.slice(0) ;
+    }
+
     // export public used methods (views)
     return {
         // constants from ruby on rails. see ruby_to.js.erb
@@ -1101,7 +1111,8 @@ var Gofreerev = (function() {
         is_json_response_invalid: is_json_response_invalid,
         is_json_message_invalid: is_json_message_invalid,
         generate_random_password: generate_random_password,
-        get_next_seq: get_next_seq
+        get_next_seq: get_next_seq,
+        clone_array: clone_array
     };
 })();
 // Gofreerev closure end

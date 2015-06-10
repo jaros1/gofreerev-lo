@@ -637,21 +637,19 @@ class ApplicationController < ActionController::Base
         logger.debug2 "invalid picture received from #{provider}. image = #{image}"
       end
     end
-    # 2) post_login for provider
+    # 2) post_login for provider. normally generic_post_login task can be used for all api providers
     post_login_task_provider = "post_login_#{provider}" # private method in UtilController
     if UtilController.new.private_methods.index(post_login_task_provider.to_sym)
       add_task post_login_task_provider, 5
     else
       add_task "generic_post_login('#{provider}')", 5
-      logger.debug2 "no post_login_#{provider} method was found in util controller - using generic post login task"
     end
-
-    # 4) refresh user(s) balance
+    # 3) refresh user(s) balance. todo: drop. user balance should be client only information
     today = Date.parse(Sequence.get_last_exchange_rate_date)
     if !user.balance_at or user.balance_at != today
       add_task "recalculate_user_balance(#{user.id})", 5
     end
-    # 5) send friends_find notifications once a week for active users.
+    # 4) send friends_find notifications once a week for active users.
     # first login is used as a trigger for this batch job
     add_task 'find_friends_batch', 5 if first_login
     # ok

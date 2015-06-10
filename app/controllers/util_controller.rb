@@ -120,6 +120,8 @@ class UtilController < ApplicationController
       logger.debug2 "session[:session_id] = #{get_sessionid}, session[:state] = #{get_session_value(:state)}"
       # todo: debug problems with session[:last_row_id]
       logger.debug2 "session[:last_row_id] = #{get_last_row_id()}"
+      # todo: debug problems with missing did after login
+      logger.debug2 "get_session_value(:did) = #{get_session_value(:did)}"
       # cleanup old tasks
       Task.where("created_at < ? and ajax = ?", 2.minute.ago, 'Y').destroy_all
       Task.where("created_at < ? and ajax = ?", 10.minute.ago, 'N').destroy_all
@@ -370,6 +372,7 @@ class UtilController < ApplicationController
 
   # recalculate user balance
   # use after login, at new day, after new deal, after deleted deal etc
+  # todo: delete. should be client only information
   def recalculate_user_balance (id)
     begin
       # check id
@@ -846,6 +849,7 @@ class UtilController < ApplicationController
       # todo: force logout if ping.did != sessions.did?
       ping.did = get_session_value(:did) # from login - online devices
       logger.debug2 "session.did = ping.did = #{ping.did}"
+      logger.debug2 "get_session_value(:did) = #{get_session_value(:did)}"
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
 
       # check for expired api access tokens + refresh google+ access token

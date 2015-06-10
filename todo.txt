@@ -1838,4 +1838,19 @@
      add likes table and server side signatures for likes?
      lid (unique like id), sha256 and sha256_deleted
 
-select next issue to solve: (rand*429).floor+1
+431) NavCtrl.ping: error: Did (unique device id) was not found.
+     did is send in login request to server (util/login).
+     but that does not work for first api provider login
+     or maybe did has been send in device login but session was deleted on server
+     but is did the only value that is missing in server session?
+
+432) problem with server ping response with :error = true
+     in this case response from remote comment verification was ignored
+     todo 1: should process incomming messages after error response
+     todo 2: should never return :error = true
+     ping: res = #<HTTP::Message:0x00000007af14f8>
+     ping: res.body = {"old_client_timestamp":1433827804030,"interval":1549,"error":"true","messages":{"messages":[{"sender_did":"14335744472057106859","server":true,"encryption":"sym","message":"cGlvN0hvV0RVWG5MWEkrYno3aXVtME1obFErbldIYUhESmZsMjM3RUNreW55\ncEVZMGdFZ0oxaXNqb0R6Cm9CVEtkU2g5TXhWQTIxK0duOS82T1F1R2R4akd5\nNU03NG8vNkJScTV6Uy8rVk0vSG1KQ3FNbENGQ3hZSwpaWGxWSUU1dVBkWjVJ\nWWtTRjc3SDlXTUtERE9KbXVnWUZkL3F1dVlZTUxZK2h1U0w1Umo0YkRlSmZw\nek4KMksrOGJ3RWdoZEdqUDRSR2F2Wm5lM2hrL1NZcENTVWJxU2JSTEtIdjVG\nWE4rbEdwMXBrOE9CYlRSa3krCmRVMUplQ3pmUFRRM3RaYnljeWQ4NGQwRnJK\nSEVUU2xtZ0trNEVXUkYvUDdpVTEvbVdVak5NVG9YNWZBNgo5Rk5GYUhWdWx4\nQWViTFkxYUN2TDZKU0tLeFpBSEdPUXRqNUpZMW5VVTROVDdVVkJyWXdSN1Ex\nUUpHOTQKSkhDeG5DN2lHM1dKZ2thSS9BNHlMaXViZ29CTzYyZ2xEY3hNVnZV\nS2xqOWYxbiswYUxwbWRYQ2JacmlUCi94dnE1T0U9Cg==\n","receiver_did":"14335744436084762727"},{"sender_did":"14335744472057106859","server":true,"encryption":"sym","message":"cGlvN0hvV0RVWG5Ga1R5cXJYYTVQU2V3am9UUXlid0RLLys1ZzdWVHJadTZS\nUHp5MnN0QnVrZ2ZTZmdYCmdEWG1TdlpLaXk5Vm5hQ0JlMVZaeC95YW5mZFkr\nR2hWNTZma0F2ZVc5VEVjOFJTZEo0dThjNHpNRlhwZQpBaVE3WkxsSXhoaU83\nMFJROU51UE9RSGh3TU9IMWd6c1hMQitCN1FsWnBFeENiMVI1bW5lZm4yWVlK\nSVIKYmpyVk9oaU5zWVRJCg==\n","receiver_did":"14335744436084762727"},{"sender_did":"14335744472057106859","server":true,"encryption":"sym","message":"cGlvN0hvV0RVWG56M2VBVnlLdW55UDFKRFZvQVlzdmU1bzhpRFZNOFZ5WT0K\n","receiver_did":"14335744436084762727"}]}}
+     ping: ping_response = {"old_client_timestamp"=>1433827804030, "interval"=>1549, "error"=>"true", "messages"=>{"messages"=>[{"sender_did"=>"14335744472057106859", "server"=>true, "encryption"=>"sym", "message"=>"cGlvN0hvV0RVWG5MWEkrYno3aXVtME1obFErbldIYUhESmZsMjM3RUNreW55\ncEVZMGdFZ0oxaXNqb0R6Cm9CVEtkU2g5TXhWQTIxK0duOS82T1F1R2R4akd5\nNU03NG8vNkJScTV6Uy8rVk0vSG1KQ3FNbENGQ3hZSwpaWGxWSUU1dVBkWjVJ\nWWtTRjc3SDlXTUtERE9KbXVnWUZkL3F1dVlZTUxZK2h1U0w1Umo0YkRlSmZw\nek4KMksrOGJ3RWdoZEdqUDRSR2F2Wm5lM2hrL1NZcENTVWJxU2JSTEtIdjVG\nWE4rbEdwMXBrOE9CYlRSa3krCmRVMUplQ3pmUFRRM3RaYnljeWQ4NGQwRnJK\nSEVUU2xtZ0trNEVXUkYvUDdpVTEvbVdVak5NVG9YNWZBNgo5Rk5GYUhWdWx4\nQWViTFkxYUN2TDZKU0tLeFpBSEdPUXRqNUpZMW5VVTROVDdVVkJyWXdSN1Ex\nUUpHOTQKSkhDeG5DN2lHM1dKZ2thSS9BNHlMaXViZ29CTzYyZ2xEY3hNVnZV\nS2xqOWYxbiswYUxwbWRYQ2JacmlUCi94dnE1T0U9Cg==\n", "receiver_did"=>"14335744436084762727"}, {"sender_did"=>"14335744472057106859", "server"=>true, "encryption"=>"sym", "message"=>"cGlvN0hvV0RVWG5Ga1R5cXJYYTVQU2V3am9UUXlid0RLLys1ZzdWVHJadTZS\nUHp5MnN0QnVrZ2ZTZmdYCmdEWG1TdlpLaXk5Vm5hQ0JlMVZaeC95YW5mZFkr\nR2hWNTZma0F2ZVc5VEVjOFJTZEo0dThjNHpNRlhwZQpBaVE3WkxsSXhoaU83\nMFJROU51UE9RSGh3TU9IMWd6c1hMQitCN1FsWnBFeENiMVI1bW5lZm4yWVlK\nSVIKYmpyVk9oaU5zWVRJCg==\n", "receiver_did"=>"14335744436084762727"}, {"sender_did"=>"14335744472057106859", "server"=>true, "encryption"=>"sym", "message"=>"cGlvN0hvV0RVWG56M2VBVnlLdW55UDFKRFZvQVlzdmU1bzhpRFZNOFZ5WT0K\n", "receiver_did"=>"14335744436084762727"}]}}
+     block in ping_test_loop: res = {:error=>"true"}
+
+select next issue to solve: (rand*432).floor+1

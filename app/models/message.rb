@@ -255,7 +255,7 @@ class Message < ActiveRecord::Base
         if message['sender_did']
           # server to server message. check if incoming message has been forwarded from an other Gofreerev server
           if !server
-            return { :error => 'System error in new message request. :sender_did must be blank. :sender_did is only used in server to server messages.'}
+            return 'System error in new message request. :sender_did must be blank. :sender_did is only used in server to server messages.'
           end
           if message['sender_did'] != sender_did
             logger.warn2 "received message forwarded from an other Gofreerev server. Sent from #{message['sender_did']} and forwarded by #{sender_did}."
@@ -268,7 +268,7 @@ class Message < ActiveRecord::Base
           end
         end
         if server and !message['sender_did']
-          return { :error => 'System error in new message request. :sender_did is required in server to server messages.'}
+          return 'System error in new message request. :sender_did is required in server to server messages.'
         end
 
         if old_dids.index(message['receiver_did'])
@@ -323,7 +323,7 @@ class Message < ActiveRecord::Base
       errors << error if error
     end
 
-    return errors.size == 0 ? nil : errors.join(', ') if sender_sha256 # called from browser client
+    return (errors.size == 0 ? nil : errors.join(', ')) if sender_sha256 # called from browser client
 
     # call from other gofreerev server
 
@@ -364,7 +364,7 @@ class Message < ActiveRecord::Base
     end
     logger.debug2 "received_msgtype (2) = #{received_msgtype}"
 
-    errors.size == 0 ? nil : errors.join(', ')
+    (errors.size == 0 ? nil : errors.join(', '))
 
   end # self.receive_messages
 

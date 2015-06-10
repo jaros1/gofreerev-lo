@@ -918,61 +918,69 @@ angular.module('gifts')
         // internal user ids = mailbox.mutual_friends = ping.user_ids = mutual_friends from ping online users response
         // remote sha256 signatures from friends.remote_sha256 hash (from short friends list returned from ping)
         // params:
-        // - user_ids - input/output - replace internal user ids with remote sha256 signature
+        // - user_ids - input/output - replace internal user ids with remote sha256 signature. please use array clone to prevent change of original array
+        // - array_name - name of user_ids array for debug and error messages
         // - server_id - from mailbox - used must have a remote sha256 signature on server_id
         // - msg - message for debug information
         // - force - false: raise error for unknown remote sha256 - true: use negative user id for unknown remote sha256
-        var user_ids_to_remote_sha256 = function (user_ids, server_id, msg, force) {
+        // returns nil (ok) or an error message
+        var user_ids_to_remote_sha256 = function (user_ids, array_name, server_id, msg, force) {
             var pgm = service + '.user_ids_to_remote_sha256: ' ;
+            if ((typeof user_ids == 'undefined') || (user_ids == null)) return true ; // null array ok (receiver_user_ids, new_deal_action_by_user_ids etc)
             var remote_sha256_values = [] ;
-            var i, user_id, friend, remote_sha256 ;
+            var i, user_id, friend, remote_sha256, error ;
             for (i=0 ; i<user_ids.length ; i++) {
                 user_id = user_ids[i] ;
                 if (typeof user_id != 'number') {
-                    console.log(pgm + 'System error. Invalid call. User_ids must be an array of integers') ;
+                    error = 'System error in user_ids_to_remote_sha256. ' + array_name + ' must be an array of integers' ;
+                    console.log(pgm + error) ;
                     console.log(pgm + 'user_ids = ' + JSON.stringify(user_ids)) ;
                     console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
-                    return false ;
+                    var x = 1 / 0 ; // stack dump
+                    return error ;
                 }
                 friend = get_friend(user_id) ;
                 if (!friend && force) friend = get_user(user_id) ;
                 if (!friend) {
-                    console.log(pgm + 'System error. Cannot send ' + msg.msgtype + ' to other Gofreerev server. Friend with user id ' + user_id + ' was not found') ;
+                    error = 'System error in user_ids_to_remote_sha256. Cannot send ' + msg.msgtype + ' to other Gofreerev server. Error in ' + array_name + '. Friend with user id ' + user_id + ' was not found' ;
+                    console.log(pgm + error) ;
                     console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
-                    return false ;
+                    return error ;
                 }
                 if (!friend.remote_sha256) {
                     if (force) {
-                        console.log(pgm + 'Warning. User id ' + user_id + ' do not have a remote sha256 signature. Using negative user_id ' + (-user_id) + ' in ' + msg.msgtype + ' message') ;
+                        console.log(pgm + 'Warning for ' + array_name + ' array. User id ' + user_id + ' do not have a remote sha256 signature. Using negative user_id ' + (-user_id) + ' in ' + msg.msgtype + ' message') ;
                         remote_sha256_values.push(-user_id) ;
                         continue ;
                     }
                     else {
-                        console.log(pgm + 'System error. Cannot send ' + msg.msgtype + ' message to other Gofreerev server. No remote_sha256 hash was found for user id ' + user_id) ;
+                        error = 'System error in user_ids_to_remote_sha256. Cannot send ' + msg.msgtype + ' message to other Gofreerev server. Error in ' + array_name + '. No remote_sha256 hash was found for user id ' + user_id ;
+                        console.log(pgm + error) ;
                         console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
                         console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
-                        return false;
+                        return error;
                     }
                 }
                 remote_sha256 = friend.remote_sha256[server_id] ;
                 if (!remote_sha256) {
                     if (force) {
-                        console.log(pgm + 'Warning. User id ' + user_id + ' do not have a remote sha256 signature. Using negative user_id ' + (-user_id) + ' in ' + msg.msgtype + ' message') ;
+                        console.log(pgm + 'Warning for ' + array_name + ' array. User id ' + user_id + ' do not have a remote sha256 signature. Using negative user_id ' + (-user_id) + ' in ' + msg.msgtype + ' message') ;
                         remote_sha256_values.push(-user_id) ;
                     }
                     else {
-                        console.log(pgm + 'System error. Cannot send ' + msg.msgtype + ' message to other Gofreerev server. Remote_sha256 was not found for user id ' + user_id + ' and server id ' + server_id) ;
+                        error = 'System error in user_ids_to_remote_sha256. Cannot send ' + msg.msgtype + ' message to other Gofreerev server. Error in ' + array_name + ' .Remote_sha256 was not found for user id ' + user_id + ' and server id ' + server_id ;
+                        console.log(pgm + error) ;
                         console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
                         console.log(pgm + 'friend  = ' + JSON.stringify(friend)) ;
-                        return false ;
+                        return error ;
                     }
                 }
                 remote_sha256_values.push(remote_sha256) ;
             } // for i
 
-            // translate ok. overwrite values in input array
+            // translate ok. overwrite values in input array.
             for (i=0 ; i<user_ids.length ; i++) user_ids[i] = remote_sha256_values[i] ;
-            return true ;
+            return nil ;
         }; // user_ids_to_remote_sha256;
 
 

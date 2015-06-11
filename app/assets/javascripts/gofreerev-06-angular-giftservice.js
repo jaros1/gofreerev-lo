@@ -4692,6 +4692,168 @@ angular.module('gifts')
             console.log(pgm + 'Error. Not implemented') ;
         }; // receive_message_request_gifts
 
+        // logical validate "request_comments" message before send (receive_message_check_gifts) and after receive (receive_message_request_comms)
+        // called after json validation but before sending request_comments / processing information in received request_comments message
+        // cids in request comments message must be unique
+        // returns nil or error message
+        var validate_request_comms_message = function (mailbox, request_comments, context) {
+            var pgm = service + '.validate_request_comms_message: ' ;
+            var error ;
+            if (context == 'send') console.log(pgm + 'validating request_comments message before send') ;
+            else if (context == 'receive') console.log(pgm + 'validating request_comments message after received') ;
+            else return 'System error. Invalid validate_request_comms_message call. context = ' + context ;
+
+            // check missing comments array - already checked in JSON validation!
+            if (!request_comments.comments || !request_comments.comments.length || request_comments.comments.length == 0) return 'No comments array or empty comments array in request_comments.';
+
+            // check doublet comments
+            var cids = [], doublet_cids = 0, cid, i;
+            for (i = 0; i < request_comments.comments.length; i++) {
+                cid = request_comments.comments[i];
+                if (cids.indexOf(cid) != -1) doublet_cids += 1;
+                else cids.push(cid);
+            } // for j (comments)
+            if (doublet_cids > 0) return 'Found ' + doublet_cids + ' doublet comments in sync_gifts/request_comments sub message. cid must be unique.';
+
+            // message ok
+
+        } ; // validate_request_comms_message
+
+
+        // translate user ids and server_ids before sending outgoing remote sync_gifts message to client on other Gofreerev server
+        // ids are translated to sha256 signatures when communicating with clients on other Gofreerev servers (mailbox.server_id != null)
+        // returns true (ok) or false (error). any errors has been written to log and send in a error message to other client
+        var sync_gifts_translate_ids = function (request_msgtype, sync_gifts_message, mailbox) {
+            var pgm = service + '.sync_gifts_translate_user_ids: ' ;
+            var error, i, gift, j, comment ;
+
+            if (!mailbox.hasOwnProperty('server_id')) return true ; // not a remote message
+
+            // sync_gifts message to client on an other Gofreerev server
+            // translate internal user ids to sha256 signatures before sending sync_gifts message
+            // 1) translate users array in message header
+            // 2) send_gifts: translate user ids in giver_user_ids, receiver_user_ids, comment user ids and users
+            console.log(pgm + 'sync_gifts_message (1) = ' + JSON.stringify(sync_gifts_message));
+            if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.users, 'mutual_friends', mailbox.server_id, sync_gifts_message, false)) {
+                // write error in log and return error message to other client
+                error = 'Could not send sync_gifts response to ' + request_msgtype + ' request. ' + error ;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    request_mid: msg.mid,
+                    msgtype: 'error',
+                    error: error
+                }) ;
+                return false;
+            };
+
+            if (sync_gifts_message.send_gifts) {
+                // translate user ids in giver_user_ids, receiver_user_ids and comment user_ids
+                // use remote sha256 signatures for remote users and negative user id for "unknown" users
+                for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
+                    gift = sync_gifts_message.send_gifts.gifts[i];
+                    if (error=userService.user_ids_to_remote_sha256(gift.giver_user_ids, 'gift.giver_user_ids', mailbox.server_id, sync_gifts_message, true)) {
+                        // write error in log and return error message to other client
+                        error = 'Could not send sync_gifts response to ' + request_msgtype + ' request. ' + error ;
+                        console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                        mailbox.outbox.push({
+                            mid: Gofreerev.get_new_uid(),
+                            request_mid: msg.mid,
+                            msgtype: 'error',
+                            error: error
+                        }) ;
+                        return false;
+                    }
+                    ;
+                    if (error=userService.user_ids_to_remote_sha256(gift.receiver_user_ids, 'gift.receiver_user_ids', mailbox.server_id, sync_gifts_message, true)) {
+                        // write error in log and return error message to other client
+                        error = 'Could not send sync_gifts response to ' + request_msgtype + ' request. ' + error ;
+                        console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                        mailbox.outbox.push({
+                            mid: Gofreerev.get_new_uid(),
+                            request_mid: msg.mid,
+                            msgtype: 'error',
+                            error: error
+                        }) ;
+                        return false;
+                    }
+                    ;
+                    if (gift.comments) {
+                        for (j = 0; j < gift.comments.length; j++) {
+                            if (error=userService.user_ids_to_remote_sha256(gift.comments[j].user_ids, 'comment.user_ids', mailbox.server_id, sync_gifts_message, true)) {
+                                // write error in log and return error message to other client
+                                error = 'Could not send sync_gifts response to ' + request_msgtype + '. ' + error ;
+                                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                                mailbox.outbox.push({
+                                    mid: Gofreerev.get_new_uid(),
+                                    request_mid: msg.mid,
+                                    msgtype: 'error',
+                                    error: error
+                                }) ;
+                                return false;
+                            } ;
+                            if (error=userService.user_ids_to_remote_sha256(gift.comments[j].new_deal_action_by_user_ids, 'comment.new_deal_action_by_user_ids', mailbox.server_id, sync_gifts_message, true)) {
+                                // write error in log and return error message to other client
+                                error = 'Could not send sync_gifts response to ' + request_msgtype + '. ' + error ;
+                                console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                                mailbox.outbox.push({
+                                    mid: Gofreerev.get_new_uid(),
+                                    request_mid: msg.mid,
+                                    msgtype: 'error',
+                                    error: error
+                                }) ;
+                                return false;
+                            } ;
+
+                        } // for j (comments(
+                    } // if (comments)
+                } // for i (gifts)
+
+                // translate user ids in send_gifts.users array
+                if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.send_gifts.users, 'send_gifts.users', mailbox.server_id, sync_gifts_message, true)) {
+                    // write error in log and return error message to other client
+                    error = 'Could not send sync_gifts response to ' + request_msgtype + '. ' + error ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        request_mid: msg.mid,
+                        msgtype: 'error',
+                        error: error
+                    }) ;
+                    return false;
+                };
+                console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
+
+                // add servers array with translation for internal created_at_server integer to server sha256 signature
+                // created_at_server=0 : current gofreerev server
+                // created_at_server>0 : gift/comment from an other gofreerev server
+                var internal_server_ids = [] ;
+                for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
+                    gift = sync_gifts_message.send_gifts.gifts[i];
+                    if (internal_server_ids.indexOf(gift.created_at_server) == -1) internal_server_ids.push(gift.created_at_server) ;
+                    // gift.created_at_server = server_id_to_sha256(gift.created_at_server);
+                    if (!gift.comments) continue;
+                    for (j = 0; j < gift.comments.length; j++) {
+                        comment = gift.comments[j];
+                        if (internal_server_ids.indexOf(comment.created_at_server) == -1) internal_server_ids.push(comment.created_at_server) ;
+                        // comment.created_at_server = server_id_to_sha256(comment.created_at_server);
+                    } // for j (comments)
+                } // for i (gifts)
+                sync_gifts_message.send_gifts.servers = [] ;
+                for (i=0 ; i<internal_server_ids.length ; i++) {
+                    sync_gifts_message.send_gifts.servers.push({
+                        server_id: internal_server_ids[i],
+                        sha256: server_id_to_sha256(internal_server_ids[i])
+                    }) ;
+                }
+
+            } // if send_gifts
+
+            console.log(pgm + 'sync_gifts_message (3) = ' + JSON.stringify(sync_gifts_message));
+
+            return true ;
+        } ; // sync_gifts_translate_ids
+
 
         // communication step 4 - sub message from receive_message_sync_gifts
         // other client has detected different gift.sha256 values for one or more gifts
@@ -4875,8 +5037,6 @@ angular.module('gifts')
                     return ;
                 }
 
-                // todo: 2) check sub message request_gifts for logical errors
-
                 // send sync_gifts message with check_gifts sub message
                 mailbox.outbox.push(sync_gifts_message) ;
 
@@ -5008,133 +5168,10 @@ angular.module('gifts')
                 request_comments: request_comments_sub_message // optional sub message 4)
             };
 
-            if (mailbox.hasOwnProperty('server_id')) {
-
-                // sync_gifts message to client on an other Gofreerev server
-                // translate internal user ids to sha256 signatures before sending sync_gifts message
-                // 1) translate users array in message header
-                // 2) send_gifts: translate user ids in giver_user_ids, receiver_user_ids, comment user ids and users
-                console.log(pgm + 'sync_gifts_message (1) = ' + JSON.stringify(sync_gifts_message));
-                if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.users, 'mutual_friends', mailbox.server_id, sync_gifts_message, false)) {
-                    // write error in log and return error message to other client
-                    error = 'Could not send sync_gifts response to check_gifts request. ' + error ;
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                    mailbox.outbox.push({
-                        mid: Gofreerev.get_new_uid(),
-                        request_mid: msg.mid,
-                        msgtype: 'error',
-                        error: error
-                    }) ;
-                    return;
-                }
-
-                if (sync_gifts_message.send_gifts) {
-                    // translate user ids in giver_user_ids, receiver_user_ids and comment user_ids
-                    // use remote sha256 signatures for remote users and negative user id for "unknown" users
-                    for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
-                        my_gift = sync_gifts_message.send_gifts.gifts[i];
-                        if (error=userService.user_ids_to_remote_sha256(my_gift.giver_user_ids, 'gift.giver_user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                            // write error in log and return error message to other client
-                            error = 'Could not send sync_gifts response to check_gifts request. ' + error ;
-                            console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                            mailbox.outbox.push({
-                                mid: Gofreerev.get_new_uid(),
-                                request_mid: msg.mid,
-                                msgtype: 'error',
-                                error: error
-                            }) ;
-                            return;
-                        }
-                        ;
-                        if (error=userService.user_ids_to_remote_sha256(my_gift.receiver_user_ids, 'gift.receiver_user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                            // write error in log and return error message to other client
-                            error = 'Could not send sync_gifts response to check_gifts request. ' + error ;
-                            console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                            mailbox.outbox.push({
-                                mid: Gofreerev.get_new_uid(),
-                                request_mid: msg.mid,
-                                msgtype: 'error',
-                                error: error
-                            }) ;
-                            return;
-                        }
-                        ;
-                        if (my_gift.comments) {
-                            for (j = 0; j < my_gift.comments.length; j++) {
-                                if (error=userService.user_ids_to_remote_sha256(my_gift.comments[j].user_ids, 'comment.user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                                    // write error in log and return error message to other client
-                                    error = 'Could not send sync_gifts response to check_gifts request. ' + error ;
-                                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                                    mailbox.outbox.push({
-                                        mid: Gofreerev.get_new_uid(),
-                                        request_mid: msg.mid,
-                                        msgtype: 'error',
-                                        error: error
-                                    }) ;
-                                    return;
-                                } ;
-                                if (error=userService.user_ids_to_remote_sha256(my_gift.comments[j].new_deal_action_by_user_ids, 'comment.new_deal_action_by_user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                                    // write error in log and return error message to other client
-                                    error = 'Could not send sync_gifts response to check_gifts request. ' + error ;
-                                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                                    mailbox.outbox.push({
-                                        mid: Gofreerev.get_new_uid(),
-                                        request_mid: msg.mid,
-                                        msgtype: 'error',
-                                        error: error
-                                    }) ;
-                                    return;
-                                } ;
-                            } // for j (comments)
-                        } // if
-                    } // for i (gifts)
-                    // translate user ids in users array
-                    var user_ids = [];
-                    for (i = 0; i < sync_gifts_message.send_gifts.users.length; i++) user_ids.push(sync_gifts_message.send_gifts.users[i].user_id);
-                    if (error=userService.user_ids_to_remote_sha256(user_ids, 'mutual_friends', mailbox.server_id, sync_gifts_message, true)) {
-                        // write error in log and return error message to other client
-                        error = 'Could not send sync_gifts response to check_gifts request. ' + error ;
-                        console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                        mailbox.outbox.push({
-                            mid: Gofreerev.get_new_uid(),
-                            request_mid: msg.mid,
-                            msgtype: 'error',
-                            error: error
-                        }) ;
-                        return;
-                    };
-                    for (i=0 ; i<sync_gifts_message.send_gifts.users.length ; i++) sync_gifts_message.send_gifts.users[i].user_id = user_ids[i] ;
-                    // user_id translate ok
-                    console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
-
-                    // add servers array with translation for internal created_at_server integer to server sha256 signature
-                    // created_at_server=0 : current gofreerev server
-                    // created_at_server>0 : gift/comment from an other gofreerev server
-                    var internal_server_ids = [] ;
-                    for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
-                        my_gift = sync_gifts_message.send_gifts.gifts[i];
-                        if (internal_server_ids.indexOf(my_gift.created_at_server) == -1) internal_server_ids.push(my_gift.created_at_server) ;
-                        // gift.created_at_server = server_id_to_sha256(gift.created_at_server);
-                        if (!my_gift.comments) continue;
-                        for (j = 0; j < my_gift.comments.length; j++) {
-                            comment = my_gift.comments[j];
-                            if (internal_server_ids.indexOf(comment.created_at_server) == -1) internal_server_ids.push(comment.created_at_server) ;
-                            // comment.created_at_server = server_id_to_sha256(comment.created_at_server);
-                        } // for j (comments)
-                    } // for i (gifts)
-                    sync_gifts_message.send_gifts.servers = [] ;
-                    for (i=0 ; i<internal_server_ids.length ; i++) {
-                        sync_gifts_message.send_gifts.servers.push({
-                            server_id: internal_server_ids[i],
-                            sha256: server_id_to_sha256(internal_server_ids[i])
-                        }) ;
-                    }
-
-                } // if send_gifts
-
-                console.log(pgm + 'sync_gifts_message (3) = ' + JSON.stringify(sync_gifts_message));
-
-            } // if server_id
+            // translate user ids and server_ids before sending outgoing remote sync_gifts message to client on other Gofreerev server
+            // ids are translated to sha256 signatures when communicating with clients on other Gofreerev servers (mailbox.server_id != null)
+            // false: errors has already been written to log and send in a error message to other client
+            if (!sync_gifts_translate_ids('check_gifts', sync_gifts_message, mailbox)) return ;
 
             // JS validate sync_gifts message before placing message in outbox
             if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {
@@ -5172,10 +5209,26 @@ angular.module('gifts')
                         error: error
                     }) ;
                     return ;
-                }
-            }
+                }; // if
+            }; // if
 
-            // todo: 2) check sub message request_comments for logical errors
+            // check sub message request_comments for logical errors
+            if (sync_gifts_message.request_comments) {
+                // check sub message request_gifts for logical errors
+                // logical validate request_comments message before sending to message to other client
+                // 1) cids must be unique
+                var error = validate_request_comms_message(mailbox, sync_gifts_message.request_comments, 'send') ;
+                if (error) {
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    });
+                    return;
+                } // if
+            }; // if
 
             // send sync_gifts message
             mailbox.outbox.push(sync_gifts_message) ;
@@ -5197,6 +5250,21 @@ angular.module('gifts')
             //   {"mid":"14336001555803691502","request_mid":"14336001491398636683","msgtype":"sync_gifts",
             //       "users":["5J5L6uh773z7PGtzfsOF/0Mn4uDk/8QUZUOLfuLnz9U="],
             //       "request_comments":{"mid":"14336001555761351210","msgtype":"request_comments","comments":["14336000949698090073"]}}
+            
+            // logical validate request_comments message - incoming message has already been JSON validated in receive_message_sync_gifts
+            // check for some fatal errors before processing request_comments message
+            // 1) cids must be unique
+            var error = validate_request_comms_message(mailbox, msg, 'receive') ;
+            if (error) {
+                console.log(pgm + error + ', msg = ' + JSON.stringify(msg));
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                });
+                return;
+            } // if error (validate_request_comms_message)
 
             var not_mutual_friends_cids = [] ; // array with cids - gift is not from mutual friends (mailbox.mutual_friends)
             var invalid_gift_cids =  [] ; // array with cids - gift is invalid and cannot be send to other client (requester) todo: send request_gifts request to correct error?
@@ -5300,16 +5368,37 @@ angular.module('gifts')
             }; // for i (gifts)
 
             unknown_cids = $(msg.comments).not(ok_cids).not(not_mutual_friends_cids).not(invalid_gift_cids).not(invalid_comment_cids).get() ;
-            console.log(pgm + 'msg.comments            = ' + msg.comments.join(', ')) ;
+            console.log(pgm + 'request_comments        = ' + msg.comments.join(', ')) ;
             console.log(pgm + 'ok_cids                 = ' + ok_cids.join(', ')) ;
-            console.log(pgm + 'not_mutual_friends_cids = ' + not_mutual_friends_cids.join(', ')) ;
-            console.log(pgm + 'invalid_gift_cids       = ' + invalid_gift_cids.join(', ')) ;
-            console.log(pgm + 'invalid_comment_cids    = ' + invalid_comment_cids.join(', ')) ;
-            console.log(pgm + 'unknown_cids            = ' + unknown_cids.join(', ')) ;
-            console.log(pgm + 'send_gifts_sub_message  = ' + JSON.stringify(send_gifts_sub_message)) ;
-            console.log(pgm + 'send_gifts_users        = ' + JSON.stringify(send_gifts_users)) ;
+            if (not_mutual_friends_cids.length > 0) console.log(pgm + 'not_mutual_friends_cids = ' + not_mutual_friends_cids.join(', ')) ;
+            if (invalid_gift_cids.length > 0) console.log(pgm + 'invalid_gift_cids       = ' + invalid_gift_cids.join(', ')) ;
+            if (invalid_comment_cids.length > 0) console.log(pgm + 'invalid_comment_cids    = ' + invalid_comment_cids.join(', ')) ;
+            if (unknown_cids.length > 0) console.log(pgm + 'unknown_cids            = ' + unknown_cids.join(', ')) ;
 
-            console.log(pgm + '');
+            if (ok_cids.length == 0) {
+                // errors in request comments request. No valid cid's was found.
+                var errors = [] ;
+                if (not_mutual_friends_cids.length > 0) errors.push('not_mutual_friends_cids = ' + not_mutual_friends_cids.join(', ')) ;
+                if (invalid_gift_cids.length > 0) errors.push('invalid_gift_cids       = ' + invalid_gift_cids.join(', ')) ;
+                if (invalid_comment_cids.length > 0) errors.push('invalid_comment_cids    = ' + invalid_comment_cids.join(', ')) ;
+                if (unknown_cids.length > 0) errors.push('unknown_cids            = ' + unknown_cids.join(', ')) ;
+                error = 'Errors in sync_gifts/request_comments sub message. ' + errors.join(', ') ;
+                console.log(pgm + error + ', msg = ' + JSON.stringify(msg));
+                mailbox.outbox.push({
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'error',
+                    request_mid: msg.mid,
+                    error: error
+                });
+                return;
+            } ;
+            if (not_mutual_friends_cids.length + invalid_gift_cids.length + invalid_comment_cids.length + unknown_cids.length > 0) {
+                console.log(pgm + 'Warning. Ignoring invalid cids ' +
+                    not_mutual_friends_cids.concat(invalid_gift_cids).concat(invalid_comment_cids).concat(unknown_cids).join(', ') +
+                    ' in incoming request_comments message. Only valid comments ' + ok_cids.join(', ') +
+                    ' are included in outgoing send_gifts message') ;
+            } ;
+            console.log(pgm + 'send_gifts_sub_message  = ' + JSON.stringify(send_gifts_sub_message)) ;
 
             // todo: DRY. also used in gifts_sha256 message and ...
             // add relevant users to send_gifts message - used as fallback information in case of "unknown user" error on receiving client
@@ -5338,132 +5427,10 @@ angular.module('gifts')
                 send_gifts: send_gifts_sub_message, // optional sub message 1)
             };
 
-            // todo: DRY. refactor code. Identical code also used in receive_message_check_gifts. and maybe other places!
-
-            if (mailbox.hasOwnProperty('server_id')) {
-
-                // sync_gifts message to client on an other Gofreerev server
-                // translate internal user ids to sha256 signatures before sending sync_gifts message
-                // 1) translate users array in message header
-                // 2) send_gifts: translate user ids in giver_user_ids, receiver_user_ids, comment user ids and users
-                console.log(pgm + 'sync_gifts_message (1) = ' + JSON.stringify(sync_gifts_message));
-                if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.users, 'mutual_friends', mailbox.server_id, sync_gifts_message, false)) {
-                    // write error in log and return error message to other client
-                    error = 'Could not send sync_gifts response to request_comments request. ' + error ;
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                    mailbox.outbox.push({
-                        mid: Gofreerev.get_new_uid(),
-                        request_mid: msg.mid,
-                        msgtype: 'error',
-                        error: error
-                    }) ;
-                    return;
-                }
-
-                if (sync_gifts_message.send_gifts) {
-                    // translate user ids in giver_user_ids, receiver_user_ids and comment user_ids
-                    // use remote sha256 signatures for remote users and negative user id for "unknown" users
-                    for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
-                        my_gift = sync_gifts_message.send_gifts.gifts[i];
-                        if (error=userService.user_ids_to_remote_sha256(my_gift.giver_user_ids, 'gift.giver_user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                            // write error in log and return error message to other client
-                            error = 'Could not send sync_gifts response to request_comments request. ' + error ;
-                            console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                            mailbox.outbox.push({
-                                mid: Gofreerev.get_new_uid(),
-                                request_mid: msg.mid,
-                                msgtype: 'error',
-                                error: error
-                            }) ;
-                            return;
-                        }
-                        ;
-                        if (error=userService.user_ids_to_remote_sha256(my_gift.receiver_user_ids, 'gift.receiver_user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                            // write error in log and return error message to other client
-                            error = 'Could not send sync_gifts response to request_comments request. ' + error ;
-                            console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                            mailbox.outbox.push({
-                                mid: Gofreerev.get_new_uid(),
-                                request_mid: msg.mid,
-                                msgtype: 'error',
-                                error: error
-                            }) ;
-                            return;
-                        }
-                        ;
-                        if (my_gift.comments) {
-                            for (j = 0; j < my_gift.comments.length; j++) {
-                                if (error=userService.user_ids_to_remote_sha256(my_gift.comments[j].user_ids, 'comment.user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                                    // write error in log and return error message to other client
-                                    error = 'Could not send sync_gifts response to request_comments request. ' + error ;
-                                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                                    mailbox.outbox.push({
-                                        mid: Gofreerev.get_new_uid(),
-                                        request_mid: msg.mid,
-                                        msgtype: 'error',
-                                        error: error
-                                    }) ;
-                                    return;
-                                } ;
-                                if (error=userService.user_ids_to_remote_sha256(my_gift.comments[j].new_deal_action_by_user_ids, 'comment.new_deal_action_by_user_ids', mailbox.server_id, sync_gifts_message, true)) {
-                                    // write error in log and return error message to other client
-                                    error = 'Could not send sync_gifts response to request_comments request. ' + error ;
-                                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                                    mailbox.outbox.push({
-                                        mid: Gofreerev.get_new_uid(),
-                                        request_mid: msg.mid,
-                                        msgtype: 'error',
-                                        error: error
-                                    }) ;
-                                    return;
-                                } ;
-
-                            }
-                        }
-                    }
-                    // translate user ids in send_gifts.users array
-                    if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.send_gifts.users, 'send_gifts.users', mailbox.server_id, sync_gifts_message, true)) {
-                        // write error in log and return error message to other client
-                        error = 'Could not send sync_gifts response to request_comments request. ' + error ;
-                        console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
-                        mailbox.outbox.push({
-                            mid: Gofreerev.get_new_uid(),
-                            request_mid: msg.mid,
-                            msgtype: 'error',
-                            error: error
-                        }) ;
-                        return;
-                    };
-                    console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
-
-                    // add servers array with translation for internal created_at_server integer to server sha256 signature
-                    // created_at_server=0 : current gofreerev server
-                    // created_at_server>0 : gift/comment from an other gofreerev server
-                    var internal_server_ids = [] ;
-                    for (i = 0; i < sync_gifts_message.send_gifts.gifts.length; i++) {
-                        my_gift = sync_gifts_message.send_gifts.gifts[i];
-                        if (internal_server_ids.indexOf(my_gift.created_at_server) == -1) internal_server_ids.push(my_gift.created_at_server) ;
-                        // gift.created_at_server = server_id_to_sha256(gift.created_at_server);
-                        if (!my_gift.comments) continue;
-                        for (j = 0; j < my_gift.comments.length; j++) {
-                            comment = my_gift.comments[j];
-                            if (internal_server_ids.indexOf(comment.created_at_server) == -1) internal_server_ids.push(comment.created_at_server) ;
-                            // comment.created_at_server = server_id_to_sha256(comment.created_at_server);
-                        } // for j (comments)
-                    } // for i (gifts)
-                    sync_gifts_message.send_gifts.servers = [] ;
-                    for (i=0 ; i<internal_server_ids.length ; i++) {
-                        sync_gifts_message.send_gifts.servers.push({
-                            server_id: internal_server_ids[i],
-                            sha256: server_id_to_sha256(internal_server_ids[i])
-                        }) ;
-                    }
-
-                } // if send_gifts
-
-                console.log(pgm + 'sync_gifts_message (3) = ' + JSON.stringify(sync_gifts_message));
-
-            } // if server_id
+            // translate user ids and server_ids before sending outgoing remote sync_gifts message to client on other Gofreerev server
+            // ids are translated to sha256 signatures when communicating with clients on other Gofreerev servers (mailbox.server_id != null)
+            // false: errors has already been written to log and send in a error message to other client
+            if (!sync_gifts_translate_ids('request_comments', sync_gifts_message, mailbox)) return ;
 
             // JS validate sync_gifts message before placing message in outbox
             if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {

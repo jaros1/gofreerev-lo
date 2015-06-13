@@ -338,26 +338,75 @@ JSON_SCHEMA = {
                       :properties => {
                           # unique seq returned in response (cid is not guaranteed to be unique when receiving comments from other devices)
                           :seq => {:type => 'integer'},
-                          # optional server id for other Gofreerev server if comment has been created on an other Gofreerev server
+                          # optional server id for other Gofreerev server if comment was created on an other Gofreerev server
                           :server_id => {:type => 'integer', :minimum => 1},
                           # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :cid => {:type => 'string', :pattern => uid_pattern},
                           # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price, currency and new_deal)
                           :sha256 => {:type => 'string', :maxLength => 32},
-                          # sha256 client digest if new deal proposal (new_deal=true) has been cancelled, accepted or rejected (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action and new_deal_action_at_client)
-                          :sha256_action => {:type => 'string', :maxLength => 32},
-                          # sha256 client digest if comment has been deleted (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action, new_deal_action_at_client and deleted_at_client)
-                          :sha256_deleted => {:type => 'string', :maxLength => 32},
                           # internal user ids for creator of comment (=login users)
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                          # sha256 client digest if new deal proposal (new_deal=true) has been cancelled, accepted or rejected (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action and new_deal_action_at_client)
+                          :sha256_action => {:type => 'string', :maxLength => 32},
                           # optional internal user ids for any new_deal_action (cancel, accept or reject) for new deal proposal.
-                          :new_deal_action_by_user_ids => {:type => 'array', :items => {:type => 'integer'}}
+                          :new_deal_action_by_user_ids => {:type => 'array', :items => {:type => 'integer'}},
+                          # sha256 client digest if comment has been deleted (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action, new_deal_action_at_client and deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32}
                       },
                       :required => %w(seq cid sha256 user_ids),
                       :additionalProperties => false
                   },
                   :minItems => 1
               },
+
+              # delete comments request - optional array with deleted comments. comment server sha256 signature is verified and server sha256_deleted signature is created
+              # at least one api logged in user must be giver of gift, receiver of gift or creator of comment (client side validation).
+              # todo: add gid, giver_user_ids and receiver_user_ids to delete_comments request? (for server side validation?)
+              # sha256_deleted is required in request.
+              :delete_comments => {
+                  :type => 'array',
+                  :title => 'Array with newly deleted comments on client for creation of a server side sha256 deleted signature. ',
+                  :description => 'Array with meta-data for deleted comments. Client side sha256_action value must be supplied when deleting an cancelled, accepted or rejected new deal proposal. A server side sha256 deleted signature is saved on server',
+                  :items => {
+                      :type => 'object',
+                      :properties => {
+                          # optional server id for other Gofreerev server if comment was created on an other Gofreerev server
+                          :server_id => {:type => 'integer', :minimum => 1},
+                          # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                          :cid => {:type => 'string', :pattern => uid_pattern},
+                          # required sha256 digest of client side comment information (created at client + description + 4 open graph fields)
+                          :sha256 => {:type => 'string', :maxLength => 32},
+                          # required sha256 digest of client side comment information (created at client + description + 4 open graph fields + deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # internal user ids for creator of comment
+                          :user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                          # optional sha256 digest of client side comment information (created at client + description + 4 open graph fields + accepted_at_client)
+                          # used as extra control if new deal proposal has been cancelled, accepted or rejected
+                          :sha256_action => {:type => 'string', :maxLength => 32},
+                          # optional array with new_deal_action user ids (logged in users for cancel, accept or reject new deal proposal)
+                          :new_deal_action_by_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                          # optional gift info. must be added if comment is not deleted by creator of comment (comment deleted by giver or receiver of gift)
+                          :gift => {
+                              :type => 'object',
+                              :properties => {
+                                  # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                  :gid => {:type => 'string', :pattern => uid_pattern},
+                                  # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                                  :sha256 => {:type => 'string', :maxLength => 32},
+                                  # internal user ids for either giver or receiver
+                                  :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
+                                  :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
+                              },
+                              :required => %w(gid sha256),
+                              :additionalProperties => false
+                          }
+                      },
+                      :required => %w(gid sha256 sha256_deleted),
+                      :additionalProperties => false
+                  },
+                  :minItems => 1
+              },
+
               # pubkeys - optional array with did (unique device id) - request public key for other client before starting client to client communication
               :pubkeys => {
                   :type => 'array',

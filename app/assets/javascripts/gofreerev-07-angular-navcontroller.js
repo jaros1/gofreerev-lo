@@ -35,7 +35,7 @@ angular.module('gifts')
             // make ping request
             var sid = Gofreerev.getItem('sid') ;
             // todo: add accept_gifts request and response
-            // todo: add friend list update (changed signatures)
+            // todo: add delete comment request and response
             var ping_request = {
                 client_userid: userid,
                 sid: sid,
@@ -46,6 +46,7 @@ angular.module('gifts')
                 delete_gifts: giftService.delete_gifts_request(),
                 new_comments: giftService.new_comments_request(),
                 verify_comments: giftService.verify_comments_request(),
+                delete_comments: giftSerice.delete_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request,
                 oauths: userService.refresh_friends_list_request(),
@@ -96,6 +97,8 @@ angular.module('gifts')
                     if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
                     // get result of comment verification (comments received from other devices)
                     if (response.data.verify_comments) giftService.verify_comments_response(response.data.verify_comments) ;
+                    // get result of delete comments request
+                    if (response.data.delete_comments) giftService.delete_comments_response(response.data.delete_comments) ;
                     // check expired access token (server side check)
                     if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens, 'ping') ;
                     // check for new oauth authorization (google+ only)

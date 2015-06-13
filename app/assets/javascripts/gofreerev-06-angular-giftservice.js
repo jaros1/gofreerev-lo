@@ -1017,7 +1017,7 @@ angular.module('gifts')
                 if (comments_index.hasOwnProperty(cid)) {
                     // update comment
                     comment_index = comments_index[cid];
-                    // todo: add server side comment.sha256_deleted and comment.sha256_accepted. almost as gifts, but a comment cannot be both accepted and deleted
+                    // todo: add server side comment.sha256_deleted and comment.sha256_action. almost as gifts, but a comment cannot be both accepted and deleted
                     // todo: it should be enough with one client side deleted_at_server=accepted_at_server field
                     if (comments[comment_index].user_ids != new_comments[i].user_ids) comments[comment_index].user_ids = new_comments[i].user_ids;
                     if (comments[comment_index].price != new_comments[i].price) comments[comment_index].price = new_comments[i].price;
@@ -1100,7 +1100,7 @@ angular.module('gifts')
                 return;
             }
             // refresh comment
-            // todo: add server side comment.sha256_deleted and comment.sha256_accepted. almost as gifts, but a comment cannot be both accepted and deleted
+            // todo: add server side comment.sha256_deleted and comment.sha256_action. almost as gifts, but a comment cannot be both accepted and deleted
             // todo: it should be enough with one client side deleted_at_server=accepted_at_server field
             if (comment.user_ids != comments[index].user_ids) comment.user_ids = comments[index].user_ids;
             if (comment.price != comments[index].price) comment.price = comments[index].price;
@@ -1596,6 +1596,7 @@ angular.module('gifts')
 
         // send meta-data for deleted gifts to server and get gift.deleted_at_server response (boolean) from server.
         // called from UserService.ping
+        // todo: add array with just deleted gifts to prevent a full gifts search for deleted comments?
         var delete_gifts_request = function () {
             var pgm = service + '.delete_gifts_request: ' ;
             var request = [];
@@ -1726,16 +1727,6 @@ angular.module('gifts')
             return signature;
         };
 
-
-
-
-        
-        
-        
-        
-        
-        
-        
         
         // send meta-data for new comments to server and get comment.created_at_server boolean.
         // called from UserService.ping
@@ -2008,6 +1999,138 @@ angular.module('gifts')
 
         }; // verify_comments_response
 
+
+
+
+        // todo: remember delete request for remote comments? this is comments with created_at_server != 0. verification of remote comments can take some time
+
+        // send meta-data for deleted comments to server and get comment.deleted_at_server response (boolean) from server.
+        // called from UserService.ping
+        // todo: add array with just deleted comments to prevent a full gifts/comments search for deleted comments
+        var delete_comments_request = function () {
+            var pgm = service + '.delete_comments_request: ' ;
+            var request = [];
+            var i, gift, j, comment, hash, signatures ;
+            var login_user_ids = userService.get_login_userids() ;
+            for (i = 0; i < gifts.length; i++) {
+                gift = gifts[i];
+                if (!gift.hasOwnProperty('comments')) continue ;
+                if (gift.comments.length == 0) continue ;
+                for (j=0 ; j<gift.comments.length ; j++) {
+                    comment = gift.comments[j] ;
+                    if (!comment.deleted_at_client) continue ;
+                    if (!comment.deleted_at_server) {
+                        signatures = comment_signature_for_server(comment);
+                        hash = {cid: comment.cid, user_ids: comment.user_ids, sha256: signatures.sha256, sha256_deleted: signatures.sha256_deleted};
+                        if (signatures.sha256_action) {
+                            hash.sha256_action = signatures.sha256_action ;
+                            hash.new_deal_action_by_user_ids = comment.new_deal_action_by_user_ids ;
+                        };
+
+                        // todo: add gift fields if comment was deleted by giver or receiver of gift (not owner of comment)
+                        if ($(login_user_ids).filter(comment.user_ids).length == 0) {
+                            // comment was not deleted by creator or comment. login user(s) has created this comment
+                            // console.log(pgm + 'login_user has created the comment') ;
+                            return true ;
+                        }
+
+                        // that is gid, gift.sha256, gift.giver_user_ids and gift.receiver_user_ids
+                        request.push(hash);
+                    } // if
+                } ;
+            } // for i
+            return (request.length == 0 ? null : request);
+        }; // delete_comments_request
+
+        var delete_comments_response = function (response) {
+            var pgm = service + '.delete_comments_response: ';
+            // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+            if (response.hasOwnProperty('error')) console.log(pgm + response.error);
+            if (response.hasOwnProperty('no_errors') && (response.no_errors > 0)) console.log(pgm + response.no_errors + ' comments was not deleted. See following error message.');
+            if (!response.hasOwnProperty('gifts')) return;
+            var new_comments = response.comments;
+            var new_comment, gid, index, comment, created_at_server, noti;
+            function add_index_error (gid, ref) {
+                // system error in gid/gift lookup
+                cache_nid.delete_gift_syserr123_nid = notiService.add_notification({
+                    notitype: 'delete_gift', key: 'syserr' + ref, options: {gid: gid, ref: ref},
+                    extra: {gid: gid, ref: ref}, nid: cache_nid.delete_gift_syserr123_nid}) ;
+            }
+            function add_response_error (new_gift, ref) {
+                // system error in delete gifts response
+                cache_nid.delete_gift_syserr456_nid = notiService.add_notification({
+                    notitype: 'delete_gift', key: 'syserr' + ref, options: { gid: new_gift.gid, error: new_gift.error, key: new_gift.key, options: JSON.stringify(new_gift.options)},
+                    extra: {gid: comment.gid, ref: ref}, nid: cache_nid.delete_gift_syserr456_nid}) ;
+            }
+            for (var i = 0; i < new_comments.length; i++) {
+                new_comment = new_comments[i];
+                // lookup comment
+                gid = new_comment.gid;
+                if (!gid_to_gifts_index.hasOwnProperty(gid)) { add_index_error(gid, 1) ; continue; }
+                index = gid_to_gifts_index[gid];
+                if ((index < 0) || (index >= gifts.length)) { add_index_error(gid, 2) ; continue; }
+                comment = gifts[index];
+                if (!comment) { add_index_error(gid, 3); continue; }
+                // check response. must be an ok response without error message (error=key=options=null) or an error
+                // response with either an error message (cross server error) or with key+options (within server error)
+                if (new_comment.deleted_at_server && (new_comment.hasOwnProperty('error') || new_comment.hasOwnProperty('key') || new_comment.hasOwnProperty('options'))) {
+                    // unexpected error information
+                    add_response_error (new_comment,4) ;
+                    continue ;
+                }
+                if (!new_comment.deleted_at_server) {
+                    // gift delete rejected by server
+                    if (!new_comment.hasOwnProperty('error') && !new_comment.hasOwnProperty('key') && !new_comment.hasOwnProperty('options')) {
+                        add_response_error (new_comment,5) ; // no error information
+                        continue ;
+                    }
+                    if (new_comment.hasOwnProperty('error') && (new_comment.hasOwnProperty('key') || new_comment.hasOwnProperty('options'))) {
+                        add_response_error (new_comment,6) ; // inconsistent error information
+                        continue ;
+                    }
+                    if (new_comment.hasOwnProperty('options') && !new_comment.hasOwnProperty('key')) {
+                        add_response_error (new_comment,6) ; // inconsistent error information
+                        continue ;
+                    }
+
+                }
+                if (!new_comment.deleted_at_server) {
+                    // delete gift request failed. see error message from server
+                    console.log(pgm + 'Gift ' + gid + '. Delete gift request failed. ' + new_comment.error);
+                    comment.link_error = new_comment.error ;
+                    comment.link_error_at = Gofreerev.unix_timestamp() ;
+                    comment.link_error_delete_nid = notiService.add_notification({
+                        notitype: 'delete_gift', key: 'error', options: {error: new_comment.error},
+                        nid: comment.link_error_delete_nid,
+                        url:'todo: add show gift url',
+                        extra: {gid: gid}}) ;
+                    // undelete gift
+                    refresh_gift(comment) ;
+                    delete comment.deleted_at_client ;
+                    save_gift(comment) ;
+                    continue;
+                }
+                // todo: how to handle "remote delete". created by user A on server A, replicated to user A on server B. deleted by under A on server B.
+                // gift delete signature was created
+                if (comment.hasOwnProperty('deleted_at_server')) {
+                    console.log(pgm + 'System error. Gift ' + gid + ' deleted marked on server but deleted_at_server property was set between delete gifts request and delete gifts response.') ;
+                    continue ;
+                }
+                refresh_gift(comment);
+                if (comment.hasOwnProperty('deleted_at_server')) {
+                    // that is ok if multiple browser sessions with identical login / identical client user id
+                    if (comment.deleted_at_server == 1) null; // ok - response received in an other browser session
+                    else console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property for gift was setted to an invalid value between delete gifts request and delete gifts response. Expected deleted_at_server = 1. Found deleted_at_server = ' + comment.deleted_at_server + '.');
+                    continue;
+                }
+                comment.deleted_at_server = 1;
+                save_gift(comment) ;
+                save = true;
+            } // for i
+        }; // delete_comments_response
+        
+        
+        
 
 
         // list of mailboxes for other devices (online and offline)
@@ -3348,7 +3471,7 @@ angular.module('gifts')
                         for (j=0 ; j<gift.comments.length ; j++) {
                             comment = gift.comments[j] ;
 
-                            // todo: 1 - add server side sha256_deleted and/or sha256_accepted signature
+                            // todo: 1 - add server side sha256_deleted and/or sha256_action signature
                             //           a comment cannot be both accepted and deleted (delete gift to remove accepted deals)
                             //           it should be enough with one client side deleted_at_server=accepted_at_server field
                             // todo: 2 - clone user_ids array if sending message to other gofreerev server (user id is replaced with sha256 signature)
@@ -4983,7 +5106,7 @@ angular.module('gifts')
                             my_comment = null ;
                             for (k=0 ; k<my_gift.comments.length ; k++) if (my_gift.comments[k].cid == cid) my_comment = my_gift.comments[k] ;
 
-                            // todo: 1 - add server side sha256_deleted and/or sha256_accepted signature
+                            // todo: 1 - add server side sha256_deleted and/or sha256_action signature
                             //           a comment cannot be both accepted and deleted (delete gift to remove accepted deals)
                             //           it should be enough with one client side deleted_at_server=accepted_at_server field
                             if (!gift_clone.hasOwnProperty('comments')) gift_clone.comments = [] ;
@@ -5529,6 +5652,8 @@ angular.module('gifts')
             new_comments_response: new_comments_response,
             verify_comments_request: verify_comments_request,
             verify_comments_response: verify_comments_response,
+            delete_comments_request: delete_comments_request,
+            delete_comments_response: delete_comments_response,
             pubkeys_request: pubkeys_request,
             pubkeys_response: pubkeys_response,
             update_mailboxes: update_mailboxes,

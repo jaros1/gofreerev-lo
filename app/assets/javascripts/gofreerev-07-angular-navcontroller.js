@@ -46,7 +46,7 @@ angular.module('gifts')
                 delete_gifts: giftService.delete_gifts_request(),
                 new_comments: giftService.new_comments_request(),
                 verify_comments: giftService.verify_comments_request(),
-                delete_comments: giftSerice.delete_comments_request(),
+                delete_comments: giftService.delete_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request,
                 oauths: userService.refresh_friends_list_request(),

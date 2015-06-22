@@ -767,6 +767,8 @@ class Gift < ActiveRecord::Base
         response << { :gid => gid, :deleted_at_server => false, :error => 'You are not authorized to delete this gift' }
         next
       end
+
+      # todo: add server_id (delete remote gift). same process flow as in verify remote gift
       
       # translate user ids from internal id (sequence) to uid/provider format before sha256 signature calculations
       giver_user_ids = giver_user_ids.collect do |id|

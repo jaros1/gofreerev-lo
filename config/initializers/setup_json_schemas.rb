@@ -260,24 +260,26 @@ JSON_SCHEMA = {
                   :items => {
                       :type => 'object',
                       :properties => {
+                          # optional server id for other Gofreerev server
+                          :server_id => {:type => 'integer', :minimum => 1},
                           # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
                           # use positive seq for local gifts without server id - use negative seq for remote gifts with server id
                           :seq => {:type => 'integer'},
-                          # optional server id for other Gofreerev server
-                          :server_id => {:type => 'integer', :minimum => 1},
                           # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :gid => {:type => 'string', :pattern => uid_pattern},
                           # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                           :sha256 => {:type => 'string', :maxLength => 32},
-                          # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
-                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # verify gift action: verify, accept or delete. verify: check signatures, accept and delete: check old signatures and add new signature for action
+                          :gift_action => {:type => 'string', :pattern => '^(verify|accept|delete)$'},
                           # only used in accepted_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
                           :sha256_accepted => {:type => 'string', :maxLength => 32},
+                          # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
                           # internal user ids for either giver or receiver
                           :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
                           :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
                       },
-                      :required => %w(seq gid sha256),
+                      :required => %w(seq gid sha256 gift_action),
                       :additionalProperties => false
                   },
                   :minItems => 1
@@ -285,6 +287,7 @@ JSON_SCHEMA = {
 
               # delete gifts request - optional array with deleted gifts. gift server sha256 signature is verified and server sha256_deleted signature is created
               # at least one api logged in user must be giver or receiver of gift. sha256_deleted is required in request.
+              # todo: remove. use verify_gifts request with gift_action = 'delete'
               :delete_gifts => {
                   :type => 'array',
                   :title => 'Array with newly deleted gifts on client for creation of a server side sha256 deleted signature. ',
@@ -292,16 +295,18 @@ JSON_SCHEMA = {
                   :items => {
                       :type => 'object',
                       :properties => {
+                          # optional server id for other Gofreerev server if gift was created by a client on an other Gofreerev server
+                          :server_id => {:type => 'integer', :minimum => 1},
                           # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :gid => {:type => 'string', :pattern => uid_pattern},
                           # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                           :sha256 => {:type => 'string', :maxLength => 32},
-                          # required sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
-                          :sha256_deleted => {:type => 'string', :maxLength => 32},
-                          # optional sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
-                          # used as extra control if gift previously has been accepted
+                          # optional sha256 digest of client side gift information (sha256 fields + price + currency + accepted_cid + accepted_at_client)
+                          # added if gift previously has been accepted
                           :sha256_accepted => {:type => 'string', :maxLength => 32},
-                          # internal user ids for either giver or receiver - todo: change to uid/provider format to support cross server replication?
+                          # required sha256 digest of client side gift information (sha256_accepted fields + deleted_at_client)
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # internal user ids for either giver or receiver. gift must have a giver or a receiver.
                           :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
                           :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
                       },
@@ -344,6 +349,8 @@ JSON_SCHEMA = {
                           :cid => {:type => 'string', :pattern => uid_pattern},
                           # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price, currency and new_deal)
                           :sha256 => {:type => 'string', :maxLength => 32},
+                          # verify comment action: verify, cancel, accept or reject new deal proposal or delete comment. verify: check signatures, other: check old signatures and add new signature for action or delete
+                          :comment_action => {:type => 'string', :pattern => '^(verify|cancel|accept|reject|delete)$'},
                           # internal user ids for creator of comment (=login users)
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}},
                           # sha256 client digest if new deal proposal (new_deal=true) has been cancelled, accepted or rejected (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action and new_deal_action_at_client)
@@ -353,7 +360,7 @@ JSON_SCHEMA = {
                           # sha256 client digest if comment has been deleted (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action, new_deal_action_at_client and deleted_at_client)
                           :sha256_deleted => {:type => 'string', :maxLength => 32}
                       },
-                      :required => %w(seq cid sha256 user_ids),
+                      :required => %w(seq cid sha256 comment_action user_ids),
                       :additionalProperties => false
                   },
                   :minItems => 1

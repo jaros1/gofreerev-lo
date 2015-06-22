@@ -1853,4 +1853,35 @@
      ping: ping_response = {"old_client_timestamp"=>1433827804030, "interval"=>1549, "error"=>"true", "messages"=>{"messages"=>[{"sender_did"=>"14335744472057106859", "server"=>true, "encryption"=>"sym", "message"=>"cGlvN0hvV0RVWG5MWEkrYno3aXVtME1obFErbldIYUhESmZsMjM3RUNreW55\ncEVZMGdFZ0oxaXNqb0R6Cm9CVEtkU2g5TXhWQTIxK0duOS82T1F1R2R4akd5\nNU03NG8vNkJScTV6Uy8rVk0vSG1KQ3FNbENGQ3hZSwpaWGxWSUU1dVBkWjVJ\nWWtTRjc3SDlXTUtERE9KbXVnWUZkL3F1dVlZTUxZK2h1U0w1Umo0YkRlSmZw\nek4KMksrOGJ3RWdoZEdqUDRSR2F2Wm5lM2hrL1NZcENTVWJxU2JSTEtIdjVG\nWE4rbEdwMXBrOE9CYlRSa3krCmRVMUplQ3pmUFRRM3RaYnljeWQ4NGQwRnJK\nSEVUU2xtZ0trNEVXUkYvUDdpVTEvbVdVak5NVG9YNWZBNgo5Rk5GYUhWdWx4\nQWViTFkxYUN2TDZKU0tLeFpBSEdPUXRqNUpZMW5VVTROVDdVVkJyWXdSN1Ex\nUUpHOTQKSkhDeG5DN2lHM1dKZ2thSS9BNHlMaXViZ29CTzYyZ2xEY3hNVnZV\nS2xqOWYxbiswYUxwbWRYQ2JacmlUCi94dnE1T0U9Cg==\n", "receiver_did"=>"14335744436084762727"}, {"sender_did"=>"14335744472057106859", "server"=>true, "encryption"=>"sym", "message"=>"cGlvN0hvV0RVWG5Ga1R5cXJYYTVQU2V3am9UUXlid0RLLys1ZzdWVHJadTZS\nUHp5MnN0QnVrZ2ZTZmdYCmdEWG1TdlpLaXk5Vm5hQ0JlMVZaeC95YW5mZFkr\nR2hWNTZma0F2ZVc5VEVjOFJTZEo0dThjNHpNRlhwZQpBaVE3WkxsSXhoaU83\nMFJROU51UE9RSGh3TU9IMWd6c1hMQitCN1FsWnBFeENiMVI1bW5lZm4yWVlK\nSVIKYmpyVk9oaU5zWVRJCg==\n", "receiver_did"=>"14335744436084762727"}, {"sender_did"=>"14335744472057106859", "server"=>true, "encryption"=>"sym", "message"=>"cGlvN0hvV0RVWG56M2VBVnlLdW55UDFKRFZvQVlzdmU1bzhpRFZNOFZ5WT0K\n", "receiver_did"=>"14335744436084762727"}]}}
      block in ping_test_loop: res = {:error=>"true"}
 
-select next issue to solve: (rand*432).floor+1
+433) add remote delete to Gift.delete_gifts. same process flow as in verify remote gift
+     see 433. gift can change between delete gift request and delete gift response
+
+434) verify gift request and response
+     gift can sometimes change between verify gift request and verify gift response
+     for example receive_message_send_gifts verify old gift after detecting changed readonly fields
+     gifts received from other clients are in mailbox and to not change between request and response
+     verify gift request / response should check for changed sha256 signature between request and response
+
+435) verify gift operation in receive_message_send_gifts
+     using properties in_verify_gifts, verify_seq and verified_at_server
+     no need for post verify cleanup for gifts from incoming messages (mailbox)
+     must post verify cleanup for old gift in gifts array - used when readonly fields has changed
+
+436) create gift - always local and simple flow
+     verify gift, accept gift and delete gift - local and remote - almost identical
+     verify gift - must be friend with giver or receiver of gift
+     accept gift - must be creator of gift (giver or receiver)
+     delete gift - must be giver or receiver of gift
+     add verify_action (verify, accept, delete) to verify gifts request?
+     server: refactor verify_gifts, accept_gifts (not implemented) and delete_gifts to verify_gifts
+     client: refactor verify_gifts, accept_gifts (not implemented) and delete_gifts to verify_gifts
+
+437) add create gift to verify_gifts request and response?
+     that is. use verify gifts flow for all gift operations (create, verify, accept and delete)
+     rename verify_gifts_request and verify_gifts_response to gifts_request and gifts_response
+
+438) add create comment to verify_comments request and response?
+     that is. use verify comments flow for all comments operations (create, verify, cancel, accept, reject and delete)
+     rename verify_comments_request and verify_comments_response to comments_request and comments_response
+
+select next issue to solve: (rand*438).floor+1

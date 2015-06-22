@@ -1402,7 +1402,7 @@ angular.module('gifts')
         // check sha256 server signature for gifts received from other clients before adding or merging gift on this client
         // input is gifts in verify_gifts from send_gifts message pass 1 (receive_message_send_gifts)
         // gifts in verify_gifts array are moved to verify gifts buffer
-        // unique sequence seq is used in verify gifts requests.
+        // unique sequence seq is used in verify gifts requests and is returned in verify gifts response
         // positive seq is used for local gifts where response in immediate
         // negative seq (from sequence) is used for remote gifts where response will come in a later verify_gifts_response
         // server verifies if gift sha256 server signature is valid and returns a created_at_server timestamp if ok or null if not ok
@@ -1410,40 +1410,138 @@ angular.module('gifts')
         // output is used in send_gifts message pass 2 (receive_message_send_gifts)
         var verify_gifts = []; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple clients
         // verify gifts buffer - index by seq and key
-        var verify_gifts_key_to_seq = {} ; // helper: array with keys, key = gid+sha256+userids
+        var verify_gifts_key_to_seq = {} ; // helper: hash key=>seq, key = gid+sha256+userids
         var verify_gifts_seq_to_gifts = {} ; // helper: from seq to one or more gifts
         var verify_gifts_online = true ; // todo: set to false if ping does not respond - set to true if ping respond
         var verify_gifts_old_remote_seq = Gofreerev.getItem('seq') ; // ignore old remote gift verifications
 
-        // add gift to verify_gifts array. called from receive_message_send_gifts once each pass/loop
-        var verify_gifts_add = function (gift) {
+        // add gift to verify_gifts array. actions: create, verify, accept or delete gift.
+        // create gift action is always local (current Gofreerev server)
+        // verify, accept and delete gift actions can be local or remote (other Gofreerev servers)
+        var verify_gifts_add = function (gift, action) {
             var pgm = service + '.verify_gifts_add: ' ;
-            if (gift.in_verify_gifts) return ;
-            gift.in_verify_gifts = Gofreerev.unix_timestamp() ;
+            var error, property_at_server ;
+            switch (action) {
+                case 'create':
+                    property_at_server = 'created_at_server' ;
+                    break ;
+                case 'verify':
+                    property_at_server = 'verified_at_server' ;
+                    break ;
+                case 'accept':
+                    property_at_server = 'accepted_at_server' ;
+                    break ;
+                case 'delete':
+                    property_at_server = 'deleted_at_server' ;
+                    break ;
+                default:
+                    error = 'Invalid verify_gifts_add call. Expected action create, verify, accept or delete. Action was ' + action ;
+                    console.log(pgm + error) ;
+                    return error ;
+            } ; // switch
+            if (!gift.hasOwnProperty('created_at_client') || (typeof gift.created_at_client == 'undefined') || (gift.created_at_client == null)) {
+                error = 'Invalid verify_gifts_add call. gift.created_at_client is missing for action ' + action ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if ((action != 'create') && ((!gift.hasOwnProperty('created_at_server')) || (gift.created_at_server == null))) {
+                // accept or delete old existing gift
+                error = 'Invalid verify_gifts_add call. gift.created_at_server is missing or waiting for create gift operation to complete. Action was ' + action ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+
+
+            if (action == 'accept') {
+                if (!gift.hasOwnProperty('accepted_cid') || (typeof gift.accepted_cid == 'undefined') || (gift.accepted_cid == null)) {
+                    error = 'Invalid verify_gifts_add call. gift.accepted_cid is missing for action accept' ;
+                    console.log(pgm + error) ;
+                    return error ;
+                };
+                if (!gift.hasOwnProperty('accepted_at_client') || (typeof gift.accepted_at_client == 'undefined') || (gift.accepted_at_client == null)) {
+                    error = 'Invalid verify_gifts_add call. gift.accepted_at_client is missing for action accept' ;
+                    console.log(pgm + error) ;
+                    return error ;
+                };
+            };
+            if (action == 'delete' && (!gift.hasOwnProperty('deleted_at_client') || (typeof gift.deleted_at_client == 'undefined') || (gift.deleted_at_client == null))) {
+                error = 'Invalid verify_gifts_add call. gift.deleted_at_client is missing for action delete' ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if ((gift.hasOwnProperty(property_at_server))) {
+                // already created, verified, accepted or deleted
+                error = 'Invalid verify_gifts_add call. gift.' + property_at_server + ' is not null. Action was ' + action ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if (gift.verify_gift_at) {
+                // gift already in verify gift buffer. check action
+                if (gift.verify_gift_action == action) return null;
+                error = 'Invalid verify_gifts_add call. Gift ' + gift.gid + ' already in verify gifts buffer with action ' + gift.verify_gift_action +
+                    '. Old ' + gift.verify_gift_action + ' gift action must complete before continuing with new ' + action + ' gift action' ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            gift.verify_gift_at = Gofreerev.unix_timestamp() ;
+            gift.verify_gift_action = action ; // verify, accept or delete
             verify_gifts.push(gift) ;
-            console.log(pgm + 'added gid ' + gift.gid + ' to verify gifts buffer') ;
-        };
+            console.log(pgm + 'added gid ' + gift.gid + ' to verify gifts buffer ') ;
+            return null;
+        }; // verify_gifts_add
+
+        // make verify_gift request for one gift. Used in verify_gifts_request and verify_gifts_response (control)
+        var verify_gift_to_hash = function (verify_gift) {
+            // prepare request - using same client sha256 calculations as in new_gifts_request
+            //sha256_client = Gofreerev.sha256(
+            //    verify_gift.created_at_client.toString(), verify_gift.description, verify_gift.open_graph_url,
+            //    verify_gift.open_graph_title, verify_gift.open_graph_description, verify_gift.open_graph_image);
+            //hash = {
+            //    gid: verify_gift.gid,
+            //    sha256: signatures.sha256_client
+            //};
+            // calculate 1-3 client side signatures (sha256, sha256_accepted and/or sha256_deleted)
+            var signatures = gift_signature_for_server(verify_gift) ;
+            var hash = { gid: verify_gift.gid, sha256: signatures.sha256, action: verify_gift.verify_gift_action };
+            if (signatures.sha256_accepted) hash.sha256_accepted = signatures.sha256_accepted ;
+            if (signatures.sha256_deleted) hash.sha256_deleted = signatures.sha256_deleted ;
+            // add user ids
+            if (verify_gift.giver_user_ids.length > 0) hash.giver_user_ids = verify_gift.giver_user_ids ;
+            if (verify_gift.receiver_user_ids.length > 0) hash.receiver_user_ids = verify_gift.receiver_user_ids ;
+            // add server id (only for remote gifts)
+            if (verify_gift.created_at_server != 0) hash.server_id = verify_gift.created_at_server ;
+            return hash ;
+        }; // verify_gift_to_hash
 
         var verify_gifts_request = function () {
             var pgm = service + '.verify_gifts_request: ';
             // check buffer for "old gifts". should normally be empty except for gifts with negative seq (remote gifts)
             // local gifts are allowed if device is offline or if server does not respond
             var local_seq = 0 ;
-            var seq, local_gifts = 0, remote_gifts = 0 ;
+            var seq ;
+            var no_gifts = { local: 0, remote: 0, create: 0, verify: 0, accept: 0, delete: 0 } ;
             var request = [] ;
             for (seq in verify_gifts_seq_to_gifts) {
                 // console.log(pgm + 'seq = ' + seq + '(' + typeof seq + ')') ;
                 if (parseInt(seq) >= 0) {
-                    // found "old" local new gift in buffer. should only be the case if device is offline or server is not responding
-                    local_gifts += 1;
+                    // found "old" local gifts action in buffer. device must be offline or server is not responding. resend previous request
+                    no_gifts.local += 1;
                     if (parseInt(seq) > local_seq) local_seq = parseInt(seq) ;
-                    request.push(verify_gifts_seq_to_gifts[seq].request) ; // resend old request
+                    request.push(verify_gifts_seq_to_gifts[seq].request) ;
                 }
-                else remote_gifts += 1 ; // ok - remote verification can take some time
-            }
-            if (verify_gifts_online && (local_gifts + remote_gifts > 0)) {
-                console.log(pgm + 'Warning. Found ' + local_gifts + ' local and ' + remote_gifts + ' remote not yet verified gifts in buffer.') ;
-            }
+                else no_gifts.remote += 1 ; // ok - remote gift actions can take some time (verify, accept or delete)
+                if (['create', 'verify', 'accept', 'delete'].indexOf(verify_gifts_seq_to_gifts[seq].action) != -1) {
+                    no_gifts[verify_gifts_seq_to_gifts[seq].action] += 1 ;
+                }
+                else {
+                    console.log(pgm + 'System error. Invalid action ' + verify_gifts_seq_to_gifts[seq].action + ' in verify gifts buffer.');
+                    console.log(pgm + 'verify_gifts_seq_to_gifts[' + seq + '] = ' + verify_gifts_seq_to_gifts[seq]) ;
+                    continue ;
+                };
+            } ; // for seq
+            if (verify_gifts_online && (no_gifts.local + no_gifts.remote > 0)) {
+                console.log(pgm + 'Found ' + no_gifts.local + ' local and ' + no_gifts.remote + ' gifts in buffer. ' + no_gifts.verify + ' verify, ' + no_gifts.accept + ' and ' + no_gifts.delete + ' gift requests') ;
+            };
 
             if (verify_gifts.length == 0) return (request.length == 0 ? null : request) ; // no new gifts for verification
 
@@ -1454,8 +1552,6 @@ angular.module('gifts')
             var old_request = request.length ; // resend old requests
             var new_request = 0 ;
             var verify_gift, sha256_client, hash, key ;
-            var signatures ;
-            console.log(pgm + 'verify_gifts.length = ' + verify_gifts.length) ;
             while (verify_gifts.length > 0) {
                 verify_gift = verify_gifts.shift();
                 if (verify_gift.hasOwnProperty('verified_at_server')) {
@@ -1468,31 +1564,18 @@ angular.module('gifts')
                     waiting_for_verification += 1;
                     continue;
                 } // if
-                // prepare request - using same client sha256 calculations as in new_gifts_request
-                //sha256_client = Gofreerev.sha256(
-                //    verify_gift.created_at_client.toString(), verify_gift.description, verify_gift.open_graph_url,
-                //    verify_gift.open_graph_title, verify_gift.open_graph_description, verify_gift.open_graph_image);
-                //hash = {
-                //    gid: verify_gift.gid,
-                //    sha256: signatures.sha256_client
-                //};
-                // calculate 1-3 client side signatures (sha256, sha256_accepted and/or sha256_deleted)
-                signatures = gift_signature_for_server(verify_gift) ;
-                hash = { gid: verify_gift.gid, sha256: signatures.sha256 };
-                if (signatures.sha256_accepted) hash.sha256_accepted = signatures.sha256_accepted ;
-                if (signatures.sha256_deleted) hash.sha256_deleted = signatures.sha256_deleted ;
-                // add user ids
-                if (verify_gift.giver_user_ids.length > 0) hash.giver_user_ids = verify_gift.giver_user_ids ;
-                if (verify_gift.receiver_user_ids.length > 0) hash.receiver_user_ids = verify_gift.receiver_user_ids ;
-                // add server id (only gifts for remote verification)
-                if (verify_gift.created_at_server != 0) hash.server_id = verify_gift.created_at_server ;
-                // check verify gifts buffer
+                // make request (verify, accept or delete gift)
+                hash = verify_gift_to_hash(verify_gift);
                 key = JSON.stringify(hash);
+                // check verify gifts buffer
                 seq = verify_gifts_key_to_seq[key];
                 if (seq) {
-                    // key already in verify gifts buffer.
+                    // key/request already in verify gifts buffer (must be identical gift received in multiple incoming messages - verify gift requests)
                     verify_gift.verify_seq = seq ;
                     verify_gifts_seq_to_gifts[seq].gifts.push(verify_gift);
+                    if (verify_gifts_seq_to_gifts[seq].action != 'verify') {
+                        console.log(pgm + 'Warning. Multiple ' + verify_gifts_seq_to_gifts[seq].action + ' gift requests for ' +  verify_gifts_seq_to_gifts[seq].gid) ;
+                    };
                 }
                 else {
                     // new request. add to verify gifts buffer and request array
@@ -1506,6 +1589,7 @@ angular.module('gifts')
                     verify_gifts_key_to_seq[key] = hash.seq ;
                     verify_gifts_seq_to_gifts[hash.seq] = {
                         gid: verify_gift.gid,
+                        action: verify_gift.verify_gift_action,
                         key: key,
                         gifts: [verify_gift],
                         request: hash
@@ -1531,7 +1615,7 @@ angular.module('gifts')
             }
 
             // seq must be unique i response and all positive seq must be in verify gifts buffer
-            var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, new_gift  ;
+            var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, new_gift, hash  ;
             for (i=0 ; i<response.gifts.length ; i++) {
                 new_gift = response.gifts[i] ;
                 seq = new_gift.seq;
@@ -1553,7 +1637,7 @@ angular.module('gifts')
                     else if (verify_gifts_seq_to_gifts[seq].gid != new_gift.gid) invalid_gid += 1 ;
                 }
                 else not_unique_seq += 1 ;
-            }
+            } ; // for i
             seqs = null ;
 
             // receipt - abort if errors in verify gifts response
@@ -1564,22 +1648,43 @@ angular.module('gifts')
             if (old_remote_seq.length > 0) console.log(pgm + 'Warning. ' + old_remote_seq + ' old unknown remote seq in verify gifts response') ;
             if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_gid > 0) return ;
 
-            // loop for each row in verify gifts response
-            var gift_verification, gid, new_gifts, key, no_verifications = 0, no_gifts = 0, no_valid = 0, no_invalid = 0 ;
+            // loop for each row in verify gifts response (verify, accept or delete)
+            var gift_verification, gid, new_gifts, key, no_verifications = 0, no_gifts = 0, no_valid = 0, no_invalid = 0, verify_gift_action ;
             while (response.gifts.length > 0) {
                 gift_verification = response.gifts.shift();
                 seq = gift_verification.seq ;
-                if (old_remote_seq.indexOf(seq) != -1) continue ; // ignore old remote gift verification
+                if (old_remote_seq.indexOf(seq) != -1) continue ; // ignore old remote gift verification (from before page reload)
                 no_verifications += 1 ;
                 new_gifts = verify_gifts_seq_to_gifts[seq].gifts;
+                // one or more gifts in verify gifts buffer with this seq/key
                 while (new_gifts.length > 0) {
                     no_gifts += 1 ;
                     new_gift = new_gifts.shift() ;
-                    new_gift.verified_at_server = gift_verification.verified_at_server ;
+                    // recheck key. check if gift has changed between verify gifts request and response (remote verification can take some time)
+                    hash = verify_gift_to_hash(new_gift);
+                    key = JSON.stringify(hash);
+                    if (key != verify_gifts_seq_to_gifts[seq].key) {
+                        // gift changed between verify gifts request and verify gifts response.
+                        // write warning in log and and a new verify gifts request with changed gift
+                        // todo: check verify_gift_action. ok to resend verify. Maybe not ok to resend accept or delete.
+                        console.log(pgm + 'Warning. Gift ' + new_gift.gid + ' was changed between verify gifts request and verify gifts response.') ;
+                        console.log(pgm + 'old key = ' + verify_gifts_seq_to_gifts[seq].key) ;
+                        console.log(pgm + 'new key = ' + key) ;
+                        console.log(pgm + 'Resending gift ' + new_gift.gid + ' to server for verification') ;
+                        delete new_gift.verify_gift_at ;
+                        verify_gift_action = new_gift.verify_gift_action ;
+                        delete new_gift.verify_gift_action ;
+                        delete new_gift.verify_seq ;
+                        verify_gifts_add(new_gift, verify_gift_action) ;
+                        continue ;
+                    };
+                    // check verify gifts buffer
+                    new_gift.verified_at_server = gift_verification.verified_at_server ; // boolean
+                    // todo 1: gift_verification.verified_at_server is a boolean - new_gift.created_at_server should be an integer!
                     if (identical_values(new_gift.created_at_server, new_gift.verified_at_server)) no_valid += 1 ;
                     else no_invalid += 1 ;
-
-                }
+                    // todo 2: remove new_gift.verify_gift_at and new_gift.verify_seq
+                } // while
                 // remove from verify gifts buffer
                 key = verify_gifts_seq_to_gifts[seq].key ;
                 delete verify_gifts_seq_to_gifts[seq] ;
@@ -1603,6 +1708,7 @@ angular.module('gifts')
             var gift, hash, signatures ;
             for (var i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
+                if (!gift.hasOwnProperty('created_at_server')) continue ; // wait for create gifts request to finish
                 if (!gift.deleted_at_client) continue ;
                 if (!gift.deleted_at_server) {
                     signatures = gift_signature_for_server(gift);
@@ -1610,6 +1716,7 @@ angular.module('gifts')
                     if (signatures.sha256_accepted) hash.sha256_accepted = signatures.sha256_accepted ;
                     if (gift.giver_user_ids && (gift.giver_user_ids.length > 0)) hash.giver_user_ids = gift.giver_user_ids;
                     if (gift.receiver_user_ids && (gift.receiver_user_ids.length > 0)) hash.receiver_user_ids = gift.receiver_user_ids;
+                    if (gift.created_at_server != 0) hash.server_id = gift.created_at_server ; // remote gift
                     request.push(hash);
                 } // if
             } // for i
@@ -1828,34 +1935,153 @@ angular.module('gifts')
         var verify_comments_online = true ; // todo: set to false if ping does not respond - set to true if ping respond
         var verify_comments_old_remote_seq = Gofreerev.getItem('seq') ; // ignore old remote comment verifications todo: identical with verify_gifts_old_remote_seq
 
-        // add comment to verify_comments array. called from receive_message_send_gifts once each pass
-        var verify_comments_add = function (gid, comment) {
+        // add comment to verify_comments array. actions create, verify, new deal action (cancel, accept, reject) or delete
+        var verify_comments_add = function (gid, comment, action) {
             var pgm = service + '.verify_comments_add: ' ;
-            if (comment.in_verify_comments) return ;
-            comment.in_verify_comments = Gofreerev.unix_timestamp() ;
+            var error, property_at_server ;
+            switch (action) {
+                case 'create':
+                    property_at_server = 'created_at_server' ;
+                    break ;
+                case 'verify':
+                    property_at_server = 'verified_at_server' ;
+                    break ;
+                case 'delete':
+                    property_at_server = 'deleted_at_server' ;
+                    break ;
+                case 'cancel':
+                case 'accept':
+                case 'reject':
+                    // cancel, accept or reject new deal proposal
+                    property_at_server = 'new_deal_action_at_server'
+                    break ;
+                default:
+                    error = 'Invalid verify_comments_add call. Expected action create, verify, cancel, accept, reject or delete. Action was ' + action ;
+                    console.log(pgm + error) ;
+                    return error ;
+            } ; // switch
+            if (!comment.hasOwnProperty('created_at_client') || (typeof comment.created_at_client == 'undefined') || (comment.created_at_client == null)) {
+                error = 'Invalid verify_comments_add call. comment.created_at_client is missing or waiting for create comment operation to complete. Action was ' + action ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if ((action != 'create') && ((!comment.hasOwnProperty('created_at_server')) || (comment.created_at_server == null))) {
+                // accept or delete old existing gift
+                error = 'Invalid verify_comments_add call. comment.created_at_server is missing or waiting for create comment operation to complete. Action was ' + action ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if (['cancel', 'accept', 'reject'].indexOf(action) != -1) {
+                // new deal action (cancel, accept or reject new deal proposal). new_deal_action and new_new_action_at_client are required
+                if (!comment.hasOwnProperty('new_deal_action') || (typeof comment.new_deal_action == 'undefined') || (comment.new_deal_action == null)) {
+                    error = 'Invalid verify_comments_add call. gift.new_deal_action is missing for action ' + action ;
+                    console.log(pgm + error) ;
+                    return error ;
+                } ;
+                if (comment.new_deal_action != action) {
+                    error = 'Invalid verify_comments_add call. Invalid action. Comment.new_deal_action is ' + comment.new_deal_action + '. verify_comments_add was called with action ' + action ;
+                    console.log(pgm + error) ;
+                    return error ;
+                };
+                if (!comment.hasOwnProperty('new_deal_action_at_client') || (typeof comment.new_deal_action_at_client == 'undefined') || (comment.new_deal_action_at_client == null)) {
+                    error = 'Invalid verify_comments_add call. gift.new_deal_action_at_client is missing for action ' + action ;
+                    console.log(pgm + error) ;
+                    return error ;
+                } ;
+            };
+            if (action == 'delete' && (!comment.hasOwnProperty('deleted_at_client') || (typeof comment.deleted_at_client == 'undefined') || (comment.deleted_at_client == null))) {
+                error = 'Invalid verify_comments_add call. comment.deleted_at_client is missing for action delete' ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if ((comment.hasOwnProperty(property_at_server))) {
+                // already verified, cancelled, accepted, rejected or deleted
+                error = 'Invalid verify_comments_add call. comment.' + property_at_server + ' is not null. Action was ' + action ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            if (comment.verify_comment_at) {
+                // comment already in verify comment buffer. check action
+                if (comment.verify_comment_action == action) return null;
+                error = 'Invalid verify_comments_add call. Comment ' + comment.cid + ' already in verify comments buffer with action ' + comment.verify_comment_action +
+                    '. Old ' + comment.verify_comment_action + ' comment action must complete before continuing with new ' + action + ' comment action' ;
+                console.log(pgm + error) ;
+                return error ;
+            };
+            comment.verify_comment_at = Gofreerev.unix_timestamp() ;
+            comment.verify_comment_action = action ; // verify, accept or delete
             verify_comments.push({gid: gid, comment: comment});
             console.log(pgm + 'added cid ' + comment.cid + ' to verify comments buffer') ;
-        };
+        }; // verify_comments_add
+
+        // make verify_comment request for one comment. Used in verify_comments_request and verify_comments_response (control)
+        var verify_comment_to_hash = function (gift, verify_comment) {
+            // prepare request - using same client sha256 calculations as in new_comments_request
+            // calculate 1-3 client side signatures (sha256, sha256_action and/or sha256_deleted)
+            var signatures = comment_signature_for_server(gift.gid, verify_comment) ;
+            var comment_hash = { cid: verify_comment.cid, sha256: signatures.sha256, action: verify_comment.verify_comment_action, user_ids: verify_comment.user_ids };
+            if (signatures.sha256_action) {
+                comment_hash.sha256_action = signatures.sha256_action ;
+                comment_hash.new_deal_action_by_user_ids = verify_comment.new_deal_action_by_user_ids ;
+            }
+            if (signatures.sha256_deleted) comment_hash.sha256_deleted = signatures.sha256_deleted ;
+            // add server id (only comments for remote verification)
+            if (verify_comment.created_at_server != 0) comment_hash.server_id = verify_comment.created_at_server ;
+            // server side authorization check:
+            // - verify. not relevant. comment is in most cases from a friend of giver or receiver but there are exceptions (friend lists out of sync, not connected login provider)
+            // - cancel new deal proposal. login users must also be creator of comment. info is already available in comment hash
+            // - accept new deal proposal. login users must also be creator of gift. add gift hash to comment hash (subset of verify gift request)
+            // - reject new deal proposal. login users must also be creator of gift. add gift hash to comment hash (subset of verify gift request)
+            // - delete comment. add gift hash to comment has if comment is deleted by giver or receiver of gift
+            var add_gift_info, login_user_ids, gift_hash ;
+            switch (verify_comment.verify_comment_action) {
+                case 'verify':
+                case 'cancel':
+                    add_gift_info = false ;
+                    break ;
+                case 'accept':
+                case 'reject':
+                    add_gift_info = true ;
+                    break ;
+                case 'delete':
+                    login_user_ids = userService.get_login_userids() ;
+                    add_gift_info = ($(login_user_ids).filter(comment.user_ids).length == 0) ;
+            }; // switch
+            if (add_gift_info) {
+                // additional authorization information is required for comment action (accept, reject or delete)
+                // (subset of verify gift request)
+                var signatures = gift_signature_for_server(gift) ;
+                var gift_hash = { gid: gift.gid, sha256: signatures.sha256, action: 'verify' };
+                // add user ids
+                if (gift.giver_user_ids.length > 0) gift_hash.giver_user_ids = verify_gift.giver_user_ids ;
+                if (gift.receiver_user_ids.length > 0) gift_hash.receiver_user_ids = verify_gift.receiver_user_ids ;
+                // add server id (only for remote gifts).
+                if (gift.created_at_server != 0) gift_hash.server_id = verify_gift.created_at_server ;
+                comment_hash.gift = gift_hash ;
+            }
+            return comment_hash ;
+        } ; // verify_comment_to_hash
 
         var verify_comments_request = function () {
             var pgm = service + '.verify_comments_request: ';
             // check buffer for "old comments". should normally be empty except for comments with negative seq (remote comments)
             // local comments are allowed if device is offline or if server does not respond
             var local_seq = 0 ;
-            var seq, local_comments = 0, remote_comments = 0 ;
+            var seq, no_local_comments = 0, no_remote_comments = 0 ;
+            var no_comments = { local: 0, remote: 0, create: 0, verify: 0, cancel: 0, accept: 0, reject: 0, delete: 0 } ;
             var request = [] ;
             for (seq in verify_comments_seq_to_comms) {
                 // console.log(pgm + 'seq = ' + seq + '(' + typeof seq + ')') ;
                 if (parseInt(seq) >= 0) {
-                    // found "old" local new comment in buffer. should only be the case if device is offline or server is not responding
-                    local_comments += 1;
+                    // found "old" local comment action in buffer. device must be offline or server is not responding. resend previous request
+                    no_local_comments += 1;
                     if (parseInt(seq) > local_seq) local_seq = parseInt(seq) ;
                     request.push(verify_comments_seq_to_comms[seq].request) ; // resend old verify comments request
                 }
-                else remote_comments += 1 ; // ok - remote comment verification can take some time
+                else no_remote_comments += 1 ; // ok - remote comment actions can take some time (verify, cancel, accept, reject or delete)
             }
-            if (verify_comments_online && (local_comments + remote_comments > 0)) {
-                console.log(pgm + 'Warning. Found ' + local_comments + ' local and ' + remote_comments + ' remote not yet verified comments in buffer.') ;
+            if (verify_comments_online && (no_local_comments + no_remote_comments > 0)) {
+                console.log(pgm + 'Warning. Found ' + no_local_comments + ' local and ' + no_remote_comments + ' remote not yet verified comments in buffer.') ;
             }
 
             if (verify_comments.length == 0) return (request.length == 0 ? null : request) ; // no new comments for verification
@@ -2020,7 +2246,7 @@ angular.module('gifts')
                     comment = gift.comments[j] ;
                     if (!comment.deleted_at_client) continue ;
                     if (!comment.deleted_at_server) {
-                        signatures = comment_signature_for_server(comment);
+                        signatures = comment_signature_for_server(gift.gid, comment);
                         hash = {cid: comment.cid, user_ids: comment.user_ids, sha256: signatures.sha256, sha256_deleted: signatures.sha256_deleted};
                         if (signatures.sha256_action) {
                             hash.sha256_action = signatures.sha256_action ;
@@ -2029,8 +2255,7 @@ angular.module('gifts')
 
                         // todo: add gift fields if comment was deleted by giver or receiver of gift (not owner of comment)
                         if ($(login_user_ids).filter(comment.user_ids).length == 0) {
-                            // comment was not deleted by creator or comment. login user(s) has created this comment
-                            // console.log(pgm + 'login_user has created the comment') ;
+                            // comment was NOT deleted by creator of comment. login user must be giver or receiver of gift.
                             return true ;
                         }
 
@@ -4083,7 +4308,7 @@ angular.module('gifts')
                             if (!new_gift.hasOwnProperty('verify_seq')) {
                                 // new gift must be server validated before continuing (between pass 1 and pass 2)
                                 verify_new_gifts += 1;
-                                verify_gifts_add(new_gift);
+                                verify_gifts_add(new_gift, 'verify');
                                 continue;
                             }
                             if (!new_gift.hasOwnProperty('verified_at_server')) {
@@ -4101,7 +4326,7 @@ angular.module('gifts')
                                 // old gift must be server validated before continuing (between pass 1 and pass 2)
                                 verify_old_gifts += 1;
                                 delete old_gift.verified_at_server;
-                                verify_gifts_add(old_gift);
+                                verify_gifts_add(old_gift, 'verify');
                                 continue;
                             }
                             if (!old_gift.hasOwnProperty('verified_at_server')) {
@@ -4110,11 +4335,11 @@ angular.module('gifts')
                                 continue;
                             }
                             if (!old_gift.verified_at_server) {
-                                // invalid signature for gift - old gift must be deleted and new gift accepted
+                                // invalid signature for old gift - old gift must be deleted and new gift accepted
                                 old_gifts_invalid_sha.push(gid);
                                 continue;
                             }
-                            // there is a BIG problem. valid server side sha256 signature for old and new gift - must be a javascript error
+                            // BIG problem. valid server side sha256 signature for old and new gift - and changed readonly fields - fatal javascript error
                             gid_validation_system_errors.push(gid);
                             continue;
                         } // if changed readonly fields!
@@ -4247,7 +4472,7 @@ angular.module('gifts')
                             if (!new_comment.hasOwnProperty('verify_seq')) {
                                 // new comment must be server validated before continuing (between pass 1 and pass 2)
                                 verify_new_comments += 1;
-                                verify_comments_add(gid, new_comment);
+                                verify_comments_add(gid, new_comment, 'verify');
                                 comments_pass = 1;
                                 continue; // wait for verify comments
                             }
@@ -4257,7 +4482,7 @@ angular.module('gifts')
                                 //   a: offline client - no internet connection
                                 //   b: server not responding (error or timeout)
                                 //   c: remote comment verification (error or remote server not responding)
-                                seconds = Gofreerev.unix_timestamp() - new_comment.in_verify_comments;
+                                seconds = Gofreerev.unix_timestamp() - new_comment.verify_comment_at;
                                 console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
                                 verifying_new_comments += 1;
                                 comments_pass = 1;
@@ -4284,7 +4509,7 @@ angular.module('gifts')
                                 if (!old_comment.hasOwnProperty('verify_seq')) {
                                     // old comment must be server validated before continuing (between pass 1 and pass 2)
                                     verify_old_comments += 1;
-                                    verify_comments_add(gid, old_comment);
+                                    verify_comments_add(gid, old_comment, 'verify');
                                     comments_pass = 1;
                                     continue; // wait for verify comments
                                 }
@@ -4294,7 +4519,7 @@ angular.module('gifts')
                                     //   a: offline client - no internet connection
                                     //   b: server not responding (error or timeout)
                                     //   c: remote comment verification (error or remote server not responding)
-                                    seconds = Gofreerev.unix_timestamp() - old_comment.in_verify_comments;
+                                    seconds = Gofreerev.unix_timestamp() - old_comment.verify_comment_at;
                                     console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + old_comment.cid + ' verification');
                                     verifying_old_comments += 1;
                                     comments_pass = 1;
@@ -4457,7 +4682,7 @@ angular.module('gifts')
                 if (!new_gift.hasOwnProperty('verify_seq')) {
                     // new gift must be server validated before continuing (between pass 1 and pass 2)
                     verify_new_gifts += 1;
-                    verify_gifts_add(new_gift);
+                    verify_gifts_add(new_gift, 'verify');
                     continue; // wait for verify gifts
                 }
                 if (!new_gift.hasOwnProperty('verified_at_server')) {
@@ -4466,7 +4691,7 @@ angular.module('gifts')
                     //   a: offline client - no internet connection
                     //   b: server not responding (error or timeout)
                     //   c: remote gift verification (error or remote server not responding)
-                    seconds = Gofreerev.unix_timestamp() - new_gift.in_verify_gifts ;
+                    seconds = Gofreerev.unix_timestamp() - new_gift.verify_gift_at ;
                     console.log(pgm + 'Waited ' + seconds + ' seconds for gift ' + gid + ' verification') ;
                     verifying_new_gifts += 1;
                     continue; // wait for verify gifts
@@ -4488,7 +4713,7 @@ angular.module('gifts')
                             // pass 1 - new comment must be server validated before continuing (between pass 1 and pass 2)
                             verify_new_comments += 1;
                             // verify_comments.push({gid: gid, comment: new_comment});
-                            verify_comments_add(gid, new_comment);
+                            verify_comments_add(gid, new_comment, 'verify');
                             comments_pass = 1 ;
                             continue;
                         }

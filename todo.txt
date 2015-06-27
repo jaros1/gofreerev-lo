@@ -1884,4 +1884,22 @@
      that is. use verify comments flow for all comments operations (create, verify, cancel, accept, reject and delete)
      rename verify_comments_request and verify_comments_response to comments_request and comments_response
 
-select next issue to solve: (rand*438).floor+1
+439) delete gift. use verify_comments_add(comment, 'delete') to send delete comments request to server
+     app can be offline when deleting comment
+     app must resend delete marked comments to server after page load
+     that is comments with deleted_at_client timestamp but without deleted_at_server
+
+440) comment.verify_comments
+     rename to comment.comment_actions
+     return row error messages to client
+
+441) comment.verify_comments (create, verify, cancel, accept, reject, delete)
+     make test cases with comment.server_id and comment.gift.server_id
+     - comment.server_id is null and comment.gift.server_id is not null
+     - comment.server_id is not null and comment.gift.server_id not null
+     - comment.server_id <> comment.gift.server_id
+     - cancel, accept and delete
+     - delete with comment.user_ids
+     - delete with comment.gift giver_user_ids or receiver_user_ids
+
+select next issue to solve: (rand*441).floor+1

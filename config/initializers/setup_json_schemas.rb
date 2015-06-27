@@ -261,7 +261,7 @@ JSON_SCHEMA = {
                       :type => 'object',
                       :properties => {
                           # optional server id for other Gofreerev server
-                          :server_id => {:type => 'integer', :minimum => 1},
+                          :server_id => {:type => %w(integer undefined), :minimum => 1},
                           # unique seq returned in response (gid is not guaranteed to be unique when receiving gifts from other devices)
                           # use positive seq for local gifts without server id - use negative seq for remote gifts with server id
                           :seq => {:type => 'integer'},
@@ -269,8 +269,8 @@ JSON_SCHEMA = {
                           :gid => {:type => 'string', :pattern => uid_pattern},
                           # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                           :sha256 => {:type => 'string', :maxLength => 32},
-                          # verify gift action: verify, accept or delete. verify: check signatures, accept and delete: check old signatures and add new signature for action
-                          :gift_action => {:type => 'string', :pattern => '^(verify|accept|delete)$'},
+                          # gift action: create, verify, accept or delete. create: new signature, verify: check signature(s), accept and delete: check old signatures and add new signature for action
+                          :action => {:type => 'string', :pattern => '^(create|verify|accept|delete)$'},
                           # only used in accepted_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
                           :sha256_accepted => {:type => 'string', :maxLength => 32},
                           # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
@@ -279,7 +279,7 @@ JSON_SCHEMA = {
                           :giver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}},
                           :receiver_user_ids => {:type => %w(NilClass array), :items => {:type => 'integer'}}
                       },
-                      :required => %w(seq gid sha256 gift_action),
+                      :required => %w(seq gid sha256 action),
                       :additionalProperties => false
                   },
                   :minItems => 1
@@ -349,8 +349,9 @@ JSON_SCHEMA = {
                           :cid => {:type => 'string', :pattern => uid_pattern},
                           # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price, currency and new_deal)
                           :sha256 => {:type => 'string', :maxLength => 32},
-                          # verify comment action: verify, cancel, accept or reject new deal proposal or delete comment. verify: check signatures, other: check old signatures and add new signature for action or delete
-                          :comment_action => {:type => 'string', :pattern => '^(verify|cancel|accept|reject|delete)$'},
+                          # comment action: create, verify, cancel, accept or reject new deal proposal or delete comment.
+                          # create: new signature, verify: check signatures, other: check old signatures and add new signature for new deal action or delete
+                          :action => {:type => 'string', :pattern => '^(create|verify|cancel|accept|reject|delete)$'},
                           # internal user ids for creator of comment (=login users)
                           :user_ids => {:type => 'array', :items => {:type => 'integer'}},
                           # sha256 client digest if new deal proposal (new_deal=true) has been cancelled, accepted or rejected (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action and new_deal_action_at_client)
@@ -358,9 +359,26 @@ JSON_SCHEMA = {
                           # optional internal user ids for any new_deal_action (cancel, accept or reject) for new deal proposal.
                           :new_deal_action_by_user_ids => {:type => 'array', :items => {:type => 'integer'}},
                           # sha256 client digest if comment has been deleted (unique gift id, created at client unix timestamp, comment, price, currency, new_deal, new_deal_action, new_deal_action_at_client and deleted_at_client)
-                          :sha256_deleted => {:type => 'string', :maxLength => 32}
+                          :sha256_deleted => {:type => 'string', :maxLength => 32},
+                          # optional gift hash. gift authorization information used for some comment actions (accept, reject and delete comment - comment deleted by giver or receiver of gift)
+                          :gift => {
+                              :type => 'object',
+                              :properties => {
+                                  # optional server id for other Gofreerev server if comment was created on an other Gofreerev server
+                                  :server_id => {:type => 'integer', :minimum => 1},
+                                  # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                  :gid => {},
+                                  # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                                  :sha256 => {},
+                                  # internal user ids for either giver or receiver. gift must have a giver or a receiver.
+                                  :giver_user_ids => {},
+                                  :receiver_user_ids => {}
+                              },
+                              :required => %w(gid sha256),
+                              :additionalProperties => false
+                          }
                       },
-                      :required => %w(seq cid sha256 comment_action user_ids),
+                      :required => %w(seq cid sha256 action user_ids),
                       :additionalProperties => false
                   },
                   :minItems => 1

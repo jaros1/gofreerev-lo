@@ -115,7 +115,7 @@ class Comment < ActiveRecord::Base
     logger.debug2 "verify_comments = #{verify_comments.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
     if !verify_comments
-      # any remote verify comment response ready for this client?
+      # any remote comment response ready for this client?
       vcs = VerifyComment.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
       return nil if vcs.size == 0
       logger.debug2 "vcs.size = #{vcs.size}"
@@ -133,11 +133,12 @@ class Comment < ActiveRecord::Base
       return response
     end
 
-    # cache friends for login users - giver and/or receiver for gifts must be friend of login user
+    # cache friends for login users - giver and/or receiver for gifts must be friend of login user - with some few exceptions
     login_users = User.where(:user_id => login_user_ids).includes(:server_users)
     if login_users.size == 0 or login_users.size != login_user_ids.size
       return { :error => 'System error. Expected array with login user ids for current logged in users'}
     end
+    login_providers = login_users.collect { |u| u.provider }
     User.cache_friend_info(login_users)
     friends = {}
     login_users.each do |u|
@@ -174,31 +175,39 @@ class Comment < ActiveRecord::Base
 
     verify_comments.each do |verify_comment|
       seq = verify_comment['seq']
-      server_id = verify_comment['server_id']
+      comment_server_id = verify_comment['server_id']
       cid = verify_comment['cid']
+      action = verify_comment['action']
 
-      if (server_id)
-        # remote comment verification
+      # validate row in verify comment request
+
+      if (comment_server_id)
+        # remote comment action
         if seq >= 0
-          logger.error2 "cid #{cid}. Invalid request. seq must be negative for remote comment verification"
+          logger.error2 "cid #{cid}. Invalid request. seq must be negative for remote comment actions"
           response << { :seq => seq, :cid => cid, :verified_at_server => false}
           next
         end
-        if !servers.has_key? server_id
-          logger.error2 "cid #{cid}. Invalid request. Unknown server id #{server_id}"
+        if action == 'create'
+          logger.error2 "cid #{cid}. Invalid request. create comment on other Gofreerev server is not allowed. server id = #{comment_server_id}"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false}
+          next
+        end
+        if !servers.has_key? comment_server_id
+          logger.error2 "cid #{cid}. Invalid request. Unknown server id #{comment_server_id}"
           response << { :seq => seq, :cid => cid, :verified_at_server => false}
           next
         end
       else
-        # local comment verification
+        # local comment action
         if seq < 0
-          logger.error2 "cid #{cid}. Invalid request. seq must be postive for local comment verification"
+          logger.error2 "cid #{cid}. Invalid request. seq must be postive for local comment actions"
           response << { :seq => seq, :cid => cid, :verified_at_server => false}
           next
         end
       end
 
-      # validate row in verify comment request
+      # read user_ids + check doublets
       if verify_comment["user_ids"] and verify_comment["user_ids"].size > 0
         comment_user_ids = verify_comment["user_ids"]
       else
@@ -215,57 +224,90 @@ class Comment < ActiveRecord::Base
         next
       end
 
+      # read new_deal_action_by_user_ids and check doublets
       if verify_comment["new_deal_action_by_user_ids"] and verify_comment["new_deal_action_by_user_ids"].size > 0
         new_deal_action_by_user_ids1 = verify_comment["new_deal_action_by_user_ids"]
       else
         new_deal_action_by_user_ids1 = []
-      end
-      if verify_comment["sha256_action"].to_s != '' and new_deal_action_by_user_ids1.size == 0
-        logger.error2 "cid #{cid}. Invalid request. new_deal_action_by_user_ids is missing."
-        response << { :seq => seq, :cid => cid, :verified_at_server => false }
-        next
-      end
-      if verify_comment["sha256_action"].to_s == '' and new_deal_action_by_user_ids1.size > 0
-        logger.error2 "cid #{cid}. Invalid request. sha256_action is missing."
-        response << { :seq => seq, :cid => cid, :verified_at_server => false }
-        next
       end
       if new_deal_action_by_user_ids1.size != new_deal_action_by_user_ids1.uniq.size
         logger.error2 "cid #{cid}. Invalid request. User ids in new_deal_action_by_user_ids must be unique."
         response << { :seq => seq, :cid => cid, :verified_at_server => false }
         next
       end
-
-      # check if comment exists
-      if !server_id
-        # local comments verification - comment must exist
-        comment = comments[cid]
-        if !comment
-          # comment not found -
-          logger.warn2 "cid #{cid} was not found"
+      # consistency check (action, sha256_action and new_deal_action_by_user_ids)
+      b1_new_deal_action = %w(cancel accept reject).index(action) ? true : false
+      b2_sha256_action = verify_comment["sha256_action"].to_s != '' ? true : false
+      b3_new_deal_action_by_user_ids = new_deal_action_by_user_ids1.size > 0 ? true : false
+      if b1_new_deal_action
+        # cancel, accept or reject new deal proposal - sha256_action and new_deal_action_by_user_ids are required
+        if !b2_sha256_action
+          logger.error2 "cid #{cid}. Invalid request. sha256_action is missing for #{action} new deal proposal"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          next
+        elsif !b3_new_deal_action_by_user_ids
+          logger.error2 "cid #{cid}. Invalid request. new_deal_action_by_user_ids is missing for #{action} new deal proposal"
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
           next
         end
+      elsif action == 'create'
+        # create new comment. sha256_action and new_deal_action_by_user_id are not allowed
+        if b2_sha256_action
+          logger.error2 "cid #{cid}. Invalid request. sha256_action is not allowed for create new comment"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          next
+        end
+        if b3_new_deal_action_by_user_ids
+          logger.error2 "cid #{cid}. Invalid request. new_deal_action_by_user_ids is not allowed for create new comment"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          next
+        end
+      elsif b2_sha256_action != b3_new_deal_action_by_user_ids
+        # verify and delete. optional sha256_action and new_deal_action_by_user_id
+        if b2_sha256_action
+          logger.error2 "cid #{cid}. Invalid request. sha256_action without new_deal_action_by_user_ids is not allowed. #{action} comment request"
+        else
+          logger.error2 "cid #{cid}. Invalid request. new_deal_action_by_user_ids without sha256_action is not allowed. #{action} comment request"
+        end
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
       end
 
-      # check mutual friends
-      # todo: change to must be friend of friend to login user(s)? but that could be true on one gofreerev server and false on an other gofreerev server!
-      mutual_friend = false
+      # check if comment exists (local only)
+      if !comment_server_id
+        # local comment action
+        comment = comments[cid]
+        if action == 'create'
+          if comment
+            logger.warn2 "cid #{cid} already exists"
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            next
+          end
+        else
+          if !comment
+            logger.warn2 "cid #{cid} was not found"
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            next
+          end
+        end
+      end
+
+      # prepare comment user ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers)
       user_ids = []
       user_error = false
+      comment_and_login_user_ids = []
       comment_user_ids.each do |user_id|
-        if server_id and user_id < 0 # unknown remote user - used negative user id as it is
+        if comment_server_id and user_id < 0 # unknown remote user - used negative user id as it is
           user_ids << user_id
           next
         end
         user = users[user_id]
         if user
-          if server_id
+          if comment_server_id
             # remote comment verification
-            su = user.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+            su = user.server_users.find { |su| (su.server_id == comment_server_id) and su.verified_at }
             if su
               # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-              user_ids.push({ :sha256 => user.calc_sha256(servers[server_id].secret),
+              user_ids.push({ :sha256 => user.calc_sha256(servers[comment_server_id].secret),
                                     :pseudo_user_id => su.remote_pseudo_user_id,
                                     :sha256_updated_at => user.sha256_updated_at.to_i
                                   })
@@ -277,7 +319,7 @@ class Comment < ActiveRecord::Base
             user_ids << user.user_id
           end
           friend = friends[user.user_id]
-          mutual_friend = true if friend and friend <= 2
+          comment_and_login_user_ids << user.user_id if friend == 1 # comment user = login user. used in create, cancel & delete authorization check
         else
           logger.warn2 "Cid #{cid} : user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown user ids."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
@@ -287,24 +329,93 @@ class Comment < ActiveRecord::Base
       end
       next if user_error
       user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
-      user_ids.sort! unless server_id
+      user_ids.sort! unless comment_server_id
 
-      # todo: prepare new_deal_action_by_user_ids. only used for comments with a new_deal_action / sha256_action signature.
+      # user_ids - authorization check
+      # - create: login user ids and comment user ids must be identical - create only allowed for local comments
+      # - verify: no restrictions. normally comment from a friend or from a friend of a friend but with some few exceptions
+      # - cancel: minimum one shared login user ids and comment user ids.
+      # - accept: gift hash is required - login users must be creators of gift (minimum one user)
+      # - reject: gift hash is required - login users must be creators of gift (minimum one user)
+      # - delete: gift hash is required if not one shared login user ids and comment user ids ()
+      case action
+        when 'create'
+          # create: login user ids and comment user ids must be identical - create only allowed for local comments
+          gift_hash_required = false
+          # local create comment action. login users must also be comment users
+          if comment_user_ids != comment_and_login_user_ids
+            # authorization error. write nice error message in log. maybe api log out on client before new comment signature was created on server.
+            missing_login_user_ids = comment_user_ids - login_users.collect { |u| u.id }
+            missing_login_users = User.where(:id => missing_login_user_ids)
+            missing_login_providers = missing_login_users.collect { |u| u.provider }
+            # logger.debug2 "missing_login_user_ids = #{missing_login_user_ids.join(', ')}"
+            # logger.debug2 "missing login users = " + missing_login_users.collect { |u| u.debug_info }.join(', ')
+            # split missing login users in missing login and changed login
+            changed_login_providers = login_providers & missing_login_providers
+            missing_login_providers = missing_login_providers - changed_login_providers
+            # logger.debug2 "changed_login_providers = #{changed_login_providers.join('. ')}"
+            # logger.debug2 "missing_login_providers = #{missing_login_providers.join('. ')}"
+            # nice informative error message
+            if (changed_login_providers.size > 0)
+              logger.debug2 "Could not create comment signature on server. Cid #{cid}. Log in has changed for #{changed_login_providers.join('. ')} since comment was created. Please log in with old #{changed_login_providers.join('. ')} user."
+            else
+              logger.debug2 "Could not create comment signature on server. Cid #{cid}. Log out for #{missing_login_providers.join('. ')} since comment was created. Please log in for #{missing_login_providers.join('. ')}."
+            end
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            next
+          end
+        when 'verify'
+          # verify: no restrictions. normally comment from a friend or from a friend of a friend but with some few exceptions
+          # but clients will only replicate gifts with mutual friends and that should be sufficient security
+          gift_hash_required = false
+        when 'cancel'
+          # cancel: minimum one shared login user ids and comment user ids.
+          # todo: remote cancel. security check on both servers (sending/this and receiving/remote server) or only on receiving/remote server?
+          gift_hash_required = false
+          if comment_and_login_user_ids.length == 0
+            # login changed between client cancel new deal proposal and server request (maybe offline client)
+            # todo: better error message. See error messages in create.
+            logger.debug2 "Could not cancel new deal proposal. Cid #{cid}. No login users was found for comment"
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            next
+          end
+        when 'accept'
+          # accept: gift hash is required - login users must be creators of gift (minimum one user)
+          gift_hash_required = true
+        when 'reject'
+          # reject: gift hash is required - login users must be creators of gift (minimum one user)
+          gift_hash_required = true
+        when 'delete'
+          # delete: gift hash is required if not one shared login user ids and comment user ids ()
+          # todo: remote delete. security check on both servers (sending/this and receiving/remote server) or only on receiving/remote server?
+          gift_hash_required = (comment_and_login_user_ids.length == 0)
+      end # case
+      logger.debug2 "cid = %{cid}, action = #{action}, gift_hash_required = #{gift_hash_required}"
+
+      # prepare new_deal_action_by_user_ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers).
+      # only used for comments with comment.new_deal = true and action = verify comment or cancel, accept or reject new deal proposal
+      # new_deal_action_by_user_ids must be a subset of login user ids (except verify)
+      # new_deal_action_by_user_ids must also be:
+      # - verify: no restrictions (client side security - gifts are replicated only between mutual friends)
+      # - cancel: a subset of comment creators
+      # - accept: a subset of gift creators - see required gifts hash
+      # - reject: a subset of gift creators - see required gifts hash
       new_deal_action_by_user_ids2 = []
+      new_deal_and_login_user_ids = []
       user_error = false
       new_deal_action_by_user_ids1.each do |user_id|
-        if server_id and user_id < 0 # unknown remote user - used negative user id as it is
+        if comment_server_id and user_id < 0 # unknown remote user - used negative user id as it is
           new_deal_action_by_user_ids2 << user_id
           next
         end
         user = users[user_id]
         if user
-          if server_id
+          if comment_server_id
             # remote comment verification
-            su = user.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+            su = user.server_users.find { |su| (su.server_id == comment_server_id) and su.verified_at }
             if su
               # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-              new_deal_action_by_user_ids2.push({ :sha256 => user.calc_sha256(servers[server_id].secret),
+              new_deal_action_by_user_ids2.push({ :sha256 => user.calc_sha256(servers[comment_server_id].secret),
                               :pseudo_user_id => su.remote_pseudo_user_id,
                               :sha256_updated_at => user.sha256_updated_at.to_i
                             })
@@ -316,7 +427,7 @@ class Comment < ActiveRecord::Base
             new_deal_action_by_user_ids2 << user.user_id
           end
           friend = friends[user.user_id]
-          mutual_friend = true if friend and friend <= 2
+          new_deal_and_login_user_ids << user.user_id if friend == 1 # new deal action by user = login user. used in authorization check
         else
           logger.warn2 "Cid #{cid} : user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown new_deal_action_user_ids."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
@@ -326,43 +437,296 @@ class Comment < ActiveRecord::Base
       end
       next if user_error
       new_deal_action_by_user_ids2.uniq! # todo: should return an error if doublets in giver_user_ids array
-      new_deal_action_by_user_ids2.sort! unless server_id
+      new_deal_action_by_user_ids2.sort! unless comment_server_id
 
-      if !mutual_friend
-        logger.warn2 "cid #{cid} is not from a friend"
-        # response << { :seq => seq, :gid => cid }
-        # next
+      # todo: read gift hash - required for server side authorization check some actions (accept, reject and delete if comment is deleted by giver or receiver of gift)
+      # also used in new_deal_action_by_user_ids - authorization check
+      if gift_hash_required and verify_comment['gift'].to_s == ''
+        logger.debug2 "Cid #{cid}. Invalid request. Gift hash is missing. Required for accept, reject and comment deleted by giver or receiver of gift. Action was #{action}"
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
+      if !gift_hash_required and verify_comment['gift'].to_s != ''
+        logger.debug "Cid #{cid}. Warning. Gift hash is ignored. Only required for accept, reject and comment deleted by giver or receiver of gift. Action was #{action}"
+      end
+      if gift_hash_required
+        # todo: copy section from verify gift. must find creator of gift
+        verify_gift = verify_comment['gift']
+        gift_server_id = verify_gift['server_id']
+        if gift_server_id and !servers.has_key? gift_server_id
+          logger.error2 "cid #{cid}. Invalid request. Unknown gift.server_id #{gift_server_id}"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false}
+          next
+        end
+        gid = verify_gift['gid']
+
+        # validate row in verify gift request
+        if verify_gift["giver_user_ids"] and verify_gift["giver_user_ids"].size > 0
+          giver_user_ids = verify_gift["giver_user_ids"].uniq
+        else
+          giver_user_ids = []
+        end
+        if verify_gift["receiver_user_ids"] and verify_gift["receiver_user_ids"].size > 0
+          receiver_user_ids = verify_gift["receiver_user_ids"].uniq
+        else
+          receiver_user_ids = []
+        end
+        if giver_user_ids.size == 0 and receiver_user_ids.size == 0
+          logger.error2 "cid #{cid}. Invalid request. Gift giver user ids and gift receiver user ids are missing."
+          response << { :seq => seq, :cid => cid, :verified_at_server => false}
+          next
+        end
+        if giver_user_ids.size != giver_user_ids.uniq.size
+          logger.error2 "cid #{cid}. Invalid request. User ids in gift giver user ids list must be unique."
+          response << { :seq => seq, :cid => cid, :verified_at_server => false}
+          next
+        end
+        if receiver_user_ids.size != receiver_user_ids.uniq.size
+          logger.error2 "cid #{cid}. Invalid request. User ids in gift receiver user ids list must be unique"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false}
+          next
+        end
+
+        # check if gift exists - only if gift is on this Gofreerev server
+        if !gift_server_id
+          # local gifts verification - gift must exist
+          gift = gifts[gid]
+          if !gift
+            # gift not found -
+            # todo: how to implement cross server gift sha256 signature validation?
+            logger.warn2 "cid #{cid}. gift #{gid} was not found"
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            next
+          end
+        end
+
+        # read and prepare giver_user_ids and receiver_user_ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers)
+        # gift hash used for accept, reject and some deletes
+        # - accept and reject: compare gift creator and login users (remote partial validation - local full validation)
+        # - delete gift: compare gift gift givers and gift receives with login users (validated remote and local)
+
+        # check if giver or receiver is login user. required but not sufficient for accept and reject. required and sufficient for delete gift
+        giver_receiver_is_login_user = false
+        giver_user_ids = []
+        giver_error = false
+        verify_gift["giver_user_ids"].each do |user_id|
+          if server_id and user_id < 0 # unknown remote user
+            giver_user_ids << user_id
+            next
+          end
+          giver = users[user_id]
+          if giver
+            if server_id
+              # remote gift verification
+              su = giver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+              if su
+                # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
+                giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[server_id].secret),
+                                      :pseudo_user_id => su.remote_pseudo_user_id,
+                                      :sha256_updated_at => giver.sha256_updated_at.to_i
+                                    })
+              else
+                giver_user_ids << -giver.id # unknown giver
+              end
+            else
+              # local gift verification
+              giver_user_ids << giver.user_id
+            end
+            friend = friends[giver.user_id]
+            giver_receiver_is_login_user = true if friend == 1
+          else
+            logger.warn2 "Cid #{cid} : Gift giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            giver_error = true
+            break
+          end
+        end if verify_gift["giver_user_ids"]
+        next if giver_error
+        giver_user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
+        giver_user_ids.sort! unless server_id
+
+        receiver_user_ids = []
+        receiver_error = false
+        verify_gift["receiver_user_ids"].each do |user_id|
+          if server_id and user_id < 0
+            # unknown remote user
+            receiver_user_ids << user_id
+            next
+          end
+          receiver = users[user_id]
+          if receiver
+            if server_id
+              # remote gift verification
+              su = receiver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+              if su
+                # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
+                receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[server_id].secret),
+                                         :pseudo_user_id => su.remote_pseudo_user_id,
+                                         :sha256_updated_at => receiver.sha256_updated_at.to_i
+                                       })
+              else
+                receiver_user_ids << -receiver.id # unknown receiver
+              end
+            else
+              # local gift verification
+              receiver_user_ids << receiver.user_id
+            end
+            friend = friends[receiver.user_id]
+            giver_receiver_is_login_user = true if friend == 1
+          else
+            logger.warn2 "Cid #{cid} : Gift receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            receiver_error = true
+            break
+          end
+        end if verify_gift["receiver_user_ids"]
+        next if receiver_error
+        receiver_user_ids.uniq! # todo: should return an error if doublets in receiver_user_ids array
+        receiver_user_ids.sort! unless server_id
+        if !giver_receiver_is_login_user
+          # gift authorization failed. not logged in as giver or receiver (or as gift creator)
+          if action == 'delete'
+            # delete comment
+            logger.debug2 "cid #{cid}. delete comment is not allowed. Not logged in as gift giver or gift receiver"
+          else
+            # accept or reject new deal proposal
+            logger.debug2 "cid #{cid}. #{} new del proposal is not allowed. Not logged in as gift creator"
+          end
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          next
+        end
+
+        if !gift_server_id
+
+          # full local validation. check sha256 and find direction = gift creator (giver or receiver)
+
+          # calculate and check server side sha256 signature
+          gift_sha256_client = verify_gift["sha256"]
+          gift_direction = nil
+          if giver_user_ids.size > 0
+            gift_sha256_input = ([gid, gift_sha256_client, 'giver'] + giver_user_ids).join(',')
+            gift_sha256_calc = Base64.encode64(Digest::SHA256.digest(gift_sha256_input))
+            gift_direction = 'giver' if gift.sha256 == gift_sha256_calc
+            logger.debug "sha256 check failed with gift_direction = giver. gift_sha256_input = #{gift_sha256_input}, gift_sha256_calc = #{gift_sha256_calc}, gift.sha256 = #{gift.sha256}" unless gift_direction
+          end
+          if receiver_user_ids.size > 0
+            gift_sha256_input = ([gid, gift_sha256_client, 'receiver'] + receiver_user_ids).join(',')
+            gift_sha256_calc = Base64.encode64(Digest::SHA256.digest(gift_sha256_input))
+            gift_direction = 'receiver' if gift.sha256 == gift_sha256_calc
+            logger.debug "sha256 check failed with gift_direction = receiver. gift_sha256_input = #{gift_sha256_input}, gift_sha256_calc = #{gift_sha256_calc}, gift.sha256 = #{gift.sha256}" unless gift_direction
+          end
+          if !gift_direction
+            logger.debug2 "cid #{cid}. gift sha256 check failed"
+            response << { :seq => seq, :cid => cid, :verified_at_server => false }
+            next
+          end
+
+          # check authorization. delete authorization has already been checked. Now checking accept and reject new deal proposal authorization
+          if %w(accept reject).index(action)
+            # accept and reject: compare gift creator and login users (remote partial validation - local full validation)
+            gift_creator_user_ids = gift_direction == 'giver' ? giver_user_ids : receiver_user_ids
+            gift_creator_login_user_ids = login_user_ids & gift_creator_user_ids
+            if gift_creator_login_user_ids.length == 0
+              logger.debug2 "cid #{cid}. new deal proposal can only be accepted and rejected by creator of gift"
+              response << { :seq => seq, :cid => cid, :verified_at_server => false }
+              next
+            end
+          end
+
+        end # if !gift_server_id (local validation)
+
+        # end gift hash check
+      end # if gift_hash_required
+
+      # todo: new_deal_action_by_user_ids - authorization check
+      # - verify: verify old comment with a new deal action. that is a cancelled, accepted or rejected new deal proposal
+      #           server does not know whether new deal proposal was cancelled, accepted or rejected. server can only see sha256_action signature
+      #           new deal action is client side only information
+      #           no server side new_deal_action_by_user_ids authorization check
+      # - cancel: compare login users, comment users and new_deal_action_by_user_id - intersection - minimum one user - can be checked both remote and local
+      # - accept: compare login users, creator of gift and new_deal_action_by_user_id - intersection - minimum one user - can only be checked local on server where gift was created
+      # - reject: compare login users, creator of gift and new_deal_action_by_user_id - intersection - minimum one user - can only be checked local on server where gift was created
+      if action == 'cancel'
+        intersect = comment_and_login_user_ids & new_deal_action_by_user_ids2
+        if intersect.length == 0
+          logger.debug2 "cid #{cid}. Invalid cancel new deal request. Must be cancelled by owner of proposal"
+          logger.debug2 "comment users            = #{comment_user_ids.join(', ')}"
+          logger.debug2 "login users              = #{login_user_ids.join(', ')}"
+          logger.debug2 "new deal action by users = #{new_deal_action_by_user_ids2.join(', ')}"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          next
+        end
+        if intersect.length < new_deal_action_by_user_ids2.length
+          logger.debug2 "cid #{cid}. Warning. Difference between expected and received new_deal_action_by_user_ids"
+          logger.debug2 "expected #{comment_and_login_user_ids.join(', ')}"
+          logger.debug2 "received #{new_deal_action_by_user_ids2.join(', ')}"
+        end
       end
 
-      if server_id
+      if %w(accept reject).index(action) and !gift_server_id
+        # full local validation.
+        intersect = gift_creator_login_user_ids & new_deal_action_by_user_ids2
+        if intersect.length == 0
+          logger.debug2 "cid #{cid}. Invalid #{action} new deal request. Must be accepted/rejected by creator of gift"
+          logger.debug2 "gift created by rs       = #{gift_creator_user_ids.join(', ')}"
+          logger.debug2 "login users              = #{login_user_ids.join(', ')}"
+          logger.debug2 "new deal action by users = #{new_deal_action_by_user_ids2.join(', ')}"
+          response << { :seq => seq, :cid => cid, :verified_at_server => false }
+          next
+        end
+        if intersect.length < new_deal_action_by_user_ids2.length
+          logger.debug2 "cid #{cid}. Warning. Difference between expected and received new_deal_action_by_user_ids"
+          logger.debug2 "expected #{gift_creator_login_user_ids.join(', ')}"
+          logger.debug2 "received #{new_deal_action_by_user_ids2.join(', ')}"
+        end
+      end
+
+      if comment_server_id
         # remote comment verification (server to server verify comments message)
         # todo: sha256 signatures on this gofreerev server can be out of date
         #       must keep verify_comment row from client if verify comment request must be resent after updated sha256 signature (comment.user_ids)
         #       could also be used in a verify comment cache on this gofreerev server
         #       don't send identical verify comments request to other gofreerev server
         # 1) insert row in verify_comments table
-        server_mid[server_id] = Sequence.next_server_mid unless server_mid.has_key?(server_id)
+        server_mid[comment_server_id] = Sequence.next_server_mid unless server_mid.has_key?(comment_server_id)
         vg = VerifyComment.new
         vg.client_sid = client_sid
         vg.client_sha256 = client_sha256
         vg.client_seq = seq
-        vg.server_id = server_id
+        vg.server_id = comment_server_id
         vg.cid = cid
         vg.server_seq = Sequence.next_verify_seq
-        vg.request_mid = server_mid[server_id]
+        vg.request_mid = server_mid[comment_server_id]
         vg.save!
         # 2) insert verify_comments request in server_requests hash
-        hash = {:seq => vg.server_seq,
+        comment_hash = {:seq => vg.server_seq,
                 :cid => cid,
-                :sha256 => verify_comment["sha256"]}
-        hash[:sha256_action] = verify_comment["sha256_action"] if verify_comment["sha256_action"]
-        hash[:sha256_deleted] = verify_comment["sha256_deleted"] if verify_comment["sha256_deleted"]
-        hash[:user_ids] = user_ids
-        hash[:new_deal_action_by_user_ids] = new_deal_action_by_user_ids2 if verify_comment["sha256_action"]
-        server_requests[server_id] = [] unless server_requests.has_key? server_id
-        server_requests[server_id].push(hash)
+                :sha256 => verify_comment["sha256"],
+                :action => action}
+        comment_hash[:sha256_action] = verify_comment["sha256_action"] if verify_comment["sha256_action"]
+        comment_hash[:sha256_deleted] = verify_comment["sha256_deleted"] if verify_comment["sha256_deleted"]
+        comment_hash[:user_ids] = user_ids
+        comment_hash[:new_deal_action_by_user_ids] = new_deal_action_by_user_ids2 if verify_comment["sha256_action"]
+        if gift_hash_required
+          gift_hash = {:gid => verify_gift['gid'], :sha256 => verify_gift['sha256']}
+          gift_hash[:giver_user_ids] = giver_user_ids if giver_user_ids.length > 0
+          gift_hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.length > 0
+          # optional gift.server_id - use sha256 signature for server id in server to server communication
+          # todo: how to handle cross server validation (comment on one server - gift on an other server)?
+          if !gift_server_id
+            # comment on remote server. gift on this server
+            gift_hash[:server_id] = Server.server_id_to_sha256_hash[0]
+          elsif comment_server_id != gift_server_id
+            gift_hash[:server_id] = Server.server_id_to_sha256_hash[gift_server_id]
+          end
+          comment_hash[:gift] = gift_hash
+        end
+        server_requests[comment_server_id] = [] unless server_requests.has_key? comment_server_id
+        server_requests[comment_server_id].push(comment_hash)
         next
       end
+
+      # local comment action validation
 
       # calculate and check server side sha256 signature
       sha256_client = verify_comment["sha256"]

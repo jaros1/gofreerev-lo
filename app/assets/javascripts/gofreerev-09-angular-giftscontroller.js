@@ -339,7 +339,8 @@ angular.module('gifts')
                 comment.deleted_at_client = Gofreerev.unix_timestamp() ;
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
                 giftService.save_gift(gift) ;
-            }
+                giftService.verify_comments_add(gift, comment, 'delete') ;
+            };
             // console.log(pgm + 'cid = ' + comment.cid + ', deleted_at_client = ' + comment.deleted_at_client) ;
         };
 
@@ -616,9 +617,11 @@ angular.module('gifts')
                 console.log(pgm + 'Could not create gift: ' + self.new_gift.errors) ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
                 return ;
-            }
+            };
             // add new gift to 1) JS array and 2) localStorage
             giftService.save_new_gift(gift) ;
+            // send create gift action to server (server side signature)
+            giftService.verify_gifts_add(gift, 'create') ;
             // resize description textarea after current digest cycle is finish
             resize_textarea(gift.description) ;
             // reset new gift form

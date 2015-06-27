@@ -883,7 +883,7 @@ class UtilController < ApplicationController
       # refresh js users and gifts arrays from localStorage if interval between last client_timestamp and new client timestamp is less that old interval
       # see angularJS UserService.ping function (sync_friends and sync_gifts)
       old_timestamp = get_session_value(:client_timestamp)
-      @json[:old_client_timestamp] = old_timestamp if old_timestamp
+      @json[:old_client_timestamp] = old_timestamp if old_timestamp and old_timestamp >= JSON_SCHEMA[:ping_response][:properties][:old_client_timestamp][:minimum] # some sometime old timestamp after server restart
       new_timestamp = params[:client_timestamp].to_s.to_i
       set_session_value(:client_timestamp, new_timestamp)
       dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp

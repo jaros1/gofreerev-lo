@@ -356,11 +356,17 @@ class Gift < ActiveRecord::Base
       seq = verify_gift['seq']
       server_id = verify_gift['server_id']
       gid = verify_gift['gid']
+      action = verify_gift['action']
 
-      if (server_id)
-        # remote gift verification
+      if server_id
+        # remote gift action
         if seq >= 0
           logger.error2 "gid #{gid}. Invalid request. seq must be negative for remote gift verification"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          next
+        end
+        if action == 'create'
+          logger.error2 "gid #{gid}. Invalid request. create gift on other Gofreerev server is not allowed. server id = #{server_id}"
           response << { :seq => seq, :gid => gid, :verified_at_server => false}
           next
         end
@@ -420,14 +426,18 @@ class Gift < ActiveRecord::Base
 
       # check if gift exists
       if !server_id
-        # local gifts verification - gift must exist
+        # local gift action
         gift = gifts[gid]
-        if !gift
-          # gift not found -
-          # todo: how to implement cross server gift sha256 signature validation?
-          logger.warn2 "gid #{gid} was not found"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
-          next
+        if action == 'create'
+          if gift
+            logger.warn2 "warning. action was create but gid #{gid} already exists. continuing with validations"
+          end
+        else
+          if !gift
+            logger.warn2 "gid #{gid} was not found"
+            response << { :seq => seq, :gid => gid, :verified_at_server => false }
+            next
+          end
         end
       end
 
@@ -545,20 +555,27 @@ class Gift < ActiveRecord::Base
         next
       end
 
-      # calculate and check server side sha256 signature
+      # local gift action validation
+
+      # calculate and check server side sha256 gift signature
       sha256_client = verify_gift["sha256"]
       direction = nil
       if giver_user_ids.size > 0
         sha256_input = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
         sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        direction = 'giver' if gift.sha256 == sha256_calc
-        logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = #{sha256_calc}, gift.sha256 = #{gift.sha256}" unless direction
+        direction = 'giver' if (gift and (gift.sha256 == sha256_calc)) or ((action == 'create') and !gift)
+        if !direction
+          logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
+          logger.debug "sha256_calc ord = " + sha256_calc.split('').collect { |b| b.ord }.join(', ') unless direction
+          logger.debug "gift.sha256 ord = " + gift.sha256.split('').collect { |b| b.ord }.join(', ') unless direction
+          logger.debug "sha256_calc.class = #{sha256_calc.class}, gift.sha256.class = #{gift.sha256.class}" unless direction
+        end
       end
       if receiver_user_ids.size > 0
         sha256_input = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
         sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        direction = 'receiver' if gift.sha256 == sha256_calc
-        logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = #{sha256_calc}, gift.sha256 = #{gift.sha256}" unless direction
+        direction = 'receiver' if (gift and (gift.sha256 == sha256_calc)) or ((action == 'create') and !gift)
+        logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
       end
       if !direction
         response << { :seq => seq, :gid => gid, :verified_at_server => false }
@@ -569,19 +586,23 @@ class Gift < ActiveRecord::Base
       # old server sha256_accepted signature was generated when gift was accepted and deal was closed
       # calculate and check sha256_accepted signature from information received in verify gifts request
       sha256_accepted_client = verify_gift["sha256_accepted"]
-      if sha256_accepted_client
-        if !gift.sha256_accepted
-          logger.warn2 "Gift #{gid}. Verify gift request failed. sha256_accepted in request but gift dont have a sha256_accepted signature on server."
+      if sha256_accepted_client.to_s != ''
+        if !gift.sha256_accepted and action != 'accept'
+          logger.warn2 "Gift #{gid}. Gift action #{action} failed. sha256_accepted in request but gift dont have a sha256_accepted signature on server."
           response << { :seq => seq, :gid => gid, :verified_at_server => false }
           next
         end
-        sha256_input = ([gid, sha256_accepted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
-        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        if gift.sha256_accepted != sha256_calc
-          logger.warn2 "Gift #{gid}. Verify gift request failed. new sha256_accepted calculation = #{sha256_calc}. old sha256_accepted on server = #{gift.sha256_accepted}."
+        sha256_accepted_input = ([gid, sha256_accepted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
+        sha256_accepted_calc = Base64.encode64(Digest::SHA256.digest(sha256_accepted_input))
+        if gift and gift.sha256_accepted != sha256_accepted_calc
+          logger.warn2 "Gift #{gid}. Gift action #{action} failed. Invalid sha256_accepted signature. new calculated sha256_accepted signature = #{sha256_accepted_calc}. old sha256_accepted signature on server = #{gift.sha256_accepted}."
           response << { :seq => seq, :gid => gid, :verified_at_server => false }
           next
         end
+      elsif action == 'delete' and gift and gift.sha256_accepted
+        logger.warn2 "Gift #{gid}. Gift action delete failed. Gift has a sha256_accepted signature on server but sha256_accepted is missing in request"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        next
       end
 
       # sha256_deleted: if supplied - calculate and check server side sha256_deleted signature
@@ -599,14 +620,30 @@ class Gift < ActiveRecord::Base
         else
           sha256_input = ([gid, sha256_deleted_client, 'receiver'] + receiver_user_ids).join(',')
         end
-        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        if gift.sha256_deleted != sha256_calc
+        sha256_deleted_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
+        if gift.sha256_deleted != sha256_deleted_calc
           logger.warn2 "Gift #{gid}. Verify gift request failed. new sha256_deleted calculation = #{sha256_calc}. old sha256_deleted on server = #{gift.sha256_deleted}."
           response << { :seq => seq, :gid => gid, :verified_at_server => false }
         end
       end
 
       # no errors
+
+      # actions:
+      case action
+        when 'create'
+          gift = Gift.new unless gift
+          gift.gid = gid
+          gift.sha256 = sha256_calc
+          gift.save!
+        when 'verify'
+          nil
+        when 'accept'
+          gift.update_attribute :sha256_accepted, sha256_accepted_calc
+        when 'delete'
+          gift.update_attribute :sha256_deleted, sha256_deleted_calc
+      end # case
+
       response << { :seq => seq, :gid => gid, :verified_at_server => true }
 
     end # each new_gift

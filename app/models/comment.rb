@@ -181,7 +181,7 @@ class Comment < ActiveRecord::Base
 
       # validate row in verify comment request
 
-      if (comment_server_id)
+      if comment_server_id
         # remote comment action
         if seq >= 0
           logger.error2 "cid #{cid}. Invalid request. seq must be negative for remote comment actions"
@@ -270,6 +270,22 @@ class Comment < ActiveRecord::Base
           logger.error2 "cid #{cid}. Invalid request. new_deal_action_by_user_ids without sha256_action is not allowed. #{action} comment request"
         end
         response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
+
+      # sha256_deleted
+      # - optional for verify
+      # - not allowed for create new comment and cancel, accept, reject new deal proposal
+      # - required for delete comment
+      if %w(create cancel accept reject).index(action) and verify_comment['sha256_deleted'].to_s != ''
+        logger.error2 "cid #{cid}. Invalid request. sha256_deleted is not allowed for action #{action}"
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
+      if action == 'delete' and verify_comment['sha256_deleted'].to_s == ''
+        logger.error2 "cid #{cid}. Invalid request. sha256_deleted is required for action delete"
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
       end
 
       # check if comment exists (local only)
@@ -390,7 +406,7 @@ class Comment < ActiveRecord::Base
           # todo: remote delete. security check on both servers (sending/this and receiving/remote server) or only on receiving/remote server?
           gift_hash_required = (comment_and_login_user_ids.length == 0)
       end # case
-      logger.debug2 "cid = %{cid}, action = #{action}, gift_hash_required = #{gift_hash_required}"
+      logger.debug2 "cid = #{cid}, action = #{action}, gift_hash_required = #{gift_hash_required}"
 
       # prepare new_deal_action_by_user_ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers).
       # only used for comments with comment.new_deal = true and action = verify comment or cancel, accept or reject new deal proposal
@@ -447,10 +463,12 @@ class Comment < ActiveRecord::Base
         next
       end
       if !gift_hash_required and verify_comment['gift'].to_s != ''
+        # gift hash is required for this comment/action.
+        # can occur after page load where verify_comments_request is sent to server before friend list has been downloaded in /util/do_tasks
         logger.debug "Cid #{cid}. Warning. Gift hash is ignored. Only required for accept, reject and comment deleted by giver or receiver of gift. Action was #{action}"
       end
       if gift_hash_required
-        # todo: copy section from verify gift. must find creator of gift
+        # section from Gift.verify gifts. prepare giver_user_ids and receiver_user_ids for cross server communication. check gift.sha256 and find creator of gift.
         verify_gift = verify_comment['gift']
         gift_server_id = verify_gift['server_id']
         if gift_server_id and !servers.has_key? gift_server_id
@@ -638,7 +656,7 @@ class Comment < ActiveRecord::Base
         # end gift hash check
       end # if gift_hash_required
 
-      # todo: new_deal_action_by_user_ids - authorization check
+      # new_deal_action_by_user_ids - authorization check
       # - verify: verify old comment with a new deal action. that is a cancelled, accepted or rejected new deal proposal
       #           server does not know whether new deal proposal was cancelled, accepted or rejected. server can only see sha256_action signature
       #           new deal action is client side only information
@@ -728,26 +746,30 @@ class Comment < ActiveRecord::Base
 
       # local comment action validation
 
-      # calculate and check server side sha256 signature
+      # calculate and check server side comment sha256 signature
       sha256_client = verify_comment["sha256"]
       sha256_input = ([cid, sha256_client] + user_ids).join(',')
       sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-      logger.debug "sha256 check failed. sha256_input = #{sha256_input}, sha256_calc = #{sha256_calc}, comment.sha256 = #{comment.sha256}" unless comment.sha256 == sha256_calc
+      if comment and comment.sha256 != sha256_calc
+        logger.debug "Comment #{cid}. #{action} comment request failed. new sha256 calculation = #{sha256_calc}, old sha256 on server = #{comment.sha256}"
+        response << { :seq => seq, :cid => cid, :verified_at_server => false }
+        next
+      end
 
       # sha256_action: if supplied - calculate and check server side sha256_action signature
       # old server sha256_action signature was generated when new_deal propocal was cancelled, accepted or rejected
       # calculate and check sha256_action signature from information received in verify comments request
       sha256_action_client = verify_comment["sha256_action"]
-      if sha256_action_client
+      if sha256_action_client.to_s != ''
         if !comment.sha256_action
           logger.warn2 "Comment #{cid}. Verify comment request failed. sha256_action in request but comment does not have a sha256_action signature on server."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
           next
         end
-        sha256_input = ([cid, sha256_action_client] + user_ids).join(',')
-        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        if comment.sha256_action != sha256_calc
-          logger.warn2 "Comment #{cid}. Verify comment request failed. new sha256_action calculation = #{sha256_calc}. old sha256_action on server = #{comment.sha256_action}."
+        sha256_action_input = ([cid, sha256_action_client] + user_ids).join(',')
+        sha256_action_calc = Base64.encode64(Digest::SHA256.digest(sha256_action_input))
+        if comment.sha256_action != sha256_action_calc
+          logger.warn2 "Comment #{cid}. Verify comment request failed. new sha256_action calculation = #{sha256_action_calc}. old sha256_action on server = #{comment.sha256_action}."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
           next
         end
@@ -758,20 +780,36 @@ class Comment < ActiveRecord::Base
       # calculate and check sha256_deleted signature from information received in verify comments request
       sha256_deleted_client = verify_comment["sha256_deleted"]
       if sha256_deleted_client
-        if !comment.sha256_deleted
+        if !comment.sha256_deleted and action != 'delete'
           logger.warn2 "Comment #{cid}. Verify comment request failed. sha256_deleted in request but comment dont have a sha256_deleted signature on server."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
           next
         end
-        sha256_input = ([cid, sha256_deleted_client] + user_ids).join(',')
-        sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        if comment.sha256_deleted != sha256_calc
-          logger.warn2 "Comment #{cid}. Verify comment request failed. new sha256_deleted calculation = #{sha256_calc}. old sha256_deleted on server = #{comment.sha256_deleted}."
+        sha256_deleted_input = ([cid, sha256_deleted_client] + user_ids).join(',')
+        sha256_deleted_calc = Base64.encode64(Digest::SHA256.digest(sha256_deleted_input))
+        if comment.sha256_deleted != sha256_deleted_calc and action != 'delete'
+          logger.warn2 "Comment #{cid}. Verify comment request failed. new sha256_deleted calculation = #{sha256_deleted_calc}. old sha256_deleted on server = #{comment.sha256_deleted}."
           response << { :seq => seq, :cid => cid, :verified_at_server => false }
         end
       end
 
       # no errors
+
+      # actions:
+      case action
+        when 'create'
+          c = Comment.new
+          c.cid = cid
+          c.sha256 = sha256_calc
+          c.save!
+        when 'verify'
+          nil
+        when 'cancel', 'accept', 'reject'
+          comment.update_attribute :sha256_action, sha256_action_calc
+        when 'delete'
+          comment.update_attribute :sha256_deleted, sha256_deleted_calc
+      end # case
+
       response << { :seq => seq, :cid => cid, :verified_at_server => true }
 
     end # each new_comment

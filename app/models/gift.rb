@@ -287,25 +287,29 @@ class Gift < ActiveRecord::Base
   # params:
   # - verify_gifts: array - see verify_gifts array in JSON_SCHEMA[:ping_request]
   # - login_user_ids: from session :user_ids array - logged in users
-  # - client_sid: from ping - unique session id (one did can have multiple sids) = browser tab
-  # - client_sha256: from ping - mailbox sha256 signature - changes when api provider login changes
+  # - client_sid: from client ping - unique session id (one did can have multiple sids) = browser tab
+  # - client_sha256: from client ping - mailbox sha256 signature - changes when api provider login changes
   # ( client_sid + client_sha256 is used as unique session id when sending and receiving remote gift verifications )
+  # - not null client_sid and client_sha256 - called from util_controller.ping
+  # - null client_sid and client_sha256 - called from Server.receive_verify_gifts_request (remote gift action)
   def self.verify_gifts (verify_gifts, login_user_ids, client_sid, client_sha256)
     logger.debug2 "verify_gifts = #{verify_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
     if !verify_gifts
-      # any remote verify gift response ready for this client?
+      # empty verify gifts ping from client - any remote verify gift responses ready for client?
       vgs = VerifyGift.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
       return nil if vgs.size == 0
       logger.debug2 "vgs.size = #{vgs.size}"
       response = {
           :gifts => vgs.collect do |vg|
             logger.debug2 "vg = #{vg.to_json}" if vg.error
-            {
+            hash = {
                 :seq => vg.client_seq,
                 :gid => vg.gid,
                 :verified_at_server => vg.verified_at_server
             }
+            hash[:error] = vg.error unless vg.verified_at_server # only english :error format error messages in cross server communication
+            hash
           end
       }
       vgs.delete_all
@@ -352,39 +356,46 @@ class Gift < ActiveRecord::Base
 
     server_mid = {}
 
+    # loop for each gift aciton in verify gifts request
     verify_gifts.each do |verify_gift|
       seq = verify_gift['seq']
       server_id = verify_gift['server_id']
       gid = verify_gift['gid']
       action = verify_gift['action']
 
+      action_failed = "#{action} gift action failed"
+
       if server_id
         # remote gift action
         if seq >= 0
-          logger.error2 "gid #{gid}. Invalid request. seq must be negative for remote gift verification"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          error = "#{action_failed}. Invalid request. seq must be negative for remote gift verification"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_neq_seq' }
           next
         end
         if action == 'create'
-          logger.error2 "gid #{gid}. Invalid request. create gift on other Gofreerev server is not allowed. server id = #{server_id}"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          error = "#{action_failed}. Invalid request. create gift on other Gofreerev server is not allowed. server id = #{server_id}"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_create_remote', :options => {:server_id => server_id} }
           next
         end
         if !servers.has_key? server_id
-          logger.error2 "gid #{gid}. Invalid request. Unknown server id #{server_id}"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          error = "#{action_failed}. Invalid request. Unknown server id #{server_id}"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_server_id', :options => {:server_id => server_id} }
           next
         end
       else
         # local gift verification
         if seq < 0
-          logger.error2 "gid #{gid}. Invalid request. seq must be postive for local gift verification"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false}
+          error = "#{action_failed}. Invalid request. seq must be postive for local gift actions"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_pos_seq' }
           next
         end
       end
 
-      # validate row in verify gift request
+      # validate row in gift action request
       if verify_gift["giver_user_ids"] and verify_gift["giver_user_ids"].size > 0
         giver_user_ids = verify_gift["giver_user_ids"].uniq
       else
@@ -395,53 +406,89 @@ class Gift < ActiveRecord::Base
       else
         receiver_user_ids = []
       end
-      if giver_user_ids.size == 0 and receiver_user_ids.size == 0
-        logger.error2 "gid #{gid}. Invalid request. Giver user ids and receiver user ids are missing."
-        response << { :seq => seq, :gid => gid, :verified_at_server => false }
+      if (giver_user_ids.size == 0) and (receiver_user_ids.size == 0)
+        error = "#{action_failed}. Invalid request. Giver user ids and receiver user ids are missing"
+        logger.error2 "gid #{gid} : #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_giver_receiver' }
+        next
+      end
+      if (action == 'create') and (giver_user_ids.size > 0) and (receiver_user_ids.size > 0)
+        error = "#{action_failed}. Invalid request. Giver AND receiver are not allowed for action create"
+        logger.error2 "gid #{gid} : #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_create_giver_receiver' }
+        next
+      end
+      if (action == 'accept') and ((giver_user_ids.size == 0) or (receiver_user_ids.size == 0))
+        error = "#{action_failed}. Invalid request. Giver and receiver are required for action accept"
+        logger.error2 "gid #{gid} : #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_accept_giver_receiver' }
         next
       end
       if giver_user_ids.size != giver_user_ids.uniq.size
-        logger.error2 "gid #{gid}. Invalid request. User ids in giver user ids list must be unique."
-        response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        error = "#{action_failed}. Invalid request. User ids in giver user ids list must be unique"
+        logger.error2 "gid #{gid} : #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_uniq_giver' }
         next
       end
       if receiver_user_ids.size != receiver_user_ids.uniq.size
-        logger.error2 "gid #{gid}. Invalid request. User ids in receiver user ids list must be unique"
-        response << { :seq => seq, :gid => gid, :verified_server => false }
+        error = "#{action_failed}. Invalid request. User ids in receiver user ids list must be unique"
+        logger.error2 "gid #{gid} : #{error}"
+        response << { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_syserr_uniq_receiver' }
         next
       end
 
-      if verify_gift["sha256_accepted"]
+      if verify_gift["sha256_accepted"].to_s != ''
+        # sha256_accepted signature in request
+        if action == 'create'
+          error = "#{action_failed}. Invalid request. sha256_accepted signature is not allowed for create gift action"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_create_sha256_accepted' }
+          next
+        end
         if giver_user_ids.size == 0
-          logger.error2 "gid #{gid}. Invalid request. Giver user ids are missing for accepted gift"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          error = "#{action_failed}. Invalid request. Giver user ids are missing for accepted gift"
+          logger.error2 "gid #{gid}. #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_giver1' }
           next
         end
         if receiver_user_ids.size == 0
-          logger.error2 "gid #{gid}. Invalid request. Receiver user ids are missing for accepted gift"
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          error = "#{action_failed}. Invalid request. Receiver user ids are missing for accepted gift"
+          logger.error2 "gid #{gid}. #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_receiver1' }
           next
         end
+      elsif action == 'accept'
+        # no sha256_accepted signature in request (required for action accept)
+        error = "#{action_failed}. Invalid request. sha256_accepted signature is missing for gift accept action"
+        logger.error2 "gid #{gid}. #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_accept_sha256_accepted' }
+        next
       end
 
-      # check if gift exists
-      if !server_id
-        # local gift action
-        gift = gifts[gid]
+      if verify_gift["sha256_deleted"].to_s != ''
+        # sha256_deleted signature in request
         if action == 'create'
-          if gift
-            logger.warn2 "warning. action was create but gid #{gid} already exists. continuing with validations"
-          end
-        else
-          if !gift
-            logger.warn2 "gid #{gid} was not found"
-            response << { :seq => seq, :gid => gid, :verified_at_server => false }
-            next
-          end
+          error = "#{action_failed}. Invalid request. sha256_deleted signature is not allowed for create gift action"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_create_sha256_deleted' }
+          next
         end
+        if action == 'accept'
+          error = "#{action_failed}. Invalid request. sha256_deleted signature is not allowed for accept gift action"
+          logger.error2 "gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_accept_sha256_deleted' }
+          next
+        end
+      elsif action == 'delete'
+        # no sha256_deleted signature in request (required for action delete)
+        error = "Invalid request. sha256_deleted signature is missing for gift delete action"
+        logger.error2 "gid #{gid}. #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_delete_sha256_deleted' }
+        next
       end
 
-      # check mutual friends
+      # read, check and optional prepare giver and receiver user ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers)
+      # check mutual friends. gift must be from login user or to/from mutual friend
       mutual_friend = false
       giver_user_ids = []
       giver_error = false
@@ -471,8 +518,9 @@ class Gift < ActiveRecord::Base
           friend = friends[giver.user_id]
           mutual_friend = true if friend and friend <= 2
         else
-          logger.warn2 "Gid #{gid} : Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          error = "#{action_failed}. Giver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_giver2', :options => { :user_id => user_id } }
           giver_error = true
           break
         end
@@ -510,28 +558,31 @@ class Gift < ActiveRecord::Base
           friend = friends[receiver.user_id]
           mutual_friend = true if friend and friend <= 2
         else
-          logger.warn2 "Gid #{gid} : Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          error = "#{action_failed}. Receiver user with id #{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_receiver2', :options => { :user_id => user_id } }
           receiver_error = true
           break
         end
       end if verify_gift["receiver_user_ids"]
       next if receiver_error
       if !mutual_friend
-        logger.debug2 "gid #{gid} is not from a friend"
-        response << { :seq => seq, :gid => gid }
+        # note that friend lists on two different Gofreerev servers can be out of sync and local check can succeed and remote check can fail.
+        error = "#{action_failed}. Gift is not from a friend"
+        logger.debug2 "Gid #{gid}: #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_friend' }
         next
       end
       receiver_user_ids.uniq! # todo: should return an error if doublets in receiver_user_ids array
       receiver_user_ids.sort! unless server_id
 
       if server_id
-        # remote gift verification (server to server verify gifts message)
+        # remote gift action (server to server gifts message)
         # todo: sha256 signatures on this gofreerev server can be out of date
         #       must keep verify_gift row from client if verify gift request must be resent after updated sha256 signature (giver and/or receiver)
         #       could also be used in a verify gift cache on this gofreerev server
-        #       don't send identical verify gifts request to other gofreerev server
-        # 1) insert row in verify_gifts table
+        #       don't send identical verify gifts request to other gofreerev server. send answer from cache
+        # insert row in verify_gifts table. Response is added in columns verified_at_server, error and response_mid. see Server.receive_verify_gifts_response
         server_mid[server_id] = Sequence.next_server_mid unless server_mid.has_key?(server_id)
         vg = VerifyGift.new
         vg.client_sid = client_sid
@@ -557,28 +608,40 @@ class Gift < ActiveRecord::Base
 
       # local gift action validation
 
-      # calculate and check server side sha256 gift signature
+      # check if gift exists
+      gift = gifts[gid]
+      if action == 'create'
+        if gift
+          logger.warn2 "warning. action is create but gid #{gid} already exists. continuing with validations only"
+        end
+      else
+        if !gift
+          error = "#{action_failed}. Gift was not found"
+          logger.warn2 "gid #{gid}. #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_not_found' }
+          next
+        end
+      end
+
+      # calculate and check server side sha256 gift signature (direction = creator of gift)
       sha256_client = verify_gift["sha256"]
       direction = nil
       if giver_user_ids.size > 0
         sha256_input = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
         sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
         direction = 'giver' if (gift and (gift.sha256 == sha256_calc)) or ((action == 'create') and !gift)
-        if !direction
-          logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
-          logger.debug "sha256_calc ord = " + sha256_calc.split('').collect { |b| b.ord }.join(', ') unless direction
-          logger.debug "gift.sha256 ord = " + gift.sha256.split('').collect { |b| b.ord }.join(', ') unless direction
-          logger.debug "sha256_calc.class = #{sha256_calc.class}, gift.sha256.class = #{gift.sha256.class}" unless direction
-        end
+        # logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
       end
       if receiver_user_ids.size > 0
         sha256_input = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
         sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
         direction = 'receiver' if (gift and (gift.sha256 == sha256_calc)) or ((action == 'create') and !gift)
-        logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
+        # logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
       end
       if !direction
-        response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        error = "#{action_failed}. Invalid request. sha256 signature check failed for #{action} gift action"
+        logger.debug2 "Gid #{gid} : #{error}"
+        response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => "gift_#{action}_sha256", :options => { :action => action} }
         next
       end
 
@@ -587,53 +650,75 @@ class Gift < ActiveRecord::Base
       # calculate and check sha256_accepted signature from information received in verify gifts request
       sha256_accepted_client = verify_gift["sha256_accepted"]
       if sha256_accepted_client.to_s != ''
+        # sha256_accepted in request. must be an accepted gift or an accept gift action
         if !gift.sha256_accepted and action != 'accept'
-          logger.warn2 "Gift #{gid}. Gift action #{action} failed. sha256_accepted in request but gift dont have a sha256_accepted signature on server."
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+          error = "#{action_failed}. sha256_accepted signature in request but gift dont have a sha256_accepted signature on server"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_not_accepted', :options => {:action => action} }
+          next
+        end
+        if gift.sha256_deleted and action == 'accept'
+          error = "#{action_failed}. Gift has already been deleted"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_accept_deleted', :options => {:action => action} }
           next
         end
         sha256_accepted_input = ([gid, sha256_accepted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
         sha256_accepted_calc = Base64.encode64(Digest::SHA256.digest(sha256_accepted_input))
-        if gift and gift.sha256_accepted != sha256_accepted_calc
-          logger.warn2 "Gift #{gid}. Gift action #{action} failed. Invalid sha256_accepted signature. new calculated sha256_accepted signature = #{sha256_accepted_calc}. old sha256_accepted signature on server = #{gift.sha256_accepted}."
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        # sha256_accepted signature must match or request must be an accept gift action
+        if !((gift.sha256_accepted == sha256_accepted_calc) or (!gift.sha256_accepted and (action == 'accept')))
+          error = "#{action_failed}. Invalid sha256_accepted signature"
+          logger.warn2 "Gid #{gid} : #{error}. new calculated sha256_accepted signature = #{sha256_accepted_calc}. old sha256_accepted signature on server = #{gift.sha256_accepted if gift}"
+          response << {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => "gift_syserr_sha256_accepted", :options => {:action => action}}
           next
         end
-      elsif action == 'delete' and gift and gift.sha256_accepted
-        logger.warn2 "Gift #{gid}. Gift action delete failed. Gift has a sha256_accepted signature on server but sha256_accepted is missing in request"
-        response << { :seq => seq, :gid => gid, :verified_at_server => false }
-        next
+      else
+        # blank sha256_accepted in request.
+        # ok for create and verify. not ok for accept but this has already been tested. not ok to delete an accept gift without a sha256_accepted signature in request
+        if action == 'delete' and gift.sha256_accepted
+          error = "#{action_failed}. Gift has a sha256_accepted server signature but sha256_accepted is missing in request"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_accepted_required', :options => { :action => action} }
+          next
+        end
       end
 
       # sha256_deleted: if supplied - calculate and check server side sha256_deleted signature
       # old server sha256_deleted signature was generated when gift previously was deleted
       # calculate and check sha256_deleted signature from information received in verify gifts request
       sha256_deleted_client = verify_gift["sha256_deleted"]
-      if sha256_deleted_client
-        if !gift.sha256_deleted
-          logger.warn2 "Gift #{gid}. Verify gift request failed. sha256_deleted in request but gift dont have a sha256_deleted signature on server."
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+      if sha256_deleted_client.to_s != ''
+        # sha256_deleted signature in request. must be a deleted gift or an delete gift action in progress
+        if !gift.sha256_deleted and (action != 'delete')
+          error = "#{action_failed}. sha256_deleted signature in request but gift has not been deleted (no deleted signature on server)"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_not_deleted', :options => {:action => action} }
           next
         end
-        if direction == 'giver'
-          sha256_input = ([gid, sha256_deleted_client, 'giver'] + giver_user_ids).join(',')
-        else
-          sha256_input = ([gid, sha256_deleted_client, 'receiver'] + receiver_user_ids).join(',')
+        if gift.sha256_accepted and (sha256_accepted_client.to_s == '')
+          error = "#{action_failed}. sha256_deleted signature in request but gift has previously been accepted and sha256 accepted signature was missing in request"
+          logger.warn2 "Gid #{gid} : #{error}"
+          response << {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_accepted_required', :options => { :action => action} }
+          next
         end
-        sha256_deleted_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
-        if gift.sha256_deleted != sha256_deleted_calc
-          logger.warn2 "Gift #{gid}. Verify gift request failed. new sha256_deleted calculation = #{sha256_calc}. old sha256_deleted on server = #{gift.sha256_deleted}."
-          response << { :seq => seq, :gid => gid, :verified_at_server => false }
+        sha256_deleted_input = ([gid, sha256_deleted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
+        sha256_deleted_calc = Base64.encode64(Digest::SHA256.digest(sha256_deleted_input))
+        # sha256_deleted signature must match or request must be a delete gift action
+        if !((gift.sha256_deleted == sha256_deleted_calc) or (!gift.sha256_deleted and (action == 'delete')))
+          error = "#{action_failed}. Invalid sha256_deleted signature"
+          logger.warn2 "Gid #{gid} : #{error}. new sha256_deleted calculation = #{sha256_deleted_calc}. old sha256_deleted on server = #{gift.sha256_deleted}."
+          response << { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_deleted', :options => {:action => action} }
         end
+        logger.warn2 "warning. action was delete but gift #{gid} has already been deleted" if (action == 'delete') and gift.sha256_deleted
       end
 
       # no errors
 
-      # actions:
+      # do gift action
       case action
         when 'create'
           gift = Gift.new unless gift
-          gift.gid = gid
+          gift.gid = gid unless gift.gid
           gift.sha256 = sha256_calc
           gift.save!
         when 'verify'
@@ -644,22 +729,22 @@ class Gift < ActiveRecord::Base
           gift.update_attribute :sha256_deleted, sha256_deleted_calc
       end # case
 
+      # ok response for client
       response << { :seq => seq, :gid => gid, :verified_at_server => true }
 
     end # each new_gift
 
-    # any remote verify gift response ready for this client?
+    # any remote verify gift responses ready for this client?
     vgs = VerifyGift.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
     if vgs.size > 0
       logger.debug2 "vgs.size = #{vgs.size}"
       vgs.each do |vg|
         logger.debug2 "vg = #{vg.to_json}" if vg.error
-        response.push({
-                          :seq => vg.client_seq,
-                          :gid => vg.gid,
-                          :verified_at_server => vg.verified_at_server
-                      })
-
+        hash = {:seq => vg.client_seq,
+                :gid => vg.gid,
+                :verified_at_server => vg.verified_at_server}
+        hash[:error] = vg.error unless vg.verified_at_server # only english :error format error messages in cross server communication
+        response.push(hash)
       end
       vgs.delete_all
     end
@@ -716,7 +801,25 @@ class Gift < ActiveRecord::Base
       m.save!
     end # each server_id, server_request
 
-    response.size == 0 ? nil : { :gifts => response }
+    return nil if response.size == 0
+
+    # return correct format error message
+    # - local client ping, util_controller.ping, client_sid is not null, use :key+:options error format (multi-language)
+    # - remote gift action, Server.receive_verify_gifts_request, client_sid is null, use :error error format (english only)
+    if client_sid
+      # local client ping. use :key+:options error format (multi-language support)
+      response.each do |row|
+        row.delete(:error) if !row[:verified_at_server] and row[:error]
+      end
+    else
+      # remote gift action. use :error error format (english only)
+      response.each do |row|
+        next if row[:verified_at_server]
+        row.delete(:key) if row[:key]
+        row.delete(:options) if row[:options]
+      end
+    end
+    { :gifts => response }
 
   end # self.verify_gifts
 

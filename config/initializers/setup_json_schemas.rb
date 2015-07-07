@@ -586,7 +586,7 @@ JSON_SCHEMA = {
                   :type => 'object',
                   :title => 'Server verify gifts response with verified_at_server true or false for each gifts in verify gifts request',
                   :properties => {
-                      # any fatal errors
+                      # any fatal system errors
                       :error => {:type => 'string'},
                       # array with created_at_server boolean for rows in verify_gifts request
                       :gifts => {
@@ -598,8 +598,14 @@ JSON_SCHEMA = {
                                   :seq => {:type => 'integer'},
                                   # gid - unique gift id - from verify_gifts request
                                   :gid => {:type => 'string', :pattern => uid_pattern},
-                                  # verified_at_server - boolean - true if gift server side sha256 signature is correct
-                                  :verified_at_server => {:type => 'boolean'}
+                                  # verified_at_server - boolean - true if gift action (create, verify, accept or delete) succeeded
+                                  :verified_at_server => {:type => 'boolean'},
+                                  # error message if gift action (create, verify, accept, delete) failed. verified_at_server = false
+                                  # Either in :key+:options format (multi-language) or in :error format (english only)
+                                  # should use :key+:options format for within local server messages. Should use :error format for cross server remote messages
+                                  :key => {:type => 'string'}, # js.noti.verify_gift_<key> translation must exist
+                                  :options => {:type => 'object'},
+                                  :error => {:type => 'string'}
                               },
                               :required => %w(seq gid verified_at_server),
                               :additionalProperties => false
@@ -629,8 +635,8 @@ JSON_SCHEMA = {
                                   # deleted_at_server - boolean here - integer in client (1=current gofreerev server)
                                   :deleted_at_server => {:type => 'boolean'},
                                   # error message if gift could not be deleted (deleted_at_server=false). either key+options or error
-                                  # use error format key+options for within server error messages.
-                                  # use error string for cross server error messages (gift created on an other gofreerev server)
+                                  # todo: use error format key+options for within server error messages.
+                                  # todo: use error string for cross server error messages (gift created on an other gofreerev server)
                                   :key => {:type => 'string'}, # js.noti.delete_gift_<key> translation must exist
                                   :options => {:type => 'object'},
                                   :error => {:type => 'string'}
@@ -689,11 +695,18 @@ JSON_SCHEMA = {
                               :type => 'object',
                               :properties => {
                                   # unique seq from verify_comments request (cid is not guaranteed to be unique when receiving comments from other devices)
+                                  # use negative seq for remote comment actions. use positive seq for local comment actions
                                   :seq => {:type => 'integer'},
                                   # cid - unique comment id - from verify_comments request
                                   :cid => {:type => 'string', :pattern => uid_pattern},
-                                  # verified_at_server - boolean - true if comment server side sha256 signature is correct
-                                  :verified_at_server => {:type => 'boolean'}
+                                  # verified_at_server - boolean - true if comment action (create, verify, cancel, accept, reject or delete) succeeded
+                                  :verified_at_server => {:type => 'boolean'},
+                                  # error message if comment action (create, verify, cancel, accept, reject or delete) failed. verified_at_server = false
+                                  # either in :key+:options format (multi-language) or in :error format (english only)
+                                  # should use :key+:options format for within local server messages. Should use :error format for cross server remote messages
+                                  :key => {:type => 'string'}, # js.noti.verify_comment_<key> translation must exist
+                                  :options => {:type => 'object'},
+                                  :error => {:type => 'string'}
                               },
                               :required => %w(seq cid verified_at_server),
                               :additionalProperties => false

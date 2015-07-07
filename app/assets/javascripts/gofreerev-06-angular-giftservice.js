@@ -855,6 +855,13 @@ angular.module('gifts')
                     console.log(pgm + error) ;
                     return error ;
             } ; // switch
+            if ((action != 'verify') && (gifts.indexOf(gift) == -1)) {
+                // gift action: create, accept or delete. gift must be in gifts array.
+                error = 'Invalid verify_gifts_add call. Gift must be in gifts array. Action was ' + action ;
+                console.log(pgm + error) ;
+                console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
+                return error ;
+            }; // if
             if (!gift.hasOwnProperty('created_at_client') || (typeof gift.created_at_client == 'undefined') || (gift.created_at_client == null)) {
                 error = 'Invalid verify_gifts_add call. gift.created_at_client is missing for action ' + action ;
                 console.log(pgm + error) ;
@@ -1482,6 +1489,7 @@ angular.module('gifts')
                     console.log(pgm + 'System error. Invalid gift ' + gid + ' in new gifts response (3).');
                     continue;
                 }
+
                 if (gift.hasOwnProperty('created_at_server')) {
                     console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was setted between new gifts request and new gifts response.') ;
                     continue ;
@@ -1493,6 +1501,7 @@ angular.module('gifts')
                     else console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was set to an invalid value between new gifts request and new gifts response. Expected created_at_server = 0. Found created_at_server = ' + gift.created_at_server + '.');
                     continue;
                 }
+
                 gift.created_at_server = 0; // always 0 for current server - remote gifts are received in client to client communication
                 save_gift(gift) ;
             } // for i
@@ -1719,7 +1728,7 @@ angular.module('gifts')
                 return ;
             }
 
-            // seq must be unique i response and all positive seq must be in verify gifts buffer
+            // check seq. seq must be unique i response and all positive seq must be in verify gifts buffer
             var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, new_gift, hash  ;
             for (i=0 ; i<response.gifts.length ; i++) {
                 new_gift = response.gifts[i] ;
@@ -1749,29 +1758,52 @@ angular.module('gifts')
             if (not_unique_seq > 0) console.log(pgm + 'Error. ' + not_unique_seq + ' not unique seq in verify gifts response.') ;
             if (invalid_local_seq > 0) console.log(pgm + 'Error. ' + invalid_local_seq + ' invalid local seq in verify gifts response.') ;
             if (invalid_remote_seq > 0) console.log(pgm + 'Error. ' + invalid_remote_seq + ' invalid remote seq in verify gifts response.') ;
-            if (invalid_gid > 0) console.log(pgm + invalid_gid + ' invalid unique gift id (gid) in verify gifts response.') ;
+            if (invalid_gid > 0) console.log(pgm + invalid_gid + ' invalid gift id (gid) in verify gifts response.') ;
             if (old_remote_seq.length > 0) console.log(pgm + 'Warning. ' + old_remote_seq + ' old unknown remote seq in verify gifts response') ;
-            if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_gid > 0) return ; // abort
+            if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_gid > 0) return ; // abort after fatal system errors. todo: add notification
 
             // loop for each row in verify gifts response (create, verify, accept or delete)
-            var gift_verification, gid, new_gifts, key, no_verifications = 0, no_gifts = 0, no_valid = 0, no_invalid = 0, verify_gift_action ;
+            // one row in response can be answer to multiple verify gifts requests (verify_gifts_seq_to_gifts[seq].gifts)
+            // ( identical gift received in multiple send_gifts messages from other clients )
+
+            // todo 1: stat: group by 1) action and 2) resend, true or false
+            // todo 2: do actions after success and failure (create, verify, accept and delete)
+
+            var gift_verification, gid, new_gifts, key, verify_gift_action ;
+            var no_gifts = { all: 0, create: 0, verify: 0, accept: 0, delete: 0, local: 0, remote: 0, syserr1: 0, syserr2: 0, syserr3: 0, resend: 0, true: 0, false: 0} ;
             while (response.gifts.length > 0) {
                 gift_verification = response.gifts.shift();
                 seq = gift_verification.seq ;
                 if (old_remote_seq.indexOf(seq) != -1) continue ; // ignore old remote gift verification (from before page reload)
-                no_verifications += 1 ;
                 new_gifts = verify_gifts_seq_to_gifts[seq].gifts;
                 // one or more gifts in verify gifts buffer with this seq/key
                 while (new_gifts.length > 0) {
-                    no_gifts += 1 ;
+                    no_gifts.all += 1 ;
                     new_gift = new_gifts.shift() ;
+                    no_gifts[new_gift.verify_gift_action] += 1 ; // create, verify, accept and delete
+                    if (seq > 0) no_gifts.local += 1 ;
+                    else no_gifts.remote += 1 ;
+                    // check gifts array. new_gift is either from gifts array or from an incoming send_gifts message (verify)
+                    if ((new_gift.verify_gift_action != 'verify') && (gifts.indexOf(new_gift) == -1)) {
+                        // actions create, accept and delete. gift is no longer in gifts array!
+                        console.log(pgm + 'System error. Received ' + new_gift.verify_gift_action + ' gift response from server for gift ' + new_gift.gid + ' but gift is no longer in gifts array') ;
+                        no_gifts.syserr2 += 1 ;
+                        continue ;
+                    };
                     // recheck key. check if gift has changed between verify gifts request and response (remote verification can take some time)
                     hash = verify_gift_to_hash(new_gift);
                     key = JSON.stringify(hash);
                     if (key != verify_gifts_seq_to_gifts[seq].key) {
                         // gift changed between verify gifts request and verify gifts response.
+                        if (verify_gifts_seq_to_gifts[seq].action != new_gift.verify_gift_action) {
+                            console.log(pgm + 'System error. gift.verify_gift_action for gift ' + new_gift.gid +
+                                ' was changed between verify gifts request (' + verify_gifts_seq_to_gifts[seq].action +
+                                ') and verify gifts response (' + new_gift.verify_gift_action + ')') ;
+                            no_gifts.syserr1 += 1 ;
+                            continue ;
+                        };
                         // write warning in log and and a new verify gifts request with changed gift
-                        // todo: check verify_gift_action. ok to resend verify. Maybe not ok to resend accept or delete.
+                        // todo: check verify_gift_action. ok to resend verify. Maybe not ok to resend create, accept or delete gift.
                         console.log(pgm + 'Warning. Gift ' + new_gift.gid + ' was changed between verify gifts request and verify gifts response.') ;
                         console.log(pgm + 'old key = ' + verify_gifts_seq_to_gifts[seq].key) ;
                         console.log(pgm + 'new key = ' + key) ;
@@ -1781,17 +1813,78 @@ angular.module('gifts')
                         delete new_gift.verify_gift_action ;
                         delete new_gift.verify_seq ;
                         verify_gifts_add(new_gift, verify_gift_action) ;
+                        no_gifts.resend += 1 ;
                         continue ;
                     };
 
+                    // do or rollback actions: create, verify, accept or delete
+                    no_gifts[gift_verification.verified_at_server] += 1 ; // true or false
+                    switch(new_gift.verify_gift_action) {
+                        case 'create':
+                            // create new gift operation. new_gift object should by in gifts array.
+                            if (gift_verification.verified_at_server) {
+                                // gift create ok. add created_at_server = 0 (gift is already created on local gofreerev server with server id 0)
+                                if (new_gift.hasOwnProperty('created_at_server')) {
+                                    // not possble. new_gift object changed between verify gifts request and verify gifts response
+                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was setted between new gifts request and new gifts response.') ;
+                                    no_gifts.syserr3 += 1 ;
+                                    continue ;
+                                };
+                                // recheck
+                                refresh_gift(new_gift);
+                                if (new_gift.hasOwnProperty('created_at_server')) {
+                                    // thats is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
+                                    if (new_gift.created_at_server == 0) continue; // ok - received in an other browser session
+                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was set to an invalid value between new gifts request and new gifts response. Expected created_at_server = 0. Found created_at_server = ' + gift.created_at_server + '.');
+                                    no_gifts.syserr3 += 1 ;
+                                    continue;
+                                };
+                                // create gift ok
+                                new_gift.created_at_server = 0; // always 0 for current server - remote gifts are received in client to client communication
+                                save_gift(new_gift) ;
+                            }
+                            else {
+                                // gift create failed
+                                // todo 1: should move gift back to new gift form and display error message (from server)
+                                // todo 2: how to handle multiple failed new gift actions? Only one new gift form
+                            };
+                            break;
+                        case 'verify':
+                            // used in receive_message_send_gifts
+                            new_gift.verified_at_server = gift_verification.verified_at_server ;
+                            break;
+                        case 'accept':
+                            if (gift_verification.verified_at_server) {
+                                // gift accept ok. add accepted_at_server = created_at_server
+                            }
+                            else {
+                                // gift accept failed.
+                                // todo: must rollback accept gift action (gift and comment)
+                                // todo: should display error message (from server)
+                            };
+                            break;
+                        case 'delete':
+                            if (gift_verification.verified_at_server) {
+                                // gift delete ok. add deleted_at_:server = created_at_server
+                            }
+                            else {
+                                // gift delete failed
+                                // todo: must undelete gift
+                                // todo: should display error message (from server)
+                            };
+                            break;
+                    }; // switch
+
+
                     // check verify gifts response from server
                     new_gift.verified_at_server = gift_verification.verified_at_server ; // boolean
-                    // todo: verify gift response verified_at_server is a boolean - new_gift.created_at_server is an integer!
+                    // todo: Error! Verify gift response verified_at_server is a boolean - new_gift.created_at_server is an integer!
                     console.log(pgm + 'created_at_server = ' + JSON.stringify(new_gift.created_at_server) + ', verified_at_server = ' + JSON.stringify(new_gift.verified_at_server)) ;
-                    if (identical_values(new_gift.created_at_server, new_gift.verified_at_server)) no_valid += 1 ;
-                    else no_invalid += 1 ;
+                    if (identical_values(new_gift.created_at_server, new_gift.verified_at_server)) no_gifts.true += 1 ;
+                    else no_gifts.false += 1 ;
 
-                    // todo 2: remove new_gift.verify_gift_at and new_gift.verify_seq
+                    // todo: remove new_gift.verify_gift_action, new_gift.verify_gift_at and new_gift.verify_seq
+
                 }; // while
                 // remove from verify gifts buffer
                 key = verify_gifts_seq_to_gifts[seq].key ;
@@ -1800,7 +1893,8 @@ angular.module('gifts')
             } // while response.length > 0
 
             // receipt
-            console.log(pgm + 'Received ' + no_verifications + ' verifications for ' + no_gifts + ' gifts (' + no_valid + ' valid and ' + no_invalid + ' invalid).') ;
+            // todo: add number create, verify, accept, delete, local, remote, syserr1, resend, true and false in receipt
+            console.log(pgm + 'Received verifications for ' + no_gifts.all + ' gifts (' + no_gifts.true + ' valid and ' + no_gifts.false + ' invalid).') ;
 
         }; // verify_gifts_response
 

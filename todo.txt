@@ -1902,4 +1902,28 @@
      - delete with comment.user_ids
      - delete with comment.gift giver_user_ids or receiver_user_ids
 
-select next issue to solve: (rand*441).floor+1
+442) accept_gift and accept_comment should be one and only one server transaction
+     must succeed or must fail as a transaction
+
+443) comment.verify_comments with gifts hash and gift on an other server
+     this is - accept or reject new deal proposal and delete comment
+     verify_comment cannot complete in 1 (local only) or 2 (local+remote) server steps
+     server 1: create gift
+     server 2: create new deal proposal
+     server 3: reject new deal proposal
+     server 3: remote validate reject new deal proposal request
+     server 3: send reject new deal proposal to server 2 (server to server message)
+     server 2: receive reject new deal proposal request from server 3
+     server 2: local validate reject new deal proposal request from server 3
+     server 2: cannot check reject new deal proposal authorization (gift is on server 1)
+     server 2: send gift authorization check to server 1 (some kind of verify gift server to server message)
+     server 1: receive gift authorization check from server 2
+     server 1: gift must exist and sha256 value must be correct
+     server 1: login user must be creator of gift (accept or reject gift)
+     server 1: return authorization check response to server 2
+     server 2: receive authorixation check response from server 1 and complete reject new deal proposal action
+     server 2: add sha256_action signature
+     server 2: return verify comments response to server 3
+     server 3: return verify comments response to client on server 3
+
+select next issue to solve: (rand*443).floor+1

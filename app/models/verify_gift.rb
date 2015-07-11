@@ -13,6 +13,9 @@ class VerifyGift < ActiveRecord::Base
   #   t.string   "gid",                limit: 20, null: false
   #   t.integer  "server_seq",                    null: false
   #   t.boolean  "verified_at_server"
+  #   t.string   "error"
+  #   t.integer  "request_mid"
+  #   t.integer  "response_mid"
   #   t.datetime "created_at"
   #   t.datetime "updated_at"
   # end
@@ -39,7 +42,34 @@ class VerifyGift < ActiveRecord::Base
   validates_presence_of :server_seq
   validates_uniqueness_of :server_seq, :allow_blank => true
 
-  # 7) verified_at_server boolean - response from gift verification
+  # 7) verified_at_server boolean - response from remote gift verification
   validates_inclusion_of :verified_at_server, :in => [true, false], :allow_blank => true
+  validates_absence_of :verified_at_server, :on => :create
+  validates_presence_of :verified_at_server, :on => :update
+  attr_readonly :verified_at_server
+
+  # 8) error. string - response from remote gift verification. blank or an english error message
+  validates_absence_of :error, :on => :create
+  validates_each :error, :on => :update do |record, attr, value|
+    if record.verified_at_server == true
+      record.errors.add attr, :present if value.class != NilClass
+    elsif record.verified_at_server == false
+      record.errors.add attr, :blank if value.to_s == ''
+    end
+  end
+  attr_readonly :error
+
+  # 9) request_mid. unique server message id for request (sequence on this server)
+  validates_presence_of :request_mid
+  attr_readonly :request_mid
+
+  # 10) response_mid. unique server message id for response (sequence on remote server)
+  validates_absence_of :response_mid, :on => :create
+  validates_presence_of :response_mid, :on => :update
+  attr_readonly :response_mid
+
+  # 11) original_client_request. client request. used in error message if invalid response from other server
+  validates_presence_of :original_client_request
+  attr_readonly :original_client_request
 
 end

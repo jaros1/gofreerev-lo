@@ -280,7 +280,7 @@
                 <td colspan="2"></td>
                 <td colspan="2" ng-bind="gift.link_error"></td>
             </tr>
-            <tr ng-repeat="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)) track by comment.cid">
+            <tr ng-repeat-start="comment in ((gift.comments || []) | filter:ctrl.comments_filter | limitTo:-(gift.show_no_comments || ctrl.default_no_comments)) track by comment.cid">
                 <td colspan="2">
 
                     <div style="text-align: right;">
@@ -330,6 +330,9 @@
                         </tr>
                     </table>
                 </td>
+            </tr>
+            <tr ng-repeat-end ng-show="comment.link_error_at">
+                <td colspan="4" ng-bind="comment.link_error"></td>
             </tr>
             <tr>
                 <td colspan="2" style="text-align: right; vertical-align: top">

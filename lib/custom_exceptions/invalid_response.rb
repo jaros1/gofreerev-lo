@@ -1,0 +1,1 @@
+class InvalidResponse < StandardError ; end

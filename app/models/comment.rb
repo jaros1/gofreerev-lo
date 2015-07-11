@@ -980,7 +980,27 @@ class Comment < ActiveRecord::Base
       m.save!
     end # each server_id, server_request
 
-    response.size == 0 ? nil : { :comments => response }
+    return nil if response.size == 0
+
+    # return correct format error message
+    # - local client ping, util_controller.ping, client_sid is not null, use :key+:options error format (multi-language support)
+    # - remote gift action, Server.receive_verify_gifts_request, client_sid is null, use :error error format (english only)
+    if client_sid
+      # local client ping. use :key+:options error format (multi-language support)
+      response.each do |row|
+        # todo: check error format. must have :key + :options
+        row.delete(:error) if !row[:verified_at_server] and row[:error]
+      end
+    else
+      # remote gift action. use :error error format (english only)
+      response.each do |row|
+        next if row[:verified_at_server]
+        # todo: check error format. must have :error
+        row.delete(:key) if row[:key]
+        row.delete(:options) if row[:options]
+      end
+    end
+    { :comments => response }
 
   end # self.verify_comments
 

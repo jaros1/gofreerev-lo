@@ -1024,28 +1024,37 @@ en:
      missing_api_picture_urls:
         ajax_error: "Error when checking moved or deleted images. %{error}. More information in server log."
      gift_actions:
-        like_gift_ajax_error: "Cannot \"like\" post. %{error}. More information in server log."
-        unlike_gift_ajax_error: "Cannot remove \"like\" post. %{error}. More information in server log."
-        follow_gift_ajax_error: "Cannot \"follow\" post. %{error}. More information in server log."
-        unfollow_gift_ajax_error: "Cannot remove \"follow\" post. %{error}. More information in server log."
-        delete_gift_ajax_error: "Cannot delete post. %{error}. More information in server log."
-        hide_gift_ajax_error: "Cannot hide post. %{error}. More information in server log."
-        comments_ajax_error: "Cannot get older comments. %{error}. More information in server log."
-        ajax_error: "Error \"%{error}\" for unknown url %{url}. More information in client and server logs."
-        js_error: "Javascript error for post link. %{error} (%{location},%{debug})."
-        click_js_error: "Minor javascript error for post link. %{error} (%{location},%{debug})."
+        # fatal errors (response header)
+        login_users: "System error. Invalid Gift.verify_gifts call. Expected array with login user ids for current logged in users."
+        req_seqs_unique: "System error. Invalid Gift.verify_gifts call. Seq in gifts array must be unique."
+        no_json: "System error. Could not validate verify_gifts server to server message. JSON schema definition %{schema} was not found."
+        invalid_json: "System error. JSON error in verify_gifts server to server message: %{error}."
+        # gift action errors (gifts array)
+        gift_syserr_neq_seq: "System error. %{action} gift failed. Invalid request. Seq must be negative for %{action} gift action on other Gofreerev servers."
+        gift_create_remote: "System error. %{action} gift failed. Invalid request. Create gift on an other Gofreerev server is not allowed. server id = %{server_id}."
+        gift_syserr_server_id: "%{action} gift failed. Invalid request. Unknown server id %{server_id}."
+        gift_syserr_pos_seq: "System error. %{action} gift failed. Invalid request. seq must be postive for local gift actions."
+        gift_syserr_giver_receiver: "System error. %{action} gift failed. Invalid request. Giver user ids and receiver user ids are missing."
+        gift_create_giver_receiver: "System error. Create gift failed. Invalid request. Giver AND receiver are not allowed for action create."
+        gift_accept_giver_receiver: "System error. %{action} gift failed. Invalid request. Giver and receiver are required for action %{action}."
+        gift_syserr_uniq_giver: "System error. %{action} gift failed. Invalid request. User ids in giver user ids list must be unique."
+        gift_syserr_uniq_receiver: "System error. %{action} gift failed. Invalid request. User ids in receiver user ids list must be unique."
+        gift_create_sha256_accepted: "System error. %{action} gift failed. Invalid request. sha256_accepted signature must be blank for %{action} gift action."
+        gift_syserr_giver1: "System error. %{action} gift failed. Invalid request. Giver user ids are missing for accepted gift."
+        gift_syserr_receiver1: "System error. %{action} gift failed. Invalid request. Receiver user ids are missing for accepted gift."
+        gift_accept_sha256_accepted: "System error. %{action} gift failed. Invalid request. sha256_accepted signature is missing for gift accept action."
+        gift_create_sha256_deleted: "System error. %{action} gift failed. Invalid request. sha256_deleted signature must be blank for create gift action."
+        gift_accept_sha256_deleted: "System error. %{action} gift failed. Invalid request. sha256_deleted signature must be blank for accept gift action."
+        gift_delete_sha256_deleted: "System error. %{action} gift failed. Invalid request. sha256_deleted signature is required for gift delete action."
+        gift_syserr_giver2: "%{action} gift failed. Giver user with id %{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
+        gift_syserr_receiver2: "%{action} gift failed. Receiver user with id %{user_id} was not found. Cannot check server sha256 signature for gift with unknown user ids."
+        gift_syserr_friend: "%{action} gift failed. Gift is not from a friend."
+
      new_comment:
         ajax_error: "Error when creating comment. %{error}. More information in server log."
         ajax_error2: "Error when creating comment. %{error} (%{location},%{debug}). More information in client and server logs."
         js_error: "Minor javascript error after creating comment. %{error} (%{location},%{debug})."
-     comment_actions:
-        delete_comment_ajax_error: "Cannot delete comment. %{error}. More information in server log."
-        cancel_new_deal_ajax_error: "Cannot cancel proposal. %{error}. More information in server log."
-        reject_new_deal_ajax_error: "Cannot reject proposal. %{error}. More information in server log."
-        accept_new_deal_ajax_error: "Cannot accept proposal. %{error}. More information in server log."
-        ajax_error: "Error \"%{error}\" for unknown url %{url}. More information in server log."
-        js_error: "Javascript error for comment link. %{error} (%{location},%{debug}). More information in client and server logs."
-        click_js_error: "Minor javascript error for comment link. %{error} (%{location},%{debug})."
+     comment_actions: # error messages from Comment.verify_comments
      post_on_wall:
         ajax_error: "Error when changing \"Post?\" choice. %{error}. More information in server log."
      client_login_dialog:

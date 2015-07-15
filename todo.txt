@@ -1926,4 +1926,6 @@
      server 2: return verify comments response to server 3
      server 3: return verify comments response to client on server 3
 
-select next issue to solve: (rand*443).floor+1
+444) also use translation for Gift.verify_gifts and Comment.verify_comments fatal errors { :error => error, :key => key, options => options }
+
+select next issue to solve: (rand*444).floor+1

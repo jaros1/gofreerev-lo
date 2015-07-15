@@ -1028,28 +1028,37 @@ da:
      missing_api_picture_urls:
         ajax_error: "Fejl ved tjek af flyttede eller slettede billeder. %{error}. Mere information i server log."
      gift_actions:
-        like_gift_ajax_error: "Kan ikke \"synes om\" opslag. %{error}. Mere information i server log."
-        unlike_gift_ajax_error: "Kan ikke fjerne \"synes om\" opslag. %{error}. Mere information i server log."
-        follow_gift_ajax_error: "Kan ikke \"følge\" opslag. %{error}. Mere information i server log."
-        unfollow_gift_ajax_error: "Kan ikke fjerne \"følg\". %{error}. Mere information i server log."
-        delete_gift_ajax_error: "Kan ikke slette opslag. %{error}. Mere information i server log."
-        hide_gift_ajax_error: "Kan ikke skjule opslag. %{error}. Mere information i server log."
-        comments_ajax_error: "Kan ikke hente ældre kommentarer. %{error}. Mere information i server log."
-        ajax_error: "Fejl \"%{error}\" for ugyldigt opslag link %{url}. Mere information i klient og server log."
-        js_error: "Javascript fejl for opslag link. %{error} (%{location},%{debug}). Mere information i klient og server log."
-        click_js_error: "Mindre javascript fejl for opslag link. %{error} (%{location},%{debug})."
+        # fatal errors (response header)
+        login_users: "Systemfejl. Ugyldigt Gift.verify_gifts kald. Forventede array med bruger id-er for aktuelle forbundne brugere."
+        req_seqs_unique: "Systemfejl. Ugyldigt Gift.verify_gifts kald. Seq i gifts array skal være et unikt løbenummer."
+        no_json: "Systemfejl. Kan ikke validerer verify_gifts server meddelelsee. JSON skema %{schema} mangler."
+        invalid_json: "Systemfejl. JSON fejl i verify_gifts server meddelelse: %{error}"
+        # gift action errors (gifts array)
+        gift_syserr_neq_seq: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"seq\" skal være et negativt tal for %{action} opslag på andre Gofreerev servere."
+        gift_create_remote: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. Oprettelse af opslag på en anden Gofreerev server er ikke tilladt. server id = %{server_id}."
+        gift_syserr_server_id: "%{action} opslag fejlede. Ugyldigt kald. Ukendt server id %{server_id}."
+        gift_syserr_pos_seq: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"seq\" skal være et positivt tal for %{action} opslag på aktuelle Gofreerev server."
+        gift_syserr_giver_receiver: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"giver_user_ids\" og \"receiver_user_ids\" mangler."
+        gift_create_giver_receiver: "Systemfejl. Opret opslag fejlede. Ugyldigt kald. \"giver_user_ids\" OG \"receiver_user_ids\" er ikke tilladt med oprettelse af opslag."
+        gift_accept_giver_receiver: "Systemfejl. Godkend tilbud fejlede. Ugyldigt kald. \"giver_user_ids\" OG \"receiver_user_ids\" er krævede ved godkendelse af tilbud."
+        gift_syserr_uniq_giver: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"giver_user_ids\" skal være unikke."
+        gift_syserr_uniq_receiver: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"receiver_user_ids\" skal være unikke."
+        gift_create_sha256_accepted: "Systemfejl. Opret opslag fejlede. Ugyldigt kald. \"sha256_accepted\" signatur skal være blank for opret opslag."
+        gift_syserr_giver1: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"giver_user_ids\" mangler for accepteret tilbud."
+        gift_syserr_receiver1: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"receiver_user_ids\" mangler for accepteret tilbud."
+        gift_accept_sha256_accepted: "Systemfejl. Accepter tilbud fejlede. Ugyldigt kald. \"sha256_accepted\" signatur mangler for accepter tilbud."
+        gift_create_sha256_deleted: "Systemfejl. Opret opslag fejlede. Ugyldigt kald. \"sha256_deleted\" signatur skal være blank for opret opslag."
+        gift_accept_sha256_deleted: "Systemfejl. Accepted tilbud fejlede. Ugyldigt kald. \"sha256_deleted\" signatur skal være blank for accepted tilbud."
+        gift_delete_sha256_deleted: "Systemfejl. Slet opslag fejlede. Ugyldigt kald. \"sha256_deleted\" signatur mangler for slet opslag."
+        gift_syserr_giver2: "%{action} opslag fejlede. \"giver_user_id\" med bruger id %{user_id} findes ikke. Kan ikke tjekke server sha256 signatur for opslag med ukendt bruger id."
+        gift_syserr_receiver2: "%{action} opslag fejlede. \"receiver_user_id\" med bruger id %{user_id} findes ikke. Kan ikke tjekke server sha256 signatur for opslag med ukendt bruger id."
+        gift_syserr_friend: "%{action} opslag fejlede. Opslag er ikke fra en ven."
+
      new_comment:
         ajax_error: "Fejl ved oprettelse af kommentar. %{error}. Mere information i server log."
         ajax_error2: "Fejl ved oprettelse af kommentar. %{error} (%{location},%{debug}). Mere information i klient og server log."
         js_error: "Mindre javascript fejl efter oprettelse af kommentar. %{error} (%{location},%{debug})."
-     comment_actions:
-        delete_comment_ajax_error: "Kan ikke slette kommentar. %{error}. Mere information i server log."
-        cancel_new_deal_ajax_error: "Kan ikke fortryde forslag. %{error}. Mere information i server log."
-        reject_new_deal_ajax_error: "Kan ikke afvise forslag. %{error}. Mere information i server log."
-        accept_new_deal_ajax_error: "Kan ikke godkende forslag. %{error}. Mere information i server log."
-        ajax_error: "Fejl \"%{error}\" for ugyldig kommentar link %{url}. %{error}. Mere information i server log."
-        js_error: "Javascript fejl for kommentar link. %{error} (%{location},%{debug}). Mere information i klient og server log."
-        click_js_error: "Mindre javascript fejl for kommentar link. %{error} (%{location},%{debug})."
+     comment_actions: # error messages from Comment.verify_comments
      post_on_wall:
         ajax_error: "Fejl ved ændring af \"Opslag?\" valg. %{error}. Mere information i server log."
      client_login_dialog:

@@ -581,13 +581,22 @@ JSON_SCHEMA = {
                   }
               },
 
-              # optional array with created_at_server (boolean) response for verify_gifts request
+              # optional array with verified_at_server (boolean) response for verify_gifts request (create, verify, accept or delete gift)
               :verify_gifts => {
                   :type => 'object',
                   :title => 'Server verify gifts response with verified_at_server true or false for each gifts in verify gifts request',
                   :properties => {
-                      # any fatal system errors
-                      :error => {:type => 'string'},
+                      # optional fatal system error - string - english only error message - used for cross server error messages
+                      # or object with :key and :options - multi-language support - used for within server error messages
+                      :error => {
+                          :type => %w(string object),
+                          :properties => {
+                              :key => { :type => 'string'},
+                              :options => { :type => 'object'}
+                          },
+                          :required => %w(key),
+                          :additionalProperties => false
+                      },
                       # array with created_at_server boolean for rows in verify_gifts request
                       :gifts => {
                           :type => 'array',
@@ -601,11 +610,17 @@ JSON_SCHEMA = {
                                   # verified_at_server - boolean - true if gift action (create, verify, accept or delete) succeeded
                                   :verified_at_server => {:type => 'boolean'},
                                   # error message if gift action (create, verify, accept, delete) failed. verified_at_server = false
-                                  # Either in :key+:options format (multi-language) or in :error format (english only)
-                                  # should use :key+:options format for within local server messages. Should use :error format for cross server remote messages
-                                  :key => {:type => 'string'}, # js.noti.verify_gift_<key> translation must exist
-                                  :options => {:type => 'object'},
-                                  :error => {:type => 'string'}
+                                  # either a string - english only error message - used for cross server error messages
+                                  # or an object with :key and :options - multi-language support - used for within server error messages
+                                  :error => {
+                                      :type => %w(string object),
+                                      :properties => {
+                                          :key => { :type => 'string'},
+                                          :options => { :type => 'object'}
+                                      },
+                                      :required => %w(key),
+                                      :additionalProperties => false
+                                  }
                               },
                               :required => %w(seq gid verified_at_server),
                               :additionalProperties => false
@@ -682,12 +697,22 @@ JSON_SCHEMA = {
                   },
                   :additionalProperties => false
               },
-              # optional array with created_at_server boolean response for verify_comments request
+
+              # optional array with verified_at_server boolean response for verify_comments request (create, verify, cancel, accept, reject or delete)
               :verify_comments => {
                   :type => 'object',
                   :properties => {
-                      # any fatal errors
-                      :error => {:type => 'string'},
+                      # optional fatal system error - string - english only error message - used for cross server error messages
+                      # or object with :key and :options - multi-language support - used for within server error messages
+                      :error => {
+                          :type => %w(string object),
+                          :properties => {
+                              :key => { :type => 'string'},
+                              :options => { :type => 'object'}
+                          },
+                          :required => %w(key),
+                          :additionalProperties => false
+                      },
                       # array with created_at_server boolean for rows in verify_comments request
                       :comments => {
                           :type => 'array',
@@ -702,11 +727,17 @@ JSON_SCHEMA = {
                                   # verified_at_server - boolean - true if comment action (create, verify, cancel, accept, reject or delete) succeeded
                                   :verified_at_server => {:type => 'boolean'},
                                   # error message if comment action (create, verify, cancel, accept, reject or delete) failed. verified_at_server = false
-                                  # either in :key+:options format (multi-language) or in :error format (english only)
-                                  # should use :key+:options format for within local server messages. Should use :error format for cross server remote messages
-                                  :key => {:type => 'string'}, # js.noti.verify_comment_<key> translation must exist
-                                  :options => {:type => 'object'},
-                                  :error => {:type => 'string'}
+                                  # either a string - english only error message - used for cross server error messages
+                                  # or an object with :key and :options - multi-language support - used for within server error messages
+                                  :error => {
+                                      :type => %w(string object),
+                                      :properties => {
+                                          :key => { :type => 'string'},
+                                          :options => { :type => 'object'}
+                                      },
+                                      :required => %w(key),
+                                      :additionalProperties => false
+                                  }
                               },
                               :required => %w(seq cid verified_at_server),
                               :additionalProperties => false

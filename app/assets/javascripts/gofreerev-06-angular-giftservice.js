@@ -1722,10 +1722,14 @@ angular.module('gifts')
 
         var verify_gifts_response = function (response) {
             var pgm = service + '.verify_gifts_response: ';
+            var error ;
 
             if (response.error) {
                 // fatal error
-                console.log(pgm + response.error) ;
+                if (typeof response.error == 'object') error =  I18n.t('js.gift_actions.' + response.error.key, response.error.options);
+                else error = response.error ;
+                // todo 2 : notification
+                console.log(pgm + error) ;
                 return ;
             };
 
@@ -2312,10 +2316,14 @@ angular.module('gifts')
 
         var verify_comments_response = function (response) {
             var pgm = service + '.verify_comments_response: ';
+            var error ;
 
             if (response.error) {
                 // fatal error
-                console.log(pgm + response.error) ;
+                if (typeof response.error == 'object') error =  I18n.t('js.gift_actions.' + response.error.key, response.error.options);
+                else error = response.error ;
+                // todo 2 : notification
+                console.log(pgm + error) ;
                 return ;
             };
 
@@ -2528,9 +2536,10 @@ angular.module('gifts')
                                 // todo: handle missing translations
                                 // todo: seq > 0. should have key and translation. seq < 0. should have english error message only
                                 new_comment.link_error_at = Gofreerev.unix_timestamp();
-                                if (comment_verification.hasOwnProperty('key')) new_comment.link_error = I18n.t('js.delete_comment.' + comment_verification.key, comment_verification.options);
+                                if (comment_verification.hasOwnProperty('key')) new_comment.link_error = I18n.t('js.comment_actions.' + comment_verification.key, comment_verification.options);
                                 else new_comment.link_error = comment_verification.error ;
                             }; // if
+                            // delete
                             break;
                     } ; // switch
 

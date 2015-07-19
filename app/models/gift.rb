@@ -426,7 +426,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_neq_seq', :options => {:action => action} },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_neq_seq', :options => {:action => action} },
               client_sid, verify_gift)
           next
         end
@@ -435,7 +435,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_create_remote', :options => {:server_id => server_id} },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'create_remote', :options => {:server_id => server_id} },
               client_sid, verify_gift)
           next
         end
@@ -444,7 +444,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_server_id', :options => {:server_id => server_id} },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_server_id', :options => {:server_id => server_id} },
               client_sid, verify_gift)
           next
         end
@@ -455,7 +455,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_pos_seq', :options => { :action => action} },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_pos_seq', :options => { :action => action} },
               client_sid, verify_gift)
           next
         end
@@ -477,7 +477,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_giver_receiver', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_giver_receiver', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -486,7 +486,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_create_giver_receiver', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'create_giver_receiver', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -495,7 +495,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_accept_giver_receiver', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'accept_giver_receiver', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -504,7 +504,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_uniq_giver', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_uniq_giver', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -513,7 +513,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_syserr_uniq_receiver', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'syserr_uniq_receiver', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -525,7 +525,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_create_sha256_accepted', :options => { :action => action } },
+              { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'create_sha256_accepted', :options => { :action => action } },
               client_sid, verify_gift)
           next
         end
@@ -534,7 +534,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid}. #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_giver1', :options => { :action => action } },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_giver1', :options => { :action => action } },
               client_sid, verify_gift)
           next
         end
@@ -543,7 +543,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid}. #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_receiver1', :options => { :action => action } },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_receiver1', :options => { :action => action } },
               client_sid, verify_gift)
           next
         end
@@ -553,7 +553,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid}. #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_accept_sha256_accepted', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'accept_sha256_accepted', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -565,7 +565,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_create_sha256_deleted', :options => { :action => action } },
+              { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'create_sha256_deleted', :options => { :action => action } },
               client_sid, verify_gift)
           next
         end
@@ -574,7 +574,7 @@ class Gift < ActiveRecord::Base
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'gift_accept_sha256_deleted', :options => { :action => action } },
+              { :seq => seq, :gid => gid, :verified_server => false, :error => error, :key => 'accept_sha256_deleted', :options => { :action => action } },
               client_sid, verify_gift)
           next
         end
@@ -584,7 +584,7 @@ class Gift < ActiveRecord::Base
         logger.error2 "gid #{gid}. #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_delete_sha256_deleted', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'delete_sha256_deleted', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -624,7 +624,7 @@ class Gift < ActiveRecord::Base
           logger.warn2 "Gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_giver2', :options => { :user_id => user_id, :action => action } },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_giver2', :options => { :user_id => user_id, :action => action } },
               client_sid, verify_gift)
           giver_error = true
           break
@@ -667,7 +667,7 @@ class Gift < ActiveRecord::Base
           logger.warn2 "Gid #{gid} : #{error}"
           Gift.client_response_array_add(
               client_response_array,
-              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_receiver2', :options => { :user_id => user_id, :action => action } },
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_receiver2', :options => { :user_id => user_id, :action => action } },
               client_sid, verify_gift)
           receiver_error = true
           break
@@ -680,7 +680,7 @@ class Gift < ActiveRecord::Base
         logger.debug2 "Gid #{gid}: #{error}"
         Gift.client_response_array_add(
             client_response_array,
-            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_friend', :options => { :action => action } },
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_friend', :options => { :action => action } },
             client_sid, verify_gift)
         next
       end
@@ -728,9 +728,12 @@ class Gift < ActiveRecord::Base
         end
       else
         if !gift
-          error = "#{action_failed}. Gift was not found"
+          error = "System error. #{action_failed}. Gift was not found"
           logger.warn2 "gid #{gid}. #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_not_found' }, client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_not_found', :options => { :action => action } },
+              client_sid, verify_gift)
           next
         end
       end
@@ -751,11 +754,12 @@ class Gift < ActiveRecord::Base
         # logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
       end
       if !direction
-        error = "#{action_failed}. Invalid request. sha256 signature check failed for #{action} gift action"
+        error = "#{action_failed}. Invalid request. sha256 signature check failed"
         logger.debug2 "Gid #{gid} : #{error}"
-        Gift.client_response_array_add client_response_array,
-                              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => "gift_#{action}_sha256", :options => { :action => action} },
-                              client_sid, verify_gift
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => "sha256", :options => { :action => action} },
+            client_sid, verify_gift)
         next
       end
 
@@ -766,30 +770,33 @@ class Gift < ActiveRecord::Base
       if sha256_accepted_client.to_s != ''
         # sha256_accepted in request. must be an accepted gift or an accept gift action
         if !gift.sha256_accepted and action != 'accept'
-          error = "#{action_failed}. sha256_accepted signature in request but gift dont have a sha256_accepted signature on server"
+          error = "#{action_failed}. sha256_accepted signature in request but gift does not have a sha256_accepted signature on server"
           logger.warn2 "Gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array,
-                                { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_not_accepted', :options => {:action => action} },
-                                client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_not_accepted', :options => {:action => action} },
+              client_sid, verify_gift)
           next
         end
         if gift.sha256_deleted and action == 'accept'
           error = "#{action_failed}. Gift has already been deleted"
           logger.warn2 "Gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array,
-                                { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_accept_deleted', :options => {:action => action} },
-                                client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'accept_deleted', :options => {:action => action} },
+              client_sid, verify_gift)
           next
         end
         sha256_accepted_input = ([gid, sha256_accepted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
         sha256_accepted_calc = Base64.encode64(Digest::SHA256.digest(sha256_accepted_input))
         # sha256_accepted signature must match or request must be an accept gift action
         if !((gift.sha256_accepted == sha256_accepted_calc) or (!gift.sha256_accepted and (action == 'accept')))
-          error = "#{action_failed}. Invalid sha256_accepted signature"
+          error = "#{action_failed}. Invalid request. sha256_accepted signature check failed"
           logger.warn2 "Gid #{gid} : #{error}. new calculated sha256_accepted signature = #{sha256_accepted_calc}. old sha256_accepted signature on server = #{gift.sha256_accepted if gift}"
-          Gift.client_response_array_add client_response_array,
-                                {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => "gift_syserr_sha256_accepted", :options => {:action => action}},
-                                client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => "syserr_sha256_accepted", :options => {:action => action}},
+              client_sid, verify_gift)
           next
         end
       else
@@ -798,9 +805,10 @@ class Gift < ActiveRecord::Base
         if action == 'delete' and gift.sha256_accepted
           error = "#{action_failed}. Gift has a sha256_accepted server signature but sha256_accepted is missing in request"
           logger.warn2 "Gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array,
-                                {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_accepted_required', :options => { :action => action} },
-                                client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_sha256_accepted_required1', :options => { :action => action} },
+              client_sid, verify_gift)
           next
         end
       end
@@ -814,28 +822,30 @@ class Gift < ActiveRecord::Base
         if !gift.sha256_deleted and (action != 'delete')
           error = "#{action_failed}. sha256_deleted signature in request but gift has not been deleted (no deleted signature on server)"
           logger.warn2 "Gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array,
-                                { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_not_deleted', :options => {:action => action} },
-                                client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_not_deleted', :options => {:action => action} },
+              client_sid, verify_gift)
           next
         end
         if gift.sha256_accepted and (sha256_accepted_client.to_s == '')
           error = "#{action_failed}. sha256_deleted signature in request but gift has previously been accepted and sha256 accepted signature was missing in request"
           logger.warn2 "Gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array,
-                                {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_accepted_required', :options => { :action => action} },
-                                client_sid, verify_gift
+          Gift.client_response_array_add(
+              client_response_array,
+              {:seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_sha256_accepted_required2', :options => { :action => action} },
+              client_sid, verify_gift)
           next
         end
         sha256_deleted_input = ([gid, sha256_deleted_client, direction] + giver_user_ids + ['/'] + receiver_user_ids).join(',')
         sha256_deleted_calc = Base64.encode64(Digest::SHA256.digest(sha256_deleted_input))
         # sha256_deleted signature must match or request must be a delete gift action
         if !((gift.sha256_deleted == sha256_deleted_calc) or (!gift.sha256_deleted and (action == 'delete')))
-          error = "#{action_failed}. Invalid sha256_deleted signature"
+          error = "#{action_failed}. Invalid request. sha256_deleted signature check failed"
           logger.warn2 "Gid #{gid} : #{error}. new sha256_deleted calculation = #{sha256_deleted_calc}. old sha256_deleted on server = #{gift.sha256_deleted}."
-          Gift.client_response_array_add client_response_array,
-                                { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_deleted', :options => {:action => action} },
-                                client_sid, verify_gift
+          Gift.client_response_array_add(client_response_array,
+                                { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_sha256_deleted', :options => {:action => action} },
+                                client_sid, verify_gift)
         end
         logger.warn2 "warning. action was delete but gift #{gid} has already been deleted" if (action == 'delete') and gift.sha256_deleted
       end

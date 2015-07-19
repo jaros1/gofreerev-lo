@@ -148,7 +148,8 @@ class Comment < ActiveRecord::Base
     end
 
     # cache users (user_id's are used in server side sha256 signature)
-    # cache comments (get previous server side sha256 signature and created_at timestamp)
+    # cache comments (get previous server side sha256 signature)
+    # cache gifts (get previous server side sha256 signature) - only accept, reject and some delete actions
     # cache servers (secrets for remote user sha256 signatures)
     users = {} # id => user
     comments = {} # cid => comment
@@ -157,6 +158,8 @@ class Comment < ActiveRecord::Base
     seqs = {}
     server_ids = []
     servers = {}
+    gids = []
+    gifts = {}
     verify_comments.each do |new_comment|
       seq = new_comment["seq"]
       return Gift.format_error_response(
@@ -170,10 +173,12 @@ class Comment < ActiveRecord::Base
       server_ids << server_id if server_id and !server_ids.index(server_id)
       server_id = new_comment["gift"] ? new_comment["gift"]["server_id"] : nil
       server_ids << server_id if server_id and !server_ids.index(server_id)
+      gids << new_comment["gift"]["gid"] if new_comment["gift"]
     end
     Comment.where(:cid => cids.uniq).each { |c| comments[c.cid] = c }
     User.where(:id => comments_user_ids.uniq).includes(:server_users).each { |u| users[u.id] = u }
     Server.where(:id => server_ids).each { |s| servers[s.id] = s } if server_ids.size > 0
+    Gift.where(:gid => gids.uniq).each { |g| gifts[g.gid] = g }
 
     client_response_array = []
     server_requests = {} # server_id => array with remote commments verification request
@@ -184,36 +189,52 @@ class Comment < ActiveRecord::Base
       comment_server_id = verify_comment['server_id']
       cid = verify_comment['cid']
       action = verify_comment['action']
-      action_failed = "#{action} comment action failed"
+      if %w(cancel accept reject).index(action)
+        action_failed = "#{action} new deal proposal failed"
+      else
+        action_failed = "#{action} comment failed"
+      end
 
       # logical validate row in verify comment request (has already been JSON validated)
 
       if comment_server_id
         # remote comment action
         if seq >= 0
-          error = "#{action_failed}. Invalid request. seq must be negative for remote comment actions"
+          error = "System error. #{action_failed}. Invalid request. seq must be negative for #{action} comment action on other Gofreerev servers"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_neq_seq' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_neq_seq' },
+              client_sid, verify_comment)
           next
         end
         if action == 'create'
-          error = "#{action_failed}. Invalid request. create comment on other Gofreerev server is not allowed. server id = #{comment_server_id}"
+          error = "System error. #{action_failed}. Invalid request. create comment on other Gofreerev server is not allowed. server id = #{comment_server_id}"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_remote', :options => {:server_id => comment_server_id} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_remote', :options => {:server_id => comment_server_id, :action => action} },
+              client_sid, verify_comment)
           next
         end
         if !servers.has_key? comment_server_id
           error = "#{action_failed}. Invalid request. Unknown server id #{comment_server_id}"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_server_id', :options => {:server_id => comment_server_id} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_server_id', :options => {:server_id => comment_server_id, :action => action} },
+              client_sid, verify_comment)
           next
         end
       else
         # local comment action
         if seq < 0
-          error = "#{action_failed}. Invalid request. seq must be postive for local comment actions"
+          error = "System error. #{action_failed}. Invalid request. seq must be postive for local comment actions"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_pos_seq'}, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_pos_seq', :options => { :action => action }},
+              client_sid, verify_comment)
           next
         end
       end
@@ -225,15 +246,21 @@ class Comment < ActiveRecord::Base
         comment_user_ids = []
       end
       if comment_user_ids.size == 0
-        error = "#{action_failed}. Invalid request. user_ids is missing"
+        error = "System error. #{action_failed}. Invalid request. user_ids is missing"
         logger.error2 "cid #{cid} : #{error}"
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_user' }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_user', :options => { :action => action} },
+            client_sid, verify_comment)
         next
       end
       if comment_user_ids.size != comment_user_ids.uniq.size
-        error = "#{action_failed}. Invalid request. User ids in user_ids must be unique"
+        error = "System error. #{action_failed}. Invalid request. Comment user ids must be unique"
         logger.error2 "cid #{cid} : #{error}"
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_uniq_user' }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_uniq_user', :options => { :action => action} },
+            client_sid, verify_comment)
         next
       end
 
@@ -244,9 +271,12 @@ class Comment < ActiveRecord::Base
         new_deal_action_by_user_ids1 = []
       end
       if new_deal_action_by_user_ids1.size != new_deal_action_by_user_ids1.uniq.size
-        error = "#{action_failed}. Invalid request. User ids in new_deal_action_by_user_ids must be unique"
+        error = "System error. #{action_failed}. Invalid request. User ids in new_deal_action_by_user_ids must be unique"
         logger.error2 "cid #{cid} : #{error}"
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_uniq_action_user' }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_uniq_action_user', :options => { :action => action } },
+            client_sid, verify_comment)
         next
       end
       # consistency check (action, sha256_action and new_deal_action_by_user_ids)
@@ -256,40 +286,58 @@ class Comment < ActiveRecord::Base
       if b1_new_deal_action
         # cancel, accept or reject new deal proposal - sha256_action and new_deal_action_by_user_ids are required
         if !b2_sha256_action
-          error = "#{action_failed}. Invalid request. sha256_action is missing for #{action} new deal proposal"
+          error = "System error. #{action_failed}. Invalid request. sha256_action signature is missing for #{action} new deal proposal"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_sha256_action1', :options => { :action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_sha256_action1', :options => { :action => action} },
+              client_sid, verify_comment)
           next
         elsif !b3_new_deal_action_by_user_ids
-          error = "#{action_failed}. Invalid request. new_deal_action_by_user_ids is missing for #{action} new deal proposal"
+          error = "System error. #{action_failed}. Invalid request. new_deal_action_by_user_ids is missing for #{action} new deal proposal"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_action_user1', :options => { :action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_action_user1', :options => { :action => action} },
+              client_sid, verify_comment)
           next
         end
       elsif action == 'create'
         # create new comment. sha256_action and new_deal_action_by_user_id are not allowed
         if b2_sha256_action
-          error = "#{action_failed}. Invalid request. sha256_action is not allowed for create new comment"
+          error = "System error. #{action_failed}. Invalid request. sha256_action signature is not allowed for create comment"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_sha256_action' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_sha256_action', :options => { :action => action} },
+              client_sid, verify_comment)
           next
         end
         if b3_new_deal_action_by_user_ids
-          error = "#{action_failed}. Invalid request. new_deal_action_by_user_ids is not allowed for create new comment"
+          error = "System error. #{action_failed}. Invalid request. new_deal_action_by_user_ids must be blank for create comment"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_action_user' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_action_user', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
       elsif b2_sha256_action != b3_new_deal_action_by_user_ids
         # verify and delete. optional sha256_action and new_deal_action_by_user_id
         if b2_sha256_action
-          error = "#{action_failed}. Invalid request. sha256_action without new_deal_action_by_user_ids is not allowed. #{action} comment request"
+          error = "System error. #{action_failed}. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_action_user2', :options => { :action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_action_user2', :options => { :action => action} },
+              client_sid, verify_comment)
         else
-          error = "#{action_failed}. Invalid request. new_deal_action_by_user_ids without sha256_action is not allowed. #{action} comment request"
+          error = "System error. #{action_failed}. Invalid request. new_deal_action_by_user_ids without sha256_action is not allowed"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_sha256_action2', :options => { :action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_no_sha256_action2', :options => { :action => action} },
+              client_sid, verify_comment)
         end
         next
       end
@@ -299,15 +347,21 @@ class Comment < ActiveRecord::Base
       # - not allowed for create new comment and cancel, accept, reject new deal proposal
       # - required for delete comment
       if %w(create cancel accept reject).index(action) and verify_comment['sha256_deleted'].to_s != ''
-        error = "#{action_failed}. Invalid request. sha256_deleted is not allowed for action #{action}"
+        error = "System error. #{action_failed}. Invalid request. sha256_deleted signature is not allowed for #{action} comment"
         logger.error2 "cid #{cid} : #{error} "
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_other_sha256_deleted_not_allowed" }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_other_sha256_deleted_not_allowed", :options => { :action => action } },
+            client_sid, verify_comment)
         next
       end
       if action == 'delete' and verify_comment['sha256_deleted'].to_s == ''
-        error = "#{action_failed}. Invalid request. sha256_deleted is required for action delete"
+        error = "System error. #{action_failed}. Invalid request. sha256_deleted signature is required for delete comment"
         logger.error2 "cid #{cid} : #{error} "
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_delete_sha256_deleted_required' }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_delete_sha256_deleted_required', :options => { :action => action } },
+            client_sid, verify_comment)
         next
       end
 
@@ -341,9 +395,12 @@ class Comment < ActiveRecord::Base
           friend = friends[user.user_id]
           comment_and_login_user_ids << user.user_id if friend == 1 # comment user = login user. used in create, cancel & delete authorization check
         else
-          error = "#{action_failed}. user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown user ids"
+          error = "#{action_failed}. user with id #{user_id} was not found. Cannot check server sha256 signature for comment"
           logger.warn2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_user', :options => { :user_id => user_id } }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_user', :options => { :user_id => user_id, :action => action } },
+              client_sid, verify_comment)
           user_error = true
           break
         end
@@ -381,13 +438,19 @@ class Comment < ActiveRecord::Base
           if comment_user_ids != comment_and_login_user_ids
             # nice informative error message
             if changed_login_providers.size > 0
-              error = "Could not create comment signature on server. Log in has changed for #{changed_login_providers.join('. ')} since comment was created on client. Please log in with old #{changed_login_providers.join('. ')} user"
+              error = "#{action_failed}. Could not create comment signature on server. Log in has changed for #{changed_login_providers.join('. ')} since comment was created in browser client. Please log in with old #{changed_login_providers.join('. ')} user(s)"
               logger.debug2 "Cid #{cid} : #{error}"
-              Gift.client_response_array_add client_response_array, {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_change_login', :options => {:providers => changed_login_providers.join('. ')}}, client_sid, verify_comment
+              Gift.client_response_array_add(
+                  client_response_array,
+                  {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_change_login', :options => {:providers => changed_login_providers.join('. '), :action => action}},
+                  client_sid, verify_comment)
             else
-              error = "Could not create comment signature on server. Log out for #{missing_login_providers.join('. ')} since comment was created on client. Please log in for #{missing_login_providers.join('. ')}"
+              error = "#{action_failed}. Could not create comment signature on server. Log out for #{missing_login_providers.join('. ')} since comment was created in browser client. Please log in for #{missing_login_providers.join('. ')}"
               logger.debug2 "Cid #{cid} : #{error}"
-              Gift.client_response_array_add client_response_array, {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_missing_login', :options => {:providers => missing_login_providers.join('. ')}}, client_sid, verify_comment
+              Gift.client_response_array_add(
+                  client_response_array,
+                  {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_create_missing_login', :options => {:providers => missing_login_providers.join('. '), :action => action} },
+                  client_sid, verify_comment)
             end
             next
           end
@@ -402,13 +465,19 @@ class Comment < ActiveRecord::Base
           if comment_and_login_user_ids.length == 0
             # login changed between client cancel new deal proposal and server cancel new proposal request (offline client?)
             if changed_login_providers.size > 0
-              error = "Could not cancel new deal proposal on server. Log in has changed for #{changed_login_providers.join('. ')} since new deal proposal was cancelled on client. Please log in with old #{changed_login_providers.join('. ')} user"
+              error = "#{action_failed}. Could not cancel new deal proposal on server. Log in has changed for #{changed_login_providers.join('. ')} since new deal proposal was cancelled in browser client. Please log in with old #{changed_login_providers.join('. ')} user(s)"
               logger.debug2 "Cid #{cid} : #{error}"
-              Gift.client_response_array_add client_response_array, {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_cancel_change_login', :options => {:providers => changed_login_providers.join('. ')}}, client_sid, verify_comment
+              Gift.client_response_array_add(
+                  client_response_array,
+                  {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_cancel_change_login', :options => {:providers => changed_login_providers.join('. '), :action => action} },
+                  client_sid, verify_comment)
             else
-              error = "Could not cancel new deal proposal on server. Log out for #{missing_login_providers.join('. ')} since new deal proposal was cancelled on client. Please log in for #{missing_login_providers.join('. ')}"
+              error = "#{action_failed}. Could not cancel new deal proposal on server. Log out for #{missing_login_providers.join('. ')} since new deal proposal was cancelled in browser client. Please log in for #{missing_login_providers.join('. ')}"
               logger.debug2 "Cid #{cid} : #{error}"
-              Gift.client_response_array_add client_response_array, {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_cancel_missing_login', :options => {:providers => missing_login_providers.join('. ')}}, client_sid, verify_comment
+              Gift.client_response_array_add(
+                  client_response_array,
+                  {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_cancel_missing_login', :options => {:providers => missing_login_providers.join('. '), :action => action} },
+                  client_sid, verify_comment)
             end
             next
           end
@@ -462,9 +531,12 @@ class Comment < ActiveRecord::Base
           friend = friends[user.user_id]
           new_deal_and_login_user_ids << user.user_id if friend == 1 # new deal action by user = login user. used in authorization check
         else
-          error = "#{action_failed}. user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown new_deal_action_user_ids"
+          error = "#{action_failed}. user with id #{user_id} was not found. Cannot check server sha256_action signature for comment with unknown new_deal_action_user_ids"
           logger.warn2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_deal_user', :options => { :user_id => user_id } }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_deal_user', :options => { :user_id => user_id, :action => action } },
+              client_sid, verify_comment)
           user_error = true
           break
         end
@@ -473,64 +545,84 @@ class Comment < ActiveRecord::Base
       new_deal_action_by_user_ids2.uniq! # todo: should return an error if doublets in giver_user_ids array
       new_deal_action_by_user_ids2.sort! unless comment_server_id
 
-      # read comment hash - required for server side authorization check for some actions (accept, reject and delete if comment is deleted by giver or receiver of comment)
+      # read gift hash - required for server side authorization check for some actions (accept, reject and delete if comment is deleted by giver or receiver of comment)
       # also used in new_deal_action_by_user_ids - authorization check
-      if gift_hash_required and verify_comment['comment'].to_s == ''
-        error = "#{action_failed}. Invalid request. Gift hash is missing. Required for accept, reject and comment deleted by giver or receiver of comment. Action was #{action}"
+      if gift_hash_required and verify_comment['gift'].to_s == ''
+        error = "#{action_failed}. Invalid request. Data for gift signature check is missing. Required for accept and reject new deal proposal and for comment deleted by giver or receiver of gift"
         logger.debug2 "Cid #{cid} : #{error} "
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment', :options => { :aciton => action } }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift', :options => { :aciton => action } },
+            client_sid, verify_comment)
         next
       end
-      if !gift_hash_required and verify_comment['comment'].to_s != ''
+      if !gift_hash_required and verify_comment['gift'].to_s != ''
         # comment hash is NOT required for this comment/action.
         # occurs after page load when verify_comments_request is sent to server before friend list has been downloaded in /util/do_tasks
-        logger.debug "Cid #{cid}. Warning. Gift hash is ignored. Only required for accept, reject and comment deleted by giver or receiver of comment. Action was #{action}"
+        logger.debug "Cid #{cid}. Warning. Gift hash is ignored. Only required for accept and reject new deal proposal and for comment deleted by giver or receiver of comment. Action was #{action}"
       end
       if gift_hash_required
-        # copy/pastye from Gift.verify comments. prepare comment giver_user_ids and receiver_user_ids for cross server communication. check comment.sha256 and find direction and creator of comment
-        verify_comment = verify_comment['comment']
-        comment_server_id = verify_comment['server_id']
-        if comment_server_id and !servers.has_key? comment_server_id
-          error = "#{action_failed}. Invalid request. Unknown comment.server_id #{comment_server_id}"
+        # copy/paste from Gift.verify comments. prepare comment giver_user_ids and receiver_user_ids for cross server communication. check comment.sha256 and find direction and creator of comment
+        # action is accept or reject new deal proposal - login users must be creator of gift
+        # or action is delete and login users must be giver or receiver of gift
+        verify_gift = verify_comment['gift']
+        gift_server_id = verify_gift['server_id']
+        if gift_server_id and !servers.has_key? gift_server_id
+          error = "#{action_failed}. Invalid request. Invalid gift signature data. Unknown gift.server_id #{gift_server_id}"
           logger.error2 "cid #{cid} : #{error} "
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_server_id'}, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_server_id', :options => { :server_id => gift_server_id, :action => action } },
+              client_sid, verify_comment)
           next
         end
-        gid = verify_comment['gid']
+        gid = verify_gift['gid']
 
-        # validate row in verify comment request
-        if verify_comment["giver_user_ids"] and (verify_comment["giver_user_ids"].size > 0)
-          giver_user_ids = verify_comment["giver_user_ids"].uniq
+        # validate gift hash
+        if verify_gift["giver_user_ids"] and (verify_comment["giver_user_ids"].size > 0)
+          giver_user_ids = verify_gift["giver_user_ids"]
         else
           giver_user_ids = []
         end
-        if verify_comment["receiver_user_ids"] and (verify_comment["receiver_user_ids"].size > 0)
-          receiver_user_ids = verify_comment["receiver_user_ids"].uniq
+        if verify_gift["receiver_user_ids"] and (verify_gift["receiver_user_ids"].size > 0)
+          receiver_user_ids = verify_gift["receiver_user_ids"]
         else
           receiver_user_ids = []
         end
         if (giver_user_ids.size == 0) and (receiver_user_ids.size == 0)
-          error = "#{action_failed}. Invalid request. Gift giver user ids and comment receiver user ids are missing"
+          error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. Giver user ids and receiver user ids are missing"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_no_giver_receiver'}, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_no_giver_receiver', :options => { :action => action} },
+              client_sid, verify_comment)
           next
         end
         if (giver_user_ids.size > 0) and (receiver_user_ids.size > 0) and %w(accept reject).index(action)
-          error = "#{action_failed}. Invalid request. Gift giver AND receiver are not allowed for #{action} new deal proposal"
+          error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. Giver AND receiver are not allowed for #{action} new deal proposal"
           logger.error2 "gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_giver_and_receiver' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_giver_and_receiver', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
         if giver_user_ids.size != giver_user_ids.uniq.size
-          error = "#{action_failed}. Invalid request. User ids in comment giver user ids list must be unique"
+          error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. User ids in gift giver user ids list must be unique"
           logger.error2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_uniq_giver'}, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_uniq_giver', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
         if receiver_user_ids.size != receiver_user_ids.uniq.size
-          error = "#{action_failed}. Invalid request. User ids in comment receiver user ids list must be unique"
+          error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. User ids in gift receiver user ids list must be unique"
           logger.error2 "cid #{cid} : #{error} "
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_uniq_receiver'}, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_uniq_receiver', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
 
@@ -544,7 +636,7 @@ class Comment < ActiveRecord::Base
         giver_receiver_is_login_user = false
         giver_user_ids = []
         giver_error = false
-        verify_comment["giver_user_ids"].each do |user_id|
+        verify_gift["giver_user_ids"].each do |user_id|
           if server_id and user_id < 0 # unknown remote user
             giver_user_ids << user_id
             next
@@ -570,20 +662,22 @@ class Comment < ActiveRecord::Base
             friend = friends[giver.user_id]
             giver_receiver_is_login_user = true if friend == 1
           else
-            error = "#{action_failed}. Gift giver user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown user ids"
+            error = "#{action_failed}. Invalid gift signature data. Gift giver user with id #{user_id} was not found"
             logger.warn2 "Cid #{cid} : #{error}"
-            Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_giver', :options => { :user_id => user_id } }, client_sid, verify_comment
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_giver', :options => { :user_id => user_id, :action => action } },
+                client_sid, verify_comment)
             giver_error = true
             break
           end
-        end if verify_comment["giver_user_ids"]
+        end if verify_gift["giver_user_ids"]
         next if giver_error
-        giver_user_ids.uniq! # todo: should return an error if doublets in giver_user_ids array
-        giver_user_ids.sort! unless server_id
+        giver_user_ids.sort! unless gift_server_id
 
         receiver_user_ids = []
         receiver_error = false
-        verify_comment["receiver_user_ids"].each do |user_id|
+        verify_gift["receiver_user_ids"].each do |user_id|
           if server_id and user_id < 0
             # unknown remote user
             receiver_user_ids << user_id
@@ -610,84 +704,102 @@ class Comment < ActiveRecord::Base
             friend = friends[receiver.user_id]
             giver_receiver_is_login_user = true if friend == 1
           else
-            error = "#{action_failed}. Gift receiver user with id #{user_id} was not found. Cannot check server sha256 signature for comment with unknown user ids"
+            error = "#{action_failed}. Invalid gift signature data. Gift receiver user with id #{user_id} was not found"
             logger.warn2 "Cid #{cid} : #{error}"
-            Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_receiver', :options => { :user_id => user_id } }, client_sid, verify_comment
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_receiver', :options => { :user_id => user_id, :action => action } },
+                client_sid, verify_comment)
             receiver_error = true
             break
           end
-        end if verify_comment["receiver_user_ids"]
+        end if verify_gift["receiver_user_ids"]
         next if receiver_error
-        receiver_user_ids.uniq! # todo: should return an error if doublets in receiver_user_ids array
-        receiver_user_ids.sort! unless server_id
+        receiver_user_ids.sort! unless gift_server_id
+
         if !giver_receiver_is_login_user
-          # comment authorization failed. not logged in as giver or receiver (=not logged in as comment creator)
+          # comment authorization failed. not logged in as giver or receiver (=login user is not gift creator). cancel, accept and delete are not allowed
           if action == 'delete'
             # delete comment
-            error = "delete comment is not allowed. Not logged in as comment creator, comment giver or comment receiver"
+            error = "#{action failed}. delete comment is not allowed. Not logged in as comment creator or as giver or receiver of gift"
             logger.debug2 "cid #{cid} : #{error}"
-            Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_delete_not_auth' }, client_sid, verify_comment
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_delete_not_auth', :options => { :action => action } },
+                client_sid, verify_comment)
           else
             # accept or reject new deal proposal
-            error = "#{action} new del proposal is not allowed. Not logged in as comment creator"
+            error = "#{action_failed}. #{action} new del proposal is not allowed. Not logged in as gift creator"
             logger.debug2 "cid #{cid} : #{error}"
-            Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_delete_comment_not_creator' }, client_sid, verify_comment
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_accept_not_auth', :options => { :action => action } },
+                client_sid, verify_comment)
           end
           next
         end
 
-        if comment_server_id
+        if gift_server_id
           # todo: now validating authorization for accept, reject new deal proposal or delete comment
-          #       comment is on an other Gofreerev server
+          #       gift is on an other Gofreerev server
           #       check response from previous server to server request is ready (new request, wait, ready or timeout)
           #       new request:
-          #       send comment verify request to other gofreerev server
-          #       comment must exist on other server and comment sha256 signature must be correct
+          #       send gift verify request to other gofreerev server
+          #       gift must exist on other server and gift sha256 signature must be correct
           #       other Gofreerev server must return direction to this Gofreerev server (null=invalid sha256, giver or receiver)
-          #       this Gofreerev server must save verify comment request in db and process request after receiving response from other Gofreerev server (ready)
-          #       reuse verify_comments table? reuse verify_comments server to server message
-          #       use negative seq for comments without server id but comment hash with server id?
-          #       check page reload problem. no friends array. first verify comments request with comment hash (=negative seq)?!
-          error = "#{action_failed}. Authorization check failed. Gift and comment are on different Gofreerev servers. Not implemented"
+          #       this Gofreerev server must save verify gift request in db and process request after receiving response from other Gofreerev server (ready)
+          #       reuse verify_gifts table? reuse verify_gifts server to server message
+          #       use negative seq for comments without server id but gift hash with server id?
+          #       check page reload problem. no friends array. first verify comments request with gift hash (=negative seq)?!
+          error = "System error. #{action_failed}. Authorization check failed. Gift and comment are on different Gofreerev servers. Not yet implemented"
           logger.error2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_auth_not_impl' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_auth_not_impl', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
 
-        if !comment_server_id
+        if !gift_server_id
 
-          # full local validation. check sha256 and find direction = comment creator (giver or receiver)
+          # gift on this Gofreerev server. full local validation. check sha256 and find direction = comment creator (giver or receiver)
 
-          # check if comment exists
+          # check if gift exists
           # todo: see todo issue 441 and 443
-          comment = comments[gid]
-          if !comment
-            # comment not found
-            error = "#{action_failed}. comment #{gid} was not found"
+          gift = gifts[gid]
+          if !gift
+            # gift not found
+            error = "#{action_failed}. gift #{gid} was not found"
             logger.warn2 "cid #{cid} : #{error}"
-            Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_not_found' }, client_sid, verify_comment
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_not_found', :options => { :action => action, :gid => gid } },
+                client_sid, verify_comment)
             next
           end
 
-          # calculate and check server side sha256 signature
-          comment_sha256_client = verify_comment["sha256"]
-          comment_direction = nil
+          # calculate and check server side gift sha256 signature
+          gift_sha256_client = verify_gift["sha256"]
+          gift_direction = nil
           if giver_user_ids.size > 0
-            comment_sha256_input = ([gid, comment_sha256_client, 'giver'] + giver_user_ids).join(',')
-            comment_sha256_calc = Base64.encode64(Digest::SHA256.digest(comment_sha256_input))
-            comment_direction = 'giver' if comment.sha256 == comment_sha256_calc
-            logger.debug "sha256 check failed with comment_direction = giver. comment_sha256_input = #{comment_sha256_input}, comment_sha256_calc = #{comment_sha256_calc}, comment.sha256 = #{comment.sha256}" unless comment_direction
+            gift_sha256_input = ([gid, gift_sha256_client, 'giver'] + giver_user_ids).join(',')
+            gift_sha256_calc = Base64.encode64(Digest::SHA256.digest(gift_sha256_input))
+            gift_direction = 'giver' if gift.sha256 == gift_sha256_calc
+            logger.debug "sha256 check failed with gift_direction = giver. gift_sha256_input = #{gift_sha256_input}, gift_sha256_calc = #{gift_sha256_calc}, gift.sha256 = #{gift.sha256}" unless gift_direction
           end
           if receiver_user_ids.size > 0
-            comment_sha256_input = ([gid, comment_sha256_client, 'receiver'] + receiver_user_ids).join(',')
-            comment_sha256_calc = Base64.encode64(Digest::SHA256.digest(comment_sha256_input))
-            comment_direction = 'receiver' if comment.sha256 == comment_sha256_calc
-            logger.debug "sha256 check failed with comment_direction = receiver. comment_sha256_input = #{comment_sha256_input}, comment_sha256_calc = #{comment_sha256_calc}, comment.sha256 = #{comment.sha256}" unless comment_direction
+            gift_sha256_input = ([gid, gift_sha256_client, 'receiver'] + receiver_user_ids).join(',')
+            gift_sha256_calc = Base64.encode64(Digest::SHA256.digest(gift_sha256_input))
+            gift_direction = 'receiver' if gift.sha256 == gift_sha256_calc
+            logger.debug "sha256 check failed with gift_direction = receiver. gift_sha256_input = #{gift_sha256_input}, gift_sha256_calc = #{gift_sha256_calc}, gift.sha256 = #{gift.sha256}" unless gift_direction
           end
-          if !comment_direction
-            error = "#{action_failed}. comment sha256 signature check failed for #{action} comment action"
+          if !gift_direction
+            error = "#{action_failed}. authorization check failed. gift sha256 signature check failed for #{action} comment"
             logger.debug2 "cid #{cid} : #{error}"
-            Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_syserr_comment_sha256", :options => { :action => action} }, client_sid, verify_comment
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_syserr_gift_sha256", :options => { :action => action} },
+                client_sid, verify_comment)
             next
           end
 
@@ -696,20 +808,23 @@ class Comment < ActiveRecord::Base
           # now checking accept and reject new deal proposal authorization (login user must be creator of comment)
           if %w(accept reject).index(action)
             # accept and reject: compare comment creator and login users (remote partial validation - local full validation)
-            comment_creator_user_ids = comment_direction == 'giver' ? giver_user_ids : receiver_user_ids
+            comment_creator_user_ids = gift_direction == 'giver' ? giver_user_ids : receiver_user_ids
             comment_creator_login_user_ids = login_user_ids & comment_creator_user_ids
             if comment_creator_login_user_ids.length == 0
-              error = "#{action_failed}. Not authorized. new deal proposal can only be accepted and rejected by creator of comment"
+              error = "#{action_failed}. Not authorized. New deal proposal can only be accepted and rejected by creator of gift"
               logger.debug2 "cid #{cid} : #{error}"
-              Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_comment_not_auth' }, client_sid, verify_comment
+              Gift.client_response_array_add(
+                  client_response_array,
+                  { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_accept_gift_not_auth', :options => { :action => action } },
+                  client_sid, verify_comment)
               next
             end
           end
 
         end # if !comment_server_id (local validation)
 
-        # end comment hash check
-      end # if comment_hash_required
+        # end gift hash check
+      end # if gift_hash_required
 
       # new_deal_action_by_user_ids - authorization check
       # - verify: verify old new deal proposal with a new deal action. that is a cancelled, accepted or rejected new deal proposal
@@ -719,15 +834,19 @@ class Comment < ActiveRecord::Base
       # - cancel: compare login users, comment users and new_deal_action_by_user_id - intersection - minimum one user - can be checked both remote and local
       # - accept: compare login users, creator of comment and new_deal_action_by_user_id - intersection - minimum one user - can only be checked local on server where comment was created
       # - reject: compare login users, creator of comment and new_deal_action_by_user_id - intersection - minimum one user - can only be checked local on server where comment was created
+      # - delete: as "verify" - no server side authorization check
       if action == 'cancel'
         intersect = comment_and_login_user_ids & new_deal_action_by_user_ids2
         if intersect.length == 0
-          error = "#{action_failed}. Invalid cancel new deal request. Must be cancelled by creator of new deal proposal"
+          error = "#{action_failed}. Authorization check failed. Proposal must be cancelled by creator of new deal proposal"
           logger.debug2 "cid #{cid} : #{error} "
           logger.debug2 "comment users            = #{comment_user_ids.join(', ')}"
           logger.debug2 "login users              = #{login_user_ids.join(', ')}"
           logger.debug2 "new deal action by users = #{new_deal_action_by_user_ids2.join(', ')}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_cancel_new_deal_user' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_cancel_new_deal_user', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
         if intersect.length < new_deal_action_by_user_ids2.length
@@ -741,12 +860,15 @@ class Comment < ActiveRecord::Base
         # local validation only
         intersect = comment_creator_login_user_ids & new_deal_action_by_user_ids2
         if intersect.length == 0
-          error = "#{action_failed}. Invalid #{action} new deal request. Must be accepted/rejected by creator of comment"
+          error = "#{action_failed}. Invalid \"new_deal_action_by_user_ids\". New deal proposal must be accepted or rejected by creator of gift"
           logger.debug2 "cid #{cid} : #{error}"
           logger.debug2 "comment created by rs       = #{comment_creator_user_ids.join(', ')}"
           logger.debug2 "login users              = #{login_user_ids.join(', ')}"
           logger.debug2 "new deal action by users = #{new_deal_action_by_user_ids2.join(', ')}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_#{action}_new_deal_user" }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_accept_new_deal_user", :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
         if intersect.length < new_deal_action_by_user_ids2.length
@@ -792,10 +914,10 @@ class Comment < ActiveRecord::Base
             # comment on remote server. gift on this server
             gift_hash[:server_id] = Server.server_id_to_sha256_hash[0]
           elsif verify_comment["gift"]["server_id"] != comment_server_id
-            # comment and gift on two other Gofreerev servers
+            # comment and gift on two different Gofreerev servers
             gift_hash[:server_id] = Server.server_id_to_sha256_hash[comment_server_id]
           else
-            # comment and gift on same remote Gofreerev server
+            # comment and gift are other Gofreerev server
             nil
           end
           comment_hash[:gift] = gift_hash
@@ -817,7 +939,10 @@ class Comment < ActiveRecord::Base
         if !comment
           error = "#{action_failed}. Comment was not found"
           logger.warn2 "cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_not_found' }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_not_found', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
       end
@@ -827,9 +952,12 @@ class Comment < ActiveRecord::Base
       sha256_input = ([cid, sha256_client] + user_ids).join(',')
       sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
       if comment and comment.sha256 != sha256_calc
-        error = "#{action_failed}. Invalid request. sha256 signature check failed for #{action} comment action"
+        error = "#{action_failed}. Invalid request. sha256 signature check failed"
         logger.debug "cid #{cid} : #{error}"
-        Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_#{action}_sha256", :options => { :action => action} }, client_sid, verify_comment
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => "comment_sha256", :options => { :action => action} },
+            client_sid, verify_comment)
         next
       end
 
@@ -842,22 +970,31 @@ class Comment < ActiveRecord::Base
         if !comment.sha256_action and !%w(cancel accept reject).index(action)
           error = "#{action_failed}. sha256_action signature in request but comment does not have a sha256_action signature on server"
           logger.warn2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_not_action', :options => {:action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_not_action', :options => {:action => action} },
+              client_sid, verify_comment)
           next
         end
         if comment.sha256_deleted and %w(cancel accept reject).index(action)
-          error = "#{action_failed}. Comment has already been deleted"
+          error = "#{action_failed}. Comment has been deleted"
           logger.warn2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_action_deleted', :options => {:action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_action_deleted', :options => {:action => action} },
+              client_sid, verify_comment)
           next
         end
         # todo: use new_deal_action_by_user_ids instead of user_ids in sha256_action signature?
         sha256_action_input = ([cid, sha256_action_client] + user_ids).join(',')
         sha256_action_calc = Base64.encode64(Digest::SHA256.digest(sha256_action_input))
         if !((comment.sha256_action == sha256_action_calc) or (!comment.sha256_action and %w(cancel accept reject).index(action)))
-          error = "#{action_failed}. Invalid sha256_accepted signature"
+          error = "#{action_failed}. Invalid sha256_action signature"
           logger.warn2 "Cid #{cid} : #{error}. new sha256_action calculation = #{sha256_action_calc}. old sha256_action on server = #{comment.sha256_action if comment}."
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_sha256_action', :options => {:action => action}}, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_sha256_action', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
         if %w(cancel accept reject).index(action) and comment.sha256_action
@@ -869,7 +1006,10 @@ class Comment < ActiveRecord::Base
         if action == 'delete' and comment.sha256_action
           error = "#{action_failed}. Comment has a sha256_action server signature but sha256_action is missing in request"
           logger.warn2 "Gid #{gid} : #{error}"
-          Gift.client_response_array_add client_response_array, {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_sha256_action_required', :options => { :action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_sha256_action_required1', :options => { :action => action } },
+              client_sid, verify_comment)
           next
         end
       end
@@ -883,13 +1023,19 @@ class Comment < ActiveRecord::Base
         if !comment.sha256_deleted and (action != 'delete')
           error = "#{action_failed}. sha256_deleted signature in request but comment has not been deleted (no deleted signature on server)"
           logger.warn2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_not_deleted', :options => {:action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_not_deleted', :options => {:action => action} },
+              client_sid, verify_comment)
           next
         end
         if comment.sha256_action and (sha256_action_client.to_s == '')
-          error = "#{action_failed}. sha256_deleted signature in request but new deal proposal has previously been cancelled, accepted or rejected and sha256 action signature was missing in request"
+          error = "#{action_failed}. sha256_deleted signature in request but new deal proposal has previously been cancelled, accepted or rejected and sha256_action signature is missing in request"
           logger.warn2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add client_response_array, {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_sha256_action_required', :options => { :action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              {:seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_sha256_action_required2', :options => { :action => action} },
+              client_sid, verify_comment)
           next
         end
         sha256_deleted_input = ([cid, sha256_deleted_client] + user_ids).join(',')
@@ -897,7 +1043,10 @@ class Comment < ActiveRecord::Base
         if !((comment.sha256_deleted == sha256_deleted_calc) or (!comment.sha256_deleted and (action == 'delete')))
           error = "#{action_failed}. Invalid sha256_deleted signature"
           logger.warn2 "Cid #{cid} : #{error}. new sha256_deleted calculation = #{sha256_deleted_calc}. old sha256_deleted on server = #{comment.sha256_deleted}."
-          Gift.client_response_array_add client_response_array, { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'gift_syserr_sha256_deleted', :options => {:action => action} }, client_sid, verify_comment
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_sha256_deleted', :options => {:action => action} },
+              client_sid, verify_comment)
         end
         logger.warn2 "warning. action was delete but comment #{cid} has already been deleted" if (action == 'delete') and comment.sha256_deleted
       end

@@ -335,7 +335,7 @@ JSON_SCHEMA = {
                   :minItems => 1
               },
 
-              # verify_comments - optional array used when verifying comments received from other devices. check server sha256 signature created in a previous new_comments request
+              # verify_comments - optional array with comment actions (create, verify, cancel, accept, reject and delete). add / check server sha256 signatures sha256, sha256_action and sha256_deleted
               :verify_comments => {
                   :type => 'array',
                   :items => {
@@ -344,7 +344,7 @@ JSON_SCHEMA = {
                           # unique seq returned in response (cid is not guaranteed to be unique when receiving comments from other devices)
                           :seq => {:type => 'integer'},
                           # optional server id for other Gofreerev server if comment was created on an other Gofreerev server
-                          :server_id => {:type => 'integer', :minimum => 1},
+                          :server_id => {:type => %w(undefined integer), :minimum => 1},
                           # cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
                           :cid => {:type => 'string', :pattern => uid_pattern},
                           # sha256 digest of client side comment information (unique gift id, created at client unix timestamp, comment, price, currency and new_deal)

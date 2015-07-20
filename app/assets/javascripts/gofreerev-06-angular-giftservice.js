@@ -1380,19 +1380,24 @@ angular.module('gifts')
 
 
         // remove "old" error messages from gifts
-        // 1) errors from delete gifts response. delete failed. gift was "undeleted"
-        var remove_old_link_errors = function () {
-            var pgm = service + '.remove_old_link_errors: ' ;
+        // 1) errors from veriify gifts response. delete failed. gift was "undeleted"
+        // 2) errors from verify comments response. create comment failed. comment was "uncreated"
+        var remove_old_errors = function () {
+            var pgm = service + '.remove_old_errors: ' ;
             var now = Gofreerev.unix_timestamp() ;
             var i, gift ;
             for (i=0 ; i<gifts.length ; i++) {
                 gift = gifts[i] ;
-                if (!gift.hasOwnProperty('link_error_at')) continue ;
-                if (now - gift.link_error_at < 60) continue ;
-                delete gift.link_error ;
-                delete gift.link_error_at ;
+                if (gift.hasOwnProperty('link_error_at') && (now - gift.link_error_at > 60)) {
+                    delete gift.link_error ;
+                    delete gift.link_error_at ;
+                } ;
+                if (gift.hasOwnProperty('new_comment') && gift.new_comment.hasOwnProperty('error_at') && (now - gift.new_comment.error_at > 60)) {
+                    delete gift.new_comment.error ;
+                    delete gift.new_comment.error_at ;
+                } ;
             }
-        }; // remove_old_link_errors
+        }; // remove_old_errors
 
 
         // return hash with 1-3 sha256 gift signatures used when communicating with server and other clients
@@ -1728,8 +1733,8 @@ angular.module('gifts')
                 // fatal error
                 if (typeof response.error == 'object') error =  I18n.t('js.gift_actions.' + response.error.key, response.error.options);
                 else error = response.error ;
-                // todo 2 : notification
                 console.log(pgm + error) ;
+                // todo: notification
                 return ;
             };
 
@@ -1865,7 +1870,7 @@ angular.module('gifts')
                                 // gift create ok. add created_at_server = 0 (gift is already in gifts array with created_at_server = 0 - created on this Gofreerev server)
                                 if (new_gift.hasOwnProperty('created_at_server')) {
                                     // not possble. new_gift object changed between verify gifts request and verify gifts response
-                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was setted between new gifts request and new gifts response.') ;
+                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was setted between verify gifts request and verify gifts response.') ;
                                     no_gifts.syserr3 += 1 ;
                                     continue ;
                                 };
@@ -1886,7 +1891,8 @@ angular.module('gifts')
                                 // gift create failed
                                 // todo 1: should move gift back to new gift form and display error message (from server)
                                 // todo 2: how to handle multiple failed new gift actions? Only one new gift form
-                            };
+                                // todo 3: notification. new gift form could be outside browser window
+                            }; // if
                             break;
                         case 'verify':
                             // used in receive_message_send_gifts
@@ -2070,8 +2076,10 @@ angular.module('gifts')
         
         // send meta-data for new comments to server and get comment.created_at_server boolean.
         // called from UserService.ping
+        // todo: delete. now using verify_comments_add(gift, comment, 'create') to send create new comment request to server
         var new_comments_request_index = {}; // from cid to [gift,comment] - used in new_comments_response for quick comment lookup
         var new_comments_request = function () {
+            return null ;
             var pgm = service + '.new_comments_request: ';
             var request = [], signature ;
             new_comments_request_index = {};
@@ -2133,11 +2141,11 @@ angular.module('gifts')
                 if (!comment) {
                     console.log(pgm + 'System error. Unknown comment ' + cid + ' in new comments response (2)');
                     continue;
-                }
+                };
                 if (comment.hasOwnProperty('created_at_server')) {
                     console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property was setted between new comments request and new comments response.') ;
                     continue ;
-                }
+                };
                 // todo: add refresh_comment method
                 // refresh_comment(comment) ;
                 if (comment.hasOwnProperty('created_at_server')) {
@@ -2320,10 +2328,10 @@ angular.module('gifts')
 
             if (response.error) {
                 // fatal error
-                if (typeof response.error == 'object') error =  I18n.t('js.gift_actions.' + response.error.key, response.error.options);
+                if (typeof response.error == 'object') error =  I18n.t('js.comment_actions.' + response.error.key, response.error.options);
                 else error = response.error ;
-                // todo 2 : notification
                 console.log(pgm + error) ;
+                // todo: notification
                 return ;
             };
 
@@ -2366,6 +2374,7 @@ angular.module('gifts')
             // ( identical gift received in multiple send_gifts messages from other clients )
             var comment_verification, cid, new_comments, key, verify_comment_action, gift, comment_found ;
             var no_comments = { all: 0, create: 0, verify: 0, cancel: 0, accept: 0, reject: 0, delete: 0, local: 0, remote: 0, syserr1: 0, syserr2: 0, syserr3: 0, resend: 0, true: 0, false: 0} ;
+            var empty_new_comment_form ;
             while (response.comments.length > 0) {
                 comment_verification = response.comments.shift();
                 // ignore response from old remote comment actions (from before page reload)
@@ -2416,7 +2425,8 @@ angular.module('gifts')
                     no_comments[new_comment.verify_comment_action] += 1 ; // action: create, verify, cancel, accept, reject and delete
                     if (seq > 0) no_comments.local += 1 ;
                     else no_comments.remote += 1 ;
-                    // check comments in gifts array. new_comment is either from gifts array (!verify) or from an incoming send_gifts message (verify)
+
+                    // check comment in gifts array. new_comment is either from gifts array (!verify) or from an incoming send_gifts message (verify)
                     if (new_comment.verify_comment_action != 'verify') {
                         // client action: create, cancel, accept, reject or delete. comment must be in gifts array
                         comment_found = false ;
@@ -2459,12 +2469,55 @@ angular.module('gifts')
                             // create new comment operation. new_comment should be in gifts array (already checked)
                             if (comment_verification.verified_at_server) {
                                 // comment create ok. add created_at_server = 0 (comment is already in gifts array with created_at_server = 0 - created on this Gofreerev server)
+                                if (new_comment.hasOwnProperty('created_at_server')) {
+                                    // not possble. new_comment object changed between verify comments request and verify comments response
+                                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property was setted between verify comments request and verify comments response.') ;
+                                    no_comments.syserr3 += 1 ;
+                                    // todo: send notification
+                                    continue ;
+                                };
+                                // recheck
+                                refresh_gift_and_comment(gift, new_comment);
+                                if (new_comment.hasOwnProperty('created_at_server')) {
+                                    // thats is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
+                                    if (new_comment.created_at_server == 0) continue; // ok - received in an other browser session
+                                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was set to an invalid value between verify comments request and verify comments response. Expected created_at_server = 0. Found created_at_server = ' + new_comment.created_at_server + '.');
+                                    no_comments.syserr3 += 1 ;
+                                    // todo: send notification
+                                    continue;
+                                };
+                                // create comment ok
+                                new_comment.created_at_server = 0; // always 0 for current server - remote comments are received in client to client communication
                             }
                             else {
                                 // comment created failed
-                                // todo 1: should move comment back to new comment form and display error message (from server)
-                                // todo 2: how to handle multiple failed new comment actions for a gift? Only one new comment form for each gift
+                                if (typeof comment_verification.error == 'object') error =  I18n.t('js.comment_actions.' + comment_verification.error.key, comment_verification.error.options);
+                                else error = comment_verification.error ;
+                                console.log(pgm + 'create new comment failed for cid ' + cid + ' with error message: ' + error) ;
+                                // remove comment from gift.comments array
+                                i = gift.comments.indexOf(new_comment) ;
+                                gift.comments.splice(i,1) ;
+                                if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
+                                empty_new_comment_form = ( ((gift.new_comment.comment == null) || (gift.new_comment.comment == '')) &&
+                                                           ((gift.new_comment.price == null) || (gift.new_comment.price == '')) &&
+                                                           !gift.new_comment.new_deal ) ;
+                                if (empty_new_comment_form) {
+                                    // blank new comment form for gift. Move failed new comment back to new_comment form and display error message and send notification
+                                    console.log(pgm + 'uncreate cid ' + cid) ;
+                                    gift.new_comment.comment = new_comment.comment ;
+                                    gift.new_comment.price = new_comment.price ;
+                                    gift.new_comment.new_deal = new_comment.new_deal ;
+                                    gift.new_comment.error =  error ;
+                                    gift.new_comment.error_at = Gofreerev.unix_timestamp() ;
+                                }
+                                else {
+                                    // new comment form for gift in use. Delete comment and send notification
+                                    console.log(pgm + 'new_comment form already in use for gid ' + gift.gid + '. only error message in log and notification') ;
+                                    console.log(pgm + 'uncreated comment was ' + JSON.stringify(new_comment)) ;
+                                }; // if
+                                // todo: send notification just in case new comment form was outside windows or new comment form for gift was already in use
                             }; // if
+                            save_gift(gift) ;
                             break ;
                         case 'verify':
                             // used in receive_message_send_gifts
@@ -6198,7 +6251,7 @@ angular.module('gifts')
             save_new_gift: save_new_gift,
             save_gift: save_gift,
             sync_gifts: sync_gifts,
-            remove_old_link_errors: remove_old_link_errors,
+            remove_old_errors: remove_old_errors,
             verify_gifts_add: verify_gifts_add,
             new_gifts_request: new_gifts_request,
             new_gifts_response: new_gifts_response,

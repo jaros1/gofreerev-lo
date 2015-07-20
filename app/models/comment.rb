@@ -418,7 +418,7 @@ class Comment < ActiveRecord::Base
       # - delete: comment hash is required if not one shared login user ids and comment user ids
 
       # compare comment user ids and login user ids - used in create and cancel in error messages
-      if %w(create cancel).index(action) and (comment_user_ids != comment_and_login_user_ids)
+      if %w(create cancel).index(action) and (comment_user_ids.size != comment_and_login_user_ids.size)
         # authorization error. write nice error message in log. maybe api log out on client before new comment signature was created on server.
         missing_login_user_ids = comment_user_ids - login_users.collect { |u| u.id }
         missing_login_users = User.where(:id => missing_login_user_ids)
@@ -435,8 +435,12 @@ class Comment < ActiveRecord::Base
           # create: login user ids and comment user ids must be identical - create only allowed for local comments
           gift_hash_required = false
           # local create comment action. login users must also be comment users
-          if comment_user_ids != comment_and_login_user_ids
+          if comment_user_ids.size != comment_and_login_user_ids.size
             # nice informative error message
+            logger.debug2 "comment_user_ids           = #{comment_user_ids.to_json}"
+            logger.debug2 "comment_and_login_user_ids = #{comment_and_login_user_ids.to_json}"
+            logger.debug2 "changed_login_providers    = #{changed_login_providers.to_json}"
+            logger.debug2 "missing_login_providers    = #{missing_login_providers.to_json}"
             if changed_login_providers.size > 0
               error = "#{action_failed}. Could not create comment signature on server. Log in has changed for #{changed_login_providers.join('. ')} since comment was created in browser client. Please log in with old #{changed_login_providers.join('. ')} user(s)"
               logger.debug2 "Cid #{cid} : #{error}"

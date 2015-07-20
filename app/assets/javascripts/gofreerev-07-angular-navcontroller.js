@@ -31,7 +31,7 @@ angular.module('gifts')
                 return ;
             }
             // cleanup old error messages
-            giftService.remove_old_link_errors() ;
+            giftService.remove_old_errors() ;
             // make ping request
             var sid = Gofreerev.getItem('sid') ;
             // todo: add accept_gifts request and response

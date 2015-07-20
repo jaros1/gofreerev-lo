@@ -141,8 +141,8 @@
                                         <div>
                                             <table>
                                                 <tbody>
-                                                <tr ng-show="ctrl.new_gift.errors">
-                                                    <td><span ng-bind="ctrl.new_gift.errors"></span></td>
+                                                <tr ng-show="ctrl.new_gift.error">
+                                                    <td><span ng-bind="ctrl.new_gift.error"></span></td>
                                                 </tr>
                                                 <tr ng-show="ctrl.new_gift.open_graph_image">
                                                     <td><img width="200" ng-src="{{ctrl.new_gift.open_graph_image}}">
@@ -383,9 +383,9 @@
                     </form>
                 </td>
             </tr>
-            <tr ng-show="gift.new_comment.errors">
+            <tr ng-show="gift.new_comment.error">
                 <td colspan="2"></td>
-                <td colspan="2"><span ng-bind="gift.new_comment.errors"></span></td>
+                <td colspan="2"><span ng-bind="gift.new_comment.error"></span></td>
             </tr>
 
             <tr>

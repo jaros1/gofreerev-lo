@@ -592,7 +592,7 @@ angular.module('gifts')
         // new_gift ng-submit
         self.create_new_gift = function () {
             var pgm = controller + '.create_new_gift: ' ;
-            self.new_gift.errors = null ;
+            self.new_gift.error = null ;
             var gift = {
                 gid: Gofreerev.get_new_uid(),
                 giver_user_ids: [],
@@ -613,8 +613,8 @@ angular.module('gifts')
             else gift.receiver_user_ids = userService.get_login_userids() ;
             var errors ;
             if (errors=giftService.invalid_gift(gift, [], 'create', null)) {
-                self.new_gift.errors = 'Could not create new gift: ' + errors ;
-                console.log(pgm + 'Could not create gift: ' + self.new_gift.errors) ;
+                self.new_gift.error = 'Could not create new gift: ' + errors ;
+                console.log(pgm + 'Could not create gift: ' + self.new_gift.error) ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
                 return ;
             };
@@ -650,8 +650,9 @@ angular.module('gifts')
             } ;
             var errors ;
             if (errors=giftService.invalid_comment(new_comment, [], 'create', null)) {
-                gift.new_comment.errors = 'Could not create new comment: ' + errors ;
-                console.log(pgm + 'Could not create comment: ' + gift.new_comment.errors) ;
+                gift.new_comment.error = 'Could not create new comment: ' + errors ;
+                gift.new_comment.error_at = Gofreerev.unix_timestamp() ;
+                console.log(pgm + 'Could not create comment: ' + gift.new_comment.error) ;
                 console.log(pgm + 'comment = ' + JSON.stringify(comment)) ;
                 return ;
             }
@@ -662,6 +663,8 @@ angular.module('gifts')
             gift.new_comment.comment = null ;
             gift.new_comment.price = null ;
             gift.new_comment.new_deal = false ;
+            delete gift.new_comment.error ;
+            delete gift.new_comment.error_at ;
             var old_no_rows = gift.show_no_comments || self.default_no_comments ;
             gift.comments.push(new_comment) ;
             // console.log(pgm + (gift.comments || []).length + ' comments after refresh and new comment') ;
@@ -676,6 +679,8 @@ angular.module('gifts')
             }, 0, false) ;
             userService.add_new_login_users(new_comment.user_ids) ;
             giftService.save_gift(gift) ;
+            // send create comment action to server (server side signature)
+            giftService.verify_comments_add(gift, new_comment, 'create') ;
         }; // create_new_comment
 
         // end GiftsCtrl

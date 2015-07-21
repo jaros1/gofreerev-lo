@@ -1,0 +1,905 @@
+testrun 43 after moving some gift and comment actions to verify gifts and verify comments request and response
+testcase: old login with facebook, new login with google+ and logoff for google+
+
+issue 1: log out for google+ => log out for google+ AND facebook!
+         errot not found. added extra client and server side debug info
+
+issue 2: gift load. found comments without created_at_server. Must resend create comment request at page load
+         add resend create comment in load gifts + no created_at_server check at load (invalid comment)
+
+issue 3: google+ friend list was downloaded AND refreshed twice after google+ login (due to out of date user info)
+         not solved. added extra client and server side debug info
+
+server 1:
+
+
+Started GET "/auth/google_oauth2?client_userid=1" for 127.0.0.1 at 2015-07-20 15:26:00 +0200
+I, [2015-07-20T15:26:00.320102 #20070]  INFO -- omniauth: (google_oauth2) Request phase initiated.
+
+
+Started GET "/auth/google_oauth2/callback?state=323d00b4c582cc4f9badd8766d800fcb1f2200b60322298d&code=4/ckGIgRRpHfs-kUylX3CA6TaPU4EYXimdxCyLYrXbXI8&authuser=0&prompt=consent&session_state=d2eb29b51fd98c21c8d47b4cb3fd53c673264dbe..a99a" for 127.0.0.1 at 2015-07-20 15:26:07 +0200
+I, [2015-07-20T15:26:07.480499 #20070]  INFO -- omniauth: (google_oauth2) Callback phase initiated.
+Processing by AuthController#create as HTML
+  Parameters: {"state"=>"323d00b4c582cc4f9badd8766d800fcb1f2200b60322298d", "code"=>"4/ckGIgRRpHfs-kUylX3CA6TaPU4EYXimdxCyLYrXbXI8", "authuser"=>"0", "prompt"=>"consent", "session_state"=>"d2eb29b51fd98c21c8d47b4cb3fd53c673264dbe..a99a", "provider"=>"google_oauth2"}
+get_client_userid: session[:client_userid] = 1
+fetch_users: start
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.5ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+check_expired_tokens: context = , refresh_tokens = []
+check_expired_tokens: client_timestamp = 0, server_timestamp = 1437398768, timestamp_dif = 1437398768, now = 1437398768
+  User Load (0.2ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('1705481075/facebook'))
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook'))
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1563545817212684/facebook','1705481075/facebook'))
+block in fetch_users: user_id = 1705481075/facebook, user_name = Jan Roslind, currency = USD
+fetch_users: @user_currency_separator = ., @user_currency_delimiter = ,
+logged_in?: login_user_ids.class = Array
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+  Task Load (0.5ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'fetch_exchange_rates') ORDER BY `tasks`.`id` ASC LIMIT 1
+add_task: Task fetch_exchange_rates is already in task queue
+set_locale_from_params: start
+logged_in?: login_user_ids.class = Array
+   (0.2ms)  BEGIN
+  SQL (0.7ms)  UPDATE `users` SET `language` = 'en', `updated_at` = '2015-07-20 13:26:08', `user_name` = 'wV/UgFCRaP541rpX2iOaJDpjcnlwdF9rZWVwZXI6FwBltYAs6PfxQ5lDdB0H\nutiB1JnpXCXYhgfRYUqTHUM=\n', `currency` = 'K/fqdkSoMBJkktFuge368DpjcnlwdF9rZWVwZXI6rarV3elL3F6NBRIbg9bg\nV9dv0cIG9zCbN8zdy4G/Nzg=\n', `balance` = 'ZazygGWZMd4oj7ZdgFu6aDpjcnlwdF9rZWVwZXI6H4uXt5yqCrF2RpjTGEqn\nly7OWC6vMG5SkyLdCbIciyABK2+gapGvSpim8qv3yf35\n', `no_api_friends` = 'gOo3FliXgmbin8tE8kZCnTpjcnlwdF9rZWVwZXI61A0xutWNNaNQ5743npxq\nGc7P0fc5trrs+z/ZGX56OfY=\n', `negative_interest` = 'hn1FNQaiz+cZV+cyMvU7ZDpjcnlwdF9rZWVwZXI6mz8jbAkAxUuAyu7XZsKg\nlyDCeBn+7lQ2LUyrRUMKTNsYWFjXfZL27S4wB1Wv13Cz\n', `api_profile_url` = '4ALnLQ2pmW176Cqqc79wWzpjcnlwdF9rZWVwZXI67n1ja7BHCP0UYZCMeYh7\nC2GOIPMTaFA5e5asGdj7kmX42UDtyazqHymwoYmNlfYSvvhhSlrCt9O0HrMy\nLcuRi0vT8cM/rTkGdPmSmV9Xp7w=\n', `api_profile_picture_url` = 'j28vHJAvO9dx5g7rmTwJGjpjcnlwdF9rZWVwZXI6VBBcR6rgBodbH/mq5kn0\nKz7JaWId78UavVitqXfH+05pBu+38DC+0+0DV4v14gdBVdCSOtK+J2mRaGss\nDy9z8wEIRko13SX7OZHJBEeG8ys+OX9ZHGgpq8T1JnpZdfCqIByA7oE4bmpz\nRh+l3KLhz/5I9KLq4V9jVdwmP4elwggW+4OOUEg0yhUW04Y/ONXjjdJ+wNh0\nmd/CVjZw+bmg3WXYwZSXhnF/CGK2MwXTdStFx5iYH+NAiSYNMJY1tU+nDE5c\nNYpdGhSNv9c29Fy3HuczGdnkjUoxhId0tDExtjMiGcAMocYiMXzE55cRpCHE\nphQrJBRmgl/FCcan5v6ekQ==\n' WHERE `users`.`id` = 2
+   (7.0ms)  COMMIT
+clear_state_cookie_store: clear state
+logged_in?: login_user_ids.class = Array
+  Task Load (0.6ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'linkedin_rw_nus' and created_at > '2015-07-20 13:16:08') ORDER BY `tasks`.`id` ASC LIMIT 1
+create: get_session_value(:did) = 14372933747316727668
+get_client_userid: session[:client_userid] = 1
+create: auth_hash = #<OmniAuth::AuthHash credentials=#<OmniAuth::AuthHash expires=true expires_at=1437402368 refresh_token="1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4" token="ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx"> extra=#<OmniAuth::AuthHash id_token="eyJhbGciOiJSUzI1NiIsImtpZCI6IjU1NDNmMjNmNThlOTgwNjQ2ZDgwODhkOTM5M2ZjYzNjMWFjNjllYzUifQ.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoiMTE3MTI2NDI5MzIwODUwOTg4NzgxIiwiYXpwIjoiNzg2MzE3MTE0Mzc0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwiYXRfaGFzaCI6InFKUXRmbnBHcDFPOVZCekpjend3QWciLCJhdWQiOiI3ODYzMTcxMTQzNzQuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJpYXQiOjE0MzczOTg3NjgsImV4cCI6MTQzNzQwMjM2OH0.BU0DTxtZoGBDKz0WXPVRwtK-jVipd_nzYjJ5Zk56c9_npbGmn4d1F35yURvL6uwccqI8gTYR5M7GZ2LtuqppxzjNVmawjHTFdtbAV-G7JX3HKsnOmJtsN4bc825btmx-ykr_WiWPYtjQ4TOOnFfpGDU2CESTZ-IfQRtE2vewh6xqSX8QWTBRJDdZC5un_PMkV-HTQ8fy0Sw01td5hDs0ENfkZkIyz5u_zVaSTLY9H01BH4-lWhQOKMSKvV3k1cO_C-04aSdHsen-q_E-KC8Gc0zq3VTZFukhGffiHxZTpsKAV9KcE5hvtKVR57yk3PiYVWZ1GWdD-dP7Z26F2AwWoQ" raw_info=#<OmniAuth::AuthHash family_name="Roslind" gender="male" given_name="Jan Mobilos" kind="plus#personOpenIdConnect" locale="en" name="Jan Mobilos Roslind" picture="https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=50" profile="https://plus.google.com/117126429320850988781" sub="117126429320850988781">> info=#<OmniAuth::AuthHash::InfoHash first_name="Jan Mobilos" image="https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=50" last_name="Roslind" name="Jan Mobilos Roslind" urls=#<OmniAuth::AuthHash Google="https://plus.google.com/117126429320850988781">> provider="google_oauth2" uid="117126429320850988781">
+create: omniauth_status = 323d00b4c582cc4f9badd8766d800fcb1f2200b60322298d
+create: params[:state] = 323d00b4c582cc4f9badd8766d800fcb1f2200b60322298d
+find_or_create_user: profile image url https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100
+find_or_create_user: no profile url was received from login provider google_oauth2
+  User Load (0.4ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '117126429320850988781/google_oauth2' LIMIT 1
+   (0.4ms)  SELECT COUNT(*) FROM `users` WHERE (last_login_at > '2015-07-18 13:26:08')
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (1.0ms)  SELECT `users`.* FROM `users` WHERE `users`.`sha256` = '0LXApqgKiGYpfoWJ8t9GbQyv6SVBxqrOI7SKucEO7BM=' LIMIT 1
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+   (2.0ms)  SELECT COUNT(*) FROM `exchange_rates` WHERE (date = '20150719')
+  ExchangeRate Load (4.0ms)  SELECT `exchange_rates`.* FROM `exchange_rates` WHERE (date = '20150719')
+  CACHE (0.0ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+   (0.2ms)  BEGIN
+  User Exists (10.7ms)  SELECT 1 AS one FROM `users` WHERE `users`.`sha256` = BINARY '0LXApqgKiGYpfoWJ8t9GbQyv6SVBxqrOI7SKucEO7BM=' LIMIT 1
+  SQL (4.6ms)  INSERT INTO `users` (`api_profile_picture_url`, `api_profile_url`, `balance`, `balance_at`, `created_at`, `currency`, `last_friends_find_at`, `last_login_at`, `negative_interest`, `no_api_friends`, `sha256`, `updated_at`, `user_id`, `user_name`) VALUES ('Ia80sAb6clyH+uO7w32BZjpjcnlwdF9rZWVwZXI6cOJUOUhzjaPWc9lLBVTP\nbgN36IfwkeE5WAXyVXFmZx+wJ9CYb0kZBL7oKPW21ezRZMYe8cPXiFT06A+w\nk3PdNKghSHfwCmJM/VMmqypjEVf3Suk4qqbf95UAilo9m4+biFdavoBqN/IL\nYp1LGhb9vcohhv9A4miq/1ExoG14sEA=\n', NULL, 'ZZF3eslfoOSwIYuValjalTpjcnlwdF9rZWVwZXI6bGIkAoQqgurjoYirCRJi\nLVdQFulXnOvYHkfs1N4qZDDByUScc0ANqsY2VN4UlGkF\n', '2015-07-19', '2015-07-20 13:26:08', 'qtlEYhLugeF6L6kU2qoDQTpjcnlwdF9rZWVwZXI615fqKEC0hkPUgXzq2V3T\nUBhaknVdxGkaKKRyj3oPvDA=\n', '2015-07-20 13:26:08', '2015-07-20 13:26:08', NULL, NULL, '0LXApqgKiGYpfoWJ8t9GbQyv6SVBxqrOI7SKucEO7BM=', '2015-07-20 13:26:08', '117126429320850988781/google_oauth2', 'M91NyKR85ggAMGXRik3pgjpjcnlwdF9rZWVwZXI6c+XSqagLzYFCiIN9WiRC\nQllr3/FezUzVZBY+fnbM3h04lH5CqDViyuxS/0wyAOZq\n')
+   (6.3ms)  COMMIT
+  Friend Load (4.1ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver = '117126429320850988781/google_oauth2' and user_id_receiver = user_id_giver) ORDER BY `friends`.`id` ASC LIMIT 1
+  Friend Load (0.5ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'YqhxCNPacczU8U5lkMnt' LIMIT 1
+   (0.2ms)  BEGIN
+  Friend Exists (2.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'YqhxCNPacczU8U5lkMnt' LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_receiver` = '117126429320850988781/google_oauth2') LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_giver` = '117126429320850988781/google_oauth2') LIMIT 1
+  SQL (2.1ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('mqfWZzdYzHJeG+J4u4wzYjpjcnlwdF9rZWVwZXI6kWOSFcJwI2RsMFxDmpq/\nFMuqzTSSS/IsgST5IKlLzkrWaUkC6AvH0KJD0d4A9/D7\n', NULL, '2015-07-20 13:26:08', 'YqhxCNPacczU8U5lkMnt', '2015-07-20 13:26:08', '117126429320850988781/google_oauth2', '117126429320850988781/google_oauth2')
+   (5.3ms)  COMMIT
+  SQL (7.5ms)  DELETE FROM `flashes` WHERE (created_at < '2015-07-20 13:25:08')
+logged_in?: login_user_ids.class = Array
+login: set_session_value: user_ids = 1705481075/facebook, 117126429320850988781/google_oauth2
+   (0.2ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `user_ids` = 'kFgk2G+zH8oTR8XNZ8A0RzpjcnlwdF9rZWVwZXI6fzDhKHrmIzkmfb6LpJrD\n2j30XgDfvBTZMWD6is+bL9HW4liBkFzh9zbZDauE92i32PmFjY91F34Vy9Kj\nRBKZwuiZqnMFZZ4vy66Y5Kfp37Q=\n', `sha256` = '4DUgQel1g7nEqmf3V21o8TpjcnlwdF9rZWVwZXI60r86wuo7uJocUi6Shxxo\nH2Dl1O3EZWkMeBlE+fWbR9jdFMSyVdh4g9Qo6fN7DmNV9BmQJl1vhPecbjIr\np3ZGYlS6qUZjwiu/b68T7PbNh27y9gOYVu9JY6BupMhTBsqP\n', `updated_at` = '2015-07-20 13:26:08', `created` = NULL, `expires_at` = 'RLEWKr7ilVdVgq1DQxrOSDpjcnlwdF9rZWVwZXI6eP1xftT3Bz+XhN0o1KDc\nkmQeuOi2X9imJOdt9dh0NWhGxmvS3RSJ0gL2nnE5WpDQ\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'yme6XUtRne0Dsdh0EXWOlzpjcnlwdF9rZWVwZXI6fIz5DAeSOLVcWedvGJ7i\n5yzd3bo30XB8eZeFJSlFo8A=\n', `state` = NULL, `tokens` = 'U/HnW9dFnm0UKT3EUpLkETpjcnlwdF9rZWVwZXI6S47yJWzywiEh/n8xmiRP\nhWC/Dmy0l+07uC7hi5LxgRLYKGpmTN3v2OMeNsAG90xx\n', `did` = 'CQDm8fqAIjaP3zu8GJL9XTpjcnlwdF9rZWVwZXI6nPlddqap/XDQT7n9uKX2\nfqMLRWACxAXj6oohJyUjvDgufdd+AtBkv8XS8x3bowvp\n', `client_timestamp` = '/g2d9slyg4qoaMpmIxUBTjpjcnlwdF9rZWVwZXI6AcpsUDDVtCLAjS0N5kNp\neU4/bphWfTZlskx7uL2DrQk=\n', `client_secret` = 'auSwaYfZnZ3xgLaIJ90ChzpjcnlwdF9rZWVwZXI68qney9gCiVJTS8gLmWY+\nzT3HfX1q2W/fNMK5g4FSrQiKCE0gugZj1xPeMdjsfh3x\n' WHERE `sessions`.`id` = 369
+   (5.0ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `tokens` = 'E3AI0+UoY5lpwCvaA/yBDjpjcnlwdF9rZWVwZXI6UQL21pbSl8fOHfu9H1uI\n4qXIqS7Cv1S6vHhy0T6xwGa3QHPPD93C9wbvGag86CIbJghTz6sBey3k0jSv\n3h3b2bqX1f7l+cZu4ok4IOEgmQN3U+vtTo1qvT0XjGV9Dw6rua19UBYWp0hx\nPnKdyBDucUMhbaVE8fj5H2M3x/UR2oE=\n', `updated_at` = '2015-07-20 13:26:08', `created` = NULL, `expires_at` = 'szLQ0BLZyMSyuWo0BiAiSjpjcnlwdF9rZWVwZXI6AvzSSeF83MSwPtVGjBhF\nfHGkIzKfNSma2yNxz4SMfnswob7xSbRFCzKxLjq4M/G9\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'ymcrpW0KpSVxPly+EGxj1TpjcnlwdF9rZWVwZXI6iA/IJ8pZSJxNGR/fZBnC\nXoM460z6wp980M5oOoWBMCQ=\n', `state` = NULL, `user_ids` = 'McxvS71WQxhVnoSXRyDW/TpjcnlwdF9rZWVwZXI6NgLxy6pl914DxfSBJlGq\nBy/+jAoDE1mZC0CC5GEOJH0459ldBPqE/p/IB3fFisfzCMFsqI4qDkESIcgD\nXG/dvZgb+6ShOq8O7dfe8NO8luE=\n', `did` = 'af8ms2hvAHhxHBmTFFadXTpjcnlwdF9rZWVwZXI692l2yDNWMLcxmWEKdL+J\nBxLEPf05RpJv+e65xbMN5IZhreaSmV4kmXT8x86bGYVu\n', `client_timestamp` = 'bCX285WMrsQb/JCBsvQcsDpjcnlwdF9rZWVwZXI6N2EKUfn+qXjDKAtkjGIK\nJ7zOYW6c5Q/GHWYs0RlyLh0=\n', `client_secret` = 'khulINs9wVLj3OAlsWv7ajpjcnlwdF9rZWVwZXI68uM6VsRLqPKxs5+Zr2qO\nOtgh5cQxA/q/znRH95hK1ZRdxjVYeX9JB2O7Wxv7eR2J\n', `sha256` = 'Ack9NnJFw/LfexIrdgMRTjpjcnlwdF9rZWVwZXI6A8dnFGEFrdXTEtzsRrS+\n09wkfuzYjds5zK0U66v6L7WB5POm0OScndxxqNZmSajzqqCzzGCpC1KAyB4v\nuf3Cvl4J9IbwfSdVFnJvX7Gg7czFHxiSHAaVZaspnwlcPi0l\n' WHERE `sessions`.`id` = 369
+   (7.2ms)  COMMIT
+   (0.3ms)  BEGIN
+  SQL (2.3ms)  UPDATE `sessions` SET `expires_at` = 'QJvXqv9MxyE9mqF6mDGanDpjcnlwdF9rZWVwZXI6pEfGKw68lOUyJeITp4YM\nWJvxe/e5qiM7B0EGKva+JoOI98SyGuo8DvJl4iXunlAhvJ178z3X5CPNTQK1\nj5O58g==\n', `updated_at` = '2015-07-20 13:26:08', `created` = NULL, `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'PvTn0n1FQTV71mh6JGzr9TpjcnlwdF9rZWVwZXI6YqmJWVxHVifUd/M6gZIT\nNgJF7eapefqa1PK3v6QXKNk=\n', `state` = NULL, `tokens` = 'ZkgpEs1H8MHbLSUDSBQz2DpjcnlwdF9rZWVwZXI6OXQjhaoEAkW+0+ePBinD\n73X26/MAYoQ2OG5cRSrJayx2dTX4vt8x0+n2BdbedNzORHFxoq3XyVCGo+pv\nb+uKOmU0c16RE0KqvHWuG/b1KN6wN4h8hAinZUKoM4oBdtAIV+ypyi+tEjcG\nMEuPVFTSusxZAlwZWuDJ6l7bJ1CojDw=\n', `user_ids` = 'S0aSCIt+HmBe3bkRgtFxeTpjcnlwdF9rZWVwZXI6QTKNbeH5VwZWLOEeyaO6\nJY6KUG06vgsvXVhU0Dujs5luAr391XdNhM4qapMCRVh85mO1YAJjYCFLrSFp\nk/Vo7ODUHNXeDy2Dxtt5hp9Gtnc=\n', `did` = 'ywD4XFt9CEZarC8tB2+2BDpjcnlwdF9rZWVwZXI6yen0n8YE7qjDODqV4WGK\nDXqggIgcrcBL7RVF//8VeuwfY6GxmWvl+18Zv9srXXew\n', `client_timestamp` = 'TuvDUwl6YkwTHt+GcpuD4TpjcnlwdF9rZWVwZXI6eWHfW+7yApHvlV3vEh/U\nghG5shV9k14UcyrZU9T1upc=\n', `client_secret` = 'OX8sMDWWkTU4ZJZEpCue9DpjcnlwdF9rZWVwZXI6C70puecoe8ic2T4L6VhN\nZOJa5tilTIwN95OaWrNYtD2FTrustCFdk1BS94iUFFyD\n', `sha256` = 'zSB5kCDXwl2qnuypSa1cKzpjcnlwdF9rZWVwZXI6WmMSMZxiQj8XyX2BYnx0\nZlAQeQDOo3WeCPelqlRnxtnTfaOlprozbhn5X8Lznm2YxC7u5tXJxjY6oO3o\nAeCJb/uQrlEpDhBLBC0+pjJc8eKROu4SKgb7hMlaLtZ+68TY\n' WHERE `sessions`.`id` = 369
+   (4.8ms)  COMMIT
+login: expires_at = {"facebook"=>1442477515, "google_oauth2"=>1437402368}
+   (0.2ms)  BEGIN
+  SQL (2.8ms)  UPDATE `sessions` SET `refresh_tokens` = 'tW6tNWXJ7ktP1qDdrzfsHDpjcnlwdF9rZWVwZXI6ujpIKDGbiDqg/M4Ya82v\nFK+RBNrBgBUZDmLH6f9pGhhIj1wcCpNZhOf0gOTqV+6NnF1pDOkB4aS6Tx2r\njpzowu3xrVnrm/Etc35nkoLFV1mx1yx1ZK3jp2p0SVIjG2ek\n', `updated_at` = '2015-07-20 13:26:08', `created` = NULL, `expires_at` = 'ZhmRLgEHblLlTzBNTVJW3TpjcnlwdF9rZWVwZXI6u7VCEyOGva1L7rcd8BxA\nninwUePMsBnl29fZv3w6jUzhzj6PpNB2HT7uBqf+IFenCbHqmW6qVGJ1tVbj\n4PRDig==\n', `flash_id` = NULL, `language` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `state` = NULL, `tokens` = 'RHfsf8QWoqptEOlhu3AFuDpjcnlwdF9rZWVwZXI6wi/XKvQ9z9uwqSjTKb1c\nnz07Pbz+z1VSuXPvyoLrKE8Z3OCxtP5XvOaABTlA1MBWSohJdhc7D/MuWvJl\nlTI7b+JSIXJlZQE02SNAvh2c/LFtjBuyVxIouLmzd0svhnADdbZjPN/pXZ/6\nouoOCBamTrd1UL+FBLffdpU+ezn+Iaw=\n', `user_ids` = 'AnO2PzX6+f1SpL1/SbCN9zpjcnlwdF9rZWVwZXI6zbMZrADvIqZBfYJBpYVU\nTfkKSA4dRMrGtqAaiLFowfpuk6Fv/C5Br6GmcOxXhXFR5Oc79U1Od64Tle8q\nB7iMEQwP9Sxb9hlSWp1R6rHa7jw=\n', `did` = 'iD7q553NMjXVpy1Ag5tE0jpjcnlwdF9rZWVwZXI6KaahU0TPdFwcY6O4V437\nWcAA3IhMjgNdhSKUI36YKUYvH6ob9zIWXY5J+roWNH90\n', `client_timestamp` = 'mrHQMsFY6dLEjJv5QLkjLDpjcnlwdF9rZWVwZXI6C7QVL7F7t7CTbluxinmL\nea2Y0HHNLPMqKA7jbisx4bM=\n', `client_secret` = '37iljRKLp/SU7L4B1Ek0JTpjcnlwdF9rZWVwZXI6LARBerhsVhjvkkY64sJX\n24qaGUAqDLbpdy4IRWzgW20MwAyS/UCJjZ0rO8pDZJxQ\n', `sha256` = 'tbw23/yM8atH5hvcNLCOhTpjcnlwdF9rZWVwZXI6923V1PGLFNg6yv3peux1\n+cL4WQ4w+eroUD/8z+HHdLKXncB/AJfrO9ClXnk7jjczML115R0HbsVwa3Mb\nCnTv2/78+hQXiNdbdrySyca8biyLopJ4rOxAyUNvylitdPrR\n' WHERE `sessions`.`id` = 369
+   (5.2ms)  COMMIT
+login: session[:refresh_tokens] = {"google_oauth2"=>"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4"}
+   (0.2ms)  BEGIN
+  SQL (1.3ms)  UPDATE `sessions` SET `language` = 'a4WCEvXUpNaDAyjYt98UEDpjcnlwdF9rZWVwZXI6j2bnL0hPzYY+9l5iZx1a\ndtc/5HS46olQsGTohm7HahA=\n', `updated_at` = '2015-07-20 13:26:08', `created` = NULL, `expires_at` = 'Qp993Lv6IzbtXzmcRTbg1TpjcnlwdF9rZWVwZXI68AczCVhetCHdE/5asb71\nODf0szxqXNU2lUVO6hBoA87K4tK64INhvilGSgSxJppU/8jBDyVVIPsg6otL\nzQvedQ==\n', `flash_id` = NULL, `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'd6REOmi2z66/cvNBUf6WHjpjcnlwdF9rZWVwZXI6IvT1ydld1Obnfvfvx5mr\nzZcvDMN9uBTWhvAERC9PEUBFpulcW3w/2/plPNJc/iBGCNfBxf0n37uqRrfb\nBe+Grjuhoh0GdY23KuLhmnqPbGEyHJjKk/R6KnMN/8YlpQdX\n', `state` = NULL, `tokens` = '70FtHxloH30gJJbHiZcvrjpjcnlwdF9rZWVwZXI6YprfQzbeqoTaEXXqfz0D\nQO63VXEyQzTWYRPJz86fPdjsrJxwf0SKrfEgOvEq+hUFC5OSSa8PvDLr3zC5\n6p3zZZ/YiKamAXRYYEUIEQ2mHY7eW7162aH0PdXp3er1fJPWg+vZLnxAG06W\nUfcCOTDoToL/h0dnkKLG4iAnU7Svgu8=\n', `user_ids` = 'oeeeoOK8Ps4Wr5ISDvl/0TpjcnlwdF9rZWVwZXI6RwI4TRrN83/lWVNGXv45\nDH57+C4fskFYWa4m7Hl/XaVjxYdgXbYiWr45f32NcVlyQwXyzLN9VaBpIUGe\nP62D4FNYdx0AArs4M7gG/kNTR24=\n', `did` = '2UbVbE/UbS2LOjEQr62PEzpjcnlwdF9rZWVwZXI6D4j0MLuEbn5GEVv25ewZ\nNQ3JKzA587VarYKSwg/htO5tRkSNfbNcxT9C29z2HNuJ\n', `client_timestamp` = 'Bf2Zdupo/UwfZr4xpoB3CTpjcnlwdF9rZWVwZXI6sznMveBvYwvQ8mUL2Cp7\ndictOzZQSiohhQ3Cy1CwKUw=\n', `client_secret` = 'Zf5LlFpOk2BKEP0QOBRcdzpjcnlwdF9rZWVwZXI6YVKMF5IzDHKXb9GkL8sE\nMKMMVYyfZrNxVe1jU+lPIpKMZUqzWI+GaJWHHNilxbiq\n', `sha256` = 'PZhKwQWTjv59w9MQfXy6sjpjcnlwdF9rZWVwZXI6Jj1sZUcZ0ixTPxNhUWPl\n4rfLlW89deaTfBv61VxwaEBTWuetlPfpL5Y4uAA8RxfITY/LCl0hha9jXhqe\nd5rdhFPkeRZ0cYg/FbDaEbcYVlL/m5/O3zWVTC7AMOEbaeoO\n' WHERE `sessions`.`id` = 369
+   (5.4ms)  COMMIT
+set_locale_from_params: start
+logged_in?: login_user_ids.class = Array
+   (0.2ms)  BEGIN
+  User Exists (1.5ms)  SELECT 1 AS one FROM `users` WHERE (`users`.`sha256` = BINARY '0LXApqgKiGYpfoWJ8t9GbQyv6SVBxqrOI7SKucEO7BM=' AND `users`.`id` != 4) LIMIT 1
+  SQL (0.4ms)  UPDATE `users` SET `updated_at` = '2015-07-20 13:26:08', `user_name` = 'FQKmy2yrchhZfvYUkP4CLzpjcnlwdF9rZWVwZXI6rXIG8KAmZ8ZgAPpooAaN\nHACnsF8xNBZP64JYFoCUsFxnRo1pU+MANuHzf3ujYAYx\n', `currency` = 'ht9pgwklA3YYvIt1Bb2GjTpjcnlwdF9rZWVwZXI6h1tow+HlytZ0TbKnMwKC\nzuyyVkpCU3OW70h2Bg/Tn+k=\n', `balance` = 'XMLi8OoHYMXIXR/DrwS61TpjcnlwdF9rZWVwZXI6ZpTPGdkr25d41MYmOaig\nETQgBxsFPUFZhG3FSCOjyIVlJSs6G57bDZAPIkF1DS0f\n', `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = NULL, `api_profile_picture_url` = 'G6N1YCEtJ7gmzn2bKDCsqDpjcnlwdF9rZWVwZXI64M/6mh++6tJKMqS/IaA3\nbf04aCkvuG2Ap+CBba8TrUW3b89sgHblPBTLb32vIOGYkli8bXZhXBWCjTzy\nF1eSa23oJTCg0XqmZY/bC7z1ejd3Ku1zFfXU8H5ay+11+TQN/TRIgaz725IH\nF5FF/c4CdI8rNViwQt/9Q9Sqq6+uKu0=\n' WHERE `users`.`id` = 4
+   (4.7ms)  COMMIT
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+   (4.4ms)  SELECT COUNT(*) FROM `friends` WHERE `friends`.`user_id_giver` = '117126429320850988781/google_oauth2'
+   (0.2ms)  BEGIN
+  SQL (1.1ms)  INSERT INTO `flashes` (`created_at`, `message`, `updated_at`) VALUES ('2015-07-20 13:26:09', 'google+ log in ok. Welcome to Gofreerev. Your friends list is being downloaded and will be ready for use in a few moments.', '2015-07-20 13:26:09')
+   (4.9ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.7ms)  UPDATE `sessions` SET `flash_id` = '95pVN2EKst9F6hillw2WjTpjcnlwdF9rZWVwZXI6bDb6famZ4iae4LkuxCI/\nE86vF2thSPaSaLWTZfAf2aM=\n', `updated_at` = '2015-07-20 13:26:09', `created` = NULL, `expires_at` = '/aBKJaTfBexS4rU85oNjeTpjcnlwdF9rZWVwZXI6zlRQJnoTAphuU1qxG0Lt\nfiol/Lr7P0Al+Q1dqfS699r9xou4hLyVzoIV5lnpGFi1qVKKk78AOEs3ze0B\n93/W2g==\n', `language` = 'Lv5UNvaxI3lVjL6FZgK7jDpjcnlwdF9rZWVwZXI6E658NOoe+XgRQhHqMo1B\nY6JHeDy7gXzogQWa77Wl4Hk=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'e4H7I5Ks+xCp/wzGPCuLjjpjcnlwdF9rZWVwZXI6sJPi2FDwLVyGEQXSTPco\nDQxIm/iHBfuGNrYD033CoJ5CM+URsxna5CoAQedGB0ZumC3YMaxte1OaZSpg\ntc+fVBo6670EX8QiygAD95Vaju+2gvyCJECvxBR0WhiboNNS\n', `state` = NULL, `tokens` = '8u1gN3XainBIA9wc/0fUjjpjcnlwdF9rZWVwZXI6+tSJi0rZawfbpgIKq48t\ny893IwD1zt66qki1s9B8i0KQhHcDTfiypIpZa8lyR0FA7kjXfRZfJbfDht4h\nZDrkPRM22pBhk7SUNek9aVbXWpzE5Q7ueUVEkyVSnNRfn+K1QFN+OwhJrofB\naiJIfl8/IPXxPb+lNEWQL2eo7S+kwLo=\n', `user_ids` = 'A4EBd3TmF7QvLNiZaJna8zpjcnlwdF9rZWVwZXI64S6bYjgGtIwsMTWDIoYT\n0Kb1HpWDEmznqWSrCFffcycy5LdLxwk+BmK1pjYqdkfRvz8Lpo2h+BNDFUpQ\nvwFRBHbdr+38bZ690iXupkQFsaQ=\n', `did` = 'ud4YXOGotLBy9UillweiJTpjcnlwdF9rZWVwZXI6JL8RZCvEajafuZV0u3t1\nGSGpS7BjVczuObr7lgiLSgsLwXGgM12N38BcehPQjS5w\n', `client_timestamp` = 'oueNYWq3ok6UZ35qTf1XMjpjcnlwdF9rZWVwZXI6HX1EKBnwkW/XrSBvvGqe\nQY94BWS8JRWrRO+jXYboOwU=\n', `client_secret` = 'YDj1SKL9DkK6tdYeytkSiDpjcnlwdF9rZWVwZXI6SNZckpytRdl0fCMFqXiJ\nTRPR8WJKCLCchqVGd7BUnZTRQDLkk+cWb27oQR7b0KXw\n', `sha256` = '7VZqGq1NgWCOXRRIsRlmuzpjcnlwdF9rZWVwZXI6OjWhCDSurb+FRZZpqc6R\npGip+kejmmqQOgVhIVXtAANS7bl/+V4hdRbElv9mIijOdRlPEnnqkCq/9PdD\nqstBFx07FzlfWaXMkgHcZRbHN5oobCNoOsKS8DfUvzsDu+tE\n' WHERE `sessions`.`id` = 369
+   (5.9ms)  COMMIT
+save_flash_key: flash.id = 7, session[:flash_id] = 7, message = google+ log in ok. Welcome to Gofreerev. Your friends list is being downloaded and will be ready for use in a few moments.
+  Task Load (1.2ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'User.update_profile_image(\'117126429320850988781/google_oauth2\', \'https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100\')') ORDER BY `tasks`.`id` ASC LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (1.5ms)  INSERT INTO `tasks` (`created_at`, `session_id`, `task`, `task_data`, `updated_at`) VALUES ('2015-07-20 13:26:09', '719144aad2dbb45e68333dd0662e9b47', 'User.update_profile_image(\'117126429320850988781/google_oauth2\', \'https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100\')', NULL, '2015-07-20 13:26:09')
+   (4.3ms)  COMMIT
+  Task Load (2.4ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'generic_post_login(\'google_oauth2\')') ORDER BY `tasks`.`id` ASC LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (1.1ms)  INSERT INTO `tasks` (`created_at`, `session_id`, `task`, `task_data`, `updated_at`) VALUES ('2015-07-20 13:26:09', '719144aad2dbb45e68333dd0662e9b47', 'generic_post_login(\'google_oauth2\')', NULL, '2015-07-20 13:26:09')
+   (3.7ms)  COMMIT
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '117126429320850988781/google_oauth2' LIMIT 1
+Redirected to http://laptop.gofreerev.com/en/main#/auth/1
+Completed 302 Found in 657ms (ActiveRecord: 147.1ms)
+
+
+Started GET "/en/main" for 127.0.0.1 at 2015-07-20 15:26:09 +0200
+Processing by MainController#index as HTML
+  Parameters: {"locale"=>"en"}
+get_client_userid: client_userid was not found
+get_client_userid: session[:client_userid] = 1
+fetch_users: start
+get_client_userid: client_userid was not found
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.6ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+check_expired_tokens: context = , refresh_tokens = []
+check_expired_tokens: client_timestamp = 0, server_timestamp = 1437398769, timestamp_dif = 1437398769, now = 1437398769
+  User Load (0.3ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+  Friend Load (0.6ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+  Friend Load (1.9ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook','1563545817212684/facebook','117126429320850988781/google_oauth2'))
+block in fetch_users: user_id = 1705481075/facebook, user_name = Jan Roslind, currency = USD
+block in fetch_users: user_id = 117126429320850988781/google_oauth2, user_name = Jan Mobilos Roslind, currency = USD
+fetch_users: @user_currency_separator = ., @user_currency_delimiter = ,
+logged_in?: login_user_ids.class = Array
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+  Task Load (0.6ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'fetch_exchange_rates') ORDER BY `tasks`.`id` ASC LIMIT 1
+add_task: Task fetch_exchange_rates is already in task queue
+set_locale_from_params: start
+logged_in?: login_user_ids.class = Array
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `users` SET `language` = 'en', `updated_at` = '2015-07-20 13:26:09', `user_name` = 'RnRJu+RCy8pLCR2G5CKf7zpjcnlwdF9rZWVwZXI6xjC5YcLka+O0KDr7O/CY\nkaipx10e4UYEMvYFEzfHDNs=\n', `currency` = '6hyMOmpIuPVt6k8CusMWezpjcnlwdF9rZWVwZXI62HH+HFRiPGsi7jN/r7c0\nuPVooulaCX+HiQPcJNCcKGE=\n', `balance` = 'fvX189i54sY8eJ9q6FJX2DpjcnlwdF9rZWVwZXI6L6TvHglnsQG43o4z6JvP\nZdNLFNia2yCubjPKJaCiIOWpBSsqTA7OBJBMr6yCb7Np\n', `no_api_friends` = 'tN1SRldBkxgsN0aPs3bOmjpjcnlwdF9rZWVwZXI6mtsSK5wWospdq2Rc5XUq\ny0Mz9S8bCoJtXcFBkIK7XYc=\n', `negative_interest` = 'DkdS4pBL51uB+eqWNIrDWzpjcnlwdF9rZWVwZXI69HL3EpsBu1goM5PAum17\nQ2dskzHwTSM3iMNsXa0KT7RQCEHVB4xLc3avKHSnDnp3\n', `api_profile_url` = 'ml4aPgMd+TqKw2H+Qkyr2jpjcnlwdF9rZWVwZXI6V221pmiYI8DTHMGb4JKb\ncfcirxMUrw38nrGfTrbC5HAuzp9sbCvYa5JJJjDL4c65QGWMklhThrxvJvEh\nz4R79j+2L705+clTvv3BCr8CHDA=\n', `api_profile_picture_url` = 'CSF/fOwUHP7Ia2D6fU7TIjpjcnlwdF9rZWVwZXI6kw5vGBk2voscZ8Ehqqu6\nfB9yVX4eJWzxIII3pF9si/gxS18EO/QCXAoXzN8fMY21ZR31oGeHHF9zKnGi\ngS2j8aSEXjprJhtFtZjROZ6sxkk/HunMykRGSDU3Wz3aUHsbgexFMXeS7NmX\n7wlFhQXJHam/ASDhZ53pcGyhzFWIsorwVX/sneYnjjWbun2kEyxMISO1MbtT\nI+kJHuaHfFla11lTFjAQBd4+XJ911yBB2Sg2LhWkdsJ/PFbXykUM2/j4cKxR\nl6AP4VC6/3gb+ApBY9I9zKR1NY1bKOWz++Bni3lSK72nzGgmdsp2J4jno7Uh\nMCYe6kGkpUD3hAyZR3t0RQ==\n' WHERE `users`.`id` = 2
+   (3.8ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `users` SET `language` = 'en', `updated_at` = '2015-07-20 13:26:09', `user_name` = 'VH6wn//DYcHiZCy/as+m1zpjcnlwdF9rZWVwZXI6LEK/KODY+3FX2fldjqp0\nL4x9Uq2dJggHG+q9GOgK6GmfDGFoNadHM0lqb1y2BvEi\n', `currency` = 'H4vpWOzBgkj8lsfO23H6TzpjcnlwdF9rZWVwZXI6pUsZYFG/bwGw/ZGxjaXw\nQKZzfrI+L4OX4QU4P8c+5z8=\n', `balance` = '43oeM2IcRnryW5g82BhwKzpjcnlwdF9rZWVwZXI6Zjo13dzK4RJaN5vCU17O\n9KW4ROK8MPNe/ia/+Ld67REvLT8yfrrgNm/SRW8xtKiS\n', `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = NULL, `api_profile_picture_url` = 'sSSv7dTAbSrLDGnp11aICzpjcnlwdF9rZWVwZXI6SPJhpvwXSdTkaemixPJx\n1WTUu73DB05blc1KPsuhvfmq+kmsb7+uam6o1uQiB0IuoieMYVsVFWhTULGD\njhqzXPc0tVQq1kltN2X5il/eJ8db5JDL1FHJiCsXcpIwmcrJH4a0F541DykN\nFonkOnEzT5WaaMCLsA5cVciVJIlzxvg=\n' WHERE `users`.`id` = 4
+   (4.7ms)  COMMIT
+index: get_session_value(:did) = 14372933747316727668
+  Rendered main/index.html within layouts/application (0.1ms)
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  Rendered shared/_user_div.html.erb (3.9ms)
+  Rendered shared/_ajax_errors.html.erb (0.1ms)
+Completed 200 OK in 166ms (Views: 104.9ms | ActiveRecord: 14.4ms)
+
+
+
+Started GET "/en/main/auth" for 127.0.0.1 at 2015-07-20 15:26:12 +0200
+Processing by MainController#auth as HTML
+  Parameters: {"locale"=>"en"}
+get_client_userid: client_userid was not found
+get_client_userid: session[:client_userid] = 1
+fetch_users: start
+get_client_userid: client_userid was not found
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.8ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+check_expired_tokens: context = , refresh_tokens = []
+check_expired_tokens: client_timestamp = 0, server_timestamp = 1437398772, timestamp_dif = 1437398772, now = 1437398772
+  User Load (0.8ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+  Friend Load (0.3ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook','1563545817212684/facebook','117126429320850988781/google_oauth2'))
+block in fetch_users: user_id = 1705481075/facebook, user_name = Jan Roslind, currency = USD
+block in fetch_users: user_id = 117126429320850988781/google_oauth2, user_name = Jan Mobilos Roslind, currency = USD
+fetch_users: @user_currency_separator = ., @user_currency_delimiter = ,
+logged_in?: login_user_ids.class = Array
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+  Task Load (0.2ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'fetch_exchange_rates') ORDER BY `tasks`.`id` ASC LIMIT 1
+add_task: Task fetch_exchange_rates is already in task queue
+set_locale_from_params: start
+logged_in?: login_user_ids.class = Array
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `users` SET `language` = 'en', `updated_at` = '2015-07-20 13:26:12', `user_name` = '5cOZIjMOW954SpDA/l0Y3zpjcnlwdF9rZWVwZXI6+WUHGiI4Jvm0ZZNevvbW\nSL9YSeQqsYLqTcyiBAUtQRk=\n', `currency` = 'HWZ/VrbUTkOYV/BmKHerxTpjcnlwdF9rZWVwZXI64tWwKoKbQor5P2TbNUwt\n8l0gToEGpVIQIlj9nVdLX68=\n', `balance` = 'b28mvQVWQhwt3Q2htRRH5jpjcnlwdF9rZWVwZXI6I+axdSIPhh6fg5ZAo6P+\nS+TUUcMoXYr6aavmYYIJKC7Tgzao69TBzcU/MQEzCcNF\n', `no_api_friends` = 'OetR/meyttMptt1/vaJoxDpjcnlwdF9rZWVwZXI6V0C480gSCXh0NLdetNmY\np6kM/7v1ayhrVbOvyVSUnS8=\n', `negative_interest` = 'e64nfeg2xbs8StGYwjIDHTpjcnlwdF9rZWVwZXI6j0b4tSiSjVdJmqSPtAhx\ncu0iELlzgAujCaAgtwHbw/Q3vEe7xAzS+xwB9Xxt756H\n', `api_profile_url` = 'VsLW/xHhq8ZQpnxxxYTbxDpjcnlwdF9rZWVwZXI6uJG8T/5KtCae+PrD7MPG\nqok2XdEMpovztw8QnIl/RNE3IeH6UDMmX6pUv7ZKWu/KzMivmTDdVeMaoVEI\nxfSHXJQaxdISZYoGg4ijnqsD364=\n', `api_profile_picture_url` = '+ix4rSvmop2/iKdJYjdGwjpjcnlwdF9rZWVwZXI6vDtS0J5mMlHCji+CD2Jk\nJgSnIjluwnOFM0ISc4sCeEOiCDxcwG2lMOzUacrjP1xLRguNWFF8J6jyQ92b\ndzaJD9TGiTFibKT2OLVS7P2+H2IMGXbxE9DO1Hqm9Iclz8l6Nknm0+bdiHQS\ntwXqMTUBs8WFrDjVZvD2d8w9HNkdA4zWR/gu3k5wUe4cNCbfCpFsvxneC2He\njP+/aOgJWp2zw2y1vUIX3ZjSOZZXotp7FnUCNbtwSzRqRB43qOiecsdrFo9F\ng+o7hgy4NTELDGJN1gHdXhpcFfgdEwCXxlsg/qkaJI+Ca0Z6Bk6zpdj3RDCO\n/7BNmWyO48OkwecFk8tL5Q==\n' WHERE `users`.`id` = 2
+   (7.6ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `users` SET `language` = 'en', `updated_at` = '2015-07-20 13:26:12', `user_name` = 'IY/n2AvbiEYwJBKVIogmSzpjcnlwdF9rZWVwZXI6JIMnW/06ECm+zYlD1tHV\nG8U8pnq/QNNhMz2pMAqTan53jCQub9qSp3WpuIihMXRm\n', `currency` = 'W7G/m0fzG/r8VNqWlZ3ipTpjcnlwdF9rZWVwZXI6OeIDP7Fy9dse0Z3NYI7H\n0u0uFaOD6IHThakwTHx0yVU=\n', `balance` = 'Td2RkIP2VU5gqsxl3Ib98jpjcnlwdF9rZWVwZXI6A6c/Q/NYjrd22mW7Wh1/\nYAPggj0aTMYNatnx/SyAGQLsG3zK03vbqHc2wUoppbC+\n', `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = NULL, `api_profile_picture_url` = 'tlpPi9dSOUsuMobJsgSUzzpjcnlwdF9rZWVwZXI6F/vx4sDQuO5F2or8U+nv\nnGLs1PpXzT2bUZ+16rpLGNRPIV8m0GejAV+l44FJIY5142A+YUkRvJlvrX0A\nmPsE8Nom8d+m23C7o7uw0G8Kvan0g7njeoMdmlzgw/h4HKcdnQqW8pDBBt+x\nFIZmwh9LIjM20LxEJrEcXu1n9LHOb+A=\n' WHERE `users`.`id` = 4
+   (5.0ms)  COMMIT
+auth: get_session_value(:did) = 14372933747316727668
+  Rendered main/auth.html (0.1ms)
+Completed 200 OK in 73ms (Views: 1.5ms | ActiveRecord: 16.6ms)
+
+
+issue 3: do_tasks job after google+ login - takes 53 seconds - exchange rates are fetched from google money bank
+
+Started POST "/util/do_tasks.json" for 127.0.0.1 at 2015-07-20 15:26:13 +0200
+Processing by UtilController#do_tasks as JSON
+  Parameters: {"client_userid"=>1, "util"=>{"client_userid"=>1}}
+get_client_userid: session[:client_userid] = 1
+fetch_users: start
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.2ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+check_expired_tokens: context = , refresh_tokens = []
+check_expired_tokens: client_timestamp = 0, server_timestamp = 1437398773, timestamp_dif = 1437398773, now = 1437398773
+  User Load (0.7ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook','117126429320850988781/google_oauth2'))
+  Friend Load (0.3ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('1705481075/facebook','1563545817212684/facebook','117126429320850988781/google_oauth2'))
+block in fetch_users: user_id = 1705481075/facebook, user_name = Jan Roslind, currency = USD
+block in fetch_users: user_id = 117126429320850988781/google_oauth2, user_name = Jan Mobilos Roslind, currency = USD
+fetch_users: @user_currency_separator = ., @user_currency_delimiter = ,
+logged_in?: login_user_ids.class = Array
+  Sequence Load (0.3ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  Sequence Load (0.3ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_money_bank_request' LIMIT 1
+  Task Load (0.2ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and task = 'fetch_exchange_rates') ORDER BY `tasks`.`id` ASC LIMIT 1
+add_task: Task fetch_exchange_rates is already in task queue
+validate_json_request: params = {"client_userid":1,"controller":"util","action":"do_tasks","format":"json","util":{"client_userid":1}}
+validate_json_request: do_tasks_request = {"client_userid"=>1}
+do_tasks: session[:session_id] = 719144aad2dbb45e68333dd0662e9b47, session[:state] =
+  Session Load (0.7ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' LIMIT 1
+do_tasks: session[:last_row_id] =
+do_tasks: get_session_value(:did) = 14372933747316727668
+  Task Load (0.6ms)  SELECT `tasks`.* FROM `tasks` WHERE (created_at < '2015-07-20 13:24:13' and ajax = 'Y')
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  DELETE FROM `tasks` WHERE `tasks`.`id` = 7
+   (5.0ms)  COMMIT
+   (0.6ms)  BEGIN
+  SQL (0.4ms)  DELETE FROM `tasks` WHERE `tasks`.`id` = 8
+   (5.7ms)  COMMIT
+   (0.4ms)  BEGIN
+  SQL (0.4ms)  DELETE FROM `tasks` WHERE `tasks`.`id` = 9
+   (5.2ms)  COMMIT
+  Task Load (1.7ms)  SELECT `tasks`.* FROM `tasks` WHERE (created_at < '2015-07-20 13:16:14' and ajax = 'N')
+  Task Load (0.7ms)  SELECT `tasks`.* FROM `tasks` WHERE (session_id = '719144aad2dbb45e68333dd0662e9b47' and ajax = 'Y') ORDER BY priority, id
+   (0.2ms)  BEGIN
+  SQL (0.4ms)  DELETE FROM `tasks` WHERE `tasks`.`id` = 11
+   (5.0ms)  COMMIT
+logged_in?: login_user_ids.class = Array
+block in do_tasks:
+block in do_tasks: executing task User.update_profile_image('117126429320850988781/google_oauth2', 'https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100')
+
+  User Load (0.5ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '117126429320850988781/google_oauth2' LIMIT 1
+update_profile_image: update profile picture: url = https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100
+  SystemParameter Load (0.3ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+   (0.5ms)  BEGIN
+  SQL (0.5ms)  DELETE FROM `tasks` WHERE `tasks`.`id` = 12
+   (6.0ms)  COMMIT
+logged_in?: login_user_ids.class = Array
+block in do_tasks:
+block in do_tasks: executing task generic_post_login('google_oauth2')
+
+  User Load (0.3ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '117126429320850988781/google_oauth2' LIMIT 1
+get_login_user_and_api_client: provider = google_oauth2, token = ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx
+post_login_update_friends: debug 1: key =  (NilClass)
+   (0.2ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `tokens` = 'X4mTIs6xMD+WxRmN4YpFVTpjcnlwdF9rZWVwZXI6PbFXDFQVBCRYKb2m6eoa\nQkd1C5pK2VxmZU2San2laQhtuaK/PeISPG1lLxhO57Is\n', `updated_at` = '2015-07-20 13:26:16', `created` = NULL, `expires_at` = 'ScMbD5m6yCuG5nKdhI6YbDpjcnlwdF9rZWVwZXI6DAq4EoIRB4iGNkV6XsPs\n7bNf566dYsHw51icLZh7cjlpg9OJImfi6u3QGvhnNlchVsmv5qOI3Ck83NWO\nXR6uaQ==\n', `flash_id` = 'M/t1+/EeGSIXKRyDjNuIZjpjcnlwdF9rZWVwZXI6wAT4m9gry4RwSRDmHup0\n21DPnUNnjsBkGnFtQ9uLNxU=\n', `language` = 'YMeplwV2vOTnS586qZJZrDpjcnlwdF9rZWVwZXI6/210CrfLcMJ0f2NN8SBe\namvC9E6mh/PcPnmDJlL6zKU=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'sVrpWZ/O6W/IM/B6R1WhSzpjcnlwdF9rZWVwZXI6lZwPQ0D2YDtyPsG1/1Xd\nkKGE31bzNI+PIy/SUUhXwP2+fkZ2Kk2X3c8dh/OhC6odjsf6lHYpvkh7dXu5\nFfBYCIOIoD1qdiiluXTIOJJVhVQU6iEYa6W12+YTGCBX6Utx\n', `state` = NULL, `user_ids` = 'k9Kb+pnKGUMlVCm0WBFNXzpjcnlwdF9rZWVwZXI6ZsYG2ttCUtE9+fdHBMRy\nv5p/cN6FVvpiRc4M8MZBsgRHt3m2VpbcJpjHIvmxvulCkfta6PVdC+Z6dAIo\nuz/uT2th2nlhgk8NmaAsz3cI93I=\n', `did` = 'tsC1mU4/JT5vhY+Y7HpsCzpjcnlwdF9rZWVwZXI6ETTO2Dsvcgs7CtF9+Lo5\ne2s1jLmG5g0Iko7dB4oz4UsED9SaYVKCYVdH9xQURIK/\n', `client_timestamp` = '98HMzxExMkqrYO53juKwWDpjcnlwdF9rZWVwZXI6t0tsp4fww1D9A/xnidTs\n0MQbF3dWadR9QiEcONlcUt8=\n', `client_secret` = 'X8JcKvXgE11LR3xt1dhmMzpjcnlwdF9rZWVwZXI6IFC8nt795C8zyJATfviX\n5e+yPi8oqIfqcH5deRJrtixfFrehEDGR/vMeAP2hk/Kp\n', `sha256` = '75NYYQL6DDJtzgL/b0XpFTpjcnlwdF9rZWVwZXI6nQZC84abpZA5goFJFEOY\nmv5mkl+qN93jStNcSE+y5Nry2qVcd3j2rAbGHs0pGTwkr7/nm8zReVmu0yuz\no+293X8b57P02bbmGiZ1MPA2ESVltcE2O3X6sP56WdIuunnu\n' WHERE `sessions`.`id` = 369
+   (3.5ms)  COMMIT
+   (0.7ms)  BEGIN
+  SQL (0.5ms)  UPDATE `sessions` SET `refresh_tokens` = 'st0xulM6bEF5zQhKI6qiuDpjcnlwdF9rZWVwZXI63hnhWe0/w/LMd31xDyAf\nZoexJ+kZKWqpSGNHfsjHSE4=\n', `updated_at` = '2015-07-20 13:26:16', `created` = NULL, `expires_at` = 'c+h/bBPzmBXCBZIck5WCyTpjcnlwdF9rZWVwZXI69B9UVzWVqPhTpPszRQ/1\nwQuvilrvk//zD7mDZHvTqKZhNiqMyzO6aIwY8B8p19uhto3TVxZNg8ESGJAW\n//J5pg==\n', `flash_id` = 'PH/dFD3suRgEj4oC0VHh1DpjcnlwdF9rZWVwZXI6UdUm5g+9jfREYRdVifvd\nIzUPlW+1WwYIN6GpFf16oEk=\n', `language` = 'TpUA8UeX0bhdRzQkBvSzrTpjcnlwdF9rZWVwZXI61Lss0V6yJNek4n50Cvf9\n/Jjrzd3CNdZqSq3ls7ZlRkA=\n', `last_row_at` = NULL, `last_row_id` = NULL, `state` = NULL, `tokens` = 'RPeIZnOSk8YnPYX5WLCrCzpjcnlwdF9rZWVwZXI6T3PzQlVPFSHFTTOgua7g\nTFSZ6t1ToGmr/tSZ6hSwfpHv/LSl//2ZgAv4KL33UUXR\n', `user_ids` = 'W+ve/8ng1ZHcbm0ps9YcZDpjcnlwdF9rZWVwZXI6vuksJ9bfD1GG4sn/y00i\n9C+joX8LlcDVjEYhUIzmAFPPQbCgb8kgNmUMiVVWSINhEKtwpVWTr3J/8YGY\nR9Wyhm0zJnsA2O0LWuLCdGNjodI=\n', `did` = 'Bwr4zpWWzGcSQPVRAugbWDpjcnlwdF9rZWVwZXI6JVL7yf9LY2RWdnKawK2M\nLpM0Vo9VKVkwJpt+wyOusjrZCLIUQHpDpJp/9Nd7CVcr\n', `client_timestamp` = 'ZR24QRCNg/E6pDRcmd5eMTpjcnlwdF9rZWVwZXI61kW8LnFQRh1cALsF9mla\nSbFbzZOORLPaVLBPTtpEzhg=\n', `client_secret` = '2kJvbutytLTOcPKs0CHKlzpjcnlwdF9rZWVwZXI6JKTYU+4xMT7cAHH9/eCe\nVKOmTujDKPCdIQtmH4NAW2gXigZZ+94dsWH2uuzRlQej\n', `sha256` = 'eFVvk9bT6od+ZUH4a32SVTpjcnlwdF9rZWVwZXI6M7s+rM30y7lqN6WuL1d8\nkxEvAujwAVQ3jdiTww6EQWiCjNA/SpOCDFRiUlTjbQc44uHbYy/qrw7uUU//\nzI1elL+w7GrjiF21gjgAA5JfXrZaIJ9tCkzg/2YbFwSla6ci\n' WHERE `sessions`.`id` = 369
+   (3.8ms)  COMMIT
+no gofreerev_get_user method was found for google_oauth2 api client
+block (2 levels) in init_api_client_google_oauth2: result.error_message = {
+ "kind": "plus#peopleFeed",
+ "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/iOk7I3IqmbYKnBHj0M2uI9ZDb0w\"",
+ "title": "Google+ List of Visible People",
+ "totalItems": 3,
+ "items": [
+  {
+   "kind": "plus#person",
+   "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/FjS6iPO7Fp8Ste1GGSyIOlk3VJY\"",
+   "objectType": "person",
+   "id": "113703200528116224701",
+   "displayName": "Anitta limkilde-kjær",
+   "url": "https://plus.google.com/113703200528116224701",
+   "image": {
+    "url": "https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50"
+   }
+  },
+  {
+   "kind": "plus#person",
+   "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/W7638nzpzlQZXjkhYbGipzLmvbQ\"",
+   "objectType": "person",
+   "id": "102648158892233211696",
+   "displayName": "Annastasia Damgaard Jespersen",
+   "url": "https://plus.google.com/102648158892233211696",
+   "image": {
+    "url": "https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50"
+   }
+  },
+  {
+   "kind": "plus#person",
+   "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/O8e6Dzuvm9CqK_MwGV4SpDUlgRw\"",
+   "objectType": "person",
+   "id": "117657151428689087350",
+   "displayName": "Jan Roslind",
+   "url": "https://plus.google.com/+JanRoslind",
+   "image": {
+    "url": "https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50"
+   }
+  }
+ ]
+}
+
+block in init_api_client_google_oauth2: friends_hash..size = 3
+post_login_update_friends: debug 5: key =  (NilClass)
+post_login_update_friends: debug 7: key =  (NilClass)
+update_api_friends_from_hash: fields = name, api_profile_url, api_profile_picture_url
+  Friend Load (0.6ms)  SELECT `friends`.* FROM `friends` WHERE ((user_id_giver = '117126429320850988781/google_oauth2' or user_id_receiver = '117126429320850988781/google_oauth2') and user_id_giver <> user_id_receiver)
+update_api_friends_from_hash: new_friends.keys = 113703200528116224701/google_oauth2, 102648158892233211696/google_oauth2, 117657151428689087350/google_oauth2
+update_api_friends_from_hash: old_friends.keys =
+update_api_friends_from_hash: new_user_ids     = 113703200528116224701/google_oauth2, 102648158892233211696/google_oauth2, 117657151428689087350/google_oauth2
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('113703200528116224701/google_oauth2','102648158892233211696/google_oauth2','117657151428689087350/google_oauth2'))
+   (0.2ms)  BEGIN
+  SQL (2.6ms)  INSERT INTO `users` (`api_profile_picture_url`, `api_profile_url`, `balance`, `created_at`, `currency`, `negative_interest`, `no_api_friends`, `updated_at`, `user_id`, `user_name`) VALUES ('CN+IblU/NYpDMC5poPtzwzpjcnlwdF9rZWVwZXI6X+DK15e70ihcVSddCTAA\njgXELIJHysSTjyvDGW1yU6eNPw0e3Qc9ioI31fPDKcv4HfZGv4FK5bGnJAMB\nXvmlMo3MribgN6Xy6PjkfpzbyBt4D13kO2DCtDJV78OIk9aMnjaB9V+hO6Vv\n2DaECX1NJh1SayvWIk5/WNyRvG8KU1o=\n', '7ctvASXFqx+MRDLTNDWMVjpjcnlwdF9rZWVwZXI6HQEJO3g/c+picHw3TLZD\ns9qPy3vJejHjuN6IX9YjO5n+qntMLOkzIKPTQztetxZII1e1Ad2/NyXOdhKQ\n5J6hegEJce8TqxVxkVBBRDUCY5E=\n', NULL, '2015-07-20 13:26:17', NULL, NULL, NULL, '2015-07-20 13:26:17', '113703200528116224701/google_oauth2', 'rs0ewziEWj9fYpAjsdikuTpjcnlwdF9rZWVwZXI6ehmQvKBK/ATPujW+/9c3\nrtx/vUH1vdPV+PiyU028qKZK35EBg0Xu/471XInzxVX2\n')
+   (4.0ms)  COMMIT
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'hJVDsuv40eM61iKtIE4D' LIMIT 1
+   (0.1ms)  BEGIN
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'hJVDsuv40eM61iKtIE4D' LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '113703200528116224701/google_oauth2' AND `friends`.`user_id_receiver` = '113703200528116224701/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '113703200528116224701/google_oauth2' AND `friends`.`user_id_giver` = '113703200528116224701/google_oauth2') LIMIT 1
+  SQL (0.9ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('TupdoWMzNcSSBTM5dZLhyjpjcnlwdF9rZWVwZXI68MYkm8dBU9CoC4GD4ahM\nebB+5SdzqDujwh8o5aC2XvU=\n', NULL, '2015-07-20 13:26:17', 'hJVDsuv40eM61iKtIE4D', '2015-07-20 13:26:17', '113703200528116224701/google_oauth2', '113703200528116224701/google_oauth2')
+   (4.7ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.8ms)  INSERT INTO `users` (`api_profile_picture_url`, `api_profile_url`, `balance`, `created_at`, `currency`, `negative_interest`, `no_api_friends`, `updated_at`, `user_id`, `user_name`) VALUES ('cPEMP1DeMYtai1OjXbgRNjpjcnlwdF9rZWVwZXI63SAvXM7PSXUXI4UrpQtF\nMeDq+fgZDEqCJ1+kUkUmkhR9awSx2QZUHJzwVxF+L1TgqIJPAx3Rqanbc2hl\nI1KCocnTYlIAyqHKUvvN386vuRny53oMfaGQVkGSJwaL66CX5ZHPypbWfuTf\nr0ndMSMYqthXKtkX33xi3MVZ3p2hBpI=\n', 'QPJEhjc2S+nTHPj64wY2nTpjcnlwdF9rZWVwZXI6k89ky1wdqFk2Kmzsr/tA\nAIJ/lCDjvscD/TC38RlzXrKf6rG2xNUh8ORZCY9H6Ys1IqWwfA/TSBgj0ADi\n3Es8/m9DzfvXP30CT9gVmbd0TcQ=\n', NULL, '2015-07-20 13:26:17', NULL, NULL, NULL, '2015-07-20 13:26:17', '102648158892233211696/google_oauth2', 'jEFAl8Qc+YG4uMhchq0rizpjcnlwdF9rZWVwZXI6BuTYgpWtz4t3GsHE5rgi\n0fMhXJqScVDHem4IziKK/K1eW6Ntw3KlMXoxqwgShq+O\n')
+   (3.8ms)  COMMIT
+  Friend Load (0.5ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'iB0D2qPqsYShnb3wWXLG' LIMIT 1
+   (0.2ms)  BEGIN
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'iB0D2qPqsYShnb3wWXLG' LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '102648158892233211696/google_oauth2' AND `friends`.`user_id_receiver` = '102648158892233211696/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '102648158892233211696/google_oauth2' AND `friends`.`user_id_giver` = '102648158892233211696/google_oauth2') LIMIT 1
+  SQL (0.8ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('+x9ap5IJr0gVVDI6TcSctTpjcnlwdF9rZWVwZXI6HcvqE+awFhWgH03rS2VR\nyNSVjBgslzbjkzurs+hcbbU=\n', NULL, '2015-07-20 13:26:17', 'iB0D2qPqsYShnb3wWXLG', '2015-07-20 13:26:17', '102648158892233211696/google_oauth2', '102648158892233211696/google_oauth2')
+   (3.5ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.0ms)  INSERT INTO `users` (`api_profile_picture_url`, `api_profile_url`, `balance`, `created_at`, `currency`, `negative_interest`, `no_api_friends`, `updated_at`, `user_id`, `user_name`) VALUES ('eGhl/m/KYsDLeMhTsoLnjDpjcnlwdF9rZWVwZXI6r3f3fk6lFaY4H1cTCuCo\nQV4OqcBaE4EczM+kOdvL/4kim3rMDvej2YPKM0Vpt+qucCkimW+sNQ3cskJd\n82K1gqTOf9wWSR9ZfEF2hxr6H00wGt785R5o825OSxXPubifF4sPSopLYTEb\nFl5E310IpJnQ0FKP9zJ6jQajtrIwOq8=\n', 'azX+C5P1XK+vp/SkA5evCjpjcnlwdF9rZWVwZXI6MlQmzcHnjisZAFwlOrsN\n4PENdovqMXOlOPqcXufHgMlioVjUGLW3EjO3+clTjHYA536QDMRRzVDXr4Ad\nHXypBA==\n', NULL, '2015-07-20 13:26:17', NULL, NULL, NULL, '2015-07-20 13:26:17', '117657151428689087350/google_oauth2', '4x0E/uECcpn0v/3tsv5qTTpjcnlwdF9rZWVwZXI68Yjc5kgrTJN8VDrjxytf\nJnJG+Pn8mNHQv69e4A9eRGSlaJsOa3j8LhZg4CiAyLiv\n')
+   (3.4ms)  COMMIT
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'WuMniokFUtloRKEthxoW' LIMIT 1
+   (0.1ms)  BEGIN
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'WuMniokFUtloRKEthxoW' LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '117657151428689087350/google_oauth2' AND `friends`.`user_id_receiver` = '117657151428689087350/google_oauth2') LIMIT 1
+  Friend Exists (0.6ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '117657151428689087350/google_oauth2' AND `friends`.`user_id_giver` = '117657151428689087350/google_oauth2') LIMIT 1
+  SQL (1.6ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('CVYwe7VlEBjMMA3Gh7vTFDpjcnlwdF9rZWVwZXI6An81PaUpwWtaYi1rhoyC\nUezTqMIWWctx1S1bO1GaNM8=\n', NULL, '2015-07-20 13:26:17', 'WuMniokFUtloRKEthxoW', '2015-07-20 13:26:17', '117657151428689087350/google_oauth2', '117657151428689087350/google_oauth2')
+   (4.6ms)  COMMIT
+  SystemParameter Load (0.3ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE (sha256 = 'k+27H4sgdGtg3AeWCRfjO7GwZJasfL3OuXu7TNCT70Q=' and id <> 5) ORDER BY `users`.`id` ASC LIMIT 1
+   (0.2ms)  BEGIN
+  User Exists (0.8ms)  SELECT 1 AS one FROM `users` WHERE (`users`.`sha256` = BINARY 'k+27H4sgdGtg3AeWCRfjO7GwZJasfL3OuXu7TNCT70Q=' AND `users`.`id` != 5) LIMIT 1
+  SQL (1.0ms)  UPDATE `users` SET `sha256` = 'k+27H4sgdGtg3AeWCRfjO7GwZJasfL3OuXu7TNCT70Q=', `sha256_updated_at` = '2015-07-20 13:26:17', `updated_at` = '2015-07-20 13:26:17', `user_name` = '2f7pbocGpjNEVrr23r/DaTpjcnlwdF9rZWVwZXI6iPE4GWw+QCFt0QXQaT7Y\nT/OxuzIaPHXS9PoZHv79aqSMzYm0wJ4VqfyjrL9Vhu6f\n', `currency` = NULL, `balance` = NULL, `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = '3Iui70PjJKR01QpB1XGIujpjcnlwdF9rZWVwZXI68rV+UEWDzpGnedsB4Xiz\nYs5UWVEYDURrJWAewoFt4F4I2dsWMtZSAkdROcNxUyj9YIUe3nN3N2umpxxY\nQnQulHxOB7iCHj5h87uACCX8ah8=\n', `api_profile_picture_url` = 'T5ZR5F0cAQuTmdvMszggWDpjcnlwdF9rZWVwZXI63EFqnM2NCJRWjaN8uQDf\nvwQfBVbXukwUhD6fgZuH5/qQnoilMQjs4+XzZTDvFuCNSjP2vOamKES0dDWl\nxsRu26VuEj/hp7BjHR2GN+QTXuE4skfhqjtCPFOWC1WsQdlhVHWYjcpwLcG6\nitoJ8WcF9H6DkNzpsaqhW/8TWthrkQw=\n' WHERE `users`.`id` = 5
+   (3.6ms)  COMMIT
+  Ping Load (0.5ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`server_id` IS NULL
+  SQL (5.4ms)  UPDATE `users` SET `users`.`friend_sha256_updated_at` = '2015-07-20 13:26:17' WHERE `users`.`user_id` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` = '113703200528116224701/google_oauth2' AND `friends`.`user_id_receiver` IN ('1705481075/facebook') AND `friends`.`user_id_receiver` IN (SELECT user_id FROM `server_users` WHERE (verified_at is not null)))
+  SQL (4.0ms)  UPDATE `users` SET `users`.`friend_sha256_updated_at` = '2015-07-20 13:26:17' WHERE `users`.`user_id` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` = '113703200528116224701/google_oauth2') AND `friends`.`user_id_receiver` IN ('1705481075/facebook') AND `friends`.`user_id_receiver` IN (SELECT user_id FROM `server_users` WHERE (verified_at is not null)))
+  ServerUser Load (2.5ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` = 5 AND (verified_at is not null) ORDER BY `server_users`.server_id ASC
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":5,"user_id":"113703200528116224701/google_oauth2","user_name":"Anitta limkilde-kjær","created_at":"2015-07-20T13:26:17.412Z","updated_at":"2015-07-20T13:26:17.504Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/113703200528116224701","api_profile_picture_url":"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"k+27H4sgdGtg3AeWCRfjO7GwZJasfL3OuXu7TNCT70Q=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.499Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  Friend Load (0.5ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'KNxbyUP8nyAwEvXnpN0s' LIMIT 1
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'ReUgUJtcIjfJV4b1La3z' LIMIT 1
+   (0.1ms)  BEGIN
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'KNxbyUP8nyAwEvXnpN0s' LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_receiver` = '113703200528116224701/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '113703200528116224701/google_oauth2' AND `friends`.`user_id_giver` = '117126429320850988781/google_oauth2') LIMIT 1
+  SQL (5.5ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('7WdhzIF95Gwb1E9Q5Zg/PjpjcnlwdF9rZWVwZXI6xe02mPe6qxFzsn/CJbCO\nRA==\n', NULL, '2015-07-20 13:26:17', 'KNxbyUP8nyAwEvXnpN0s', '2015-07-20 13:26:17', '117126429320850988781/google_oauth2', '113703200528116224701/google_oauth2')
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'ReUgUJtcIjfJV4b1La3z' LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '113703200528116224701/google_oauth2' AND `friends`.`user_id_receiver` = '117126429320850988781/google_oauth2') LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_giver` = '113703200528116224701/google_oauth2') LIMIT 1
+  SQL (0.5ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('Eg7g/UaVbzrXxGrV9rFUZjpjcnlwdF9rZWVwZXI6exiEXhbdn4TE3MY2UTxI\n7uovj8h5G3eSRYQ+3+SwvgGsfqZg4Ad49Rbqz5raMoF2\n', NULL, '2015-07-20 13:26:17', 'ReUgUJtcIjfJV4b1La3z', '2015-07-20 13:26:17', '113703200528116224701/google_oauth2', '117126429320850988781/google_oauth2')
+   (4.4ms)  COMMIT
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE (sha256 = 'MMNMzeoBX/kEGTAXfPAlM18B908lUmKrDgRDQbxs7gU=' and id <> 6) ORDER BY `users`.`id` ASC LIMIT 1
+   (0.2ms)  BEGIN
+  User Exists (0.5ms)  SELECT 1 AS one FROM `users` WHERE (`users`.`sha256` = BINARY 'MMNMzeoBX/kEGTAXfPAlM18B908lUmKrDgRDQbxs7gU=' AND `users`.`id` != 6) LIMIT 1
+  SQL (0.5ms)  UPDATE `users` SET `sha256` = 'MMNMzeoBX/kEGTAXfPAlM18B908lUmKrDgRDQbxs7gU=', `sha256_updated_at` = '2015-07-20 13:26:17', `updated_at` = '2015-07-20 13:26:17', `user_name` = 'oKrYe1m0KxqNuvWgISjlszpjcnlwdF9rZWVwZXI6I8GzPG4LJEP2bFc6FCw5\nHvVAsAIp83N3keX358gHlpQDEI6Eya9X7cvgBPqCi150\n', `currency` = NULL, `balance` = NULL, `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = 'tw9aDkL97PYAXo66kuK46zpjcnlwdF9rZWVwZXI6iQdSPXEAyk9k9wpqPVPW\ndSob1xBrblybjU7TNwz9g3Fyu00XwHZYZJ4ok1abKVdDY73sLunqSkxcsjY3\nkTSYOBJ6BhsXv8FNh+wf2FTu4zw=\n', `api_profile_picture_url` = 'IhMu/K3kkolPd8ZlZlp/yTpjcnlwdF9rZWVwZXI67MMDlGRHN4ZiM1jrqXs/\ndKZY3ZMJsqElCXAaz0FVAGmLwX/4UmnN1uzATTUwMheN7aQj78f7OpkcB+XT\n7fZT7QIoweyB7qb0g7P8yE5geSfK1KtkdmEgj34pd92xC4O+Gjqij6/9v3g1\n4VVwlB1Fr9DMLiza/LVHuL1iglztGWE=\n' WHERE `users`.`id` = 6
+   (3.2ms)  COMMIT
+  Ping Load (0.3ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`server_id` IS NULL
+  SQL (0.5ms)  UPDATE `users` SET `users`.`friend_sha256_updated_at` = '2015-07-20 13:26:17' WHERE `users`.`user_id` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` = '102648158892233211696/google_oauth2' AND `friends`.`user_id_receiver` IN ('1705481075/facebook') AND `friends`.`user_id_receiver` IN (SELECT user_id FROM `server_users` WHERE (verified_at is not null)))
+  SQL (0.8ms)  UPDATE `users` SET `users`.`friend_sha256_updated_at` = '2015-07-20 13:26:17' WHERE `users`.`user_id` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` = '102648158892233211696/google_oauth2') AND `friends`.`user_id_receiver` IN ('1705481075/facebook') AND `friends`.`user_id_receiver` IN (SELECT user_id FROM `server_users` WHERE (verified_at is not null)))
+  ServerUser Load (0.4ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` = 6 AND (verified_at is not null) ORDER BY `server_users`.server_id ASC
+
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash:
+friend_user =
+  {"id":6,"user_id":"102648158892233211696/google_oauth2","user_name":"Annastasia Damgaard Jespersen","created_at":"2015-07-20T13:26:17.441Z","updated_at":"2015-07-20T13:26:17.588Z",
+   "currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/102648158892233211696",
+   "api_profile_picture_url":"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,
+   "deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,
+   "sha256":"MMNMzeoBX/kEGTAXfPAlM18B908lUmKrDgRDQbxs7gU=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.585Z","friend_sha256_updated_at":null,
+   "remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'gvWDLK0FzNnx4FoKB7zt' LIMIT 1
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'QlaJz8o2MX0tbanvKQN5' LIMIT 1
+   (0.1ms)  BEGIN
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'gvWDLK0FzNnx4FoKB7zt' LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_receiver` = '102648158892233211696/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '102648158892233211696/google_oauth2' AND `friends`.`user_id_giver` = '117126429320850988781/google_oauth2') LIMIT 1
+  SQL (0.8ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('LVRhRbKeAWgWmU0huxKaDjpjcnlwdF9rZWVwZXI6HNqKYK3pUoHqUXpdDgMs\nwA==\n', NULL, '2015-07-20 13:26:17', 'gvWDLK0FzNnx4FoKB7zt', '2015-07-20 13:26:17', '117126429320850988781/google_oauth2', '102648158892233211696/google_oauth2')
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'QlaJz8o2MX0tbanvKQN5' LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '102648158892233211696/google_oauth2' AND `friends`.`user_id_receiver` = '117126429320850988781/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_giver` = '102648158892233211696/google_oauth2') LIMIT 1
+  SQL (0.4ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('rOH0lX9na3Oag/Vqt9DsNjpjcnlwdF9rZWVwZXI676ZK1PY9ScvAsB+VRurG\nem+7lO5CvzcIIEgk2N9/nRs=\n', NULL, '2015-07-20 13:26:17', 'QlaJz8o2MX0tbanvKQN5', '2015-07-20 13:26:17', '102648158892233211696/google_oauth2', '117126429320850988781/google_oauth2')
+   (6.0ms)  COMMIT
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (0.4ms)  SELECT `users`.* FROM `users` WHERE (sha256 = 'ygsGE82sgcjLZuGA4qdCGvJfRVHD4FPW3WQhZyKN+lY=' and id <> 7) ORDER BY `users`.`id` ASC LIMIT 1
+   (0.3ms)  BEGIN
+  User Exists (0.5ms)  SELECT 1 AS one FROM `users` WHERE (`users`.`sha256` = BINARY 'ygsGE82sgcjLZuGA4qdCGvJfRVHD4FPW3WQhZyKN+lY=' AND `users`.`id` != 7) LIMIT 1
+  SQL (3.7ms)  UPDATE `users` SET `sha256` = 'ygsGE82sgcjLZuGA4qdCGvJfRVHD4FPW3WQhZyKN+lY=', `sha256_updated_at` = '2015-07-20 13:26:17', `updated_at` = '2015-07-20 13:26:17', `user_name` = '8oaiuAxARIhLRj9cxYUrsDpjcnlwdF9rZWVwZXI6bAIc1rfZo4aUOnCfeupU\n+BZcCb+z9drceW53Lhlu3C/9X8utvxRGi+k0iZ8carCQ\n', `currency` = NULL, `balance` = NULL, `no_api_friends` = NULL, `negative_interest` = NULL, `api_profile_url` = 'Nwa82qFPIZWBeReK80HdnzpjcnlwdF9rZWVwZXI6QmZf3wymR5ZcDAORdsCy\ncFtqr1VWik2zBfF/ZfQv+W9woF3v+v7E2oBxTfD8bCRsGWncAwScuIfhr2cy\nduoaNw==\n', `api_profile_picture_url` = '/q0W5KGBMozlxCVtcQWlnzpjcnlwdF9rZWVwZXI6AwnYO0AXd0AO2TZqoZeR\nsifOFhoRBd3iccQDkU2iR8gGQ/c6nM+ifrUbP8RXkUj0aZX6Yt6hj4LtwE8P\nU6CRSazszD9sB5jXp3ZrrU+nlb7+In0WUsgTliutJ8PY/q9p9zZhqukXeTpv\nAJI78KMldGo9D4xT7grN4yGZerRJRw0=\n' WHERE `users`.`id` = 7
+   (4.1ms)  COMMIT
+  Ping Load (0.2ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`server_id` IS NULL
+  SQL (0.6ms)  UPDATE `users` SET `users`.`friend_sha256_updated_at` = '2015-07-20 13:26:17' WHERE `users`.`user_id` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` = '117657151428689087350/google_oauth2' AND `friends`.`user_id_receiver` IN ('1705481075/facebook') AND `friends`.`user_id_receiver` IN (SELECT user_id FROM `server_users` WHERE (verified_at is not null)))
+  SQL (0.8ms)  UPDATE `users` SET `users`.`friend_sha256_updated_at` = '2015-07-20 13:26:17' WHERE `users`.`user_id` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` IN (SELECT user_id_receiver FROM `friends` WHERE `friends`.`user_id_giver` = '117657151428689087350/google_oauth2') AND `friends`.`user_id_receiver` IN ('1705481075/facebook') AND `friends`.`user_id_receiver` IN (SELECT user_id FROM `server_users` WHERE (verified_at is not null)))
+  ServerUser Load (0.5ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` = 7 AND (verified_at is not null) ORDER BY `server_users`.server_id ASC
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":7,"user_id":"117657151428689087350/google_oauth2","user_name":"Jan Roslind","created_at":"2015-07-20T13:26:17.468Z","updated_at":"2015-07-20T13:26:17.648Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/+JanRoslind","api_profile_picture_url":"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"ygsGE82sgcjLZuGA4qdCGvJfRVHD4FPW3WQhZyKN+lY=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.645Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  Friend Load (0.5ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'NNj4Iu4SqvqO5m8FcfLS' LIMIT 1
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE `friends`.`friend_id` = 'LIOuDTYWfjIpWGrx8lqw' LIMIT 1
+   (0.1ms)  BEGIN
+  Friend Exists (0.6ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'NNj4Iu4SqvqO5m8FcfLS' LIMIT 1
+  Friend Exists (0.5ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_receiver` = '117657151428689087350/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '117657151428689087350/google_oauth2' AND `friends`.`user_id_giver` = '117126429320850988781/google_oauth2') LIMIT 1
+  SQL (0.9ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('37PWDbS5rdPUWl1FrzigTzpjcnlwdF9rZWVwZXI6IJSyVmgx6beXI8H1ex+v\nYczFjTtxwdgip3x6rFesu+o=\n', NULL, '2015-07-20 13:26:17', 'NNj4Iu4SqvqO5m8FcfLS', '2015-07-20 13:26:17', '117126429320850988781/google_oauth2', '117657151428689087350/google_oauth2')
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE `friends`.`friend_id` = BINARY 'LIOuDTYWfjIpWGrx8lqw' LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_giver` = BINARY '117657151428689087350/google_oauth2' AND `friends`.`user_id_receiver` = '117126429320850988781/google_oauth2') LIMIT 1
+  Friend Exists (0.4ms)  SELECT 1 AS one FROM `friends` WHERE (`friends`.`user_id_receiver` = BINARY '117126429320850988781/google_oauth2' AND `friends`.`user_id_giver` = '117657151428689087350/google_oauth2') LIMIT 1
+  SQL (0.3ms)  INSERT INTO `friends` (`api_friend`, `app_friend`, `created_at`, `friend_id`, `updated_at`, `user_id_giver`, `user_id_receiver`) VALUES ('a4hlMXMrH3HrujN3yYH0nDpjcnlwdF9rZWVwZXI6OIdYPZe8/ejXELgohUjs\n6ur3clQt7n0X4aOJsSSm4nY=\n', NULL, '2015-07-20 13:26:17', 'LIOuDTYWfjIpWGrx8lqw', '2015-07-20 13:26:17', '117657151428689087350/google_oauth2', '117126429320850988781/google_oauth2')
+   (3.5ms)  COMMIT
+update_api_friends_from_hash: old_friends.size = 0, new_friends.size = 3, new_user = true
+post_login_update_friends: debug 8: key =  (NilClass)
+generic_post_login: friends_hash = {"113703200528116224701/google_oauth2"=>{:name=>"Anitta limkilde-kjær", :api_profile_url=>"https://plus.google.com/113703200528116224701", :api_profile_picture_url=>"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50"}, "102648158892233211696/google_oauth2"=>{:name=>"Annastasia Damgaard Jespersen", :api_profile_url=>"https://plus.google.com/102648158892233211696", :api_profile_picture_url=>"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50"}, "117657151428689087350/google_oauth2"=>{:name=>"Jan Roslind", :api_profile_url=>"https://plus.google.com/+JanRoslind", :api_profile_picture_url=>"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50"}}
+  Friend Load (0.4ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('117126429320850988781/google_oauth2'))
+  CACHE (0.0ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('117126429320850988781/google_oauth2'))
+  SystemParameter Load (0.4ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE (name = 'secret' and updated_at > '2015-07-20 13:23:17') ORDER BY `system_parameters`.`id` ASC LIMIT 1
+  User Load (0.5ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('117126429320850988781/google_oauth2', '102648158892233211696/google_oauth2', '113703200528116224701/google_oauth2', '117657151428689087350/google_oauth2')
+  ServerUser Load (0.3ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` IN (4, 5, 6, 7)
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  UPDATE `users` SET `no_api_friends` = 'DUJbniVdzDnX1/PIK92uyjpjcnlwdF9rZWVwZXI6ZClTMAvvO3/t0A156IOW\nwDQXWlMWdc9AMvO/T/d4daw=\n', `updated_at` = '2015-07-20 13:26:17', `user_name` = 'XfbKTJIk+9L5nhrlsnbgtjpjcnlwdF9rZWVwZXI6Mlg+mEOLG3ebJJtERRMg\nAIQpDq+5boOZE6jqlTaPs5jbvwAWi7w9BcvlplaM165l\n', `currency` = 'U04b2AZCG4GdUuJ+y2DwODpjcnlwdF9rZWVwZXI6cgqP0X+7iCLX1kN/VVmF\nrqZ2XVh8YvwyIsuaG8nSwlo=\n', `balance` = 'LDgBugQb49NiLH+/6MhAOjpjcnlwdF9rZWVwZXI6NH7nWpeT6MpmrRIJuGwd\nbsIBonpBbM+MHZjHoPnPms943r7Y0OhAjgB9Wy13TAop\n', `negative_interest` = NULL, `api_profile_url` = NULL, `api_profile_picture_url` = 'JSJYlNMBr+QF7jgLXocV/jpjcnlwdF9rZWVwZXI6YDn2EjINRfRaZupS3Hwr\n6Gk9y0/iyytaDXIdM+Tc3RIvEoU2dibG3S7hDL0FWKc3JyNiFlg4zyqAYZc/\nEjyc2lFhR0PkBh11VkqLxN9R9KaK2Sale6CPE+Tr6wJokh6wzHZJCNj5ef8j\nhjXsFGHFxuZiJ3LOaQAzrsmhbqE0P9Y=\n' WHERE `users`.`id` = 4
+   (3.4ms)  COMMIT
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (0.3ms)  DELETE FROM `tasks` WHERE `tasks`.`id` = 10
+   (3.8ms)  COMMIT
+logged_in?: login_user_ids.class = Array
+block in do_tasks:
+...
+do_tasks: @errors.size = 1
+  Flash Load (1.1ms)  SELECT `flashes`.* FROM `flashes` WHERE `flashes`.`id` = 7 LIMIT 1
+flash_id = 7
+  CACHE (0.0ms)  SELECT `flashes`.* FROM `flashes` WHERE `flashes`.`id` = 7 LIMIT 1
+   (0.2ms)  BEGIN
+  SQL (0.5ms)  DELETE FROM `flashes` WHERE `flashes`.`id` = 7
+   (3.4ms)  COMMIT
+
+get_flash: message = google+ log in ok. Welcome to Gofreerev. Your friends list is being downloaded and will be ready for use in a few moments.
+
+   (0.2ms)  BEGIN
+  SQL (0.7ms)  INSERT INTO `flashes` (`created_at`, `message`, `updated_at`) VALUES ('2015-07-20 13:27:06', '
+
+  google+ log in ok. Welcome to Gofreerev. Your friends list is being downloaded and will be ready for use in a few moments.<br>
+  Your friend list is ready. Please refresh page to see any posts from your friends.',
+
+  '2015-07-20 13:27:06')
+   (3.6ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.1ms)  UPDATE `sessions` SET `flash_id` = 'nOYK0fxMhasc2r348Pn3MjpjcnlwdF9rZWVwZXI60bJmHe2eVfzi93g49fm0\nQS9wAX0FHrSlNsf3lveb5HQ=\n', `updated_at` = '2015-07-20 13:27:06', `created` = NULL, `expires_at` = '1ojN85zK0ISdYs5Nbc/5mzpjcnlwdF9rZWVwZXI6zyNwxndXAKXpsJI8VBT4\nHk+/+WYKM5xr1xhyz/GMIU5H6cWjKm39q54q8SlIiPSBpjfShGDaNphJA6Sg\nc1dIYw==\n', `language` = 'DpAzUUTB/wCJh0HRHZiofTpjcnlwdF9rZWVwZXI6RYBEQWCuMk9j90To52Fz\n+IL+1aQaAO8s0WzTuTCr6QM=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'ManWlbBEI1h09fhq2tBkozpjcnlwdF9rZWVwZXI67tWRmtdazZ7aohjRxYE5\nS1nXJ4OkpNFUUytEtzbXOBU=\n', `state` = NULL, `tokens` = 'DTy8Bn3zYKjQYVHI8prsPDpjcnlwdF9rZWVwZXI6z8I24Viu7DqZBhEsefOc\nf0atC8K+JlygJWYuMYBA9c59h41WAwkx4VAsTYq42YH/\n', `user_ids` = 'shFWFrnmdsEnD1eYNxyAsTpjcnlwdF9rZWVwZXI6GSVvaYTDj4FnldGvxk7F\ne/pssaBMZycww1hjzpA91FoqzWKph+yXdUUFJgbFlnKheWgOPpi8rtmssZqa\n69gLuSIxc6ciyGWJmGY02jSNFP8=\n', `did` = '0ZPAwE5mUhHbIZQLDRvPlzpjcnlwdF9rZWVwZXI6s2U9448i6ejCxLJ0oebI\np3B1ElE8sLVf8M26PTRM2WgF7mcEtA/z3Nb6DPwrfMvT\n', `client_timestamp` = 'zcRjLD9a002jyJtNtBfwXDpjcnlwdF9rZWVwZXI6cYpqCmNizA7D3ztH0B4G\nSS76cISfXm82IqNOEgZAoxI=\n', `client_secret` = 'TPh2mt61WISEn8GWVx3aMjpjcnlwdF9rZWVwZXI6PpN/SWQ3Gzl4IakL7iM0\nywTTzliyIv59wrE0+Y1j6213m7gO7GV4dTacQVKXc3f4\n', `sha256` = 'Gs0vl0aTmFh4Ifpg71x8zTpjcnlwdF9rZWVwZXI6uO6DIOw20Qy/WPQZj+Ng\nWMlKxXTqT+pRb74Lj1BCN6+NJCf4O/BlsmhqwKrH8sYa3QvTmC4omz/cciQw\nkTZf81s9mYy8irVbZBPyHpLmnyS9FUpkVj2xeF/DU0d2qKmb\n' WHERE `sessions`.`id` = 369
+   (3.3ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (0.4ms)  DELETE FROM `flashes` WHERE `flashes`.`id` = 8
+   (3.1ms)  COMMIT
+   (0.1ms)  BEGIN
+  SQL (0.5ms)  UPDATE `sessions` SET `flash_id` = NULL, `updated_at` = '2015-07-20 13:27:06', `created` = NULL, `expires_at` = 'PHE8ewyZ8TvNUK3YmAK0YjpjcnlwdF9rZWVwZXI61XNowDtAtPmWQBH9rR+e\n/2ICQhh3uhIFARxE/YcJggDpJJs2ajdCpqk8eaQhQqoOGLnO1j28e/6XZPiY\nTINbiQ==\n', `language` = 'J6+FMMlhVJ5a2A4Rsr6B+jpjcnlwdF9rZWVwZXI6tdUdGYTOniRguHPD5GC6\nI1t3FANOoLp4zKb8JbjGpLk=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'SO9nfXj97f5T3S6SmVG/KzpjcnlwdF9rZWVwZXI6xKcrrlv+c+Sg0I2hSSW6\njZ0M4XdDX3Oia+CCCyejqHc=\n', `state` = NULL, `tokens` = 'Ro15+ZuC532uMn2uoCHBkzpjcnlwdF9rZWVwZXI6a0NrD9l7ufJG5fezJ0Yl\nINzM0bSIpljK99LuVKHVUOjwd3HhyQ9vEHph19rFAcxj\n', `user_ids` = 'm8GjAPMmnzIADQK55Nq8YjpjcnlwdF9rZWVwZXI6/Wcyjg43RLM2xIPP0zFx\njk6YRLSNz3Zog9gQQlV5NDFz1RvvQ4pJgsbREgPc4iagZalpRXvbc4QNGwre\nzrCgFq1/B+rWYmepjMOTB5cISBQ=\n', `did` = 'ws0duePTg4EuKiHQm3d31jpjcnlwdF9rZWVwZXI6hu0nKbr0FPO5cm4HkyVh\nr74l0zyLaZKLbWXor56b2PKOw3BFqIy+FZRWxKxtbHeV\n', `client_timestamp` = 'ES2qiCRZUcWlhCmKgq3szjpjcnlwdF9rZWVwZXI6XM0cxUUcq9ZuS0mKrLH1\nE1/1fmqw2w5CFcFVMp/3/A0=\n', `client_secret` = 'u0IASl0KGybEGM+tL3VGtTpjcnlwdF9rZWVwZXI68H5Khn27BpYXAJZC3zbe\naLtzDQc83Z+IElLBx1kNY1PAwxfHHsYs+dEkedWyTME6\n', `sha256` = 'EYTh2wlJd5bXU4D6cEOr8DpjcnlwdF9rZWVwZXI6wsoIKgurCvYxu+jhrJDE\npT0PLfpqFOwWXnPn91J9X/bwc5v/iqlyCpKuOV21wPVmu11cFi3Pz+Yk1iJc\nvBY/lvlx1VlRSBELHNCbBp5iZ7y4/huHdAYNsYBcPduek+sN\n' WHERE `sessions`.`id` = 369
+   (4.3ms)  COMMIT
+Completed 200 OK in 52776ms (Views: 1.6ms | ActiveRecord: 349.2ms)
+
+
+
+issue 3: client ping without oauth array. note that previous do_tasks request took 53 seconds (fetch exchange rates from google money bank)
+
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-07-20 15:27:06 +0200
+Processing by UtilController#ping as JSON
+  Parameters: {"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398774808, "util"=>{"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398774808}}
+get_client_userid: session[:client_userid] = 1
+validate_json_request: params = {"client_userid":1,"sid":"14373987558783670635","client_timestamp":1437398774808,"controller":"util","action":"ping","format":"json","util":{"client_userid":1,"sid":"14373987558783670635","client_timestamp":1437398774808}}
+validate_json_request: ping_request = {"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398774808}
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.6ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+ping: server = false
+get_client_userid: session[:client_userid] = 1
+   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE `pings`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14373987558783670635'
+  Ping Load (0.4ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14373987558783670635' ORDER BY `pings`.`last_ping_at` DESC LIMIT 1
+  Sequence Load (0.6ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_ping_cycle' LIMIT 1
+   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE (last_ping_at >= 1437398822.6950002 and server_id is null)
+ping: session.did = ping.did = 14372933747316727668
+ping: get_session_value(:did) = 14372933747316727668
+check_expired_tokens: context = ping, refresh_tokens = []
+check_expired_tokens: client_timestamp = 1437398774, server_timestamp = 1437398826, timestamp_dif = 52, now = 1437398774
+ping: avg5 = 0.7, MAX_AVG_LOAD = 1.6
+ping: old server ping interval = 2000, new server ping interval = 2000
+ping: no_active_sessions = 1, avg_ping_interval = 2.0
+   (0.2ms)  BEGIN
+  SQL (11.3ms)  UPDATE `sessions` SET `client_timestamp` = 'PGqOa78jtilLFTi7VxTvJTpjcnlwdF9rZWVwZXI6H8I1S4YdoNfNkCRvGwl5\nMfi4tAGU0P42dxs58pyuE/Q=\n', `updated_at` = '2015-07-20 13:27:06', `created` = NULL, `expires_at` = 'beG9EYTwvaYTIekTg/DltTpjcnlwdF9rZWVwZXI6bnw3mgVQxMxhB6qm3GqP\nhrKwNbmMLA/7G50v+h3AJt0OpWCMzvILfg63t6L5Wc2J2tKQVz9gL8HFH2cF\n9OoeTQ==\n', `flash_id` = NULL, `language` = 'AcJFXR1/CtzwNpAerbxO8jpjcnlwdF9rZWVwZXI6aPDxoEdWxC5TvRhux1pr\nerISkbnSWilDzJNGXG3G0z0=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'kCzQcmrGVjf3LOJ/MvFJPTpjcnlwdF9rZWVwZXI6IKlc4hpWqs4tS9LfEHJB\n2QEeDmmkWAAYRPVaoN3u5WM=\n', `state` = NULL, `tokens` = '8OLkGVVm+20p/aBvzByHCDpjcnlwdF9rZWVwZXI6qctB/NI5l9IPPZb2lQzF\nxKymP2lV2Etsgj9rhSNC80mjemscp/l4+wkLXe8eeoK/\n', `user_ids` = 'cMvIwMwz/1b86aWuMepF5jpjcnlwdF9rZWVwZXI6IfXaRYhzAwQSu7g95kqr\n/Q8SuFPGURaYv3Hu45MrpZLQD+MYrv+n9hd5QkXowAKYPAwLgYGEjQcK150m\nBV/vANaajg7jsg5umafDgJpN0Vs=\n', `did` = 'ueHlJ8cmpZb1awdgLqSmvDpjcnlwdF9rZWVwZXI69fINBhP94xdOq+lSgvSz\n5Sne2yCxheexbEJ61QWvwCywSsJmZP3IXQ+fgSw4xnlw\n', `client_secret` = '2GrxaK7vXW+NfUkdjLX0AzpjcnlwdF9rZWVwZXI6TkP0StAWa6gS/Wklp3gu\nzXSrrscqI2pc8XuQwI9Dv4kVq9u6Xn4YEObj/46EgJnV\n', `sha256` = 'F8LKthoLNsEWbzFZA3kf5DpjcnlwdF9rZWVwZXI6Bb5WdX8Hc/kd3dBgVaLu\ndQDsIrXSZ5QX7ebWGQ23e4cGEjuVR93aZ/xMsDKmFlppkR7271pTuEE2iwWR\nMEiNfNDomxPFyDQ4y9IJekztZTo2hjzBSvsW1neu6NS0DyKy\n' WHERE `sessions`.`id` = 369
+   (3.8ms)  COMMIT
+  Ping Load (0.8ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 235 and last_ping_at < 1437398826.6950002 and last_ping_at > 1437398822.7248647 and server_id is null) ORDER BY last_ping_at desc LIMIT 1
+ping: no previous ping was found
+  Ping Load (0.5ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 235 and next_ping_at > 1437398826.6950002 and server_id is null) ORDER BY next_ping_at LIMIT 1
+ping: next ping was not found
+ping: next_ping_interval = 2.0
+ping: avg_ping_interval = 2.0
+   (0.2ms)  BEGIN
+  SQL (1.4ms)  UPDATE `pings` SET `user_ids` = '---\n- 1705481075/facebook\n- 117126429320850988781/google_oauth2\n', `sha256` = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=', `last_ping_at` = 1437398826.695, `next_ping_at` = 1437398828.695 WHERE `pings`.`id` = 235
+   (9.7ms)  COMMIT
+ping: old client timestamp = 1437398759641, new client timestamp = 1437398774808, dif = 15167
+ping: previous_ping_interval = 2.0, next_ping_interval = 2.0, avg_ping_interval2 = 2.0, adjust_this_ping = 0.0
+   (0.6ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '719144aad2dbb45e68333dd0662e9b47' or client_userid <> 1) and (server_id is null and last_ping_at > 1437398822.7431037 or server_id is not null and last_ping_at > 1437398766.743189))
+  CACHE (0.0ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '719144aad2dbb45e68333dd0662e9b47' or client_userid <> 1) and (server_id is null and last_ping_at > 1437398822.7431037 or server_id is not null and last_ping_at > 1437398766.743189))
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (0.7ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('1705481075/facebook', '117126429320850988781/google_oauth2')
+ping: last_short_friends_list_at = 2015-07-20 13:25:57 UTC, sha256_values_changed = false
+ping: remote_sha256_values_changed.size = 0
+ping: delete_gifts =  (NilClass)
+delete_gifts: delete_gifts = null
+delete_gifts: login_user_ids = ["1705481075/facebook","117126429320850988781/google_oauth2"]
+ping: new_servers =  (NilClass)
+ping: verify_gifts =  (NilClass)
+verify_gifts: verify_gifts = null
+verify_gifts: login_user_ids = ["1705481075/facebook","117126429320850988781/google_oauth2"]
+   (0.5ms)  SELECT COUNT(*) FROM `verify_gifts` WHERE (client_sid = '14373987558783670635' and client_sha256 = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' and verified_at_server is not null)
+ping: verify_comments =  (NilClass)
+verify_comments: verify_comments = null
+verify_comments: login_user_ids = ["1705481075/facebook","117126429320850988781/google_oauth2"]
+   (0.5ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14373987558783670635' and client_sha256 = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' and verified_at_server is not null)
+messages: sender_did    = 14372933747316727668
+messages: sender_sha256 = BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=
+messages: messages      =
+receive_messages: sender_did    = 14372933747316727668
+receive_messages: sender_sha256 = BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=
+receive_messages: messages      =
+  SystemParameter Load (1.6ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'old_dids' LIMIT 1
+receive_messages: did = 14366853232389007817, old_dids = 14323002456762964119, 14323046623583097069, 14324491152048728746, 14329677479616292037, 14333968284869392914, 14335744436084762727, 14339440336843414352, 14340895883432562769, 14342666491643786817, 14345125975258691064, 14350406253068638241, 14352445506185467182, 14364260034717664832, 14366027023797562526
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  Message Load (0.2ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14366853232389007817' AND `messages`.`server` = 1 ORDER BY `messages`.created_at ASC
+send_messages: sender_did    = 14372933747316727668
+send_messages: sender_sha256 = BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=
+  Message Load (0.5ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14372933747316727668' AND `messages`.`to_sha256` = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' AND `messages`.`server` = 0 ORDER BY created_at, encryption desc
+  SQL (0.4ms)  DELETE FROM `messages` WHERE `messages`.`to_did` = '14372933747316727668' AND `messages`.`to_sha256` = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' AND `messages`.`server` = 0
+messages: output_messages =
+ping: @json = {:old_client_timestamp=>1437398759641, :interval=>2000}
+Completed 200 OK in 130ms (Views: 0.2ms | ActiveRecord: 35.8ms)
+
+
+issue 3: client ping with oauth array
+
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-07-20 15:27:09 +0200
+Processing by UtilController#ping as JSON
+  Parameters: {"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398828993, "oauths"=>[{"user_id"=>"117126429320850988781/google_oauth2", "token"=>"ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx", "expires_at"=>1437402368, "refresh_token"=>"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4", "provider"=>"google_oauth2"}], "util"=>{"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398828993, "oauths"=>[{"user_id"=>"117126429320850988781/google_oauth2", "token"=>"ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx", "expires_at"=>1437402368, "refresh_token"=>"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4", "provider"=>"google_oauth2"}]}}
+get_client_userid: session[:client_userid] = 1
+validate_json_request: params = {"client_userid":1,"sid":"14373987558783670635","client_timestamp":1437398828993,"oauths":[{"user_id":"117126429320850988781/google_oauth2","token":"ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx","expires_at":1437402368,"refresh_token":"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4","provider":"google_oauth2"}],"controller":"util","action":"ping","format":"json","util":{"client_userid":1,"sid":"14373987558783670635","client_timestamp":1437398828993,"oauths":[{"user_id":"117126429320850988781/google_oauth2","token":"ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx","expires_at":1437402368,"refresh_token":"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4","provider":"google_oauth2"}]}}
+validate_json_request: ping_request = {"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398828993, "oauths"=>[{"user_id"=>"117126429320850988781/google_oauth2", "token"=>"ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx", "expires_at"=>1437402368, "refresh_token"=>"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4", "provider"=>"google_oauth2"}]}
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.7ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+ping: server = false
+get_client_userid: session[:client_userid] = 1
+   (0.8ms)  SELECT COUNT(*) FROM `pings` WHERE `pings`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14373987558783670635'
+  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14373987558783670635' ORDER BY `pings`.`last_ping_at` DESC LIMIT 1
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_ping_cycle' LIMIT 1
+   (0.6ms)  SELECT COUNT(*) FROM `pings` WHERE (last_ping_at >= 1437398825.1020002 and server_id is null)
+ping: session.did = ping.did = 14372933747316727668
+ping: get_session_value(:did) = 14372933747316727668
+ping: avg5 = 0.69, MAX_AVG_LOAD = 1.6
+ping: old server ping interval = 2000, new server ping interval = 2000
+ping: no_active_sessions = 1, avg_ping_interval = 2.0
+   (0.2ms)  BEGIN
+  SQL (0.7ms)  UPDATE `sessions` SET `client_timestamp` = 'uugBYzihQ21tBH59GAYLEzpjcnlwdF9rZWVwZXI6VYlHGcGnyns+7LXMCQ8B\nNIBt6VIaoWHGx6x2tzgOosY=\n', `updated_at` = '2015-07-20 13:27:09', `created` = NULL, `expires_at` = 'OocCVq84C0J73yNXv0W97TpjcnlwdF9rZWVwZXI66Sv8RCnTAAMW4pxwfjxh\nxv2lLOnzNPnPgidMOV1Vp58UhMp3jEKE7vd7oUqH3vXQVvErNlqh85iIZCAF\nLF4g8Q==\n', `flash_id` = NULL, `language` = '6Aa3X6zyxKgnVKh9xO87YzpjcnlwdF9rZWVwZXI6b7DncAl3T5Ls9Y3c0rvn\nIR7jo5Jo3nfSYa9RH456ifU=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'EqIuon8WdleDa0wYCYO5OTpjcnlwdF9rZWVwZXI6gR39qsUp7+MWT3/N27yE\nUvwATnownMSFWR79k7h7abs=\n', `state` = NULL, `tokens` = 'ZG3INL0XdUWZgUs8gQV74DpjcnlwdF9rZWVwZXI6kPZMLk9FPJjK5T5WWJSY\njIqQVVbjauZqWZLTpfE7jFt8jBsJDrjjEQofpcVLog/1\n', `user_ids` = 'ilCpkH7AwiazoPvDvUfptzpjcnlwdF9rZWVwZXI6iqTf7vsY0lDY8R/qFpF+\nKBVh1zf04vSugtLXV9YZW/w4nfeikSgIqB7hpQo6Iw074Ht7qCKxIVJqMy0j\nawvhyyW10jjHm75/oYFy+mODVM4=\n', `did` = '4sbV2N4hpicN8e26zNl0YDpjcnlwdF9rZWVwZXI6inG2SB7VrnjgO75LDb1a\nDVP+/sBcN7/nt6zMpO0HsF/v7n/rXQ5FmTDl45+z2JET\n', `client_secret` = '6i6DOVw4pCASaZHgqLLBSjpjcnlwdF9rZWVwZXI6fppg/+WsQVqcq9mdRf9i\nkmI5FCRMZbHFEhxii/UkM/jsLOiaYcI0iGHCjw6uIwEZ\n', `sha256` = 'BuKl9eLp0ps4ak3ZOIMZLTpjcnlwdF9rZWVwZXI6S4fzS8UtNhuPAbVcOZBT\nIc5b+0g84SSehh0jDNN4kSYykoVsC9klu65pQUO5Vj3tQgz8GN2pprjyv2fS\n7Tr3BncP+AXU6u6nSje5PYGBWtGq1qpLQ3KfJR7tDouiisTI\n' WHERE `sessions`.`id` = 369
+   (3.7ms)  COMMIT
+  Ping Load (1.0ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 235 and last_ping_at < 1437398829.1020002 and last_ping_at > 1437398825.1185453 and server_id is null) ORDER BY last_ping_at desc LIMIT 1
+ping: no previous ping was found
+  Ping Load (0.5ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 235 and next_ping_at > 1437398829.1020002 and server_id is null) ORDER BY next_ping_at LIMIT 1
+ping: next ping was not found
+ping: next_ping_interval = 2.0
+ping: avg_ping_interval = 2.0
+   (0.1ms)  BEGIN
+  SQL (0.6ms)  UPDATE `pings` SET `last_ping_at` = 1437398829.102, `next_ping_at` = 1437398831.102 WHERE `pings`.`id` = 235
+   (4.9ms)  COMMIT
+ping: old client timestamp = 1437398774808, new client timestamp = 1437398828993, dif = 54185
+ping: previous_ping_interval = 2.0, next_ping_interval = 2.0, avg_ping_interval2 = 2.0, adjust_this_ping = 0.0
+   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '719144aad2dbb45e68333dd0662e9b47' or client_userid <> 1) and (server_id is null and last_ping_at > 1437398825.1333714 or server_id is not null and last_ping_at > 1437398769.1334612))
+  CACHE (0.0ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '719144aad2dbb45e68333dd0662e9b47' or client_userid <> 1) and (server_id is null and last_ping_at > 1437398825.1333714 or server_id is not null and last_ping_at > 1437398769.1334612))
+ping: returning full friend list
+   (3.1ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `tokens` = 'jCRB2Jz94BRmvIiCPCLt2TpjcnlwdF9rZWVwZXI6Tan0EcqKKEWnKJ46YWk/\nqXB/WTqTGUj24rlqT65wjtuqDLMD3NI9sxnPTMYpH5bu0F27/KJKCoeiZzgY\n4LCnUOl13apJQPK3Vp5J3TjrdsJcWw++BnV2E30vNT50K3HIxMF0j24dhQ7J\nC1NM3jYwtfbukVXi1gLlKwolqnltDNg=\n', `updated_at` = '2015-07-20 13:27:09', `created` = NULL, `expires_at` = 'BGL1VpKoI2iBvGCoX/0lljpjcnlwdF9rZWVwZXI6aK4jL6AHOmEH8z5pP9oO\nKwm44509RbnY1H1zk74VRX/01/j/z5J8g7x3wwTPThDWy4Qek33imzYl1h2r\ncCIawQ==\n', `flash_id` = NULL, `language` = 'Ft05BKwVvgfGqUrI988j1zpjcnlwdF9rZWVwZXI677lcb5hoKQg4iN0b9Mow\nOCjEeRibntVlfCUGpF0WGgU=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'C39kwdFQTpp7QXiQUmY+pzpjcnlwdF9rZWVwZXI6O7wSyY46vTBYkJWSnyia\nJOcAscfuBz/kr0taxcAa3mI=\n', `state` = NULL, `user_ids` = 'EYaO08ZwjfEWKB7JWKzIKTpjcnlwdF9rZWVwZXI6CIrSvtotnX9WT0At7sBa\nLf12U52i8tDXhsJiQ/8bkFbMUd47C9oICDyhCat0FLKLgjjxfbj6r+5G7SZS\nf/ytIbx2+rTOIAfo3EaRGf/2H5w=\n', `did` = 'sTYtGVZQqbkZHwHJeRHnJzpjcnlwdF9rZWVwZXI6SnwZsnzw459BHExlGMUI\nAPHKRJVglyO5dFHHOdGEWvG2nT1YA/dHnVdQb+jIqpnG\n', `client_timestamp` = 'tML3592dV4WTP2ku035WQjpjcnlwdF9rZWVwZXI6SpimfO25mKsjZ4lXuiJ7\nERjNOoQshIa/Jhk4CzcyxDQ=\n', `client_secret` = 'z96ww+xfYqeaXI8Z/4qrXzpjcnlwdF9rZWVwZXI69GHq3YLmyHJf6EAJ2HlL\n9hgChECAWB2lIJNCYGtZLJO+SrjJi5rHuhj8d0q5x6en\n', `sha256` = 'YJivzKgf5TjtDmN9c+zYkTpjcnlwdF9rZWVwZXI6F2iIgnkv4be6ICZAlxmS\n5huyBv/GbOJdKG8wYqozQmgeJ7KX7rFyMT/jECFvXJJCxOdQc/190UpEPFbo\nxh9RDypj1wd628E9gRVls7tfjTdiDDRO8nrz2vOHxyFH9L19\n' WHERE `sessions`.`id` = 369
+   (3.9ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.5ms)  UPDATE `sessions` SET `refresh_tokens` = 'ETzHXQmmzxbTW46z4UcJHjpjcnlwdF9rZWVwZXI67H8+TGIZiRxglfOIcJ7+\nh2Jq0dEZDYkRW5lX7dgArtaudCkf7DaESi1NBMatiaKsfoYsTyH1m5/akwaq\nDx8xSmkHaeGYhEa2du+oC0NYKfRP+6XJTxX51feFjFMpfNBG\n', `updated_at` = '2015-07-20 13:27:09', `created` = NULL, `expires_at` = 'vORJvss0Ri7GBYZKeOe1/TpjcnlwdF9rZWVwZXI690WdsowSbT6pzJLuVQoX\n6OhwgM7VbD6K1rvTjV7RxW1tsBH7NVmz3/c8xqDJb1Tc685PIw1b5PdBXUTe\nLVkKwA==\n', `flash_id` = NULL, `language` = 'gshvQcIBSOa6Ups9xTmd0DpjcnlwdF9rZWVwZXI6SmXPxvN0ZHWHCwqbcRz+\nyF7kxBjrFkbZXlFuHlb81qw=\n', `last_row_at` = NULL, `last_row_id` = NULL, `state` = NULL, `tokens` = 'xny4PL/FVbVbvVPQTG0TJzpjcnlwdF9rZWVwZXI62nKPaepjdKg0M1HaLa8p\nXuw52+qliiNjoZlU3p4An57nGAoX5cSFcxB+8pGGYCTTleEovttEfj9hvPyw\ndmk+NaiEKdgEstjrqI++2PgEcfNl4NQou27//AAVNoC1acLMN8DyUNHNNAW5\nEi7hGQv5M4Ao9y8bCzX3pS69nlDWT1c=\n', `user_ids` = 'dP+ykA2r3U1P9gtlA05p9TpjcnlwdF9rZWVwZXI6G+OrxYRwngxBxeYeegxY\nfbPS5Ma3FSwx7xqHBJVN91gIND3AlfYmAqbXtCXWZ7QfoEW1Y0M625E/gbIh\nnrKXKn8EZ8G3OYE18nIu6QBWU7k=\n', `did` = 'vrge/nOynMA5VwQDHbUmPTpjcnlwdF9rZWVwZXI6SlQJ0nSA1zonhvibO/ID\nkjDk2+OYMSGoRVm25nzW0beMFVLnL37/XKCcdHXCkTKl\n', `client_timestamp` = 'cIvh/sm5V5NbuXe1rlpKBjpjcnlwdF9rZWVwZXI66DItD4LsEmbr5Vxvon2c\nD3SggqLc0L3Ew8kjNW15/7M=\n', `client_secret` = '2BDlra4gXiDvsYHxchIzRDpjcnlwdF9rZWVwZXI6zOQuAvrsKjpfSzxeI6Tm\n4EjBNmo1BwlOAJQMkM7dSOjJei2Xc5jSW7ZMvHL1dosC\n', `sha256` = 'sRBFyO6EEbkxShyWloC/ejpjcnlwdF9rZWVwZXI6OoYdS/jt09DhIfkBfnrt\nHztgOg/caZMX4XFRZRoWfS0/CEPxNZ/VCX9UiaVLtv+gdoaxAjwPc0U4KRXI\nJSKeeo9ynJZzK13/0FwuQxnyPq8NFP+6xDJoGuBkjbYuLew2\n' WHERE `sessions`.`id` = 369
+   (4.3ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.3ms)  UPDATE `sessions` SET `user_ids` = 'GAY1qUBBzReZjw36Xp02AjpjcnlwdF9rZWVwZXI6VnRbShnmaNJ7+8gRYtN7\nAYOX0xLl+gU/fEDUPYfn2noIL/ollJ/yQEseh6WpNeFIh4jJAs1a5INGjVDo\n/xFvIg==\n', `sha256` = 'zEneg4ODJZhOCev1hLr8ZzpjcnlwdF9rZWVwZXI6hmxGfptWmPAS0mcO4Me6\nwViBEZW0MY67iKEjmjdGjbPzMfJx6sBAGayH2pe0ptOAdfgN40QzSUb2pifq\n6ZMHiF5eHt8yhvxYyY4tDHJigRz6Yc1OyBxOwACWt717qmvv\n', `updated_at` = '2015-07-20 13:27:09', `created` = NULL, `expires_at` = 'k58aHewkjo2/fwbK0QLlYjpjcnlwdF9rZWVwZXI6o0udTZDaCLN04TLzyK66\n5v54mnKADYOZZs/mkz48fgOt4eyeqeMLN6fZc7T73lI959pHuEGFDtSYMHeY\nK3Yc2g==\n', `flash_id` = NULL, `language` = '7UL4fieMDrAz4pTVRSNQ3zpjcnlwdF9rZWVwZXI6tkhNqJOnPm7z/bRz0aSM\n2sUrWPIseEWJR7AGgU3YLDM=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'b3oxI61ZdzTon2yncCiNzTpjcnlwdF9rZWVwZXI6Hb5JDGLvwgK+M97DnpOC\nYJqprltFwWPhiNmmA47PRSFxNq7+a8BWI+YnR1xxA7DwV1WFOMiX/YFoWdRI\nzSxsFnn8o/ZYK8EgmFXsl8mkuBwmCOZZP7O6MrnJm7zpn/19\n', `state` = NULL, `tokens` = 'nTZisrLv2jKr77Nqt/jdaDpjcnlwdF9rZWVwZXI60qOhHA183Z8ityJURaq1\nL+E8RPKRcpulptGyEjcykDxp7fWML8aILqPWew0O47U9sK+0cvC2CdvU0NYX\nMDw5ZyONy14bg1HHzxLUfk695dFffYufca0L1DWr4fRsx6UhVqYW4P6Dx88E\nqW5SPzkeQdjD+3v8tGiL9FZp72WkCG8=\n', `did` = 'SpS7OaMcPR28q0IAev2x+TpjcnlwdF9rZWVwZXI6TvP4FMGP9PU0aXUMuyf/\nu3eyddQ/d1goOGZjiHRx+Oain3oU43Y2JnsBGbItKtc4\n', `client_timestamp` = 'AIAFqNQ3WNIF7fYgwACPaDpjcnlwdF9rZWVwZXI6JOMwPeBCKl8WHxrZCQzW\npxaaWDE+uq/sX50o4KFf1eY=\n', `client_secret` = 'c/hI6tKFnP/l+MzxjNfotzpjcnlwdF9rZWVwZXI68V8tbKBZV6VWuv3P1O8f\nIOAZnZ/8Ompv0PM3A9Qdsy8CgFC4EXt3Izl7iuFs82w/\n' WHERE `sessions`.`id` = 369
+   (6.0ms)  COMMIT
+fetch_users: start
+check_expired_tokens: context = login, refresh_tokens = []
+check_expired_tokens: context=login. refresh_tokens from session = [{"provider"=>"google_oauth2", "refresh_token"=>"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4"}]
+check_expired_tokens: client_timestamp = 1437398828, server_timestamp = 1437398829, timestamp_dif = 1, now = 1437398828
+  User Load (1.2ms)  SELECT `users`.* FROM `users` WHERE (user_id in ('117126429320850988781/google_oauth2'))
+  Friend Load (0.2ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('117126429320850988781/google_oauth2'))
+  CACHE (0.0ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('117126429320850988781/google_oauth2'))
+block in fetch_users: user_id = 117126429320850988781/google_oauth2, user_name = Jan Mobilos Roslind, currency = USD
+fetch_users: @user_currency_separator = ., @user_currency_delimiter = ,
+logged_in?: login_user_ids.class = Array
+  Sequence Load (0.6ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'last_exchange_rate_date' LIMIT 1
+  User Load (0.6ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` = '117126429320850988781/google_oauth2' LIMIT 1
+get_login_user_and_api_client: provider = google_oauth2, token = ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx
+post_login_update_friends: debug 1: key =  (NilClass)
+   (0.3ms)  BEGIN
+  SQL (0.6ms)  UPDATE `sessions` SET `tokens` = '9POdHqacrw6aXJ7lmNbQIzpjcnlwdF9rZWVwZXI6Ln515RX1XIMt2p1lctwH\niJBXPVWskbfIovg5mf++YDhICoGTgxtyoZLYYcY1HFpm\n', `updated_at` = '2015-07-20 13:27:09', `created` = NULL, `expires_at` = 'w4nmeOXu7X//xtWp88qjZDpjcnlwdF9rZWVwZXI6zJcqpivqiouYQuK8uBWh\n00KVk1KsjCRh4sqkLD+ph4AQgQaidm+yiiFNEOxhHOBAelUV+e0g6AEhh7pA\nonn9ag==\n', `flash_id` = NULL, `language` = 'WqrPMFHBIaQpDmVvZy/RGDpjcnlwdF9rZWVwZXI6bcO1F++8h3PAefnbC8Mt\nATTezq+CynSUc4NlbA/8NnI=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'QV2cXp8PedhHEAx7IROWxDpjcnlwdF9rZWVwZXI6ztCPG6CxMfWv6s5jVyFk\n3zigX4v29KaqXiBJMGsZ2Qyu41OMWuvpyz0vgEn5XnZ0mGHImutSy2R1nplS\nbkxmM2di3eDmI3I7qtQflMzAkkq7HFatbI4Qk+j7Q8vDmno4\n', `state` = NULL, `user_ids` = 'V7bbhWHWJf+hSL9YpgC9jjpjcnlwdF9rZWVwZXI6+9hxAw1QGJ6jatnQqZbR\nw53iO7a80kpLkQSwQe7+rkIr9tPRXURqTRle4rCK2xfTHqmGT1x+kueC9yDF\n4iubjg==\n', `did` = 'raITK7YA9vBbdag7dmGKljpjcnlwdF9rZWVwZXI6eYBadvbExg+EsS1+npg1\n9ydVwScaXQ+QN3McUNWajMIXx/yufeZR9SX4vY1+F97z\n', `client_timestamp` = 'SBLyZuW7UxMqoN6puQu3nTpjcnlwdF9rZWVwZXI6ynIIZJB//+kfQ0N6YUS3\n8CTsIgRqJ5p2AzUSQT5AtrY=\n', `client_secret` = 'nxbXsAUkfYp7F/x6wQx3RDpjcnlwdF9rZWVwZXI6AVv66ERV6C5VFZuin/ia\nXebbNy0jp/VHWE0vvoUsGhHDczur2nlPZwypO5lZUOZ2\n', `sha256` = 'dz79yl9zobtnKbEBhWNCvTpjcnlwdF9rZWVwZXI6uVYDK2k3ECOTLGxRnaIu\nsN8QIVWuomK2nlTwSAYQJo7eAWrWAxWVyUqW8vB7iJW3AugZ58fTBwcJUbcD\nuEj91VlIt3CTq3QeyIw2zEbC87VjcsXkqNxAa5NY7zSP8viH\n' WHERE `sessions`.`id` = 369
+   (3.8ms)  COMMIT
+   (0.2ms)  BEGIN
+  SQL (1.5ms)  UPDATE `sessions` SET `refresh_tokens` = 'vELa8gClrAJCO/NYMzCs/DpjcnlwdF9rZWVwZXI6+t/m02DS4NXeg9aT42ar\nFIwpzexIOTxMW5xscS7AuWA=\n', `updated_at` = '2015-07-20 13:27:09', `created` = NULL, `expires_at` = 'g/x81oPiuHyWJoEnCnWF2TpjcnlwdF9rZWVwZXI67PDDyvMXVTEtWcnXgH3q\nO0Ny82LXqdqM0gMnuiBsem6vy8LRyz0BuIBjY89wtAdmmwVVLwd0WHsVRwNm\ndU3X5A==\n', `flash_id` = NULL, `language` = 'UKhQRK8q07r1CsCGMwmWPTpjcnlwdF9rZWVwZXI61DRLsN5pM1e2Gti5c7uE\nZtbrQkSl8jSSt7sJrNMaQq4=\n', `last_row_at` = NULL, `last_row_id` = NULL, `state` = NULL, `tokens` = 'x5LXB30pbKsWfcd2MBlEqjpjcnlwdF9rZWVwZXI6iMF3wiVS09y48piTCdzq\nmqOzo/RNrlN8U27nx815cB13ofRQuvrEeO+sa2IHBGeD\n', `user_ids` = 'eok7nTryhN0+MdmudllsVTpjcnlwdF9rZWVwZXI6aJKygWs+rYqRtqYXHo3m\ng9qdOddpqWEWaal3r1Aha0ZeS6d3gL3PpkaT0x+kUkc3/PGbXp6EAFfv8Owj\nGvtY2Q==\n', `did` = 'MjN+Zk7QPmk2BBQFhQwF2DpjcnlwdF9rZWVwZXI6P+ETtMNLQ/gb3mLoluvf\n15lnDHNgn7GhLZM36KxbN7H+l/7CLSlLLi4yFhNRbQXD\n', `client_timestamp` = 'bW8FVRvbv8TT5IK8flX00jpjcnlwdF9rZWVwZXI6A+UanXLUAC0G9M9gfmHj\nHIv9HB3JAUIkzovIq/KUII4=\n', `client_secret` = 'JdSRXWJDtYnQVJNZzKuWkDpjcnlwdF9rZWVwZXI6a4DFfQuJWcHKJdCOa7SM\ngegR8xfCntkrvBz4LLDfYfKsiVQ8wZKjPISZx6mc4JSg\n', `sha256` = 'GLwh4PMwklmeT1+fT9tQ+DpjcnlwdF9rZWVwZXI6ose+0IG6k0AhJwdIMBbQ\nrAfnxzBOBKOnangqqzCgm9qU1WscJUBwBqH14od+R4agwsMhNMN2qoIcTGW5\n4viUTD/ypln92omy3d9FdSkUZ4luocOdX5IJ0Xn6v8+tQiwx\n' WHERE `sessions`.`id` = 369
+   (4.1ms)  COMMIT
+no gofreerev_get_user method was found for google_oauth2 api client
+block (2 levels) in init_api_client_google_oauth2: result.error_message = {
+ "kind": "plus#peopleFeed",
+ "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/iOk7I3IqmbYKnBHj0M2uI9ZDb0w\"",
+ "title": "Google+ List of Visible People",
+ "totalItems": 3,
+ "items": [
+  {
+   "kind": "plus#person",
+   "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/FjS6iPO7Fp8Ste1GGSyIOlk3VJY\"",
+   "objectType": "person",
+   "id": "113703200528116224701",
+   "displayName": "Anitta limkilde-kjær",
+   "url": "https://plus.google.com/113703200528116224701",
+   "image": {
+    "url": "https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50"
+   }
+  },
+  {
+   "kind": "plus#person",
+   "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/W7638nzpzlQZXjkhYbGipzLmvbQ\"",
+   "objectType": "person",
+   "id": "102648158892233211696",
+   "displayName": "Annastasia Damgaard Jespersen",
+   "url": "https://plus.google.com/102648158892233211696",
+   "image": {
+    "url": "https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50"
+   }
+  },
+  {
+   "kind": "plus#person",
+   "etag": "\"RqKWnRU4WW46-6W3rWhLR9iFZQM/O8e6Dzuvm9CqK_MwGV4SpDUlgRw\"",
+   "objectType": "person",
+   "id": "117657151428689087350",
+   "displayName": "Jan Roslind",
+   "url": "https://plus.google.com/+JanRoslind",
+   "image": {
+    "url": "https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50"
+   }
+  }
+ ]
+}
+
+block in init_api_client_google_oauth2: friends_hash..size = 3
+post_login_update_friends: debug 5: key =  (NilClass)
+post_login_update_friends: debug 7: key =  (NilClass)
+update_api_friends_from_hash: fields = name, api_profile_url, api_profile_picture_url
+  Friend Load (1.1ms)  SELECT `friends`.* FROM `friends` WHERE ((user_id_giver = '117126429320850988781/google_oauth2' or user_id_receiver = '117126429320850988781/google_oauth2') and user_id_giver <> user_id_receiver)
+  User Load (0.9ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('113703200528116224701/google_oauth2', '117126429320850988781/google_oauth2', '102648158892233211696/google_oauth2', '117657151428689087350/google_oauth2')
+update_api_friends_from_hash: new_friends.keys = 113703200528116224701/google_oauth2, 102648158892233211696/google_oauth2, 117657151428689087350/google_oauth2
+update_api_friends_from_hash: old_friends.keys = 113703200528116224701/google_oauth2, 102648158892233211696/google_oauth2, 117657151428689087350/google_oauth2
+update_api_friends_from_hash: new_user_ids     =
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 113703200528116224701/google_oauth2 Anitta l but user info is up-to-date
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":5,"user_id":"113703200528116224701/google_oauth2","user_name":"Anitta limkilde-kjær","created_at":"2015-07-20T13:26:17.000Z","updated_at":"2015-07-20T13:26:17.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/113703200528116224701","api_profile_picture_url":"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"k+27H4sgdGtg3AeWCRfjO7GwZJasfL3OuXu7TNCT70Q=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 102648158892233211696/google_oauth2 Annastasia J but user info is up-to-date
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":6,"user_id":"102648158892233211696/google_oauth2","user_name":"Annastasia Damgaard Jespersen","created_at":"2015-07-20T13:26:17.000Z","updated_at":"2015-07-20T13:26:17.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/102648158892233211696","api_profile_picture_url":"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"MMNMzeoBX/kEGTAXfPAlM18B908lUmKrDgRDQbxs7gU=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 117657151428689087350/google_oauth2 Jan R but user info is up-to-date
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":7,"user_id":"117657151428689087350/google_oauth2","user_name":"Jan Roslind","created_at":"2015-07-20T13:26:17.000Z","updated_at":"2015-07-20T13:26:17.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/+JanRoslind","api_profile_picture_url":"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"ygsGE82sgcjLZuGA4qdCGvJfRVHD4FPW3WQhZyKN+lY=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 113703200528116224701/google_oauth2 Anitta l but user info is up-to-date
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":5,"user_id":"113703200528116224701/google_oauth2","user_name":"Anitta limkilde-kjær","created_at":"2015-07-20T13:26:17.000Z","updated_at":"2015-07-20T13:26:17.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/113703200528116224701","api_profile_picture_url":"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"k+27H4sgdGtg3AeWCRfjO7GwZJasfL3OuXu7TNCT70Q=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 102648158892233211696/google_oauth2 Annastasia J but user info is up-to-date
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":6,"user_id":"102648158892233211696/google_oauth2","user_name":"Annastasia Damgaard Jespersen","created_at":"2015-07-20T13:26:17.000Z","updated_at":"2015-07-20T13:26:17.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/102648158892233211696","api_profile_picture_url":"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"MMNMzeoBX/kEGTAXfPAlM18B908lUmKrDgRDQbxs7gU=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+block in update_api_friends_from_hash: Server detected out-of-date user info for friend 117657151428689087350/google_oauth2 Jan R but user info is up-to-date
+block in update_api_friends_from_hash: item 418) testrun-38 - user update. must clear all fields user in friend list update operation (remote_sha256_update_info and friends)
+block in update_api_friends_from_hash: friend_user = {"id":7,"user_id":"117657151428689087350/google_oauth2","user_name":"Jan Roslind","created_at":"2015-07-20T13:26:17.000Z","updated_at":"2015-07-20T13:26:17.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":"https://plus.google.com/+JanRoslind","api_profile_picture_url":"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"ygsGE82sgcjLZuGA4qdCGvJfRVHD4FPW3WQhZyKN+lY=","old_sha256":null,"sha256_updated_at":"2015-07-20T13:26:17.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+update_api_friends_from_hash: old_friends.size = 3, new_friends.size = 3, new_user = false
+post_login_update_friends: debug 8: key =  (NilClass)
+  Friend Load (0.3ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('117126429320850988781/google_oauth2'))
+  CACHE (0.0ms)  SELECT `friends`.* FROM `friends` WHERE (user_id_giver in ('117126429320850988781/google_oauth2'))
+  SystemParameter Load (0.7ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE (name = 'secret' and updated_at > '2015-07-20 13:24:11') ORDER BY `system_parameters`.`id` ASC LIMIT 1
+  User Load (0.7ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('117126429320850988781/google_oauth2', '102648158892233211696/google_oauth2', '113703200528116224701/google_oauth2', '117657151428689087350/google_oauth2')
+  ServerUser Load (0.7ms)  SELECT `server_users`.* FROM `server_users` WHERE `server_users`.`user_id` IN (4, 5, 6, 7)
+ping: delete_gifts =  (NilClass)
+delete_gifts: delete_gifts = null
+delete_gifts: login_user_ids = ["1705481075/facebook","117126429320850988781/google_oauth2"]
+ping: new_servers =  (NilClass)
+ping: verify_gifts =  (NilClass)
+verify_gifts: verify_gifts = null
+verify_gifts: login_user_ids = ["1705481075/facebook","117126429320850988781/google_oauth2"]
+   (0.2ms)  SELECT COUNT(*) FROM `verify_gifts` WHERE (client_sid = '14373987558783670635' and client_sha256 = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' and verified_at_server is not null)
+ping: verify_comments =  (NilClass)
+verify_comments: verify_comments = null
+verify_comments: login_user_ids = ["1705481075/facebook","117126429320850988781/google_oauth2"]
+   (0.2ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14373987558783670635' and client_sha256 = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' and verified_at_server is not null)
+messages: sender_did    = 14372933747316727668
+messages: sender_sha256 = BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=
+messages: messages      =
+receive_messages: sender_did    = 14372933747316727668
+receive_messages: sender_sha256 = BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=
+receive_messages: messages      =
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  SystemParameter Load (0.3ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'old_dids' LIMIT 1
+receive_messages: did = 14366853232389007817, old_dids = 14323002456762964119, 14323046623583097069, 14324491152048728746, 14329677479616292037, 14333968284869392914, 14335744436084762727, 14339440336843414352, 14340895883432562769, 14342666491643786817, 14345125975258691064, 14350406253068638241, 14352445506185467182, 14364260034717664832, 14366027023797562526
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  Message Load (0.4ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14366853232389007817' AND `messages`.`server` = 1 ORDER BY `messages`.created_at ASC
+send_messages: sender_did    = 14372933747316727668
+send_messages: sender_sha256 = BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=
+  Message Load (0.2ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14372933747316727668' AND `messages`.`to_sha256` = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' AND `messages`.`server` = 0 ORDER BY created_at, encryption desc
+  SQL (0.4ms)  DELETE FROM `messages` WHERE `messages`.`to_did` = '14372933747316727668' AND `messages`.`to_sha256` = 'BZmiAxMRquY83NUOOyxh1yRt2UXseK4YLFVNFtaAmDU=' AND `messages`.`server` = 0
+messages: output_messages =
+ping: @json = {:old_client_timestamp=>1437398774808, :interval=>2000, :friends=>[{:user_id=>4, :uid=>"117126429320850988781", :provider=>"google_oauth2", :user_name=>"Jan Mobilos Roslind", :friend=>1, :api_profile_picture_url=>"https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100"}, {:user_id=>5, :uid=>"113703200528116224701", :provider=>"google_oauth2", :user_name=>"Anitta limkilde-kjær", :friend=>3, :api_profile_picture_url=>"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50"}, {:user_id=>6, :uid=>"102648158892233211696", :provider=>"google_oauth2", :user_name=>"Annastasia Damgaard Jespersen", :friend=>3, :api_profile_picture_url=>"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50"}, {:user_id=>7, :uid=>"117657151428689087350", :provider=>"google_oauth2", :user_name=>"Jan Roslind", :friend=>3, :api_profile_picture_url=>"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50"}]}
+Completed 200 OK in 2527ms (Views: 1.1ms | ActiveRecord: 56.1ms)
+
+
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-07-20 15:27:13 +0200
+Processing by UtilController#ping as JSON
+  Parameters: {"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398833570, "util"=>{"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398833570}}
+get_client_userid: session[:client_userid] = 1
+validate_json_request: params = {"client_userid":1,"sid":"14373987558783670635","client_timestamp":1437398833570,"controller":"util","action":"ping","format":"json","util":{"client_userid":1,"sid":"14373987558783670635","client_timestamp":1437398833570}}
+validate_json_request: ping_request = {"client_userid"=>1, "sid"=>"14373987558783670635", "client_timestamp"=>1437398833570}
+get_client_userid: session[:client_userid] = 1
+  Session Load (0.5ms)  SELECT `sessions`.* FROM `sessions` WHERE `sessions`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `sessions`.`client_userid` = 1 LIMIT 1
+get_secret: secret = 6ZYjKKYIfSrjx4qmwNJI1PZnLr6WKGINFL0w5k6XiqYsXUcyrPguBlOkjeEhndEm6MRd8N5dOfp1bPB8s21HfmIlUd1aj2HZpO5UOtVO3IORPaeFFPQr5jBRY1asyg36Xw0I4CQH6TeOaWfUzqAKfc5UyHG1rTTl6qwAq40gmfQ4zfGKaWFUe0qL3dHud1ufxkAuHn0ROvtqepQGAtsI2nRN4STLrC81vZz2aDAXEbo4edFRUUOpfDnylJ2bxZNI
+ping: server = false
+get_client_userid: session[:client_userid] = 1
+   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE `pings`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14373987558783670635'
+  Ping Load (0.5ms)  SELECT `pings`.* FROM `pings` WHERE `pings`.`session_id` = '719144aad2dbb45e68333dd0662e9b47' AND `pings`.`client_userid` = 1 AND `pings`.`client_sid` = '14373987558783670635' ORDER BY `pings`.`last_ping_at` DESC LIMIT 1
+  Sequence Load (1.6ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_ping_cycle' LIMIT 1
+   (0.5ms)  SELECT COUNT(*) FROM `pings` WHERE (last_ping_at >= 1437398829.654 and server_id is null)
+ping: session.did = ping.did = 14372933747316727668
+ping: get_session_value(:did) = 14372933747316727668
+check_expired_tokens: context = ping, refresh_tokens = []
+check_expired_tokens: client_timestamp = 1437398833, server_timestamp = 1437398833, timestamp_dif = 0, now = 1437398833
+ping: avg5 = 0.68, MAX_AVG_LOAD = 1.6
+ping: old server ping interval = 2000, new server ping interval = 2000
+ping: no_active_sessions = 1, avg_ping_interval = 2.0
+   (0.3ms)  BEGIN
+  SQL (4.9ms)  UPDATE `sessions` SET `client_timestamp` = 'kcmtZLXVNbfj1hXyz8o7CzpjcnlwdF9rZWVwZXI6IvAj8hUHDDm13pAk8H4N\ne++9wVfmxEBs/biLWaN5dsA=\n', `updated_at` = '2015-07-20 13:27:13', `created` = NULL, `expires_at` = 'Bc5sqEJRNOlmwfomewtMxDpjcnlwdF9rZWVwZXI6mHWfqRhHhlfCyspF51ow\nDew5OhswEDKj6XzAamF05iRCn7kg9ViKOJqbzC7JCM4KPnIHcTJ3yUCH1lqH\nC2sLpQ==\n', `flash_id` = NULL, `language` = 'L8A4VVEL9SkDo5LjgBPOcTpjcnlwdF9rZWVwZXI6R/JzrUhKT5ck73A55adC\nQAuo+vDu1ZBnqZ+0VG8dQe4=\n', `last_row_at` = NULL, `last_row_id` = NULL, `refresh_tokens` = 'nqJLIg1ecvyTlmS6LHx9gTpjcnlwdF9rZWVwZXI6D4rSujZCH6hGAVEMqaoe\nmQOP/949JY8LnPYTfmflcIs=\n', `state` = NULL, `tokens` = 'mXFfa5+fUbhN7bUskomv1TpjcnlwdF9rZWVwZXI6yOkFCJd/r+EtN+YmeKXX\nV4gsbCMmyQXR0JLAi3dSj7D8OKOByBQqv00jPWyq4q7Y\n', `user_ids` = 'J2eH0baAXHZUfFDMRhk9WjpjcnlwdF9rZWVwZXI6sV3TFauKmp/jI/MM/xPi\nkFZ+yuQNqx+ulh2kk5WcCUdHRfLycFtBDTW+wiN2viZpjCX7mrvhCS9i+0wm\nO+ZR9g==\n', `did` = '+ukkLjS7tUIgihr9lbhLqTpjcnlwdF9rZWVwZXI680jSPZSip3s/l26wujje\nmgtoeySmmsaIv6sAWxau/LSEG4be6X9CXKInia3xWU4M\n', `client_secret` = 'UrCkNnOsXsNU/Tq4fDvUFTpjcnlwdF9rZWVwZXI6dmge18tVdZZjXnHGH1JH\nQLtXdY+SNWomD5zlegQombGIrF+cEZLXXdxn35R+b6ym\n', `sha256` = 'jX1bJhgEr9Ta5V6Rn7pzUzpjcnlwdF9rZWVwZXI6oD6KF7FMBLaNaX9KNyvT\nb9mtj9YHWQXt8OGhlVT4VE49tBlo5yN5b5cJxJkoPVCJv03HyU+cQoPD5xHZ\nmziesG474osnUzGpKr52lYc9LEXNqCoBv4Zf2XNfA1YeQvbX\n' WHERE `sessions`.`id` = 369
+   (4.4ms)  COMMIT
+  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 235 and last_ping_at < 1437398833.654 and last_ping_at > 1437398829.678876 and server_id is null) ORDER BY last_ping_at desc LIMIT 1
+ping: no previous ping was found
+  Ping Load (0.6ms)  SELECT `pings`.* FROM `pings` WHERE (id <> 235 and next_ping_at > 1437398833.654 and server_id is null) ORDER BY next_ping_at LIMIT 1
+ping: next ping was not found
+ping: next_ping_interval = 2.0
+ping: avg_ping_interval = 2.0
+   (0.1ms)  BEGIN
+  SQL (0.5ms)  UPDATE `pings` SET `user_ids` = '---\n- 117126429320850988781/google_oauth2\n', `sha256` = 'cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=', `last_ping_at` = 1437398833.654, `next_ping_at` = 1437398835.654 WHERE `pings`.`id` = 235
+   (3.3ms)  COMMIT
+ping: old client timestamp = 1437398828993, new client timestamp = 1437398833570, dif = 4577
+ping: previous_ping_interval = 2.0, next_ping_interval = 2.0, avg_ping_interval2 = 2.0, adjust_this_ping = 0.0
+   (0.9ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '719144aad2dbb45e68333dd0662e9b47' or client_userid <> 1) and (server_id is null and last_ping_at > 1437398829.6892781 or server_id is not null and last_ping_at > 1437398773.689382))
+  CACHE (0.0ms)  SELECT COUNT(*) FROM `pings` WHERE ((session_id <> '719144aad2dbb45e68333dd0662e9b47' or client_userid <> 1) and (server_id is null and last_ping_at > 1437398829.6892781 or server_id is not null and last_ping_at > 1437398773.689382))
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'secret' LIMIT 1
+  User Load (0.5ms)  SELECT `users`.* FROM `users` WHERE `users`.`user_id` IN ('117126429320850988781/google_oauth2')
+ping: last_short_friends_list_at = 2015-07-20 13:25:57 UTC, sha256_values_changed = false
+ping: remote_sha256_values_changed.size = 0
+ping: delete_gifts =  (NilClass)
+delete_gifts: delete_gifts = null
+delete_gifts: login_user_ids = ["117126429320850988781/google_oauth2"]
+ping: new_servers =  (NilClass)
+ping: verify_gifts =  (NilClass)
+verify_gifts: verify_gifts = null
+verify_gifts: login_user_ids = ["117126429320850988781/google_oauth2"]
+   (0.5ms)  SELECT COUNT(*) FROM `verify_gifts` WHERE (client_sid = '14373987558783670635' and client_sha256 = 'cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=' and verified_at_server is not null)
+ping: verify_comments =  (NilClass)
+verify_comments: verify_comments = null
+verify_comments: login_user_ids = ["117126429320850988781/google_oauth2"]
+   (0.6ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14373987558783670635' and client_sha256 = 'cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=' and verified_at_server is not null)
+messages: sender_did    = 14372933747316727668
+messages: sender_sha256 = cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=
+messages: messages      =
+receive_messages: sender_did    = 14372933747316727668
+receive_messages: sender_sha256 = cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=
+receive_messages: messages      =
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'old_dids' LIMIT 1
+receive_messages: did = 14366853232389007817, old_dids = 14323002456762964119, 14323046623583097069, 14324491152048728746, 14329677479616292037, 14333968284869392914, 14335744436084762727, 14339440336843414352, 14340895883432562769, 14342666491643786817, 14345125975258691064, 14350406253068638241, 14352445506185467182, 14364260034717664832, 14366027023797562526
+  CACHE (0.0ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  Message Load (0.2ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14366853232389007817' AND `messages`.`server` = 1 ORDER BY `messages`.created_at ASC
+send_messages: sender_did    = 14372933747316727668
+send_messages: sender_sha256 = cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=
+  Message Load (0.6ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14372933747316727668' AND `messages`.`to_sha256` = 'cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=' AND `messages`.`server` = 0 ORDER BY created_at, encryption desc
+  SQL (0.3ms)  DELETE FROM `messages` WHERE `messages`.`to_did` = '14372933747316727668' AND `messages`.`to_sha256` = 'cyGZCOMRz3dggNj1PKLlLx7bSDfegx/gZ2yyZ5ZKz7M=' AND `messages`.`server` = 0
+messages: output_messages =
+ping: @json = {:old_client_timestamp=>1437398828993, :interval=>2000}
+Completed 200 OK in 131ms (Views: 0.3ms | ActiveRecord: 22.4ms)
+
+
+
+client 1:
+
+TextService loaded
+NotiService loaded
+UserService loaded
+UserService.init_friends: friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…e3bf7ea766&oe=5617C927&__gda__=1443880074_9bb348710419d0e2c71e357481d17b5f","sha256":"Y0qQEPR8ryFIJp/7E+peWKMPXYpI1lUkFy1LwDR7Z6U=","remote_sha256":{"1":"Efx1dmq7X9kJCtXtUQWED6mueaM8Cbk8b1YD5PJNi7A="}},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…54fdab95d9&oe=560F44F9&__gda__=1444527660_97a7725cc7de2a790586939c804063e5","sha256":"mDMkaYuLeQpJMYOF8heT1T5JQow7j9GpIUCVw3p+tPo=","remote_sha256":{"1":"vMwv57qukbH5zTepdPUqOpneh/xXtTrO2Dam9MIBYPY="}}]
+UserService.load_users: users = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…e3bf7ea766&oe=5617C927&__gda__=1443880074_9bb348710419d0e2c71e357481d17b5f","verified_at":1437295819}]
+GiftService loaded
+GiftService.load_gifts: gift = {"gid":"14372958191914649642","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1437295819,"currency":"usd","direction":"giver","description":"a","show":true,"comments":[{"cid":"14372961019605128056","user_ids":[2],"comment":"a1","currency":"usd","created_at_client":1437296101,"created_at_server":0,"sha256":"³D8ª_Ýáù\u0014½JÕÙASB¼x\\<¦ÈEñ\u0007\u000bª\u0011Õ²"},{"cid":"14373155834013518570","user_ids":[2],"comment":"a2","currency":"usd","created_at_client":1437315583,"sha256":null},{"cid":"14373194591097201630","user_ids":[2],"comment":"a3","currency":"usd","created_at_client":1437319459,"sha256":null},{"cid":"14373798458901323819","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379845,"sha256":null},{"cid":"14373798614651283425","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379861,"sha256":null},{"cid":"14373813948829332174","user_ids":[2],"comment":"a5","currency":"usd","created_at_client":1437381394,"sha256":null},{"cid":"14373827486078098086","user_ids":[2],"comment":"a6","currency":"usd","created_at_client":1437382748,"created_at_server":0,"sha256":"÷Yw°R¸¯A\u000fX2vþJÈ-7áø\u0019*eé9ú«Ö÷a"}],"created_at_server":0,"sha256":null,"sha256_gift":null,"sha256_comments":null}
+GiftService.invalid_gift: new_users_index = {}
+
+
+GiftService.invalid_comment: new_users_index = {}
+GiftService.invalid_comment: Error for comment {"cid":"14373155834013518570","user_ids":[2],"comment":"a2","currency":"usd","created_at_client":1437315583,"sha256":null}
+GiftService.invalid_comment: Error: Created_at_server is missing
+GiftService.invalid_comment: new_users_index = {}
+GiftService.invalid_comment: Error for comment {"cid":"14373194591097201630","user_ids":[2],"comment":"a3","currency":"usd","created_at_client":1437319459,"sha256":null}
+GiftService.invalid_comment: Error: Created_at_server is missing
+GiftService.invalid_comment: new_users_index = {}
+GiftService.invalid_comment: Error for comment {"cid":"14373798458901323819","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379845,"sha256":null}
+GiftService.invalid_comment: Error: Created_at_server is missing
+GiftService.invalid_comment: new_users_index = {}
+GiftService.invalid_comment: Error for comment {"cid":"14373798614651283425","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379861,"sha256":null}
+GiftService.invalid_comment: Error: Created_at_server is missing
+GiftService.invalid_comment: new_users_index = {}
+GiftService.invalid_comment: Error for comment {"cid":"14373813948829332174","user_ids":[2],"comment":"a5","currency":"usd","created_at_client":1437381394,"sha256":null}
+GiftService.invalid_comment: Error: Created_at_server is missing
+GiftService.invalid_comment: new_users_index = {}
+GiftService.invalid_gift: Error for gift {"gid":"14372958191914649642","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1437295819,"currency":"usd","direction":"giver","description":"a","show":true,"comments":[{"cid":"14372961019605128056","user_ids":[2],"comment":"a1","currency":"usd","created_at_client":1437296101,"created_at_server":0,"sha256":"³D8ª_Ýáù\u0014½JÕÙASB¼x\\<¦ÈEñ\u0007\u000bª\u0011Õ²"},{"cid":"14373155834013518570","user_ids":[2],"comment":"a2","currency":"usd","created_at_client":1437315583,"sha256":null},{"cid":"14373194591097201630","user_ids":[2],"comment":"a3","currency":"usd","created_at_client":1437319459,"sha256":null},{"cid":"14373798458901323819","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379845,"sha256":null},{"cid":"14373798614651283425","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379861,"sha256":null},{"cid":"14373813948829332174","user_ids":[2],"comment":"a5","currency":"usd","created_at_client":1437381394,"sha256":null},{"cid":"14373827486078098086","user_ids":[2],"comment":"a6","currency":"usd","created_at_client":1437382748,"created_at_server":0,"sha256":"÷Yw°R¸¯A\u000fX2vþJÈ-7áø\u0019*eé9ú«Ö÷a"}],"created_at_server":0,"sha256":null,"sha256_gift":null,"sha256_comments":null}
+GiftService.invalid_gift: Error: 5 invalid comments
+GiftService.load_gifts: System error. Gift 14372958191914649642 is invalid. 5 invalid comments
+
+
+GiftService.load_gifts: gift = {"gid":"14372958191914649642","giver_user_ids":[2],"receiver_user_ids":[],"created_at_client":1437295819,"currency":"usd","direction":"giver","description":"a","show":true,"comments":[{"cid":"14372961019605128056","user_ids":[2],"comment":"a1","currency":"usd","created_at_client":1437296101,"created_at_server":0,"sha256":"³D8ª_Ýáù\u0014½JÕÙASB¼x\\<¦ÈEñ\u0007\u000bª\u0011Õ²"},{"cid":"14373155834013518570","user_ids":[2],"comment":"a2","currency":"usd","created_at_client":1437315583,"sha256":null},{"cid":"14373194591097201630","user_ids":[2],"comment":"a3","currency":"usd","created_at_client":1437319459,"sha256":null},{"cid":"14373798458901323819","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379845,"sha256":null},{"cid":"14373798614651283425","user_ids":[2],"comment":"a4","currency":"usd","created_at_client":1437379861,"sha256":null},{"cid":"14373813948829332174","user_ids":[2],"comment":"a5","currency":"usd","created_at_client":1437381394,"sha256":null},{"cid":"14373827486078098086","user_ids":[2],"comment":"a6","currency":"usd","created_at_client":1437382748,"created_at_server":0,"sha256":"÷Yw°R¸¯A\u000fX2vþJÈ-7áø\u0019*eé9ú«Ö÷a"}],"created_at_server":0,"sha256":null,"sha256_gift":null,"sha256_comments":null}
+GiftService.load_gifts: gifts.length = 1
+NavCtrl loaded
+NavCtrl.start ping process. start up ping interval = 2000
+AuthCtrl loaded
+NavCtrl.do_tasks: start
+
+
+NavCtrl.do_tasks: Error when executing required "startup" tasks. Some server tasks was not executed and the page will not be working 100% as expected.
+error = google+ log in ok. Welcome to Gofreerev. Your friends list is being downloaded and will be ready for use in a few moments.<br>
+Your friend list is ready. Please refresh page to see any posts from your friends.
+
+
+NavCtrl.do_tasks: oauths = [{"provider":"google_oauth2","user_id":"117126429320850988781/google_oauth2","token":"ya29.tgGhyoexzygz4s9XSk2N3o9fUHmP5P7Yd-_4b2N1mE8GmBkwZ9C-3OQv-RUVB-GCb3Cx","expires_at":1437402368,"refresh_token":"1/lLgy0YBAQyl3VXQbZGvL6L6d1Ux4MaNp9rHTG57I1Y4"}]
+UserService.add_oauth: expires_at = {"facebook":1442477515,"google_oauth2":1437402368}, refresh_tokens = {"facebook":false,"google_oauth2":true}
+NavCtrl.do_tasks:
+new friends = [
+  {"user_id":4,"uid":"117126429320850988781","provider":"google_oauth2","user_name":"Jan Mobilos Roslind","friend":1,"api_profile_picture_url":"https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100"},
+  {"user_id":5,"uid":"113703200528116224701","provider":"google_oauth2","user_name":"Anitta limkilde-kjær","friend":3,"api_profile_picture_url":"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50"},
+  {"user_id":6,"uid":"102648158892233211696","provider":"google_oauth2","user_name":"Annastasia Damgaard Jespersen","friend":3,"api_profile_picture_url":"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50"},
+  {"user_id":7,"uid":"117657151428689087350","provider":"google_oauth2","user_name":"Jan Roslind","friend":3,"api_profile_picture_url":"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50"}
+]
+
+issue 3: must be friend list from do_tasks - post google+ login task
+UserService.update_friends: friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…e3bf7ea766&oe=5617C927&__gda__=1443880074_9bb348710419d0e2c71e357481d17b5f","sha256":"Y0qQEPR8ryFIJp/7E+peWKMPXYpI1lUkFy1LwDR7Z6U=","remote_sha256":{"1":"Efx1dmq7X9kJCtXtUQWED6mueaM8Cbk8b1YD5PJNi7A="},"short_user_name":"Jan R"},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…54fdab95d9&oe=560F44F9&__gda__=1444527660_97a7725cc7de2a790586939c804063e5","sha256":"mDMkaYuLeQpJMYOF8heT1T5JQow7j9GpIUCVw3p+tPo=","remote_sha256":{"1":"vMwv57qukbH5zTepdPUqOpneh/xXtTrO2Dam9MIBYPY="}},{"user_id":4,"uid":"117126429320850988781","provider":"google_oauth2","user_name":"Jan Mobilos Roslind","friend":1,"api_profile_picture_url":"https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100","verified_at":1437398826},{"user_id":5,"uid":"113703200528116224701","provider":"google_oauth2","user_name":"Anitta limkilde-kjær","friend":3,"api_profile_picture_url":"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50","verified_at":1437398826},{"user_id":6,"uid":"102648158892233211696","provider":"google_oauth2","user_name":"Annastasia Damgaard Jespersen","friend":3,"api_profile_picture_url":"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50","verified_at":1437398826},{"user_id":7,"uid":"117657151428689087350","provider":"google_oauth2","user_name":"Jan Roslind","friend":3,"api_profile_picture_url":"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50","verified_at":1437398826}]
+UserService.update_friends: old refresh_friends_list = {}
+UserService.update_friends: new refresh_friends_list = {"google_oauth2":1437398826}
+
+UserService.refresh_friends_list_request: refresh_friends_list = {"google_oauth2":1437398826}
+
+issue 3: must be friend list from ping.
+UserService.update_friends: friends = [{"user_id":2,"uid":"1705481075","provider":"facebook","user_name":"Jan Roslind","friend":1,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xfa1/v/t1.0-1/p100x100/996…e3bf7ea766&oe=5617C927&__gda__=1443880074_9bb348710419d0e2c71e357481d17b5f","sha256":"Y0qQEPR8ryFIJp/7E+peWKMPXYpI1lUkFy1LwDR7Z6U=","remote_sha256":{"1":"Efx1dmq7X9kJCtXtUQWED6mueaM8Cbk8b1YD5PJNi7A="},"short_user_name":"Jan R"},{"user_id":3,"uid":"1563545817212684","provider":"facebook","user_name":"Jan Mobilos Roslind","friend":2,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-xat1/v/t1.0-1/c17.0.100.10…54fdab95d9&oe=560F44F9&__gda__=1444527660_97a7725cc7de2a790586939c804063e5","sha256":"mDMkaYuLeQpJMYOF8heT1T5JQow7j9GpIUCVw3p+tPo=","remote_sha256":{"1":"vMwv57qukbH5zTepdPUqOpneh/xXtTrO2Dam9MIBYPY="}},{"user_id":4,"uid":"117126429320850988781","provider":"google_oauth2","user_name":"Jan Mobilos Roslind","friend":1,"api_profile_picture_url":"https://lh4.googleusercontent.com/-OaSW5VjFv4k/AAAAAAAAAAI/AAAAAAAAAB4/r6YxZoPJsSg/photo.jpg?sz=100","verified_at":1437398831},{"user_id":5,"uid":"113703200528116224701","provider":"google_oauth2","user_name":"Anitta limkilde-kjær","friend":3,"api_profile_picture_url":"https://lh4.googleusercontent.com/-vgZD_bBbcCU/AAAAAAAAAAI/AAAAAAAAACI/s73HGTddRr8/photo.jpg?sz=50","verified_at":1437398831},{"user_id":6,"uid":"102648158892233211696","provider":"google_oauth2","user_name":"Annastasia Damgaard Jespersen","friend":3,"api_profile_picture_url":"https://lh6.googleusercontent.com/-ntpPasQhI3c/AAAAAAAAAAI/AAAAAAAAAB4/c7uummmJgj0/photo.jpg?sz=50","verified_at":1437398831},{"user_id":7,"uid":"117657151428689087350","provider":"google_oauth2","user_name":"Jan Roslind","friend":3,"api_profile_picture_url":"https://lh5.googleusercontent.com/-58Ne1gy6H2Y/AAAAAAAAAAI/AAAAAAAAAIc/tc2IBIr9yjY/photo.jpg?sz=50","verified_at":1437398831}]
+UserService.update_friends: old refresh_friends_list = {"google_oauth2":1437398826}
+UserService.update_friends: Ok. received expected friend list for google_oauth2
+
+
+NotiService.add_notification: js.noti.friend_list_updated = google_oauth2 friend list was updated on request by server. The update is used in communication with other Gofreerev servers with sha256 user signatures.
+
+
+UserService.update_friends: new refresh_friends_list = {}
+Synchronous XMLHttpRequest on the main thread is deprecated because of its detrimental effects to the end user's experience. For more help, check http://xhr.spec.whatwg.org/.
+GiftsCtrl loaded
+AuthCtrl loaded
+AuthCtrl.logout: debug 2
+UserService.logout: provider = google_oauth2
+UserService.logout: removed -4 google_oauth2 users. new users.length = 2
+UserService.logout: old stat: facebook 2 (2), google_oauth2 1 (4)
+UserService.logout: new stat: facebook 2 (2)
+UserService.remove_oauth: provider = google_oauth2
+UserService.remove_oauth: before: hasOwnProperty[google_oauth2] = true
+UserService.remove_oauth: after : hasOwnProperty[google_oauth2] = false
+UserService.remove_oauth: expires_at = {"facebook":1442477515}, refresh_tokens = {"facebook":false}
+AuthCtrl.logout: debug 3
+AuthCtrl loaded
+NavCtrl.ping: error: Not logged in
+UserService.logout: provider = *
+UserService.logout: received "Not logged in" response from ping. Not logged in on server. Log out all providers on client.
+NavCtrl.ping: wait - no social network logins was found
+NavCtrl.ping: wait - no social network logins was found

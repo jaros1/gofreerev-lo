@@ -127,7 +127,7 @@ angular.module('gifts')
             // blank when creating comment, 0 when server signature for comment has been created
             if (!comment.hasOwnProperty('created_at_server') || (comment.created_at_server == null)) {
                 // must be a newly created comment waiting for server signature
-                if (context != 'create') errors.push('Created_at_server is missing') ;
+                if (['load','create'].indexOf(context) == -1) errors.push('Created_at_server is missing') ;
             }
             else if ((typeof comment.created_at_server != 'number') && (comment.created_at_server < 0) && (Math.round(comment.created_at_server) != comment.created_at_server)) {
                 errors.push('Created_at_server is invalid. Must be null or an integer >= 0') ;
@@ -1151,6 +1151,7 @@ angular.module('gifts')
                 if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
                     comment = gift.comments[j];
                     comment.sha256 = comment_sha256_for_client(comment) ;
+                    if (!comment.hasOwnProperty('created_at_server')) verify_comments_add(gift, comment, 'create') ; // resend create comment request
                     if (comment.deleted_at_client && !comment.hasOwnProperty('deleted_at_server')) verify_comments_add(gift, comment, 'delete') ; // resend delete comment request
                 } ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
@@ -2488,6 +2489,10 @@ angular.module('gifts')
                                 };
                                 // create comment ok
                                 new_comment.created_at_server = 0; // always 0 for current server - remote comments are received in client to client communication
+                                // ready for next comment action - clear verify comment buffer info
+                                delete new_comment.verify_seq ;
+                                delete new_comment.verify_comment_at ;
+                                delete new_comment.verify_comment_action ;
                             }
                             else {
                                 // comment created failed
@@ -2498,12 +2503,16 @@ angular.module('gifts')
                                 i = gift.comments.indexOf(new_comment) ;
                                 gift.comments.splice(i,1) ;
                                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
-                                empty_new_comment_form = ( ((gift.new_comment.comment == null) || (gift.new_comment.comment == '')) &&
-                                                           ((gift.new_comment.price == null) || (gift.new_comment.price == '')) &&
-                                                           !gift.new_comment.new_deal ) ;
+                                if (gift.hasOwnProperty('new_comment')) {
+                                    empty_new_comment_form = ( ((gift.new_comment.comment == null) || (gift.new_comment.comment == '')) &&
+                                                               ((gift.new_comment.price == null) || (gift.new_comment.price == '')) &&
+                                                               !gift.new_comment.new_deal );
+                                }
+                                else empty_new_comment_form = true;
                                 if (empty_new_comment_form) {
                                     // blank new comment form for gift. Move failed new comment back to new_comment form and display error message and send notification
-                                    console.log(pgm + 'uncreate cid ' + cid) ;
+                                    console.log(pgm + 'uncreate cid ' + cid + '. failed create comment is moved (back) to new_comment form for gid ' + gift.gid) ;
+                                    if (!gift.hasOwnProperty('new_comment')) gift.new_comment = {} ;
                                     gift.new_comment.comment = new_comment.comment ;
                                     gift.new_comment.price = new_comment.price ;
                                     gift.new_comment.new_deal = new_comment.new_deal ;
@@ -2511,8 +2520,8 @@ angular.module('gifts')
                                     gift.new_comment.error_at = Gofreerev.unix_timestamp() ;
                                 }
                                 else {
-                                    // new comment form for gift in use. Delete comment and send notification
-                                    console.log(pgm + 'new_comment form already in use for gid ' + gift.gid + '. only error message in log and notification') ;
+                                    // new comment form for gift in use. Write error message in log + send notification
+                                    console.log(pgm + 'new_comment form already in use for gid ' + gift.gid + '. display error message only in log and notification') ;
                                     console.log(pgm + 'uncreated comment was ' + JSON.stringify(new_comment)) ;
                                 }; // if
                                 // todo: send notification just in case new comment form was outside windows or new comment form for gift was already in use

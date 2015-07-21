@@ -87,7 +87,7 @@ class Ping < ActiveRecord::Base
   def user_ids_was
     return user_ids unless user_ids_changed?
     return nil unless (temp_user_ids = attribute_was(:user_ids))
-    YAML::load temp_user_ids
+    temp_user_ids
   end # user_ids_was
 
   # 8: sha256 - generated from client secret and user_ids.

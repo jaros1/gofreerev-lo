@@ -144,6 +144,7 @@ class UtilController < ApplicationController
           add_error_key '.do_task_exception', :task => at.task, :error => e.message.to_s
         end
       end
+      logger.debug2 "@json = #{@json.to_json}" # todo: remove - debugging doublet friend list download in testrun-43
       logger.debug2 "@errors.size = #{@errors.size}"
 
       validate_json_response
@@ -722,7 +723,12 @@ class UtilController < ApplicationController
         logger.debug2 "session user_ids after #{provider} logout: " + user_ids.join(', ')
       else
         # local log out - log out for all providers
-        @s.destroy unless @s.new_record?
+        # workaround for "NavCtrl.ping: error: Did (unique device id) was not found" - keep did and client_secret
+        # @s.destroy unless @s.new_record?
+        set_session_value :user_ids, []
+        set_session_value :tokens, {}
+        set_session_value :expires_at, {}
+        set_session_value :refresh_tokens, {}
       end
 
       validate_json_response
@@ -868,6 +874,7 @@ class UtilController < ApplicationController
         @json[:error] = 'Authorization was not found on server. Please use device log out + log in to refresh server authorization' unless @json[:error]
         login_user_ids = []
       end
+      logger.debug2 "ping.user_ids_changed: ping.user_ids_was = #{ping.user_ids_was.to_json}, ping.user_ids = #{ping.user_ids.to_json}" if ping.user_ids_changed?
       # copy sha256 signature from sessions to pings table (stored encrypted in session but unencrypted in pings)
       ping.sha256 = get_session_value(:sha256)
 
@@ -1182,6 +1189,7 @@ class UtilController < ApplicationController
       logger.debug2 "Backtrace: " + e.backtrace.join("\n")
       error = t '.exception', :error => e.message
       @json[:error] = @json[:error] ? "#{@json[:error]}, #{error}" : error
+      @json[:interval] = 60000 unless @json[:interval] # wait 60 seconds after fatal errors
       format_response
     end
   end # ping

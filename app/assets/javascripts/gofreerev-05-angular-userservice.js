@@ -248,8 +248,10 @@ angular.module('gifts')
                 }
             } // for provider
             for (provider in refresh_provider) {
+                if (!refresh_provider[provider]) continue ;
                 if (self.refresh_friends_list.hasOwnProperty(provider)) continue ;
                 self.refresh_friends_list[provider] = Gofreerev.unix_timestamp() ;
+                console.log(pgm + 'update_friends call with refresh=true. new_friends = ' + JSON.stringify(new_friends)) ; // todo: remove - debugging doublet friend list download in testrun-43
             }
             console.log(pgm + 'new refresh_friends_list = ' + JSON.stringify(self.refresh_friends_list)) ;
             check_friend_lists() ;
@@ -551,7 +553,7 @@ angular.module('gifts')
                 // remove provider from local encrypted oauth hash
                 // console.log(pgm + 'debug 4') ;
                 remove_oauth(provider) ;
-            }
+            }; // if
             // update login userids in server session
             // console.log(pgm + 'debug 5') ;
             var logout_request = { client_userid: old_client_userid};
@@ -560,14 +562,14 @@ angular.module('gifts')
             if (json_errors=Gofreerev.is_json_request_invalid(pgm, logout_request, 'logout')) return $q.reject(json_errors) ;
             $http.post('/util/logout.json', logout_request)
                 .then(function (response) {
-                    // console.log(pgm + 'logout response = ' + JSON.stringify(response)) ;
+                    console.log(pgm + 'logout ok = ' + JSON.stringify(response)) ;
                     if (response.data.error) console.log(pgm + 'logout error = ' + response.data.error) ;
                     // validate logout response received from server (should only be error message)
                     var json_errors ;
                     if (json_errors=Gofreerev.is_json_response_invalid(pgm, response.data, 'logout', '')) return $q.reject(json_errors) ;
                 },
                 function (error) {
-                    console.log(pgm + 'log out error = ' + JSON.stringify(error)) ;
+                    console.log(pgm + 'logout error = ' + JSON.stringify(error)) ;
                     return $q.reject(JSON.stringify(error)) ;
                 }) ;
         }; // logout

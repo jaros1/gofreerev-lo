@@ -1928,4 +1928,7 @@
 
 444) also use translation for Gift.verify_gifts and Comment.verify_comments fatal errors { :error => error, :key => key, options => options }
 
-select next issue to solve: (rand*444).floor+1
+445) giftService. new_gift object was moved from giftController to giftService
+     rename local new_gift variable used in giftService functions
+
+select next issue to solve: (rand*445).floor+1

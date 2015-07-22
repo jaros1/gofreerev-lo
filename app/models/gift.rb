@@ -162,9 +162,8 @@ class Gift < ActiveRecord::Base
   # verify user ids, generate a sha256 digest, save gifts and return created_at_server = true/false to client
   # note that created_at_server is an boolean in this response but is an integer (server number) on client. 1 = this server
   # gift.sha256 digest is used as a control when replicating gifts between clients
-  # todo line 1: use short internal user id (sequence) or use full user id (uid+provider) in client js gifts array?
-  # todo line 2  the app should support replication gift from device a on app server 1 to device b on app server 2
-  # todo line 3  but internal user ids can not be used across two different gofreerev-lo servers
+  # todo: delete - now using verify_gifts with action = create
+  private
   def self.new_gifts (new_gifts, login_user_ids)
     # logger.debug2 "new_gifts = #{new_gifts}"
     # logger.debug2 "login_user_ids = #{login_user_ids}"
@@ -343,6 +342,7 @@ class Gift < ActiveRecord::Base
   # ( client_sid + client_sha256 is used as unique session id when sending and receiving remote gift verifications )
   # - not null client_sid and client_sha256 - called from util_controller.ping
   # - null client_sid and client_sha256 - called from Server.receive_verify_gifts_request (remote gift action)
+  public
   def self.verify_gifts (verify_gifts, login_user_ids, client_sid, client_sha256)
     logger.debug2 "verify_gifts = #{verify_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
@@ -960,6 +960,8 @@ class Gift < ActiveRecord::Base
   # sha256_deleted is required and is used in server side sha256_deleted signature
   # sha256_accepted is optional but must be in request if gift has been accepted by an other user
   # login user must be giver or receiver of gift
+  # todo: delete - moved to verify_gifts with action = delete
+  private
   def self.delete_gifts (delete_gifts, login_user_ids)
     logger.debug2 "delete_gifts = #{delete_gifts.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
@@ -1151,6 +1153,9 @@ class Gift < ActiveRecord::Base
     logger.debug2 "response = #{response}"
     { :no_errors => no_errors, :gifts => response }
   end # self.delete_gifts
+
+
+  public
 
 
 end # Gift

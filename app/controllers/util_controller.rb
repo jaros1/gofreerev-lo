@@ -1112,24 +1112,27 @@ class UtilController < ApplicationController
         @json[:pubkeys] = pubkeys_response if pubkeys_response
 
         # 2) new gifts. create gifts (gid and sha256 signature) and return created_at_server timestamps to client
+        # deleted: now using verify_gifts with action = create
         # sha256 signature should ensure that gift information is not unauthorized updated on client
         # logger.debug2 "new_gifts = #{params[:new_gifts]} (#{params[:new_gifts].class})"
-        new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids) unless server
-        @json[:new_gifts] = new_gifts_response if new_gifts_response
+        # new_gifts_response = Gift.new_gifts(params[:new_gifts], login_user_ids) unless server
+        # @json[:new_gifts] = new_gifts_response if new_gifts_response
 
         # 3) new comments. create comments (cid and sha256 signature) and return created_at_server timestamps to client
+        # deleted: now using verify_comments with action = create
         # sha256 signature should ensure that comment information is not unauthorized updated on client
         # logger.debug2 "new_comments = #{params[:new_comments]} (#{params[:new_comments].class})"
-        new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids) unless server
-        @json[:new_comments] = new_comments_response if new_comments_response
+        # new_comments_response = Comment.new_comments(params[:new_comments], login_user_ids) unless server
+        # @json[:new_comments] = new_comments_response if new_comments_response
 
         # 4) todo: add accept_gifts request and response
 
         # 5) delete gifts. mark gifts as deleted with a server side sha256_deleted signature. Returns deleted_at_server = true or an error message for each gift
+        # deleted - moved to verify_gifts with action = delete
         # signatures (sha256 and sha256_deleted) should ensure that gift information is not unauthorized updated on client
-        logger.debug2 "delete_gifts = #{params[:delete_gifts]} (#{params[:delete_gifts].class})" unless server
-        delete_gifts_response = Gift.delete_gifts(params[:delete_gifts], login_user_ids) unless server
-        @json[:delete_gifts] = delete_gifts_response if delete_gifts_response
+        # logger.debug2 "delete_gifts = #{params[:delete_gifts]} (#{params[:delete_gifts].class})" unless server
+        # delete_gifts_response = Gift.delete_gifts(params[:delete_gifts], login_user_ids) unless server
+        # @json[:delete_gifts] = delete_gifts_response if delete_gifts_response
 
         # 6) new servers. Gofreerev.rails['SERVERS'] hash with known Gofreerev servers are downloaded at page start in /assets/ruby_to.js
         # new_servers request is used when receiving new gifts from unknown Gofreerev servers (first contact)
@@ -1145,7 +1148,8 @@ class UtilController < ApplicationController
         verify_gifts_response = Gift.verify_gifts(params[:verify_gifts], login_user_ids, ping.client_sid, ping.sha256) unless server
         @json[:verify_gifts] = verify_gifts_response if verify_gifts_response
 
-        # 8) verify comments. check server side signature for existing comments. used when receiving comments from other devices. Return created_at_server timestamps (or null) to client
+        # 8) verify comments. check server side signature for existing comments. also used when receiving comments from other devices. Return created_at_server timestamps (or null) to client
+        # actions: create, verify, cancel, accept, reject and delete
         # login user must be friend with giver or receiver of gift
         # client must reject comment if created_at_server timestamp is null or does not match
         # sha256 signature should ensure that comment information is not unauthorized updated on client

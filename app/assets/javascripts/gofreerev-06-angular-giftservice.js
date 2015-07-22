@@ -582,6 +582,30 @@ angular.module('gifts')
             return 0;
         }; // sort_by_gid
 
+
+        // new gift default values - used in new gift form
+        var new_gift = {} ;
+        var appname = Gofreerev.rails['APP_NAME'];
+        var init_new_gift = function () {
+            new_gift = {
+                direction: 'giver',
+                currency: userService.get_currency(),
+                errors: null,
+                file_upload_title: function () {
+                    if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: appname}) ;
+                    else return I18n.t('js.new_gift.file_title_false', {appname: appname}) ;
+                },
+                show: function () {
+                    var user_ids = userService.get_login_userids() ;
+                    return (user_ids.length > 0) ; // logged in with one or more login providers?
+                }
+            };
+            // todo: resize gift description
+            // Gofreerev.autoresize_text_field(this)
+            // add id to new gift description? or add this as parameter and call onfocus event for description
+        };
+        init_new_gift() ;
+
         var gifts = []; // gifts array used in main/gifts page - todo: add gift.updated_at_timestamp and sort gifts by updated_at_client timestamp - last changed in top of page
         var gid_to_gifts_index = {}; // from gid to index in gifts array
         var user_id_to_gifts = {}; // from internal user id to array of gifts - for fast user.sha256 calculation
@@ -1453,8 +1477,9 @@ angular.module('gifts')
             } // for i
             return (request.length == 0 ? null : request);
         }; // created_at_server_request
-        
+        // todo: delete - now using verify_gifts with action = create
         var new_gifts_response = function (response) {
+            return ;
             var pgm = service + '.new_gifts_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
@@ -1740,10 +1765,10 @@ angular.module('gifts')
             };
 
             // check seq. seq must be unique i response and all positive seq must be in verify gifts buffer
-            var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, new_gift, hash  ;
+            var seqs = [], i, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_gid = 0, gift, hash  ;
             for (i=0 ; i<response.gifts.length ; i++) {
-                new_gift = response.gifts[i] ;
-                seq = new_gift.seq;
+                gift = response.gifts[i] ;
+                seq = gift.seq;
                 if (seqs.indexOf(seq) == -1) {
                     seqs.push(seq) ;
                     if (!verify_gifts_seq_to_gifts[seq]) {
@@ -1759,7 +1784,7 @@ angular.module('gifts')
                             else invalid_remote_seq += 1 ;
                         }
                     }
-                    else if (verify_gifts_seq_to_gifts[seq].gid != new_gift.gid) invalid_gid += 1 ;
+                    else if (verify_gifts_seq_to_gifts[seq].gid != gift.gid) invalid_gid += 1 ;
                 }
                 else not_unique_seq += 1 ;
             } ; // for i
@@ -1778,6 +1803,7 @@ angular.module('gifts')
             // ( identical gift received in multiple send_gifts messages from other clients )
             var gift_verification, gid, new_gifts, key, verify_gift_action ;
             var no_gifts = { all: 0, create: 0, verify: 0, accept: 0, delete: 0, local: 0, remote: 0, syserr1: 0, syserr2: 0, syserr3: 0, resend: 0, true: 0, false: 0} ;
+            var empty_new_gift_form ;
             while (response.gifts.length > 0) {
                 gift_verification = response.gifts.shift();
                 // ignore response from old remote gift actions (from before page reload)
@@ -1823,82 +1849,117 @@ angular.module('gifts')
                 // one or more gifts in verify gifts buffer with this seq/key
                 while (new_gifts.length > 0) {
                     no_gifts.all += 1 ;
-                    new_gift = new_gifts.shift() ;
-                    no_gifts[new_gift.verify_gift_action] += 1 ; // action: create, verify, accept and delete
+                    gift = new_gifts.shift() ;
+                    no_gifts[gift.verify_gift_action] += 1 ; // action: create, verify, accept and delete
                     if (seq > 0) no_gifts.local += 1 ;
                     else no_gifts.remote += 1 ;
                     // check gifts array. new_gift is either from gifts array (!verify) or from an incoming send_gifts message (verify)
-                    if ((new_gift.verify_gift_action != 'verify') && (gifts.indexOf(new_gift) == -1)) {
+                    if ((gift.verify_gift_action != 'verify') && (gifts.indexOf(gift) == -1)) {
                         // actions create, accept and delete. gift is no longer in gifts array!
-                        console.log(pgm + 'System error. Received ' + new_gift.verify_gift_action + ' gift response from server for gift ' + new_gift.gid + ' but gift is no longer in gifts array') ;
+                        console.log(pgm + 'System error. Received ' + gift.verify_gift_action + ' gift response from server for gift ' + gift.gid + ' but gift is no longer in gifts array') ;
                         no_gifts.syserr2 += 1 ;
                         continue ;
                     }; // if
 
                     // recheck key. check if gift has changed between verify gifts request and response (remote verification can take some time)
-                    hash = verify_gift_to_hash(new_gift);
+                    hash = verify_gift_to_hash(gift);
                     key = JSON.stringify(hash);
                     if (key != verify_gifts_seq_to_gifts[seq].key) {
                         // gift changed between verify gifts request and verify gifts response.
-                        if (verify_gifts_seq_to_gifts[seq].action != new_gift.verify_gift_action) {
-                            console.log(pgm + 'System error. gift.verify_gift_action for gift ' + new_gift.gid +
+                        if (verify_gifts_seq_to_gifts[seq].action != gift.verify_gift_action) {
+                            console.log(pgm + 'System error. gift.verify_gift_action for gift ' + gift.gid +
                                 ' was changed between verify gifts request (' + verify_gifts_seq_to_gifts[seq].action +
-                                ') and verify gifts response (' + new_gift.verify_gift_action + ')') ;
+                                ') and verify gifts response (' + gift.verify_gift_action + ')') ;
                             no_gifts.syserr1 += 1 ;
                             continue ;
                         };
                         // write warning in log and and send a new verify gifts request with changed gift
                         // todo: check verify_gift_action. ok to resend verify. Maybe not ok to resend create, accept or delete gift.
-                        console.log(pgm + 'Warning. Gift ' + new_gift.gid + ' was changed between verify gifts request and verify gifts response.') ;
+                        console.log(pgm + 'Warning. Gift ' + gift.gid + ' was changed between verify gifts request and verify gifts response.') ;
                         console.log(pgm + 'old key = ' + verify_gifts_seq_to_gifts[seq].key) ;
                         console.log(pgm + 'new key = ' + key) ;
-                        console.log(pgm + 'Resending gift ' + new_gift.gid + ' to server for verification') ;
-                        delete new_gift.verify_gift_at ;
-                        verify_gift_action = new_gift.verify_gift_action ;
-                        delete new_gift.verify_gift_action ;
-                        delete new_gift.verify_seq ;
-                        verify_gifts_add(new_gift, verify_gift_action) ;
+                        console.log(pgm + 'Resending gift ' + gift.gid + ' to server for verification') ;
+                        delete gift.verify_gift_at ;
+                        verify_gift_action = gift.verify_gift_action ;
+                        delete gift.verify_gift_action ;
+                        delete gift.verify_seq ;
+                        verify_gifts_add(gift, verify_gift_action) ;
                         no_gifts.resend += 1 ;
                         continue ;
                     }; // if
 
                     // do or rollback actions: create, verify, accept or delete
                     no_gifts[gift_verification.verified_at_server] += 1 ; // true or false
-                    switch(new_gift.verify_gift_action) {
+                    switch(gift.verify_gift_action) {
+
                         case 'create':
                             // create new gift operation. new_gift object should by in gifts array (already checked)
                             if (gift_verification.verified_at_server) {
                                 // gift create ok. add created_at_server = 0 (gift is already in gifts array with created_at_server = 0 - created on this Gofreerev server)
-                                if (new_gift.hasOwnProperty('created_at_server')) {
-                                    // not possble. new_gift object changed between verify gifts request and verify gifts response
-                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was setted between verify gifts request and verify gifts response.') ;
+                                if (gift.hasOwnProperty('created_at_server')) {
+                                    // not possible. new_gift object changed between verify gifts request and verify gifts response
+                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property was set between verify gifts request and verify gifts response.') ;
                                     no_gifts.syserr3 += 1 ;
+                                    // todo: send notification
                                     continue ;
                                 };
-                                // recheck
-                                refresh_gift(new_gift);
-                                if (new_gift.hasOwnProperty('created_at_server')) {
+                                // recheck gift in localStorage
+                                refresh_gift(gift);
+                                if (gift.hasOwnProperty('created_at_server')) {
                                     // thats is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
-                                    if (new_gift.created_at_server == 0) continue; // ok - received in an other browser session
-                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was set to an invalid value between verify gifts request and verify gifts response. Expected created_at_server = 0. Found created_at_server = ' + new_gift.created_at_server + '.');
+                                    if (gift.created_at_server == 0) continue; // ok - received in an other browser session
+                                    console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was set to an invalid value between verify gifts request and verify gifts response. Expected created_at_server = 0. Found created_at_server = ' + gift.created_at_server + '.');
                                     no_gifts.syserr3 += 1 ;
+                                    // todo: send notification
                                     continue;
                                 };
                                 // create gift ok
-                                new_gift.created_at_server = 0; // always 0 for current server - remote gifts are received in client to client communication
-                                save_gift(new_gift) ;
+                                gift.created_at_server = 0; // always 0 for current server for create
+                                // ready for next gift action - clear info used in verify comment request & response
+                                delete gift.verify_seq ;
+                                delete gift.verify_gift_at ;
+                                delete gift.verify_gift_action ;
+                                save_gift(gift) ;
                             }
                             else {
                                 // gift create failed
-                                // todo 1: should move gift back to new gift form and display error message (from server)
-                                // todo 2: how to handle multiple failed new gift actions? Only one new gift form
-                                // todo 3: notification. new gift form could be outside browser window
+                                if (typeof gift_verification.error == 'object') error =  I18n.t('js.gift_actions.' + gift_verification.error.key, gift_verification.error.options);
+                                else error = gift_verification.error ;
+                                console.log(pgm + 'create new gift failed for gid ' + gid + ' with error message: ' + error) ;
+                                // remove gift from gifts array.
+                                i = gifts.indexOf(gift) ;
+                                gifts.splice(i,1) ;
+                                init_gifts_index() ;
+                                // empty new gift form?
+                                empty_new_gift_form = ( (gift.direction == 'giver') &&
+                                                        ((gift.price == null) || (gift.price == '')) &&
+                                                        ((gift.description == null) || (gift.description == '')) &&
+                                                        ((gift.open_graph_url == null) || (gift.open_graph_url == '')) );
+                                if (empty_new_gift_form) {
+                                    // blank new gift form. Move failed new gift back to new gift form and display error message and send notification
+                                    console.log(pgm + 'uncreate gid ' + gid + '. failed create gift is moved (back) to new_gift form.') ;
+                                    new_gift.direction = gift.direction ;
+                                    new_gift.price = gift.price ;
+                                    new_gift.description = gift.description ;
+                                    new_gift.open_graph_url = gift.open_graph_url ;
+                                    new_gift.error =  error ;
+                                    new_gift.error_at = Gofreerev.unix_timestamp() ;
+                                }
+                                else {
+                                    // new gift form in use. Write error message in log + send notification
+                                    console.log(pgm + 'new_gift form already in use. display error message only in log and notification') ;
+                                    console.log(pgm + 'uncreated gift was ' + JSON.stringify(gift)) ;
+                                }; // if
+                                // todo: send notification just in case new gift form was outside windows or new gift form was already in use
+
                             }; // if
                             break;
+
                         case 'verify':
                             // used in receive_message_send_gifts
-                            new_gift.verified_at_server = gift_verification.verified_at_server ;
+                            gift.verified_at_server = gift_verification.verified_at_server ;
                             break;
+
                         case 'accept':
                             if (gift_verification.verified_at_server) {
                                 // gift accept ok. add accepted_at_server = created_at_server
@@ -1909,16 +1970,59 @@ angular.module('gifts')
                                 // todo: should display error message (from server)
                             };
                             break;
+
                         case 'delete':
+                            if (!gift.hasOwnProperty('deleted_at_client')) {
+                                console.log(pgm + 'System error. Received delete gift response from server but gift ' + gift.gid + ' has not been deleted by client') ;
+                                console.log(pgm + 'response = ' + JSON.stringify(gift_verification)) ;
+                                // todo: no_gifts.syserr<n> += 1 + notification
+                                continue ;
+                            };
                             if (gift_verification.verified_at_server) {
-                                // gift delete ok. add deleted_at_:server = created_at_server
+                                // delete gift ok. add deleted_at_server = created_at_server
+                                if (gift.hasOwnProperty('deleted_at_server')) {
+                                    console.log(pgm + 'System error. Gift ' + gift.cid + ' deleted marked on server but deleted_at_server property was set between verify gifts request and verify gifts response.') ;
+                                    // todo: no_gifts.syserr<n> += 1 + notification
+                                    continue ;
+                                };
+                                refresh_gift(gift);
+                                if (gift.hasOwnProperty('deleted_at_server')) {
+                                    // that is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
+                                    if (gift.deleted_at_server == gift.created_at_server) continue ; // ok - gift delete response received in an other browser session
+                                    console.log(pgm + 'System error. Gift ' + gift.cid + ' signature was deleted on server but deleted_at_server property for gift was set to an invalid value between verify comments request and verify comments response. Expected deleted_at_server = ' + gift.created_at_server + '. Found deleted_at_server = ' + gift.deleted_at_server);
+                                    no_gifts.syserr3 += 1 ;
+                                    continue;
+                                } // if
+                                // delete gift ok
+                                gift.deleted_at_server = gift.created_at_server ;
                             }
                             else {
-                                // gift delete failed
-                                // todo: must undelete gift
-                                // todo: should display error message (from server)
-                            };
+                                // delete gift failed.
+                                if (gift.hasOwnProperty('deleted_at_server')) {
+                                    console.log(pgm + 'System error. Gift ' + gift.cid + ' delete was reject by server but has already been deleted in client') ;
+                                    console.log(pgm + 'Server response was ' + JSON.stringify(gift_verification)) ;
+                                    console.log(pgm + 'gift.created_at_server = ' + gift.created_at_server) ;
+                                    console.log(pgm + 'gift.deleted_at_server = ' + gift.deleted_at_server) ;
+                                    // todo: no_gifts.syserr<n> count + notification
+                                    continue ;
+                                } ;
+                                // undelete gift
+                                delete gift.deleted_at_client;
+                                // display error message
+                                // todo: handle missing translations
+                                // todo: seq > 0. should have key and translation. seq < 0. should have english error message only
+                                gift.link_error_at = Gofreerev.unix_timestamp();
+                                if (gift_verification.hasOwnProperty('key')) gift.link_error = I18n.t('js.gift_actions.' + gift_verification.key, gift_verification.options);
+                                else gift.link_error = gift_verification.error ;
+                            }; // if
+                            // save gift - deleted (success) or undeleted (failure)
+                            save_gift(gift) ;
+                            // cleanup info used in verify comment request & response
+                            delete gift.verify_seq ;
+                            delete gift.verify_comment_at ;
+                            delete gift.verify_comment_action ;
                             break;
+
                     }; // switch
 
                     // todo: remove new_gift.verify_gift_action, new_gift.verify_gift_at and new_gift.verify_seq
@@ -1941,8 +2045,9 @@ angular.module('gifts')
 
         // send meta-data for deleted gifts to server and get gift.deleted_at_server response (boolean) from server.
         // called from UserService.ping
-        // todo: add array with just deleted gifts to prevent a full gifts search for deleted comments?
+        // todo: delete - moved to verify gifts request with action = delete
         var delete_gifts_request = function () {
+            return ;
             var pgm = service + '.delete_gifts_request: ' ;
             var request = [];
             var gift, hash, signatures ;
@@ -1963,7 +2068,9 @@ angular.module('gifts')
             return (request.length == 0 ? null : request);
         }; // delete_gifts_request
 
+        // todo: delete - moved to verify gifts request with action = delete
         var delete_gifts_response = function (response) {
+            return ;
             var pgm = service + '.delete_gifts_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
@@ -2104,6 +2211,7 @@ angular.module('gifts')
             return (request.length == 0 ? null : request);
         }; // new_comments_request
         var new_comments_response = function (response) {
+            return ;
             var pgm = service + '.new_comments_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
@@ -2337,10 +2445,10 @@ angular.module('gifts')
             };
 
             // seq must be unique i response and all positive seq must be in verify comments buffer
-            var seqs = [], i, j, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_cid = 0, new_comment, hash_and_key, hash  ;
+            var seqs = [], i, j, not_unique_seq = 0, seq, invalid_local_seq = 0, old_remote_seq = [], invalid_remote_seq = 0, invalid_cid = 0, comment, hash_and_key, hash  ;
             for (i=0 ; i<response.comments.length ; i++) {
-                new_comment = response.comments[i] ;
-                seq = new_comment.seq;
+                comment = response.comments[i] ;
+                seq = comment.seq;
                 if (seqs.indexOf(seq) == -1) {
                     seqs.push(seq) ;
                     if (!verify_comments_seq_to_comms[seq]) {
@@ -2356,7 +2464,7 @@ angular.module('gifts')
                             else invalid_remote_seq += 1 ;
                         }
                     }
-                    else if (verify_comments_seq_to_comms[seq].cid != new_comment.cid) invalid_cid += 1 ;
+                    else if (verify_comments_seq_to_comms[seq].cid != comment.cid) invalid_cid += 1 ;
                 }
                 else not_unique_seq += 1 ;
             }; // for
@@ -2422,77 +2530,78 @@ angular.module('gifts')
                 // one or more comments in verify comments buffer with this seq/key
                 while (new_comments.length > 0) {
                     no_comments.all += 1 ;
-                    new_comment = new_comments.shift() ;
-                    no_comments[new_comment.verify_comment_action] += 1 ; // action: create, verify, cancel, accept, reject and delete
+                    comment = new_comments.shift() ;
+                    no_comments[comment.verify_comment_action] += 1 ; // action: create, verify, cancel, accept, reject and delete
                     if (seq > 0) no_comments.local += 1 ;
                     else no_comments.remote += 1 ;
 
                     // check comment in gifts array. new_comment is either from gifts array (!verify) or from an incoming send_gifts message (verify)
-                    if (new_comment.verify_comment_action != 'verify') {
+                    if (comment.verify_comment_action != 'verify') {
                         // client action: create, cancel, accept, reject or delete. comment must be in gifts array
                         comment_found = false ;
                         for (i=0 ; (!comment_found && (i<gifts.length)) ; i++) {
                             if (!gifts[i].hasOwnProperty('comments')) continue ;
-                            for (j=0 ; (!comment_found && (j<gifts[i].comments.length)) ; j++) if (new_comment === gifts[i].comments[j]) comment_found = true ;
+                            for (j=0 ; (!comment_found && (j<gifts[i].comments.length)) ; j++) if (comment === gifts[i].comments[j]) comment_found = true ;
                         }; // for j
                         if (!comment_found) {
                             // action action: create, cancel, accept, reject or delete. Comment is no longer in gifts array!
-                            console.log(pgm + 'System error. Received ' + new_comment.verify_comment_action + ' comment response from server for comment ' + new_comment.cid + ' but comment is no longer in gifts array') ;
+                            console.log(pgm + 'System error. Received ' + comment.verify_comment_action + ' comment response from server for comment ' + comment.cid + ' but comment is no longer in gifts array') ;
                             no_comments.syserr2 += 1 ;
                             continue ;
                         }; // if
                     }; // if
 
                     // recheck key. check if comment has changed between verify comments request and response (remote verification can take some time)
-                    hash_and_key = verify_comment_to_hash_and_key(gift, new_comment);
+                    hash_and_key = verify_comment_to_hash_and_key(gift, comment);
                     hash = hash_and_key.hash ;
                     key = hash_and_key.key ;
                     if (key != verify_comments_seq_to_comms[seq].key) {
                         // comment changed between verify comments request and verify comments response.
                         // write warning in log and and a send new verify comments request with changed comment
                         // todo: check verify_comment_action. ok to resend verify. Maybe not ok to resend cancel, accept, reject or delete.
-                        console.log(pgm + 'Warning. Comment ' + new_comment.cid + ' was changed between verify comments request and verify comments response.') ;
+                        console.log(pgm + 'Warning. Comment ' + comment.cid + ' was changed between verify comments request and verify comments response.') ;
                         console.log(pgm + 'old key = ' + verify_comments_seq_to_comms[seq].key) ;
                         console.log(pgm + 'new key = ' + key) ;
-                        console.log(pgm + 'Resending comment ' + new_comment.cid + ' to server for verification') ;
-                        delete new_comment.verify_comment_at ;
-                        verify_comment_action = new_comment.verify_comment_action ;
-                        delete new_comment.verify_comment_action ;
-                        delete new_comment.verify_seq ;
-                        verify_comments_add(gift, new_comment, verify_comment_action) ;
+                        console.log(pgm + 'Resending comment ' + comment.cid + ' to server for verification') ;
+                        delete comment.verify_comment_at ;
+                        verify_comment_action = comment.verify_comment_action ;
+                        delete comment.verify_comment_action ;
+                        delete comment.verify_seq ;
+                        verify_comments_add(gift, comment, verify_comment_action) ;
                         continue ;
                     }; // if
 
                     // do or rollback actions: create, verify, cancel, accept, reject or delete. see verify_gifts_response
                     no_comments[comment_verification.verified_at_server] += 1 ; // true or false
-                    switch(new_comment.verify_comment_action) {
+                    switch(comment.verify_comment_action) {
+
                         case 'create':
                             // create new comment operation. new_comment should be in gifts array (already checked)
                             if (comment_verification.verified_at_server) {
                                 // comment create ok. add created_at_server = 0 (comment is already in gifts array with created_at_server = 0 - created on this Gofreerev server)
-                                if (new_comment.hasOwnProperty('created_at_server')) {
-                                    // not possble. new_comment object changed between verify comments request and verify comments response
-                                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property was setted between verify comments request and verify comments response.') ;
+                                if (comment.hasOwnProperty('created_at_server')) {
+                                    // not possible. new_comment object changed between verify comments request and verify comments response
+                                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property was set between verify comments request and verify comments response.') ;
                                     no_comments.syserr3 += 1 ;
                                     // todo: send notification
                                     continue ;
                                 };
-                                // recheck
-                                refresh_gift_and_comment(gift, new_comment);
-                                if (new_comment.hasOwnProperty('created_at_server')) {
+                                // recheck comment in localStorage
+                                refresh_gift_and_comment(gift, comment);
+                                if (comment.hasOwnProperty('created_at_server')) {
                                     // thats is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
-                                    if (new_comment.created_at_server == 0) continue; // ok - received in an other browser session
-                                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was set to an invalid value between verify comments request and verify comments response. Expected created_at_server = 0. Found created_at_server = ' + new_comment.created_at_server + '.');
+                                    if (comment.created_at_server == 0) continue; // ok - received in an other browser session
+                                    console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was set to an invalid value between verify comments request and verify comments response. Expected created_at_server = 0. Found created_at_server = ' + comment.created_at_server + '.');
                                     no_comments.syserr3 += 1 ;
                                     // todo: send notification
                                     continue;
                                 };
                                 // create comment ok
-                                new_comment.created_at_server = 0; // always 0 for current server - remote comments are received in client to client communication
-                                // ready for next comment action - clear verify comment buffer info
-                                delete new_comment.verify_seq ;
-                                delete new_comment.verify_comment_at ;
-                                delete new_comment.verify_comment_action ;
+                                comment.created_at_server = 0; // always 0 for current server for create
+                                // ready for next comment action - clear info used in verify comment request & response
+                                delete comment.verify_seq ;
+                                delete comment.verify_comment_at ;
+                                delete comment.verify_comment_action ;
                             }
                             else {
                                 // comment created failed
@@ -2500,38 +2609,40 @@ angular.module('gifts')
                                 else error = comment_verification.error ;
                                 console.log(pgm + 'create new comment failed for cid ' + cid + ' with error message: ' + error) ;
                                 // remove comment from gift.comments array
-                                i = gift.comments.indexOf(new_comment) ;
+                                i = gift.comments.indexOf(comment) ;
                                 gift.comments.splice(i,1) ;
                                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
                                 if (gift.hasOwnProperty('new_comment')) {
-                                    empty_new_comment_form = ( ((gift.new_comment.comment == null) || (gift.new_comment.comment == '')) &&
+                                    empty_new_gift_form = ( ((gift.new_comment.comment == null) || (gift.new_comment.comment == '')) &&
                                                                ((gift.new_comment.price == null) || (gift.new_comment.price == '')) &&
                                                                !gift.new_comment.new_deal );
                                 }
-                                else empty_new_comment_form = true;
-                                if (empty_new_comment_form) {
+                                else empty_new_gift_form = true;
+                                if (empty_new_gift_form) {
                                     // blank new comment form for gift. Move failed new comment back to new_comment form and display error message and send notification
                                     console.log(pgm + 'uncreate cid ' + cid + '. failed create comment is moved (back) to new_comment form for gid ' + gift.gid) ;
                                     if (!gift.hasOwnProperty('new_comment')) gift.new_comment = {} ;
-                                    gift.new_comment.comment = new_comment.comment ;
-                                    gift.new_comment.price = new_comment.price ;
-                                    gift.new_comment.new_deal = new_comment.new_deal ;
+                                    gift.new_comment.comment = comment.comment ;
+                                    gift.new_comment.price = comment.price ;
+                                    gift.new_comment.new_deal = comment.new_deal ;
                                     gift.new_comment.error =  error ;
                                     gift.new_comment.error_at = Gofreerev.unix_timestamp() ;
                                 }
                                 else {
                                     // new comment form for gift in use. Write error message in log + send notification
                                     console.log(pgm + 'new_comment form already in use for gid ' + gift.gid + '. display error message only in log and notification') ;
-                                    console.log(pgm + 'uncreated comment was ' + JSON.stringify(new_comment)) ;
+                                    console.log(pgm + 'uncreated comment was ' + JSON.stringify(comment)) ;
                                 }; // if
                                 // todo: send notification just in case new comment form was outside windows or new comment form for gift was already in use
                             }; // if
                             save_gift(gift) ;
                             break ;
+
                         case 'verify':
                             // used in receive_message_send_gifts
-                            new_comment.verified_at_server = comment_verification.verified_at_server ;
+                            comment.verified_at_server = comment_verification.verified_at_server ;
                             break ;
+
                         case 'cancel':
                             if (comment_verification.verified_at_server) {
                                 // cancel new deal proposal ok. add action_at_server = created_at_server
@@ -2540,6 +2651,7 @@ angular.module('gifts')
                                 // cancel new deal proposal failed. Chance back to a not cancelled new deal proposal and display error message from server
                             }; // if
                             break;
+
                         case 'accept':
                             if (comment_verification.verified_at_server) {
                                 // accept new deal proposal ok. add comment.action_at_server = comment.created_at_server and gift.accepted_at_server = gift.created_at_server
@@ -2548,6 +2660,7 @@ angular.module('gifts')
                                 // accept new deal proposal failed. Chance back to a not accepted new deal proposal and display error message from server
                             }; // if
                             break ;
+
                         case 'reject':
                             if (comment_verification.verified_at_server) {
                                 // reject new deal proposal ok. add action_at_server = created_at_server
@@ -2556,53 +2669,59 @@ angular.module('gifts')
                                 // reject new deal proposal failed. Chance back to a not reject new deal proposal and display error message from server
                             }; // if
                             break ;
+
                         case 'delete':
-                            if (!new_comment.hasOwnProperty('deleted_at_client')) {
-                                console.log(pgm + 'System error. Received delete comment response from server but comment ' + new_comment.cid + ' has not been deleted at client') ;
+                            if (!comment.hasOwnProperty('deleted_at_client')) {
+                                console.log(pgm + 'System error. Received delete comment response from server but comment ' + comment.cid + ' has not been deleted by client') ;
                                 console.log(pgm + 'response = ' + JSON.stringify(comment_verification)) ;
-                                // todo: new_comments.syserr<n> += 1 + notification
+                                // todo: no_comments.syserr<n> += 1 + notification
                                 continue ;
                             };
                             if (comment_verification.verified_at_server) {
                                 // delete comment ok. add deleted_at_server = created_at_server
-                                if (new_comment.hasOwnProperty('deleted_at_server')) {
-                                    console.log(pgm + 'System error. Comment ' + new_comment.cid + ' deleted marked on server but deleted_at_server property was set between delete comments request and delete comments response.') ;
-                                    // todo: new_comments.syserr<n> += 1 + notification
+                                if (comment.hasOwnProperty('deleted_at_server')) {
+                                    console.log(pgm + 'System error. Comment ' + comment.cid + ' deleted marked on server but deleted_at_server property was set between verify comments request and verify comments response.') ;
+                                    // todo: no_comments.syserr<n> += 1 + notification
                                     continue ;
                                 };
-                                refresh_gift_and_comment(gift, new_comment);
-                                if (new_comment.hasOwnProperty('deleted_at_server')) {
-                                    // thats is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
-                                    if (new_comment.deleted_at_server == new_comment.created_at_server) continue ; // ok - delete response received in an other browser session
-                                    console.log(pgm + 'System error. Comment ' + new_comment.cid + ' signature was deleted on server but deleted_at_server property for comment was set to an invalid value between verify comments request and verify comments response. Expected deleted_at_server = ' + new_comment.created_at_server + '. Found deleted_at_server = ' + new_comment.deleted_at_server);
+                                refresh_gift_and_comment(gift, comment);
+                                if (comment.hasOwnProperty('deleted_at_server')) {
+                                    // that is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
+                                    if (comment.deleted_at_server == comment.created_at_server) continue ; // ok - comment delete response received in an other browser session
+                                    console.log(pgm + 'System error. Comment ' + comment.cid + ' signature was deleted on server but deleted_at_server property for comment was set to an invalid value between verify comments request and verify comments response. Expected deleted_at_server = ' + comment.created_at_server + '. Found deleted_at_server = ' + comment.deleted_at_server);
                                     no_comments.syserr3 += 1 ;
                                     continue;
                                 } // if
                                 // delete comment ok
-                                new_comment.deleted_at_server = new_comment.created_at_server ;
-                                save_gift(gift) ;
+                                comment.deleted_at_server = comment.created_at_server ;
                             }
                             else {
                                 // delete comment failed.
-                                if (new_comment.hasOwnProperty('deleted_at_server')) {
-                                    console.log(pgm + 'System error. Comment ' + new_comment.cid + ' was reject by server but has already been deleted in client') ;
+                                if (comment.hasOwnProperty('deleted_at_server')) {
+                                    console.log(pgm + 'System error. Comment ' + comment.cid + ' delete was reject by server but has already been deleted in client') ;
                                     console.log(pgm + 'Server response was ' + JSON.stringify(comment_verification)) ;
-                                    console.log(pgm + 'comment.created_at_server = ' + new_comment.created_at_server) ;
-                                    console.log(pgm + 'comment.deleted_at_server = ' + new_comment.deleted_at_server) ;
-                                    // todo: syserr<n> count + notification
+                                    console.log(pgm + 'comment.created_at_server = ' + comment.created_at_server) ;
+                                    console.log(pgm + 'comment.deleted_at_server = ' + comment.deleted_at_server) ;
+                                    // todo: no_comments.syserr<n> count + notification
                                     continue ;
                                 } ;
                                 // undelete comment
-                                delete new_comment.deleted_at_client;
+                                delete comment.deleted_at_client;
                                 // display error message
                                 // todo: handle missing translations
                                 // todo: seq > 0. should have key and translation. seq < 0. should have english error message only
-                                new_comment.link_error_at = Gofreerev.unix_timestamp();
-                                if (comment_verification.hasOwnProperty('key')) new_comment.link_error = I18n.t('js.comment_actions.' + comment_verification.key, comment_verification.options);
-                                else new_comment.link_error = comment_verification.error ;
+                                comment.link_error_at = Gofreerev.unix_timestamp();
+                                if (comment_verification.hasOwnProperty('key')) comment.link_error = I18n.t('js.comment_actions.' + comment_verification.key, comment_verification.options);
+                                else comment.link_error = comment_verification.error ;
                             }; // if
-                            // delete
+                            // save gift - deleted (success) or undeleted (failure)
+                            save_gift(gift) ;
+                            // cleanup info used in verify comment request & response
+                            delete comment.verify_seq ;
+                            delete comment.verify_comment_at ;
+                            delete comment.verify_comment_action ;
                             break;
+
                     } ; // switch
 
                     // todo: remove new_comment.verify_comment_action, new_comment.verify_comment_at and new_comment.verify_seq
@@ -2619,10 +2738,6 @@ angular.module('gifts')
 
         }; // verify_comments_response
 
-
-
-
-        // todo: remember delete request for remote comments? this is comments with created_at_server != 0. verification of remote comments can take some time
 
         // send meta-data for deleted comments to server and get comment.deleted_at_server response (boolean) from server.
         // called from UserService.ping
@@ -2661,8 +2776,9 @@ angular.module('gifts')
             } // for i
             return (request.length == 0 ? null : request);
         }; // delete_comments_request
-
+        // todo: delete - now using verify_comments with action = delete
         var delete_comments_response = function (response) {
+            return ;
             var pgm = service + '.delete_comments_response: ';
             // console.log(pgm + 'response = ' + JSON.stringify(response)) ;
             if (response.hasOwnProperty('error')) console.log(pgm + response.error);
@@ -6248,6 +6364,8 @@ angular.module('gifts')
 
 
         return {
+            new_gift: new_gift,
+            init_new_gift: init_new_gift,
             gifts: gifts,
             invalid_comment: invalid_comment,
             invalid_comment_change: invalid_comment_change,
@@ -6262,21 +6380,13 @@ angular.module('gifts')
             sync_gifts: sync_gifts,
             remove_old_errors: remove_old_errors,
             verify_gifts_add: verify_gifts_add,
-            new_gifts_request: new_gifts_request,
-            new_gifts_response: new_gifts_response,
             new_servers_request: new_servers_request,
             new_servers_response: new_servers_response,
             verify_gifts_request: verify_gifts_request,
             verify_gifts_response: verify_gifts_response,
-            delete_gifts_request: delete_gifts_request,
-            delete_gifts_response: delete_gifts_response,
             verify_comments_add: verify_comments_add,
-            new_comments_request: new_comments_request,
-            new_comments_response: new_comments_response,
             verify_comments_request: verify_comments_request,
             verify_comments_response: verify_comments_response,
-            delete_comments_request: delete_comments_request,
-            delete_comments_response: delete_comments_response,
             pubkeys_request: pubkeys_request,
             pubkeys_response: pubkeys_response,
             update_mailboxes: update_mailboxes,

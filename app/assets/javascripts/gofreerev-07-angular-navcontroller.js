@@ -40,13 +40,9 @@ angular.module('gifts')
                 client_userid: userid,
                 sid: sid,
                 client_timestamp: new_client_timestamp,
-                new_gifts: giftService.new_gifts_request(),
                 new_servers: giftService.new_servers_request(),
                 verify_gifts: giftService.verify_gifts_request(),
-                delete_gifts: giftService.delete_gifts_request(),
-                new_comments: giftService.new_comments_request(),
                 verify_comments: giftService.verify_comments_request(),
-                delete_comments: giftService.delete_comments_request(),
                 pubkeys: giftService.pubkeys_request(),
                 refresh_tokens: result.refresh_tokens_request,
                 oauths: userService.refresh_friends_list_request(),
@@ -85,20 +81,12 @@ angular.module('gifts')
                     if (response.data.online) giftService.update_mailboxes(response.data.online) ;
                     // check for new public keys for online users/devices
                     if (response.data.pubkeys) giftService.pubkeys_response(response.data.pubkeys) ;
-                    // get timestamps for newly created gifts from server
-                    if (response.data.new_gifts) giftService.new_gifts_response(response.data.new_gifts) ;
                     // get result of new servers request (unknown server sha256 signatures received from other devices (new gifts))
                     if (response.data.new_servers) giftService.new_servers_response(response.data.new_servers) ;
                     // get result of gift verification (gifts received from other devices)
                     if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
-                    // get result of delete gifts request
-                    if (response.data.delete_gifts) giftService.delete_gifts_response(response.data.delete_gifts) ;
-                    // get timestamps for newly created comments from server
-                    if (response.data.new_comments) giftService.new_comments_response(response.data.new_comments) ;
                     // get result of comment verification (comments received from other devices)
                     if (response.data.verify_comments) giftService.verify_comments_response(response.data.verify_comments) ;
-                    // get result of delete comments request
-                    if (response.data.delete_comments) giftService.delete_comments_response(response.data.delete_comments) ;
                     // check expired access token (server side check)
                     if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens, 'ping') ;
                     // check for new oauth authorization (google+ only)

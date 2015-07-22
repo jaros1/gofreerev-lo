@@ -12,9 +12,8 @@ class Comment < ActiveRecord::Base
   # receive list with new comments from client,
   # verify user ids, generate a sha256 digests, save comments and return created_at_server boolean to client
   # sha256 digest is used as a control when replicating comments between clients
-  # todo: use short internal user id (sequence) or use full user id (uid+provider) in client js comments array?
-  # todo  the app should support replication comment from device a on app server 1 to device b on app server 2
-  # todo  but interval user ids can not be used across two different gofreerev-lo servers
+  # todo: delete - now using verify_comments with action = create
+  private
   def self.new_comments (new_comments, login_user_ids)
     # logger.debug2 "new_comments = #{new_comments}"
     # logger.debug2 "login_user_ids = #{login_user_ids}"
@@ -110,6 +109,7 @@ class Comment < ActiveRecord::Base
   # - client_sid: from ping - unique session id (one did can have multiple sids) = browser tab
   # - client_sha256: from ping - mailbox sha256 signature - changes when api provider login changes
   # ( client_sid + client_sha256 is used as unique session id when sending and receiving remote comment verifications )
+  public
   def self.verify_comments (verify_comments, login_user_ids, client_sid, client_sha256)
     logger.debug2 "verify_comments = #{verify_comments.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"

@@ -2,13 +2,16 @@ testrun 43 after moving some gift and comment actions to verify gifts and verify
 testcase: old login with facebook, new login with google+ and logoff for google+
 
 issue 1: log out for google+ => log out for google+ AND facebook!
-         errot not found. added extra client and server side debug info
+         error not found. added extra client and server side debug info
+         could be provider logins out of sync in client and server
+         server: only google+, client facebook and google+ => server forces client log out for all providers
 
 issue 2: gift load. found comments without created_at_server. Must resend create comment request at page load
          add resend create comment in load gifts + no created_at_server check at load (invalid comment)
 
 issue 3: google+ friend list was downloaded AND refreshed twice after google+ login (due to out of date user info)
          not solved. added extra client and server side debug info
+         error fixed in userService.update_friends
 
 server 1:
 

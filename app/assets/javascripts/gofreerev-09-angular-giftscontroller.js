@@ -11,8 +11,6 @@ angular.module('gifts')
         self.userService = userService ;
         self.giftService = giftService ;
 
-        var appname = Gofreerev.rails['APP_NAME'];
-
         self.default_no_comments = 3 ;
 
         self.is_logged_in = function () {
@@ -271,6 +269,7 @@ angular.module('gifts')
             if (!confirm(confirm_text)) return ;
             gift.deleted_at_client = Gofreerev.unix_timestamp() ;
             giftService.save_gift(gift) ;
+            giftService.verify_gifts_add(gift, 'delete') ;
         }; // delete_gift
 
         self.hide_gift = function (gift) {
@@ -457,25 +456,11 @@ angular.module('gifts')
             return true ;
         };
 
-        // new gift default values
+        // new gift default values - moved to giftService
+        self.new_gift = giftService.new_gift ;
         function init_new_gift () {
-            self.new_gift = {
-                direction: 'giver',
-                currency: userService.get_currency(),
-                errors: null,
-                file_upload_title: function () {
-                    if (userService.is_logged_in()) return I18n.t('js.new_gift.file_title_true', {appname: appname}) ;
-                    else return I18n.t('js.new_gift.file_title_false', {appname: appname}) ;
-                },
-                show: function () {
-                    var user_ids = userService.get_login_userids() ;
-                    return (user_ids.length > 0) ; // logged in with one or more login providers?
-                }
-            };
-            // todo: resize gift description
-            // Gofreerev.autoresize_text_field(this)
-            // add id to new gift description? or add this as parameter and call onfocus event for description
-        }
+            giftService.init_new_gift() ;
+        };
         init_new_gift() ;
 
         // new gift link open graph preview in gifts/index page ==>

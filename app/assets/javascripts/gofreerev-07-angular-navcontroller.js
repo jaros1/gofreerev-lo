@@ -53,7 +53,7 @@ angular.module('gifts')
             if (Gofreerev.is_json_request_invalid(pgm, ping_request, 'ping')) {
                 console.log(pgm + 'Ping loop aborted. Please correct error.') ;
                 return ;
-            }
+            };
             $http.post('/util/ping.json', ping_request).then(
                 function (response) {
                     // schedule next ping.
@@ -121,7 +121,7 @@ angular.module('gifts')
                     // move messages from mailbox.sending to mailbox.outbox - resend in next ping
                     giftService.messages_not_sent() ;
 
-                })
+                });
         }; // ping
         $timeout(function () { ping(ping_interval); }, ping_interval) ;
         console.log(controller + '.start ping process. start up ping interval = ' + ping_interval) ;

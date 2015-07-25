@@ -1931,4 +1931,8 @@
 445) giftService. new_gift object was moved from giftController to giftService
      rename local new_gift variable used in giftService functions
 
-select next issue to solve: (rand*445).floor+1
+446) giftsController. check all giftService.verify_comments_add calls. Should check for error. see giftController.cancel_new_deal
+
+447) giftsController. check all giftService.verify_gifts_add calls. Should check for error. see giftController.cancel_new_deal
+
+select next issue to solve: (rand*447).floor+1

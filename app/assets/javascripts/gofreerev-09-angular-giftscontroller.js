@@ -352,18 +352,31 @@ angular.module('gifts')
             return true ;
         };
         self.cancel_new_deal = function (gift,comment) {
+            var pgm = controller + '.cancel_new_deal: ' ;
             giftService.refresh_gift_and_comment(gift, comment) ;
             if (!comment.cid) return ; // comment has been deleted
             if (!self.show_cancel_new_deal_link(gift,comment)) return ; // cancel link no longer active
             if (!confirm(self.texts.comments.confirm_cancel_new_deal)) return ;
             var login_user_ids = userService.get_login_userids() ;
-            var user_ids = $(login_user_ids).filter(comment.user_ids) ;
-            comment.new_deal = false ; // todo: remove. should be a readonly field
-            comment.new_deal_action = 'cancelled' ;
+            var user_ids = $(login_user_ids).filter(comment.user_ids).get() ;
+            // console.log(pgm + 'login_user_ids   = ' + JSON.stringify(login_user_ids)) ;
+            // console.log(pgm + 'comment.user_ids = ' + JSON.stringify(comment.user_ids)) ;
+            // console.log(pgm + 'user_ids         = ' + JSON.stringify(user_ids)) ;
+            comment.new_deal_action = 'cancel' ;
             comment.new_deal_action_by_user_ids = user_ids ;
             comment.new_deal_action_at_client = Gofreerev.unix_timestamp() ;
             giftService.save_gift(gift) ;
-        };
+            var error ;
+            if (error=giftService.verify_comments_add(gift, comment, 'cancel')) {
+                console.log(pgm + 'cancel new deal proposal failed with ' + error) ;
+                comment.link_error = error ;
+                comment.link_error_at = Gofreerev.unix_timestamp() ;
+                delete comment.new_deal_action ;
+                delete comment.new_deal_action_by_user_ids ;
+                delete comment.new_deal_action_at_client ;
+                giftService.save_gift(gift) ;
+            } ;
+        }; // cancel_new_deal
 
         // user "other" user ids to be used when closing a deal (adding giver or receiver user ids to gift)
         // helper method used in show_accept_new_deal_link and accept_new_deal
@@ -376,7 +389,7 @@ angular.module('gifts')
             // merge login users and creators of gift - minimum one login is required
             var login_user_ids = userService.get_login_userids() ;
             var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
-            var user_ids = $(login_user_ids).filter(gift_user_ids) ;
+            var user_ids = $(login_user_ids).filter(gift_user_ids).get() ;
             if (user_ids.length == 0) return [] ;
             // find providers - old gift creator & logged in
             var user_providers = [], user ;

@@ -207,7 +207,7 @@ JSON_SCHEMA = {
 
     # ping request/response is the central message used in synchronization of information between servers and clients
     # number of pings per time period are regulated after average server load
-    # client pings are distributed equally over time
+    # client pings (clients and other Gofreerev servers) are distributed equally over time
     :ping_request =>
         {:type => 'object',
          :title => 'Send requests to server and send messages to other clients',
@@ -317,6 +317,7 @@ JSON_SCHEMA = {
                   :items => {:type => 'string', :pattern => uid_pattern},
                   :minItems => 1
               },
+
               # refresh_tokens - google+ only - optional array with refresh tokens to be used when refreshing expired access token
               :refresh_tokens => {
                   :type => 'array',
@@ -332,6 +333,7 @@ JSON_SCHEMA = {
                   :minItems => 1,
                   :maxItems => 1
               },
+
               # optional array with oauth authorization for one or more social networks (from localStorage)
               # used for friend list update after detecting changed sha256 user signature in server to server communication
               # see :refresh => true in short friends list in util_controller.ping

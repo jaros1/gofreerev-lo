@@ -520,7 +520,7 @@ angular.module('gifts')
                 // giftService.load_gifts() ; // moved to AuthCtrl
             }
             else if (provider == '*') {
-                console.log(pgm + 'received "Not logged in" response from ping. Not logged in on server. Log out all providers on client.') ;
+                console.log(pgm + 'Received "Not logged in" response from ping. Not logged in on server. Log out all providers on client.') ;
                 friends = [] ;
                 friends_index_by_user_id = {} ;
                 Gofreerev.setItem('friends', JSON.stringify(friends)) ;

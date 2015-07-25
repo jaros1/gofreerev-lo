@@ -149,8 +149,8 @@ angular.module('gifts')
 
                 // the three new_deal fields must all be null or must all have valid values
                 if (((typeof comment.new_deal_action == 'undefined') || (comment.new_deal_action == null)) &&
-                    ((typeof comennt.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) &&
-                    ((typeof comennt.new_deal_action_at_client == 'undefined') || (comment.new_deal_action_at_client == null))) {
+                    ((typeof comment.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) &&
+                    ((typeof comment.new_deal_action_at_client == 'undefined') || (comment.new_deal_action_at_client == null))) {
                     // no new_deal_action
                     null ;
                 }
@@ -511,7 +511,7 @@ angular.module('gifts')
             else {
                 new_deal_action_by_user_ids = userService.get_external_user_ids(comment.new_deal_action_by_user_ids);
                 if (!new_deal_action_by_user_ids) new_deal_action_by_user_ids = [];
-                new_deal_action_by_user_ids = new_deal_action_by_user_ids.sort ;
+                new_deal_action_by_user_ids = new_deal_action_by_user_ids.sort() ;
             }
             new_deal_action_by_user_ids.unshift(new_deal_action_by_user_ids.length);
             new_deal_action_by_user_ids = new_deal_action_by_user_ids.join(',');
@@ -697,10 +697,10 @@ angular.module('gifts')
             if (!gift.hasOwnProperty('comments')) gift.comments = [];
             var comment;
             var keep_comment_property = {
-                cid: true, user_ids: true, price: true, currency: true, comment: true, created_at_client: true,
-                created_at_server: true, new_deal: true, deleted_at_client: true, deleted_at_server: true,
-                accepted: true, accepted_at_client: true, accepted_at_server: true, accepted_by_user_ids: true,
-                rejected_at_client: true, rejected_by_user_ids: true
+                cid: true, user_ids: true, price: true, currency: true, comment: true, new_deal: true,
+                created_at_client: true, created_at_server: true,
+                new_deal_action: true, new_deal_action_at_client: true,new_deal_action_by_user_ids: true,  new_deal_action_at_server: true,
+                deleted_at_client: true, deleted_at_server: true
             } ;
             for (var i = 0; i < gift.comments.length; i++) {
                 comment = gift.comments[i] ;
@@ -970,7 +970,7 @@ angular.module('gifts')
                 case 'accept':
                 case 'reject':
                     // cancel, accept or reject new deal proposal
-                    property_at_server = 'new_deal_action_at_server'
+                    property_at_server = 'new_deal_action_at_server';
                     break ;
                 default:
                     error = 'Invalid verify_comments_add call. Expected action create, verify, cancel, accept, reject or delete. Action was ' + action ;
@@ -1175,7 +1175,9 @@ angular.module('gifts')
                 if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
                     comment = gift.comments[j];
                     comment.sha256 = comment_sha256_for_client(comment) ;
+                    // resend old not processed comment actions
                     if (!comment.hasOwnProperty('created_at_server')) verify_comments_add(gift, comment, 'create') ; // resend create comment request
+                    if (comment.new_deal_action_at_client && !comment.hasOwnProperty('new_deal_action_at_server')) verify_comments_add(gift, comment, comment.new_deal_action) ; // resend cancel, accept or reject new deal proposal request
                     if (comment.deleted_at_client && !comment.hasOwnProperty('deleted_at_server')) verify_comments_add(gift, comment, 'delete') ; // resend delete comment request
                 } ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
@@ -2644,12 +2646,59 @@ angular.module('gifts')
                             break ;
 
                         case 'cancel':
+                            if (!comment.hasOwnProperty('new_deal_action_at_client')) {
+                                console.log(pgm + 'System error. Received cancel new deal proposal comment response from server but new deal proposal ' + comment.cid + ' has not been cancelled by client') ;
+                                console.log(pgm + 'response = ' + JSON.stringify(comment_verification)) ;
+                                // todo: no_comments.syserr<n> += 1 + notification
+                                continue ;
+                            };
                             if (comment_verification.verified_at_server) {
-                                // cancel new deal proposal ok. add action_at_server = created_at_server
+                                // cancel new deal proposal ok. add new_deal_action_at_server = created_at_server
+                                if (comment.hasOwnProperty('new_deal_action_at_server')) {
+                                    console.log(pgm + 'System error. New deal proposal ' + comment.cid + ' cancelled marked on server but new_deal_action_at_server property was set between verify comments request and verify comments response.') ;
+                                    // todo: no_comments.syserr<n> += 1 + notification
+                                    continue ;
+                                };
+                                refresh_gift_and_comment(gift, comment);
+                                if (comment.hasOwnProperty('new_deal_action_at_server')) {
+                                    // that is ok if multiple browser sessions (windows or tabs) with identical login / identical client user id
+                                    if (comment.new_deal_action_at_server == comment.created_at_server) continue ; // ok - cancel new deal proposal response received in an other browser session
+                                    console.log(pgm + 'System error. New deal proposal ' + comment.cid + ' was cancelled on server but new_deal_action_at_server property for new deal proposal was set to an invalid value between verify comments request and verify comments response. Expected new_deal_action_at_server = ' + comment.created_at_server + '. Found new_deal_action_at_server = ' + comment.new_deal_action_at_server);
+                                    no_comments.syserr3 += 1 ;
+                                    continue;
+                                } // if
+                                // cancel new deal proposal ok
+                                comment.new_deal_action_at_server = comment.created_at_server ;
                             }
                             else {
-                                // cancel new deal proposal failed. Chance back to a not cancelled new deal proposal and display error message from server
+                                // cancel new deal proposal failed.
+                                if (comment.hasOwnProperty('new_deal_action_at_server')) {
+                                    console.log(pgm + 'System error. Cancel new deal proposal ' + comment.cid + ' was reject by server but has already been cancelled in client') ;
+                                    console.log(pgm + 'Server response was ' + JSON.stringify(comment_verification)) ;
+                                    console.log(pgm + 'comment.created_at_server = ' + comment.created_at_server) ;
+                                    console.log(pgm + 'comment.new_deal_action_at_server = ' + comment.new_deal_action_at_server) ;
+                                    // todo: no_comments.syserr<n> count + notification
+                                    continue ;
+                                } ;
+                                // remove cancel new deal proposal from comment
+                                delete comment.new_deal_action  ;
+                                delete comment.new_deal_action_by_user_ids ;
+                                delete comment.new_deal_action_at_client ;
+                                // display error message
+                                // todo: handle missing translations
+                                // todo: seq > 0. should have key and translation. seq < 0. should have english error message only
+                                comment.link_error_at = Gofreerev.unix_timestamp();
+                                if (typeof comment_verification.error == 'object') comment.link_error = I18n.t('js.comment_actions.' + comment_verification.error.key, comment_verification.error.options);
+                                else comment.link_error = comment_verification.error ;
+                                console.log(pgm + 'cancel new deal proposal failed. error message was ' + comment.link_error) ;
                             }; // if
+                            // save gift - cancelled (success) or uncancel (failure)
+                            // cleanup info used in verify comment request & response
+                            // console.log(pgm + 'save_gift: gift = ' + JSON.stringify(gift));
+                            save_gift(gift) ;
+                            delete comment.verify_seq ;
+                            delete comment.verify_comment_at ;
+                            delete comment.verify_comment_action ;
                             break;
 
                         case 'accept':

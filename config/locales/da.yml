@@ -965,7 +965,7 @@ da:
         google_other_errors: "Fejl ved hentning af venneliste fra Google+ API. \"%{error}\""
         linkedin_access_denied: "Fejl ved hentning af connections fra LinkedIn API. Access to connections denied. Tjek liste ved API opsætning. 1) scope r_network mangler i provider opsætning for linkedin"
         post_login_new_user: "Din venneliste er klar til brug. Opdater siden, så du kan se eventuelle opslag fra dine venner."
-        post_login_no_friends: "Din %{apiname} venneliste er tom eller %{appname} har ikke adgang til at se din %{apiname} venneliste. I %{appname} vises derfor ingen %{apiname} venner eller opslag fra %{apiname} venner."
+        post_login_no_friends: "Din %{apiname} venneliste er tom eller %{appname} har ikke adgang til at se din %{apiname} venneliste. I %{appname} vises derfor ingen %{apiname} venner eller opslag fra %{apiname} venner. Tjek evt. app indstillinger %{app_settings_url}."
      cancel_new_deal:
         invalid_action: "Systemfejl. Kan ikke fortryde forslag. Ugyldig aktion. Mere information i server log."
         not_logged_in: "Kan ikke fortryde forslag. Du er ikke logget ind. Opdater venligst siden."

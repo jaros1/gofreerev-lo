@@ -961,7 +961,7 @@ en:
         google_other_errors: "Error when fetching friend list from Google+ API. \"%{error}\""
         linkedin_access_denied: "Error when fetching connections from LinkedIn API. Access to connections denied. Check list: 1) scope r_network maybe  missing in provider setup for LinkedIn"
         post_login_new_user: "Your friend list is ready. Please refresh page to see any posts from your friends."
-        post_login_no_friends: "Your %{apiname} friend list is empty or %{appname} is not authorized to see your %{apiname} friend list. No %{apiname} friends and no post from %{apiname} friends are displayed in %{appname}."
+        post_login_no_friends: "Your %{apiname} friend list is empty or %{appname} is not authorized to see your %{apiname} friend list. No %{apiname} friends and no post from %{apiname} friends are displayed in %{appname}. App settings can be checked at %{app_settings_url}."
      cancel_new_deal:
         invalid_action: "System error. Cannot cancel proposal. Invalid action. More information in server log."
         not_logged_in: "Cannot cancel proposal. You are not logged in. Please refresh page."

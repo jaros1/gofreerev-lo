@@ -75,7 +75,7 @@ Rails.application.config.middleware.use OmniAuth::Builder do
            }
   provider :flickr, API_ID[:flickr], API_SECRET[:flickr], :scope => 'read'
   provider :foursquare, API_ID[:foursquare], API_SECRET[:foursquare]
-  provider :google_oauth2, API_ID[:google_oauth2], API_SECRET[:google_oauth2], :scope => 'plus.login userinfo.profile', :access_type => 'offline', :prompt => 'consent'
+  provider :google_oauth2, API_ID[:google_oauth2], API_SECRET[:google_oauth2], :scope => 'plus.login', :access_type => 'offline', :prompt => 'consent'
   # provider :google_oauth2, :setup => GOOGLE_OAUTH2_SETUP
   provider :instagram, API_ID[:instagram], API_SECRET[:instagram]
   provider :linkedin, API_ID[:linkedin], API_SECRET[:linkedin], :scope => "r_basicprofile r_network", :fields => ['id', 'first-name', 'last-name', 'picture-url', 'public-profile-url', 'location']

@@ -1016,7 +1016,7 @@ JSON_SCHEMA = {
                                             # optional new_deal boolean - true if commemt was created as a new deal proposal - false if comment
                                             :new_deal => {:type => %w(undefined boolean) },
                                             # optional new_deal_action. Only used for new deal proposals.
-                                            :new_deal_action => {:type => %w(undefined string), :pattern => '^(cancelled|accepted|rejected)$'},
+                                            :new_deal_action => {:type => %w(undefined string), :pattern => '^(cancel|accept|reject)$'},
                                             # optional new_deal_action user id, log in users for cancel, accept or reject action, subset of gift creator (accept, reject) or subset of comment creator (cancel)
                                             :new_deal_action_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}},
                                             # optional new_deal_action_at_client unix timestamp

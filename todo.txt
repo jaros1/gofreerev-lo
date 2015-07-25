@@ -1935,4 +1935,12 @@
 
 447) giftsController. check all giftService.verify_gifts_add calls. Should check for error. see giftController.cancel_new_deal
 
-select next issue to solve: (rand*447).floor+1
+448) sync gifts between clients
+     don't include actions in progress in client side sha256 signatures and sync gifts operation
+     don't include not yet created gifts and not yet created comments (created_at_server is null)
+     comments: new deal action in progress (new_deal_action_at_server is null). include comment without new deal action
+     gifts: accept gift in progress (accepted_at_server is null). include gift without accept action
+     comments and gifts: delete action in progress (deleted_at_server is null). include without delete action
+     implemented but not tested
+
+select next issue to solve: (rand*448).floor+1

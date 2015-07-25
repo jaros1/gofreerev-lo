@@ -503,19 +503,26 @@ angular.module('gifts')
         // - deleted_at_client    - deleted at client unix timestamp - include in comment_sha256_for_client
         var comment_sha256_for_client = function (comment) {
             var pgm = service + '.comment_sha256_for_client: ';
-            if (!comment.hasOwnProperty('created_at_server')) return null; // wait - no server side sha256 signature
-            // optional new deal action (cancelled, rejected or accepted)
-            // todo: use internal user ids. comment_sha256_for_client is only used within client.
-            var new_deal_action_by_user_ids;
-            if (!comment.hasOwnProperty('new_deal_action_by_user_ids') || (typeof comment.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) new_deal_action_by_user_ids = [];
-            else {
+            if (!comment.hasOwnProperty('created_at_server')) return null; // wait for server side create
+            // optional new deal action (cancel, accept or reject)
+            var new_deal_action ;
+            var new_deal_action_at_client ;
+            var new_deal_action_by_user_ids = [];
+            if (comment.hasOwnProperty('new_deal_action_at_server')) {
+                // new_deal_action completed (cancel, accept or reject new deal proposal)
+                // todo: use internal user ids. comment_sha256_for_client is only used within client.
+                new_deal_action = comment.new_deal_action ;
+                new_deal_action_at_client = comment.new_deal_action_at_client ;
                 new_deal_action_by_user_ids = userService.get_external_user_ids(comment.new_deal_action_by_user_ids);
                 if (!new_deal_action_by_user_ids) new_deal_action_by_user_ids = [];
                 new_deal_action_by_user_ids = new_deal_action_by_user_ids.sort() ;
-            }
+            } ;
             new_deal_action_by_user_ids.unshift(new_deal_action_by_user_ids.length);
             new_deal_action_by_user_ids = new_deal_action_by_user_ids.join(',');
-            return Gofreerev.sha256(comment.cid, comment.new_deal_action, new_deal_action_by_user_ids, comment.new_deal_action_at_client, comment.deleted_at_client);
+            // optional delete comment
+            var deleted_at_client ;
+            if (comment.hasOwnProperty('deleted_at_server')) deleted_at_client = comment.deleted_at_client ; // delete completed
+            return Gofreerev.sha256(comment.cid, new_deal_action, new_deal_action_by_user_ids, new_deal_action_at_client, deleted_at_client);
         }; // comment_sha256_for_client
 
         // calculate client side sha256 value for gift. used when comparing gift lists between clients. replicate gifts with changed sha256 value to/from other clients
@@ -555,7 +562,16 @@ angular.module('gifts')
             // price and currency
             // likes - todo: change like from boolean to an array of like and unlike with user id and timestamp
             var likes_str = '';
-            // deleted_at_client
+            // optional accepted action
+            var accepted_cid, accepted_at_client ;
+            if (gift.hasOwnProperty('accepted_at_server')) {
+                // accept completed
+                accepted_cid = gift.accepted_cid ;
+                accepted_at_client = gift.accepted_at_client ;
+            }; // if
+            // optional delete gift
+            var deleted_at_client ;
+            if (gift.hasOwnProperty('deleted_at_server')) deleted_at_client = gift.deleted_at_client ; // delete completed
             // comments. string with sha256 value for each comment
             var comments, comment_sha256_temp;
             if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [];
@@ -569,8 +585,8 @@ angular.module('gifts')
             comments_sha256.unshift(comments.length.toString());
             var comments_str = comments_sha256.join(',');
             // return an array with 3 sha256 values. sha256 is the real/full sha256 value for gift. sha256_gift and sha256_comments are sub sha256 values used in gifts sync between devices
-            var sha256 = Gofreerev.sha256(gift.gid, other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, gift.accepted_cid, gift.accepted_at_client, comments_str);
-            var sha256_gift = Gofreerev.sha256(gift.gid, other_participant_str, gift.price, gift.currency, likes_str, gift.deleted_at_client, gift.accepted_cid, gift.accepted_at_client);
+            var sha256 = Gofreerev.sha256(gift.gid, other_participant_str, gift.price, gift.currency, likes_str, accepted_cid, accepted_at_client, deleted_at_client, comments_str);
+            var sha256_gift = Gofreerev.sha256(gift.gid, other_participant_str, gift.price, gift.currency, likes_str, accepted_cid, accepted_at_client, deleted_at_client);
             var sha256_comments = Gofreerev.sha256(comments_str);
             console.log(pgm + 'gid = ' + gift.gid + ', comments_str = ' + comments_str + ', sha256 = ' + sha256 + ', sha256_gift = ' + sha256_gift + ', sha256_comments = ' + sha256_comments) ;
             return [sha256, sha256_gift, sha256_comments];
@@ -1159,7 +1175,7 @@ angular.module('gifts')
                         delete comment.rejected_at_client ;
                         migration = true ;
                     }
-                }
+                }; // if
                 
 
                 // save migrated gift
@@ -1761,7 +1777,7 @@ angular.module('gifts')
                 // fatal error
                 if (typeof response.error == 'object') error =  I18n.t('js.gift_actions.' + response.error.key, response.error.options);
                 else error = response.error ;
-                console.log(pgm + error) ;
+                console.log(pgm + 'Fatal verify gifts error: ' + error) ;
                 // todo: notification
                 return ;
             };
@@ -2441,7 +2457,7 @@ angular.module('gifts')
                 // fatal error
                 if (typeof response.error == 'object') error =  I18n.t('js.comment_actions.' + response.error.key, response.error.options);
                 else error = response.error ;
-                console.log(pgm + error) ;
+                console.log(pgm + 'Fatal verify comments error: ' + error) ;
                 // todo: notification
                 return ;
             };
@@ -2694,7 +2710,6 @@ angular.module('gifts')
                             }; // if
                             // save gift - cancelled (success) or uncancel (failure)
                             // cleanup info used in verify comment request & response
-                            // console.log(pgm + 'save_gift: gift = ' + JSON.stringify(gift));
                             save_gift(gift) ;
                             delete comment.verify_seq ;
                             delete comment.verify_comment_at ;
@@ -3776,6 +3791,16 @@ angular.module('gifts')
         // clone gift object before adding to outgoing message
         // not all fields are used in message and some fields are updated before message is send
         var make_gift_clone = function (gift) {
+            // optional accept gift operation
+            var accepted_cid, accepted_at_client ;
+            if (gift.hasOwnProperty('accepted_at_server')) {
+                // accept gift operation complete
+                accepted_cid = gift.accepted_cid ;
+                accepted_at_client = gift.accepted_at_client ;
+            };
+            // optional delete gift operation
+            var deleted_at_client ;
+            if (gift.hasOwnProperty('deleted_at_server')) deleted_at_client = gift.deleted_at_client; // delete operation complete
             return {
                 gid: gift.gid,
                 giver_user_ids: Gofreerev.clone_array(gift.giver_user_ids),
@@ -3791,17 +3816,28 @@ angular.module('gifts')
                 open_graph_description: gift.open_graph_description,
                 open_graph_image: gift.open_graph_image,
                 like: gift.like,
-                deleted_at_client: gift.deleted_at_client,
-                // todo: add deleted_at_server (integer)
-                accepted_cid: gift.accepted_cid,
-                accepted_at_client: gift.accepted_at_client
-                // ,sha256: gift.sha256 - // sha256 is not sent - receiver will make gift sha256 calculations
+                accepted_cid: accepted_cid,
+                accepted_at_client: accepted_at_client,
+                // todo: add accepted_at_server (integer)?
+                deleted_at_client: deleted_at_client
+                // todo: add deleted_at_server (integer)?
             };
         }; // make_gift_clone
 
         // clone comment object before adding to outgoing message
         // not all fields are used in message and some fields are updated before message is send
         var make_comment_clone = function (comment) {
+            // optional new deal action (cancel, accept or reject new deal proposal)
+            var new_deal_action, new_deal_action_by_user_ids, new_deal_action_at_client ;
+            if (comment.hasOwnProperty('new_deal_action_at_server')) {
+                // new deal action complete
+                new_deal_action = comment.new_deal_action ;
+                new_deal_action_by_user_ids = comment.new_deal_action_by_user_ids ;
+                new_deal_action_at_client = comment.new_deal_action_at_client ;
+            };
+            // optional delete comment
+            var deleted_at_client ;
+            if (comment.hasOwnProperty('deleted_at_server')) deleted_at_client = comment.deleted_at_client ;
             return {
                 cid: comment.cid,
                 user_ids: Gofreerev.clone_array(comment.user_ids),
@@ -3811,11 +3847,12 @@ angular.module('gifts')
                 created_at_client: comment.created_at_client,
                 created_at_server: comment.created_at_server,
                 new_deal: comment.new_deal,
-                new_deal_action: comment.new_deal_action,
-                new_deal_action_by_user_ids: Gofreerev.clone_array(comment.new_deal_action_by_user_ids),
-                new_deal_action_at_client: comment.new_deal_action_at_client,
-                deleted_at_client: comment.deleted_at_client
-                // todo: add deleted_at_server (integer)
+                new_deal_action: new_deal_action,
+                new_deal_action_by_user_ids: Gofreerev.clone_array(new_deal_action_by_user_ids),
+                new_deal_action_at_client: new_deal_action_at_client,
+                // todo: add new_deal_action_at_server (integer)?
+                deleted_at_client: deleted_at_client
+                // todo: add deleted_at_server (integer)?
                 // ,sha256: comment.sha256
             };
         }; // make_comment_clone
@@ -5328,7 +5365,7 @@ angular.module('gifts')
                     new_comment: {comment: ""}
                 };
                 // extra control. gifts have already been validated in validate_send_gifts_message
-                if (errors = invalid_gift(gift, [], 'receive', mailbox)) {
+                if (errors = invalid_gift(gift, msg.users, 'receive', mailbox)) {
                     console.log(pgm + 'Could not create new gift: ' + errors);
                     console.log(pgm + 'gift = ' + JSON.stringify(gift));
                     create_gift_errors.push(new_gift.gid);

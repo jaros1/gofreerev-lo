@@ -312,7 +312,12 @@ class Gift < ActiveRecord::Base
   def self.client_response_array_add (client_response_array, client_response, client_sid, client_request)
     debug_info = { :request => client_request, :response => client_response}.to_json
     seqs = client_response_array.collect { |hash| hash[:seq] }
-    raise InvalidResponse.new("Seq is not unique: #{debug_info}") if seqs.index(client_response[:seq])
+    if seqs.index(client_response[:seq])
+      logger.debug2 "client_response_array = #{client_response_array.to_json}"
+      logger.debug2 "seqs                  = #{seqs.to_json}"
+      logger.debug2 "client_response       = #{client_response.to_json}"
+      raise InvalidResponse.new("System error. Seq in response is not unique: #{debug_info}")
+    end
     if client_response[:verified_at_server]
       # ok response. all error fields must be blank
       if (client_response[:error].to_s != '') or (client_response[:key].to_s != '') or (client_response[:options].to_s != '')
@@ -846,6 +851,7 @@ class Gift < ActiveRecord::Base
           Gift.client_response_array_add(client_response_array,
                                 { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_sha256_deleted', :options => {:action => action} },
                                 client_sid, verify_gift)
+          next
         end
         logger.warn2 "warning. action was delete but gift #{gid} has already been deleted" if (action == 'delete') and gift.sha256_deleted
       end

@@ -947,7 +947,8 @@ JSON_SCHEMA = {
             # array with internal user ids - must be a subset of mutual friends - from previous gifts_sha256 message
             # use internal user id for within server messages. use sha256 signatures for messages to other gofreerev servers
             :users => {:type => 'array', :items => {:type => %w(integer string) }, :minItems => 1},
-            # optional sub message 1 - send_gifts - send missing gifts to other client
+
+            # syn_gifts optional sub message 1 - send_gifts - send missing gifts to other client
             :send_gifts => {
                 :type => 'object',
                 :title => 'send_gifts sub message. Send missing gifts to other client',
@@ -1076,7 +1077,8 @@ JSON_SCHEMA = {
                 :required => %w(mid msgtype gifts),
                 :additionalProperties => false
             },
-            # optional sub message 2 - request_gifts - request missing gifts from other client
+
+            # syn_gifts optional sub message 2 - request_gifts - request missing gifts from other client
             :request_gifts => {
                 :type => 'object',
                 :title => 'request_gifts sub message. Request missing gifts from other client',
@@ -1095,7 +1097,8 @@ JSON_SCHEMA = {
                     :additionalProperties => false
                 }
             },
-            # optional sub message 3 - check_gifts - merge gifts - send array with gifts sub sha2546 values to other client
+
+            # syn_gifts optional sub message 3 - check_gifts - merge gifts - send array with gifts sub sha2546 values to other client
             :check_gifts => {
                 :type => 'object',
                 :title => 'check_gifts sub message. Send sha256 values for gift and comments to other client',
@@ -1140,7 +1143,8 @@ JSON_SCHEMA = {
                     :additionalProperties => false
                 }
             },
-            # optional sub message 4 - request_comments - request missing comments from other client
+
+            # sync_gifts optional sub message 4 - request_comments - request missing comments from other client
             :request_comments => {
                 :type => 'object',
                 :title => 'request_comments sub message. Request missing comments from other client',
@@ -1158,8 +1162,70 @@ JSON_SCHEMA = {
                     :required => %w(mid msgtype comments),
                     :additionalProperties => false
                 }
-            }
+            },
 
+            # syn_gifts optional sub message 5 - errors and warnings - used if incoming message was partial processed - use seperate error message if fatal error in incoming message
+            # other client should write errors in log and add a notification
+            # todo: add object with mid, msgtype etc?
+            :error => { :type => 'string' },
+
+            # syn_gifts optional sub message 6 - gifts with invalid signature - received one or more new gifts in incoming send_gifts message with invalid sha256 signatures
+            # other client should recheck gift signatures (sha256, sha256_action and sha256_deleted), report any error (log & notification) and optional uncreate, unaccept or undelete gift
+            # todo: add object with mid, msgtype etc?
+            :invalid_gifts => {
+                :type => 'array',
+                :title => 'invalid_gifts sub message. Return send_gift processing errors to other client',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        :gid => { :type => 'string', :pattern => uid_pattern },
+                        # gift processing error message
+                        # either a string - english only error message - used for cross server error messages
+                        # or an object with :key and :options - multi-language support - used for within server error messages
+                        :error => {
+                            :type => %w(string object),
+                            :properties => {
+                                :key => { :type => 'string'},
+                                :options => { :type => 'object'}
+                            },
+                            :required => %w(key),
+                            :additionalProperties => false
+                        }
+                    },
+                    :required => %w(gid error),
+                    :additionalProperties => false
+                },
+                :minItems => 1
+            },
+
+            # syn_gifts optional sub message 7 - comments with invalid signature - received one or more new comments in incoming send_gifts message with invalid sha256 signatures
+            # other client should recheck comment signatures (sha256, sha256_action and sha256_deleted), report any error (log & notification) and optional uncreate, unaction or undelete comment
+            # todo: add object with mid, msgtype etc?
+            :invalid_comments => {
+                :type => 'array',
+                :title => 'invalid_gifts sub message. Return send_gift processing errors to other client',
+                :items => {
+                    :type => 'object',
+                    :properties => {
+                        :cid => { :type => 'string', :pattern => uid_pattern },
+                        # comment processing error message
+                        # either a string - english only error message - used for cross server error messages
+                        # or an object with :key and :options - multi-language support - used for within server error messages
+                        :error => {
+                            :type => %w(string object),
+                            :properties => {
+                                :key => { :type => 'string'},
+                                :options => { :type => 'object'}
+                            },
+                            :required => %w(key),
+                            :additionalProperties => false
+                        }
+                    },
+                    :required => %w(gid error),
+                    :additionalProperties => false
+                },
+                :minItems => 1
+            }
         },
         :required => %w(mid request_mid msgtype users),
         :additionalProperties => false

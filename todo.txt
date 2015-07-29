@@ -1943,4 +1943,10 @@
      comments and gifts: delete action in progress (deleted_at_server is null). include without delete action
      implemented but not tested
 
-select next issue to solve: (rand*448).floor+1
+449) receive_message_send_gifts
+     wait for pending client actions to finish before merging gifts array from other client
+     gifts: pending accept or delete
+     comments: pending cancel, accept, reject or delete
+     implemented but not tested
+
+select next issue to solve: (rand*449).floor+1

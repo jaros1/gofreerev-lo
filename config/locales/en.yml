@@ -1057,7 +1057,7 @@ en:
         syserr_sha256_accepted_required1: "%{action} gift failed. Gift has a sha256_accepted server signature but sha256_accepted is missing in request."
         syserr_not_deleted: "%{action} gift failed. sha256_deleted signature in request but gift has not been deleted (no deleted signature on server)"
         syserr_sha256_accepted_required2: "%{action} gift failed. sha256_deleted signature in request but gift has previously been accepted and sha256 accepted signature was missing in request."
-        syserr_sha256_deleted: "#{action} gift failed. Invalid request. sha256_deleted signature check failed."
+        syserr_sha256_deleted: "%{action} gift failed. Invalid request. sha256_deleted signature check failed."
      new_comment:
         ajax_error: "Error when creating comment. %{error}. More information in server log."
         ajax_error2: "Error when creating comment. %{error} (%{location},%{debug}). More information in client and server logs."

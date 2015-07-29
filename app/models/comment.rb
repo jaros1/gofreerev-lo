@@ -169,6 +169,11 @@ class Comment < ActiveRecord::Base
       cids << new_comment["cid"]
       comments_user_ids += new_comment["user_ids"]
       comments_user_ids += new_comment["new_deal_action_by_user_ids"] if new_comment["new_deal_action_by_user_ids"]
+      if new_comment["gift"] and !new_comment["gift"]["server_id"]
+        # comment with gift signature info. gift is also on this Gofreerev server
+        comments_user_ids += new_comment["gift"]["giver_user_ids"] if new_comment["gift"]["giver_user_ids"]
+        comments_user_ids += new_comment["gift"]["receiver_user_ids"] if new_comment["gift"]["receiver_user_ids"]
+      end
       server_id = new_comment['server_id']
       server_ids << server_id if server_id and !server_ids.index(server_id)
       server_id = new_comment["gift"] ? new_comment["gift"]["server_id"] : nil
@@ -496,7 +501,7 @@ class Comment < ActiveRecord::Base
           # todo: remote delete. security check on both servers (sending/this and receiving/remote server) or only on receiving/remote server?
           gift_hash_required = (comment_and_login_user_ids.length == 0)
       end # case
-      logger.debug2 "cid = #{cid}, action = #{action}, comment_hash_required = #{gift_hash_required}"
+      logger.debug2 "cid = #{cid}, action = #{action}, gift_hash_required = #{gift_hash_required}"
 
       # prepare new_deal_action_by_user_ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers).
       # only used for comments with comment.new_deal = true and action = verify comment or cancel, accept or reject new deal proposal
@@ -583,7 +588,7 @@ class Comment < ActiveRecord::Base
         gid = verify_gift['gid']
 
         # validate gift hash
-        if verify_gift["giver_user_ids"] and (verify_comment["giver_user_ids"].size > 0)
+        if verify_gift["giver_user_ids"] and (verify_gift["giver_user_ids"].size > 0)
           giver_user_ids = verify_gift["giver_user_ids"]
         else
           giver_user_ids = []
@@ -641,18 +646,18 @@ class Comment < ActiveRecord::Base
         giver_user_ids = []
         giver_error = false
         verify_gift["giver_user_ids"].each do |user_id|
-          if server_id and user_id < 0 # unknown remote user
+          if gift_server_id and user_id < 0 # unknown remote user
             giver_user_ids << user_id
             next
           end
           giver = users[user_id]
           if giver
-            if server_id
+            if gift_server_id
               # remote comment verification
-              su = giver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+              su = giver.server_users.find { |su| (su.server_id == gift_server_id) and su.verified_at }
               if su
                 # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-                giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[server_id].secret),
+                giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[gift_server_id].secret),
                                       :pseudo_user_id => su.remote_pseudo_user_id,
                                       :sha256_updated_at => giver.sha256_updated_at.to_i
                                     })
@@ -682,19 +687,19 @@ class Comment < ActiveRecord::Base
         receiver_user_ids = []
         receiver_error = false
         verify_gift["receiver_user_ids"].each do |user_id|
-          if server_id and user_id < 0
+          if gift_server_id and user_id < 0
             # unknown remote user
             receiver_user_ids << user_id
             next
           end
           receiver = users[user_id]
           if receiver
-            if server_id
+            if gift_server_id
               # remote comment verification
-              su = receiver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
+              su = receiver.server_users.find { |su| (su.server_id == gift_server_id) and su.verified_at }
               if su
                 # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-                receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[server_id].secret),
+                receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[gift_server_id].secret),
                                          :pseudo_user_id => su.remote_pseudo_user_id,
                                          :sha256_updated_at => receiver.sha256_updated_at.to_i
                                        })
@@ -866,7 +871,7 @@ class Comment < ActiveRecord::Base
         if intersect.length == 0
           error = "#{action_failed}. Invalid \"new_deal_action_by_user_ids\". New deal proposal must be accepted or rejected by creator of gift"
           logger.debug2 "cid #{cid} : #{error}"
-          logger.debug2 "comment created by rs       = #{comment_creator_user_ids.join(', ')}"
+          logger.debug2 "comment created by users = #{comment_creator_user_ids.join(', ')}"
           logger.debug2 "login users              = #{login_user_ids.join(', ')}"
           logger.debug2 "new deal action by users = #{new_deal_action_by_user_ids2.join(', ')}"
           Gift.client_response_array_add(

@@ -1061,7 +1061,7 @@ da:
         syserr_sha256_accepted_required1: "%{action} opslag fejlede. Opslag har en \"sha256_accepted\" server signatur but \"sha256_accepted\" mangler i kald."
         syserr_not_deleted: "%{action} opslag fejlede. \"sha256_deleted\" signatur i kald men opslag er ikke blevet slettet (ingen slet opslag signatur på server)"
         syserr_sha256_accepted_required2: "%{action} opslag fejlede. \"sha256_deleted\" signatur i kald, men tilbud er tidligere blevet accepteret og \"sha256_accepted\" signatur mangler i kald."
-        syserr_sha256_deleted: "#{action} opslag fejlede. Ugyldigt kald. sha256_deleted signatur tjek fejlede."
+        syserr_sha256_deleted: "%{action} opslag fejlede. Ugyldigt kald. sha256_deleted signatur tjek fejlede."
      new_comment:
         ajax_error: "Fejl ved oprettelse af kommentar. %{error}. Mere information i server log."
         ajax_error2: "Fejl ved oprettelse af kommentar. %{error} (%{location},%{debug}). Mere information i klient og server log."

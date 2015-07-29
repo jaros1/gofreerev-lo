@@ -388,25 +388,25 @@ angular.module('gifts')
             if (gift.accepted_at_client || gift.accepted_cid) return [] ; // accepted
             // merge login users and creators of gift - minimum one login is required
             var login_user_ids = userService.get_login_userids() ;
-            var gift_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
-            var user_ids = $(login_user_ids).filter(gift_user_ids).get() ;
-            if (user_ids.length == 0) return [] ;
-            // find providers - old gift creator & logged in
-            var user_providers = [], user ;
-            for (var i= 0 ; i<user_ids.length ; i++) {
-                user = userService.get_friend(user_ids[i]) ;
-                user_providers.push(user.provider) ;
-            }
-            // there must be minimum one common provider between creator of gift, login users and creator of comment
-            // users logged in with common providers will see user information for giver and receiver
-            // users not logged in with common providers will in some situations see "unknown user" for giver or provider
-            user_ids = [] ;
-            var comment_providers = [] ;
+            var gift_creator_user_ids = (gift.direction == 'giver') ? gift.giver_user_ids : gift.receiver_user_ids ;
+            var login_user_gift_creator_ids = $(login_user_ids).filter(gift_creator_user_ids).get() ;
+            if (login_user_gift_creator_ids.length == 0) return [] ; // login users are not creator of gift - accept/reject new deal proposal not allowed
+            // console.log(pgm + 'login_user_gift_creator_ids = ' + login_user_gift_creator_ids.join(', ')) ;
+            // find comment providers
+            var i, user, comment_providers = [] ;
             for (i=0 ; i<comment.user_ids.length ; i++) {
                 user = userService.get_friend(comment.user_ids[i]) ;
-                if (user && (user_providers.indexOf(user.provider) != -1)) user_ids.push(comment.user_ids[i]) ;
-            }
-            return user_ids ;
+                if (user) comment_providers.push(user.provider) ;
+            } ; // for i
+            // console.log(pgm + 'comment_providers = ' + comment_providers.join(', ')) ;
+            // filter login_users and creator of gift with comment providers
+            var close_deal_user_ids = [], user_id, provider ;
+            for (i=0 ; i<login_user_gift_creator_ids.length ; i++) {
+                user = userService.get_friend(login_user_gift_creator_ids[i]) ;
+                if (user && comment_providers.indexOf(user.provider) != -1) close_deal_user_ids.push(user.user_id) ;
+            }; // for i
+            // console.log(pgm + 'close_deal_user_ids = ' + close_deal_user_ids.join(', ')) ;
+            return close_deal_user_ids ;
         } // get_deal_close_by_user_ids
 
         self.show_accept_new_deal_link = function (gift,comment) {
@@ -432,10 +432,24 @@ angular.module('gifts')
             else gift.giver_user_ids = user_ids ;
             gift.accepted_cid = comment.cid ;
             gift.accepted_at_client = Gofreerev.unix_timestamp() ;
-            comment.new_deal_action = 'accepted' ;
+            comment.new_deal_action = 'accept' ;
             comment.new_deal_action_by_user_ids = user_ids ;
             comment.new_deal_action_at_client = Gofreerev.unix_timestamp() ; ;
             giftService.save_gift(gift) ;
+            // todo 1: call giftService.verify_gifts_add(gift, 'accept'))
+            // todo 2: accept new deal proposal and accept gift should be 1 server request - not one request for comment and an other request for gift
+            var error ;
+            if (error=giftService.verify_comments_add(gift, comment, 'accept')) {
+                console.log(pgm + 'accept new deal proposal failed with ' + error) ;
+                comment.link_error = error ;
+                comment.link_error_at = Gofreerev.unix_timestamp() ;
+                delete gift.accepted_cid ;
+                delete gift.accepted_at_client ;
+                delete comment.new_deal_action ;
+                delete comment.new_deal_action_by_user_ids ;
+                delete comment.new_deal_action_at_client ;
+                giftService.save_gift(gift) ;
+            } ;
         };
 
         self.show_reject_new_deal_link = function (gift,comment) {
@@ -448,13 +462,21 @@ angular.module('gifts')
             if (user_ids.length == 0) return ;
             if (!confirm(self.texts.comments.confirm_reject_new_deal)) return ; // operation cancelled
             // reject deal
-            comment.rejected_by_user_ids = user_ids ; // todo: remove
-            comment.rejected_at_client = Gofreerev.unix_timestamp() ; // todo: remove
-            comment.new_deal_action = 'rejected' ;
+            comment.new_deal_action = 'reject' ;
             comment.new_deal_action_by_user_ids = user_ids ;
             comment.new_deal_action_at_client = Gofreerev.unix_timestamp() ; ;
             giftService.save_gift(gift) ;
-        };
+            var error ;
+            if (error=giftService.verify_comments_add(gift, comment, 'reject')) {
+                console.log(pgm + 'reject new deal proposal failed with ' + error) ;
+                comment.link_error = error ;
+                comment.link_error_at = Gofreerev.unix_timestamp() ;
+                delete comment.new_deal_action ;
+                delete comment.new_deal_action_by_user_ids ;
+                delete comment.new_deal_action_at_client ;
+                giftService.save_gift(gift) ;
+            } ;
+        }; // reject_new_deal
 
         self.show_new_deal_checkbox = function (gift) {
             // see also formatNewProposalTitle

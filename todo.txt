@@ -1949,4 +1949,7 @@
      comments: pending cancel, accept, reject or delete
      implemented but not tested
 
-select next issue to solve: (rand*449).floor+1
+450) google bank - takes long time to fetch <n> currency rates
+     only get relevant/used currency and only get one currency per client request
+
+select next issue to solve: (rand*450).floor+1

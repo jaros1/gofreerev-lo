@@ -944,9 +944,10 @@ JSON_SCHEMA = {
             :request_mid => {:type => 'string', :pattern => uid_pattern},
             # msgtype = sync_gifts
             :msgtype => {:type => 'string', :pattern => '^sync_gifts$'},
+
             # array with internal user ids - must be a subset of mutual friends - from previous gifts_sha256 message
             # use internal user id for within server messages. use sha256 signatures for messages to other gofreerev servers
-            :users => {:type => 'array', :items => {:type => %w(integer string) }, :minItems => 1},
+            :mutual_friends => {:type => 'array', :items => {:type => %w(integer string) }, :minItems => 1},
 
             # syn_gifts optional sub message 1 - send_gifts - send missing gifts to other client
             :send_gifts => {
@@ -1164,12 +1165,7 @@ JSON_SCHEMA = {
                 }
             },
 
-            # syn_gifts optional sub message 5 - errors and warnings - used if incoming message was partial processed - use seperate error message if fatal error in incoming message
-            # other client should write errors in log and add a notification
-            # todo: add object with mid, msgtype etc?
-            :error => { :type => 'string' },
-
-            # syn_gifts optional sub message 6 - gifts with invalid signature - received one or more new gifts in incoming send_gifts message with invalid sha256 signatures
+            # syn_gifts optional sub message 5 - gifts with invalid signature - received one or more new gifts in incoming send_gifts message with invalid sha256 signatures
             # other client should recheck gift signatures (sha256, sha256_action and sha256_deleted), report any error (log & notification) and optional uncreate, unaccept or undelete gift
             # todo: add object with mid, msgtype etc?
             :invalid_gifts => {
@@ -1198,7 +1194,7 @@ JSON_SCHEMA = {
                 :minItems => 1
             },
 
-            # syn_gifts optional sub message 7 - comments with invalid signature - received one or more new comments in incoming send_gifts message with invalid sha256 signatures
+            # syn_gifts optional sub message 6 - comments with invalid signature - received one or more new comments in incoming send_gifts message with invalid sha256 signatures
             # other client should recheck comment signatures (sha256, sha256_action and sha256_deleted), report any error (log & notification) and optional uncreate, unaction or undelete comment
             # todo: add object with mid, msgtype etc?
             :invalid_comments => {
@@ -1227,7 +1223,7 @@ JSON_SCHEMA = {
                 :minItems => 1
             }
         },
-        :required => %w(mid request_mid msgtype users),
+        :required => %w(mid request_mid msgtype mutual_friends),
         :additionalProperties => false
     },
 

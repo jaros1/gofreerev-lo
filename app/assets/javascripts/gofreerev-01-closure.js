@@ -971,7 +971,7 @@ var Gofreerev = (function() {
         error = 'Error in JSON ' + action + ' request. ' + action + ' request was not sent to server.' + msg ;
         console.log(pgm + error);
         console.log(pgm + 'request: ' + JSON.stringify(json_request));
-        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
+        // console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
         console.log(pgm + 'errors : ' + json_errors);
         return error + '. ' + json_errors ;
     } // is_json_request_invalid
@@ -999,7 +999,7 @@ var Gofreerev = (function() {
         error = 'Error in JSON ' + json_schema + ' message. ' + json_schema + ' message was not sent to other client.' + msg ;
         console.log(pgm + error);
         console.log(pgm + 'message: ' + JSON.stringify(json_msg));
-        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
+        // console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schema]));
         console.log(pgm + 'errors : ' + json_errors);
         return error + '. ' + json_errors ;
     } // is_json_request_invalid
@@ -1032,7 +1032,7 @@ var Gofreerev = (function() {
         error = 'Error in JSON ' + action + ' response from server. ' + msg ;
         console.log(pgm + error);
         console.log(pgm + 'response: ' + JSON.stringify(json_response));
-        console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schemaname]));
+        // console.log(pgm + 'schema: ' + JSON.stringify(Gofreerev.rails['JSON_SCHEMA'][json_schemaname]));
         console.log(pgm + 'errors : ' + json_errors);
         // return error
         return error + '. ' + json_errors ;

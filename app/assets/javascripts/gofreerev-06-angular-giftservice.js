@@ -44,7 +44,7 @@ angular.module('gifts')
             // context: create, send or receive
             if (['load', 'create', 'send', 'receive'].indexOf(context) == -1) errors.push('System error. Invalid "invalid_comment" call. context was ' + context + '. context must be load, create, send or receive') ;
             // server_id - mailbox.server_id - must be undefined, null or an integer > 0
-            if ((typeof server_id == 'undefined') || (server_id == null) || ((typeof server_id == 'number') && (server_id >= 1) && (server_id == Math.round(server_id)))) null ;
+            if ((typeof server_id == 'undefined') || (server_id == null) || ((typeof server_id == 'number') && (server_id >= 1) && (server_id == Math.round(server_id)))) ; // empty
             else errors.push('System error. Invalid "invalid_comment" call. server_id (mailbox.server_id) must be null or an integer >= 1') ;
             
             // -  1) cid - unique comment id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
@@ -152,7 +152,7 @@ angular.module('gifts')
                     ((typeof comment.new_deal_action_by_user_ids == 'undefined') || (comment.new_deal_action_by_user_ids == null)) &&
                     ((typeof comment.new_deal_action_at_client == 'undefined') || (comment.new_deal_action_at_client == null))) {
                     // no new_deal_action
-                    null ;
+                    ; // empty
                 }
                 else {
                     // new_deal_action
@@ -1547,7 +1547,7 @@ angular.module('gifts')
                 refresh_gift(gift);
                 if (gift.hasOwnProperty('created_at_server')) {
                     // thats is ok if multiple browser sessions with identical login / identical client user id
-                    if (gift.created_at_server == 0) null; // ok - received in an other browser session
+                    if (gift.created_at_server == 0) ; // empty - ok - received in an other browser session
                     else console.log(pgm + 'System error. Gift ' + gid + ' signature was created on server but created_at_server property for gift was set to an invalid value between new gifts request and new gifts response. Expected created_at_server = 0. Found created_at_server = ' + gift.created_at_server + '.');
                     continue;
                 }
@@ -2174,7 +2174,7 @@ angular.module('gifts')
                 refresh_gift(gift);
                 if (gift.hasOwnProperty('deleted_at_server')) {
                     // that is ok if multiple browser sessions with identical login / identical client user id
-                    if (gift.deleted_at_server == 1) null; // ok - response received in an other browser session
+                    if (gift.deleted_at_server == 1) ; // empty - ok - response received in an other browser session
                     else console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property for gift was setted to an invalid value between delete gifts request and delete gifts response. Expected deleted_at_server = 1. Found deleted_at_server = ' + gift.deleted_at_server + '.');
                     continue;
                 }
@@ -2286,7 +2286,7 @@ angular.module('gifts')
                 // refresh_comment(comment) ;
                 if (comment.hasOwnProperty('created_at_server')) {
                     // thats is ok if multiple browser sessions with identical login / identical client user id
-                    if (comment.created_at_server == 0) null; // ok - received in an other browser session
+                    if (comment.created_at_server == 0) ; // empty - ok - received in an other browser session
                     else console.log(pgm + 'System error. Comment ' + cid + ' signature was created on server but created_at_server property for comment was set to an invalid value between new comments request and new comments response. Expected created_at_server = 0. Found created_at_server = ' + comment.created_at_server + '.');
                     continue;
                 }
@@ -2983,7 +2983,7 @@ angular.module('gifts')
                 refresh_gift(comment);
                 if (comment.hasOwnProperty('deleted_at_server')) {
                     // that is ok if multiple browser sessions with identical login / identical client user id
-                    if (comment.deleted_at_server == 1) null; // ok - response received in an other browser session
+                    if (comment.deleted_at_server == 1) ; // empty - ok - response received in an other browser session
                     else console.log(pgm + 'System error. Gift ' + gid + ' deleted signature was created on server but deleted_at_server property for gift was setted to an invalid value between delete gifts request and delete gifts response. Expected deleted_at_server = 1. Found deleted_at_server = ' + comment.deleted_at_server + '.');
                     continue;
                 }
@@ -3521,10 +3521,10 @@ angular.module('gifts')
                     request_msgtypes = ['users_sha256'];
                     break;
                 case 'sync_gifts' :
-                    request_msgtypes = ['gifts_sha256', 'check_gifts', 'request_gifts', 'request_comments'];
+                    request_msgtypes = ['gifts_sha256', 'send_gifts', 'check_gifts', 'request_gifts', 'request_comments'];
                     break;
                 case 'error':
-                    request_msgtypes = ['users_sha256', 'gifts_sh256', 'send_gifts', 'request_gifts', 'check_gifts', 'request_comments'];
+                    request_msgtypes = ['users_sha256', 'gifts_sh256', 'send_gifts', 'check_gifts', 'request_gifts',  'request_comments'];
                     break ;
                 default:
                     request_msgtypes = [];
@@ -4331,7 +4331,7 @@ angular.module('gifts')
                 mid: Gofreerev.get_new_uid(), // envelope mid
                 request_mid: msg.mid,
                 msgtype: 'sync_gifts',
-                users: msg_users,
+                mutual_friends: msg_users,
                 send_gifts: null, // optional send_gifts sub message 1)
                 request_gifts: null, // optional request_gifts sub message 2)
                 check_gifts: null // optional check_gifts sub message 3)
@@ -4598,7 +4598,6 @@ angular.module('gifts')
                     mid: Gofreerev.get_new_uid(),
                     request_mid: msg.mid,
                     msgtype: 'error',
-                    request_mid: msg.mid,
                     error: error
                 }) ;
                 return ;
@@ -4667,10 +4666,10 @@ angular.module('gifts')
                 if (unknown_sha256_user_ids.length > 0) console.log(pgm + 'unknown_sha256_user_ids = ' + JSON.stringify(unknown_sha256_user_ids)) ;
             } // if
 
-            // compare mailbox.mutual_friends and msg.users. list of users in msg must be a sublist of mutual friends
+            // compare mailbox.mutual_friends and msg.users. list of mutual friends in msg must be a sublist of mutual friends in mailbox (from server)
             var my_mutual_friends = mailbox.mutual_friends ;
-            var msg_users = msg.users ;
-            var invalid_user_ids = $(msg_users).not(my_mutual_friends).get() ;
+            var msg_mutual_friends = msg.mutual_friends ;
+            var invalid_user_ids = $(msg_mutual_friends).not(my_mutual_friends).get() ;
 
             // todo: msg_users must also be a subset of users from previous gifts_sha256 message now in done folder
 
@@ -4679,13 +4678,13 @@ angular.module('gifts')
                 error = (invalid_user_ids.length + unknown_sha256_user_ids.length) + ' rejected users(s) in gifts_sync message' ;
                 if (msg_users_sha256) error += '. Received sha256 user signatures: ' + msg_users_sha256.join(', ') ;
                 if (unknown_sha256_user_ids.length > 0) error += '. Unknown sha256 user signatures: ' + unknown_sha256_user_ids.join(', ') ;
-                error += '. Received internal user ids: ' + msg_users.join(', ') ;
+                error += '. Received internal user ids: ' + msg_mutual_friends.join(', ') ;
                 if (invalid_user_ids.length > 0) {
                     error += '. Expected user ids: ' + my_mutual_friends.join(', ');
                     error += '. Unknown mutual friends: ' + invalid_user_ids.join(', ');
                 }
                 console.log(pgm + error) ;
-                if (msg_users.length == 0) {
+                if (msg_mutual_friends.length == 0) {
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
                         request_mid: msg.mid,
@@ -4695,7 +4694,7 @@ angular.module('gifts')
                     return ;
                 }
                 // continue without invalid user ids
-                msg_users = $(msg_users).not(invalid_user_ids).get() ;
+                msg_mutual_friends = $(msg_mutual_friends).not(invalid_user_ids).get() ;
             }
 
             // add sub messages (send_gifts, request_gifts. check_gifts and request_comments) to inbox
@@ -4703,21 +4702,22 @@ angular.module('gifts')
             if (msg.send_gifts) {
                 msg.send_gifts.request_mid = msg.request_mid ;
                 msg.send_gifts.pass = 0 ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
+                msg.send_gifts.mutual_friends = Gofreerev.clone_array(msg_mutual_friends) ; // mutual friends array - used in sync_gifts response
                 mailbox.inbox.push(msg.send_gifts);
             };
             if (msg.request_gifts) {
                 msg.request_gifts.request_mid = msg.request_mid ;
-                msg.request_gifts.users = Gofreerev.clone_array(msg_users) ; // mutual friends array - used in sync_gifts response
+                msg.request_gifts.mutual_friends = Gofreerev.clone_array(msg_mutual_friends) ; // mutual friends array - used in sync_gifts response
                 mailbox.inbox.push(msg.request_gifts) ;
             };
             if (msg.check_gifts) {
                 msg.check_gifts.request_mid = msg.request_mid ;
-                msg.check_gifts.users = Gofreerev.clone_array(msg_users) ; // used if check_gifts message must be returned with sha256 values for comments
+                msg.check_gifts.mutual_friends = Gofreerev.clone_array(msg_mutual_friends) ; // used if check_gifts message must be returned with sha256 values for comments
                 mailbox.inbox.push(msg.check_gifts) ;
             };
             if (msg.request_comments) {
                 msg.request_comments.request_mid = msg.request_mid ;
-                msg.request_comments.users = Gofreerev.clone_array(msg_users) ; // mutual friends array - used in sync_gifts response
+                msg.request_comments.mutual_friends = Gofreerev.clone_array(msg_mutual_friends) ; // mutual friends array - used in sync_gifts response
                 mailbox.inbox.push(msg.request_comments) ;
             };
 
@@ -5721,7 +5721,8 @@ angular.module('gifts')
             if (gifts_created.length > 0) console.log(pgm + 'Ok. Created gifts ' + gifts_created.join(', ')) ;
             if (send_gifts.length > 0) console.log(pgm + 'todo: send gifts ' + send_gifts.join(', ') + ' with action (cancel, accept, reject or delete) on this client to other client.') ;
             if (send_comments.length > 0) console.log(pgm + 'todo: send comments ' + send_comments.join(', ') + ' with action (cancel, accept, reject or delete) on this client to other client.') ;
-            if (no_gift_errors > 0) {
+            if (no_gift_errors > 0) { // xx
+                // write gift error messages to log. will be sent to other client in invalid_gifts sub message
                 console.log(pgm + 'Found ' + no_gift_errors + ' gifts with errors. gift_errors = ' + JSON.stringify(gift_errors)) ;
                 errors = [] ;
                 for (gid in gift_errors) {
@@ -5730,15 +5731,164 @@ angular.module('gifts')
                     else error = gift_error ;
                     errors.push('gid ' + gid + ', error:' + error) ;
                 }
-                console.log(pgm + 'gift errors: ' + errors.join('. ');
+                console.log(pgm + 'gift errors: ' + errors.join('. '));
             } // if
 
             // todo: send message:
-            // - error with error report
-            // - send_gifts message with gift and comment actions to other client (send_gifts and send_comments)
-            // - message with invalid gids and cids signatures in incoming message (new_gifts_invalid_sha and new_comments_invalid_sha)
-            // - OK. Everything is OK
 
+            // - error with error report. only errors that is not reported in invalid_gifts and invalid_comments sub messages
+
+            // - send_gifts message with gift and comment actions to other client (send_gifts and send_comments). newest update on this client.
+            var send_gifts_sub_message, send_gifts_users, send_gift, send_comment, gift_clone, comment_clone ;
+            if (send_gifts.length + send_comments.length > 0) {
+                send_gifts_sub_message = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'send_gifts',
+                    gifts: [],
+                    users: []
+                };
+                send_gifts_users = [] ;
+                for (i=0 ; i<gifts.length ; i++) {
+                    gift = gifts[i] ;
+                    gid = gift.gid ;
+                    // send gift?
+                    send_gift = (send_gifts.indexOf(pid) != -1) ;
+                    send_comment = false ;
+                    if (!send_gift && gift.hasOwnProperty('comments')) {
+                        for (j=0 ; j<((!send_comment && gift.comments.length)) ; j++) {
+                            comment = gift.comments[j] ;
+                            if (send_comments.indexOf(comment.cid) != -1) send_comment = true ;
+                        }
+                    } // if
+                    if (!send_gift && !send_comment) continue ;
+                    // clone, validate and insert gift in send_gifts sub message
+                    gift_clone = make_gift_clone(gift) ;
+                    if (error=invalid_gift(gift_clone,[],'send',mailbox)) {
+                        console.log(pgm + 'Error. Invalid gift was not added to outgoing send_gifts sub message response.') ;
+                        console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
+                        console.log(pgm + 'Error message: ' + error) ;
+                        gift_errors[gid] = 'Gift in incoming send_gifts sub message was ignores and gift in outgoing send_gifts sub message could not be sent due to error: ' + error ;
+                        continue ;
+                    }
+                    send_gifts_sub_message.push(gift_clone);
+                    add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users) ;
+                    if (!gift.hasOwnProperty('comments')) continue ;
+                    for (j=0 ; j<gift.comments.length ; j++) {
+                        comment = gift.comments[j] ;
+                        cid = comment.cid ;
+                        if (!send_gift) send_comment = send_comments.hasOwnProperty(cid) ;
+                        if (!send_gift && !send_comment) continue ;
+                        // clone, validate and insert comment in send_gift sub message
+                        comment_clone = make_comment_clone(comment);
+                        add_user_ids_to_array(comment_clone.user_ids, send_gifts_users) ;
+                        add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users) ;
+                        gift_clone.comments.push(comment_clone) ;
+                    } // for j
+                } // for i
+                if (send_gifts_sub_message.gifts.length == 0) send_gifts_sub_message = null ; // one or more invalid gifts. see log & is sent in invalid_gifts sub message
+                else {
+                    // todo: DRY. also used in gifts_sha256 message and ...
+                    // add relevant users to send_gifts message - used as fallback information in case of "unknown user" error on receiving client
+                    var user ;
+                    for (j=0 ; j<send_gifts_users.length ; j++) {
+                        user_id = send_gifts_users[j] ;
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) continue ; // dont include mutual friends in send_gifts.users array
+                        user = userService.get_friend(user_id) ;
+                        // if (!user) console.log(pgm + 'Warning. Unknown friend user_id ' + user_id) ;
+                        if (!user) user = userService.get_user(user_id) ; // fallback to "old" stored user info
+                        if (!user) {
+                            console.log(pgm + 'Error. Cannot add user info for unknown user_id ' + user_id) ;
+                            continue ;
+                        }; // if
+                        send_gifts_sub_message.users.push({
+                            user_id: user.user_id,
+                            uid: user.uid,
+                            provider: user.provider,
+                            user_name: user.user_name,
+                            api_profile_picture_url: user.api_profile_picture_url
+                        }) ;
+                    } // for j (gift_users)
+                } // if
+            } // if
+
+            // - message with invalid gids and cids in incoming message (gift_errors hash and comment_errors hash)
+            // todo: should only send relevant errors to other client (invalid sha256 signature, gift/comment does not exists etc). do not send invalid call errors, exceptions etc to other client
+            var invalid_gifts ;
+            if (no_gift_errors > 0) {
+                invalid_gifts = [] ;
+                for (gid in gift_errors) {
+                    if (!gift_errors.hasOwnProperty(gid)) continue ;
+                    gift_error = gift_errors[gid] ;
+                    if (mailbox.hasOwnProperty('server_id') && (typeof gift_error == 'object')) error = I18n.t('js.gift_actions.' + gift_error.key, gift_error.options);
+                    else error = gift_error ;
+                    invalid_gifts.push({gid: gid, error: error}) ;
+                } // for
+            } // if
+
+            var invalid_comments ; // todo: add invalid_comments hash?
+
+            if (send_gifts_sub_message || invalid_gifts || invalid_comments) {
+                // return new sync_gifts message to other client
+                var sync_gifts_message = {
+                    mid: Gofreerev.get_new_uid(), // envelope mid
+                    request_mid: msg.mid,
+                    msgtype: 'sync_gifts',
+                    mutual_friends: Gofreerev.clone_array(msg.mutual_friends), // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
+                };
+                if (send_gifts_sub_message) sync_gifts_message.send_gifts = send_gifts_sub_message ;
+                if (invalid_gifts) sync_gifts_message.invalid_gifts = invalid_gifts ;
+                if (invalid_comments) sync_gifts_message.invalid_comments = invalid_comments ;
+                console.log(pgm + 'sync_gifts_message = ' + JSON.stringify(sync_gifts_message)) ;
+
+                // translate user ids and server_ids before sending outgoing remote sync_gifts message to client on other Gofreerev server
+                // ids are translated to sha256 signatures when communicating with clients on other Gofreerev servers (mailbox.server_id != null)
+                // false: errors has already been written to log and send in a error message to other client
+                if (!sync_gifts_translate_ids(msg, sync_gifts_message, mailbox)) return ;
+
+                // JS validate sync_gifts message before placing message in outbox
+                if (Gofreerev.is_json_message_invalid(pgm,sync_gifts_message,'sync_gifts','')) {
+                    // error message has already been written to log
+                    // send error message to other device
+                    var json_error = JSON.parse(JSON.stringify(tv4.error));
+                    delete json_error.stack;
+                    var json_errors = JSON.stringify(json_error) ;
+                    error = 'Could not process send_gifts message. JSON schema validation error in sync_gifts response: ' + json_errors ;
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        request_mid: msg.mid,
+                        msgtype: 'error',
+                        error: error
+                    }) ;
+                    return ;
+                }
+
+                // check sync_gifts message for logical errors before placing message in outbox
+                // 1) check sub message send_gifts for logical errors
+                if (sync_gifts_message.send_gifts) {
+                    // logical validate send_gifts sub messsage before sending sync_gifts message
+                    error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, 'send') ;
+                    if (error) {
+                        error = 'Could not process request_gifts message. Logical error in sync_gifts response (send_gifts sub message) : ' + error ;
+                        console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                        mailbox.outbox.push({
+                            mid: Gofreerev.get_new_uid(),
+                            request_mid: msg.mid,
+                            msgtype: 'error',
+                            error: error
+                        }) ;
+                        return ;
+                    }
+                }
+
+                // send sync_gifts message
+                mailbox.outbox.push(sync_gifts_message) ;
+            }
+            else {
+                // everything is ok. send OK message to other client?
+                console.log(pgm + 'todo: everything is ok. send OK message to other client?') ;
+            }
 
         }; // receive_message_send_gifts
 
@@ -5832,7 +5982,7 @@ angular.module('gifts')
                     continue ;
                 };
 
-                // check if gift is from a mutual friend
+                // check if gift is from a mutual friend. todo: remove. there is a multiple friends check in invalid_gifts
                 in_mutual_friends = false ;
                 if (gift.hasOwnProperty('giver_user_ids')) {
                     for (k=0 ; k<gift.giver_user_ids.length ; k++) {
@@ -5856,8 +6006,8 @@ angular.module('gifts')
                 // gift ok and from a mutual friend. Add to send_gifts sub message
                 // save relevant userids in gift_users buffer
                 ok_gids.push(gid) ;
-                add_user_ids_to_array(gift.giver_user_ids, send_gifts_users) ;
-                add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users) ;
+                add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users) ;
+                add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users) ;
                 send_gifts_sub_message.gifts.push(gift_clone) ;
 
                 // add comments to send_gifts sub message + save relevant userids in gift_users buffer
@@ -5930,7 +6080,7 @@ angular.module('gifts')
                 mid: Gofreerev.get_new_uid(), // envelope mid
                 request_mid: msg.mid,
                 msgtype: 'sync_gifts',
-                users: Gofreerev.clone_array(msg.users), // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
+                mutual_friends: Gofreerev.clone_array(msg.mutual_friends), // subset of mutual friends - from original sync gift message
                 send_gifts: send_gifts_sub_message, // optional sub message 1)
             };
 
@@ -6283,7 +6433,7 @@ angular.module('gifts')
                     mid: Gofreerev.get_new_uid(), // envelope mid
                     request_mid: msg.mid,
                     msgtype: 'sync_gifts',
-                    users: msg.users, // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
+                    mutual_friends: msg.mutual_friends, // subset of mutual friends - from original sync gift message
                     check_gifts: check_gifts_message // optional sub message 3)
                 };
 
@@ -6458,7 +6608,7 @@ angular.module('gifts')
                 mid: Gofreerev.get_new_uid(), // envelope mid
                 request_mid: msg.mid,
                 msgtype: 'sync_gifts',
-                users: msg.users, // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
+                mutual_friends: Gofreerev.clone_array(msg.mutual_friends), // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
                 send_gifts: send_gifts_sub_message, // optional sub message 1)
                 request_comments: request_comments_sub_message // optional sub message 4)
             };
@@ -6717,7 +6867,7 @@ angular.module('gifts')
                 mid: Gofreerev.get_new_uid(), // envelope mid
                 request_mid: msg.mid,
                 msgtype: 'sync_gifts',
-                users: Gofreerev.clone_array(msg.users), // subset of mutual friends - from original sync gift message - todo: translate for remote messages?
+                mutual_friends: Gofreerev.clone_array(msg.mutual_friends), // subset of mutual friends - from original sync gift message
                 send_gifts: send_gifts_sub_message, // optional sub message 1)
             };
 

@@ -501,14 +501,14 @@ angular.module('gifts')
         // - new_deal_action_by_user_ids - relevant login user ids for new_deal_action (cancel, accept, reject) - subset of comment or gift creators - include in comment_sha256_for_client
         // - new_deal_action_at_client - new deal action client unix timestamp - cancel, accept or reject - include in comment_sha256_for_client
         // - deleted_at_client    - deleted at client unix timestamp - include in comment_sha256_for_client
-        var comment_sha256_for_client = function (comment) {
+        var comment_sha256_for_client = function (comment, in_gifts) {
             var pgm = service + '.comment_sha256_for_client: ';
             if (!comment.hasOwnProperty('created_at_server')) return null; // wait for server side create
             // optional new deal action (cancel, accept or reject)
             var new_deal_action ;
             var new_deal_action_at_client ;
             var new_deal_action_by_user_ids = [];
-            if (comment.hasOwnProperty('new_deal_action_at_server')) {
+            if ((in_gifts && comment.new_deal_action_at_server) || (!in_gifts && comment.new_deal_action_at_client)) {
                 // new_deal_action completed (cancel, accept or reject new deal proposal)
                 // todo: use internal user ids. comment_sha256_for_client is only used within client.
                 new_deal_action = comment.new_deal_action ;
@@ -539,13 +539,20 @@ angular.module('gifts')
         // - show - device only field or logged in user only field - replicate hide to other devices with identical logged in users? - not included in gift_sha256_for_client
         // - deleted_at_client - included in gift_sha256_for_client
         // - comments - array with comments - included comment_sha256_for_client array in gift gift_sha256_for_client
+        // todo: gift from gifts array. check for operation in progress (accept, delete)
+        // todo: gift from send_gifts message.
         var gift_sha256_for_client = function (gift) {
             var pgm = service + '.gift_sha256_for_client: ';
             if ((typeof gift.created_at_server == 'undefined') || (gift.created_at_server == null)) return [null,null,null]; // no server side sha256 signature
+            // accepted or deleted. gift is from gifts array (check for operation in progress) or from an incoming send_gifts message (don't check for operation in progress)
+            var in_gifts = (gifts.indexOf(gift) != -1) ;
+            // todo 1: use internal user ids. gift_sha256_for_client is only used within client.
+            // todo 2: only initialize other participant if accepted_at_server. empty array if accept operation is in progress
             // other participant in gift. null until closed/given/received
-            // todo: use internal user ids. gift_sha256_for_client is only used within client.
+            var accepted = ((in_gifts && gift.accepted_at_server) || (!in_gifts && gift.accepted_at_client)) ;
+            var deleted = ((in_gifts && gift.deleted_at_server) || (!in_gifts && gift.deleted_at_client)) ;
             var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids;
-            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null)) other_participant_internal_ids = [];
+            if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null) || !accepted) other_participant_internal_ids = [];
             var other_participant_external_ids = [];
             var user;
             for (var i = 0; i < other_participant_internal_ids.length; i++) {
@@ -564,21 +571,20 @@ angular.module('gifts')
             var likes_str = '';
             // optional accepted action
             var accepted_cid, accepted_at_client ;
-            if (gift.hasOwnProperty('accepted_at_server')) {
-                // accept completed
+            if (accepted) {
                 accepted_cid = gift.accepted_cid ;
                 accepted_at_client = gift.accepted_at_client ;
             }; // if
             // optional delete gift
             var deleted_at_client ;
-            if (gift.hasOwnProperty('deleted_at_server')) deleted_at_client = gift.deleted_at_client ; // delete completed
+            if (deleted) deleted_at_client = gift.deleted_at_client ; // delete completed
             // comments. string with sha256 value for each comment
             var comments, comment_sha256_temp;
             if ((typeof gift.comments == 'undefined') || (gift.comments == null)) comments = [];
             else comments = gift.comments;
             var comments_sha256 = [], s;
             for (i = 0; i < comments.length; i++) {
-                s = comment_sha256_for_client(comments[i]);
+                s = comment_sha256_for_client(comments[i], in_gifts);
                 if (!s) return [null,null,null]; // error in sha256 calc. error has been written to log
                 comments_sha256.push(s);
             };
@@ -636,10 +642,11 @@ angular.module('gifts')
             var user_ids, user_id, i, j, gift, sha256_values;
             for (i = 0; i < gifts.length; i++) {
                 gift = gifts[i];
-                sha256_values = gift_sha256_for_client(gift);
-                gift.sha256 = sha256_values[0];
-                gift.sha256_gift = sha256_values[1]; // sub sha256 values used in gifts sync between devices
-                gift.sha256_comments = sha256_values[2]; // sub sha256 values used in gifts sync between devices
+                // sha256 calc is done in load_gifts
+                //sha256_values = gift_sha256_for_client(gift);
+                //gift.sha256 = sha256_values[0];
+                //gift.sha256_gift = sha256_values[1]; // sub sha256 values used in gifts sync between devices
+                //gift.sha256_comments = sha256_values[2]; // sub sha256 values used in gifts sync between devices
                 // simple gid to index
                 gid_to_gifts_index[gift.gid] = i;
                 // user_id to array of gifts
@@ -1191,7 +1198,7 @@ angular.module('gifts')
                 // add client side sha256 signature for comments (not saved in localStorage)
                 if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
                     comment = gift.comments[j];
-                    comment.sha256 = comment_sha256_for_client(comment) ;
+                    comment.sha256 = comment_sha256_for_client(comment, true) ;
                     // resend old not processed comment actions
                     if (!comment.hasOwnProperty('created_at_server')) verify_comments_add(gift, comment, 'create') ; // resend create comment request
                     if (comment.new_deal_action_at_client && !comment.hasOwnProperty('new_deal_action_at_server')) verify_comments_add(gift, comment, comment.new_deal_action) ; // resend cancel, accept or reject new deal proposal request
@@ -4098,6 +4105,34 @@ angular.module('gifts')
         } ; // validate_request_gifts_message
 
 
+        // logical validate "invalid_gifts" message before send (receive_message_send_gifts) and after receive (receive_message_invalid_gifts)
+        // called after json validation but before sending invalid_gifts message / processing information in received invalid_gifts message
+        // returns nil or error message
+        // params:
+        // - context: 'send' : sending message, 'receive' : receiving message
+        var validate_invalid_gifts_message = function (mailbox, invalid_gifts, context) {
+            var pgm = service + '.validate_invalid_gifts_message: ' ;
+            var error ;
+            if (context == 'send') console.log(pgm + 'validating invalid_gifts message before send') ;
+            else if (context == 'receive') console.log(pgm + 'validating invalid_gifts message after received') ;
+            else return 'System error. Invalid validate_invalid_gifts_message call. context = ' + context ;
+
+            // check missing gifts array
+            if (!invalid_gifts.gifts || !invalid_gifts.gifts.length || invalid_gifts.gifts.length == 0) return 'No gifts array or empty gifts array in invalid_gifts message.';
+
+            // check doublet gifts
+            var new_gids = [], i, j, new_gift, doublet_gids = 0;
+            for (i = 0; i < invalid_gifts.gifts.length; i++) {
+                new_gift = invalid_gifts.gifts[i];
+                if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1;
+                else new_gids.push(new_gift.gid);
+            } // for i
+            if (doublet_gids > 0) return 'Found ' + doublet_gids + ' doublet gifts in sync_gifts/invalid_gifts sub message. gid must be unique.';
+
+        }; // validate_invalid_gifts_message
+
+
+
         // communication step 3 - compare sha256 values for gifts (mutual friends)
         var receive_message_gifts_sha256 = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_gifts_sha256: ' ;
@@ -4573,7 +4608,7 @@ angular.module('gifts')
 
         // communication step 4 - receive message with 1-3 sub messages (send_gifts, request_gifts and check_gifts)
         // verify that request_mid is correct and add sub messages to messages array
-        // the 1-4 sub messages will be processed in next steps in for j loop (see receive_messages)
+        // the 1-6 sub messages will be processed in next steps in for j loop (see receive_messages)
         // params:
         // - device and mailbox - as usual
         // - messages - array with messages received from server
@@ -4697,8 +4732,8 @@ angular.module('gifts')
                 msg_mutual_friends = $(msg_mutual_friends).not(invalid_user_ids).get() ;
             }
 
-            // add sub messages (send_gifts, request_gifts. check_gifts and request_comments) to inbox
-            // keep reference to previous gifts_sha256 message - now in mailbox.done array
+            // add sub messages (send_gifts, request_gifts. check_gifts, request_comments, invalid_gifts and invalid_comments) to inbox
+            // keep reference (request_mid) to previous gifts_sha256 message - now in mailbox.done array
             if (msg.send_gifts) {
                 msg.send_gifts.request_mid = msg.request_mid ;
                 msg.send_gifts.pass = 0 ; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
@@ -4719,6 +4754,16 @@ angular.module('gifts')
                 msg.request_comments.request_mid = msg.request_mid ;
                 msg.request_comments.mutual_friends = Gofreerev.clone_array(msg_mutual_friends) ; // mutual friends array - used in sync_gifts response
                 mailbox.inbox.push(msg.request_comments) ;
+            };
+            if (msg.invalid_gifts) {
+                msg.invalid_gifts.request_mid = msg.request_mid ;
+                msg.invalid_gifts.pass = 0 ; // 0: new invalid_gifts message, 1: waiting for gifts verification, 2: verified - write error to log and create notication
+                mailbox.inbox.push(msg.invalid_gifts) ;
+            };
+            if (msg.invalid_comments) {
+                msg.invalid_comments.request_mid = msg.request_mid ;
+                msg.invalid_gifts.pass = 0 ; // 0: new invalid_comments message, 1: waiting for comments verification, 2: verified - write error to log and create notication
+                mailbox.inbox.push(msg.invalid_comments) ;
             };
 
         } ; // receive_message_sync_gifts
@@ -4760,12 +4805,12 @@ angular.module('gifts')
         // pass 0: do some initial gift verification without checking
         // between pass 0 and pass 1 - check unknown server sha256 signatures in ping new_servers request/response
         // pass 1: insert new gifts in verify_gifts array for server sha256 signature check in next ping
-        // between first and second pass - ping - find unknown servers and verify sha256 signature for new gifts
+        // between first and second pass - ping - verify sha256 signature for new gifts and and in some cases for old gifts
         // property verify_seq is set in verify_gifts_request and verified_at_server (true/false) is set in verify_gifts_response
         // note that response for remote gifts / remote verification can take some time
-        // second pass (msg.pass=2) - finish gift verification including server sha256 signature check - can request additional gift and comment verifications
-        // third pass (msg.pass=3) - do actions (insert, update, merge)
-
+        // second pass - finish gift verification including server sha256 signature check - can request additional gift and comment verifications
+        // third pass - do actions (insert, update, merge) gifts and comments
+        // end - optional send sync_gifts message response to other client (gifts and errors)
         var receive_message_send_gifts = function (device, mailbox, msg) {
             var pgm = service + '.receive_message_send_gifts: ';
             console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox));
@@ -4897,7 +4942,7 @@ angular.module('gifts')
                     if (!new_gift.hasOwnProperty('comments')) continue ;
                     for (j=0 ; j<new_gift.comments.length ; j++) {
                         new_comment = new_gift.comments[j] ;
-                        new_comment.sha256 = comment_sha256_for_client(new_comment) ;
+                        new_comment.sha256 = comment_sha256_for_client(new_comment, false) ;
                     }
                 }
                 if (no_gift_errors == msg.gifts.length) {
@@ -5064,20 +5109,20 @@ angular.module('gifts')
 
                         // changed gift - check if readonly fields used in server side sha256 signature have been changed
                         if (new_gift.direction == 'giver') {
-                            new_gift_creators = new_gift.giver_user_ids.sort.join(',');
-                            new_gift_counterpart = (new_gift.receiver_user_ids || []).sort.join(',');
+                            new_gift_creators = new_gift.giver_user_ids.sort().join(',');
+                            new_gift_counterpart = (new_gift.receiver_user_ids || []).sort().join(',');
                         }
                         else {
-                            new_gift_creators = new_gift.receiver_user_ids.sort.join(',');
-                            new_gift_counterpart = (new_gift.giver_user_ids || []).sort.join(',');
+                            new_gift_creators = new_gift.receiver_user_ids.sort().join(',');
+                            new_gift_counterpart = (new_gift.giver_user_ids || []).sort().join(',');
                         }
                         if (old_gift.direction == 'giver') {
-                            old_gift_creators = old_gift.giver_user_ids.sort.join(',');
-                            old_gift_counterpart = (old_gift.receiver_user_ids || []).sort.join(',');
+                            old_gift_creators = old_gift.giver_user_ids.sort().join(',');
+                            old_gift_counterpart = (old_gift.receiver_user_ids || []).sort().join(',');
                         }
                         else {
-                            old_gift_creators = old_gift.receiver_user_ids.sort.join(',');
-                            old_gift_counterpart = (old_gift.giver_user_ids || []).sort.join(',');
+                            old_gift_creators = old_gift.receiver_user_ids.sort().join(',');
+                            old_gift_counterpart = (old_gift.giver_user_ids || []).sort().join(',');
                         }
                         if (!identical_values(old_gift.created_at_client, new_gift.created_at_client) ||
                             !identical_values(old_gift.direction, new_gift.direction) ||
@@ -5816,13 +5861,17 @@ angular.module('gifts')
             // todo: should only send relevant errors to other client (invalid sha256 signature, gift/comment does not exists etc). do not send invalid call errors, exceptions etc to other client
             var invalid_gifts ;
             if (no_gift_errors > 0) {
-                invalid_gifts = [] ;
+                invalid_gifts = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'invalid_gifts',
+                    gifts: []
+                } ;
                 for (gid in gift_errors) {
                     if (!gift_errors.hasOwnProperty(gid)) continue ;
                     gift_error = gift_errors[gid] ;
                     if (mailbox.hasOwnProperty('server_id') && (typeof gift_error == 'object')) error = I18n.t('js.gift_actions.' + gift_error.key, gift_error.options);
                     else error = gift_error ;
-                    invalid_gifts.push({gid: gid, error: error}) ;
+                    invalid_gifts.gifts.push({gid: gid, error: error}) ;
                 } // for
             } // if
 
@@ -5865,12 +5914,13 @@ angular.module('gifts')
                 }
 
                 // check sync_gifts message for logical errors before placing message in outbox
+
                 // 1) check sub message send_gifts for logical errors
                 if (sync_gifts_message.send_gifts) {
                     // logical validate send_gifts sub messsage before sending sync_gifts message
                     error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, 'send') ;
                     if (error) {
-                        error = 'Could not process request_gifts message. Logical error in sync_gifts response (send_gifts sub message) : ' + error ;
+                        error = 'Could not process send_gifts response. Logical error in sync_gifts response (send_gifts sub message) : ' + error ;
                         console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
                         mailbox.outbox.push({
                             mid: Gofreerev.get_new_uid(),
@@ -5882,6 +5932,29 @@ angular.module('gifts')
                     }
                 }
 
+                // 2) check sub message invalid_gifts for logical errors
+                if (sync_gifts_message.invalid_gifts) {
+                    // logical validate invalid_gifts sub messsage before sending sync_gifts message
+                    // - gid's must be unique
+                    // - todo: gid's be in previous send_gifts message
+                    error = validate_invalid_gifts_message(mailbox, sync_gifts_message.invalid_gifts, 'send') ;
+                    if (error) {
+                        error = 'Could not process send_gifts response. Logical error in sync_gifts response (invalid_gifts sub message) : ' + error ;
+                        console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                        mailbox.outbox.push({
+                            mid: Gofreerev.get_new_uid(),
+                            request_mid: msg.mid,
+                            msgtype: 'error',
+                            error: error
+                        }) ;
+                        return ;
+                    }
+                }
+
+                // todo: 3) logical validate invalid_comments sub message.
+                // - cids must be unique
+                // - cids must be from previous send_gifts message?
+
                 // send sync_gifts message
                 mailbox.outbox.push(sync_gifts_message) ;
             }
@@ -5891,6 +5964,193 @@ angular.module('gifts')
             }
 
         }; // receive_message_send_gifts
+
+
+        // communication step 5 - receive any invalid gifts (gid and error message) from send_gifts processing from other client
+        var receive_message_invalid_gifts = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_invalid_gifts: ';
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox));
+            console.log(pgm + 'msg      = ' + JSON.stringify(msg));
+            var error ;
+
+            if (msg.pass == 0) {
+
+                // pass 0 - check for some fatal errors before processing invalid_gifts message
+                // 1) gid's must be unique
+                error = validate_invalid_gifts_message(mailbox, msg, 'receive');
+                if (error) {
+                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    });
+                    return;
+                } // if error (validate_invalid_gifts_message)
+
+                // 2) gid's must be from previous send_gifts message
+                // search mailbox.done folder and find mid = msg.request_mid and msgtype = 'send_gifts'
+                var send_gifts_sub_message, i ;
+                for (i=0 ; i<mailbox.done.length ; i++) {
+                    if (mailbox.done[i].mid == msg.request_mid) send_gifts_sub_message = mailbox.done[i] ;
+                } // for i
+                if (!send_gifts_sub_message || send_gifts_sub_message.msgtype != 'send_gifts') {
+                    console.log(pgm + 'Invalid_gifts messsage processing was aborted. Previous send_gifts message was not foound.');
+                    return ;
+                } // if
+                console.log(pgm + 'send_gifts message = ' + JSON.stringify(send_gifts_sub_message)) ;
+                // from gid to error message from other client
+                var invalid_gifts_response_errors = {}, gid ;
+                for (i=0 ; i<msg.gifts.length  ; i++) {
+                    gid = msg.gifts[i].gid ;
+                    invalid_gifts_response_errors[gid] = msg.gifts[i].error ;
+                } // for
+                console.log(pgm + 'invalid_gifts_response_errors = ' + JSON.stringify(invalid_gifts_response_errors)) ;
+                // from gid to gift in old send_gifts message
+                var send_gifts_request_gifts = {} ;
+                for (i=0 ; i<send_gifts_sub_message.gifts.length; i++) {
+                    gid = send_gifts_sub_message.gifts[i].gid ;
+                    if (!invalid_gifts_response_errors.hasOwnProperty(gid)) continue ;
+                    send_gifts_request_gifts[gid] = send_gifts_sub_message.gifts[i] ;
+                } // for
+                console.log(pgm + 'check_gifts = ' + JSON.stringify(send_gifts_request_gifts)) ;
+                // find invalid gids. Must be in old send_gifts message
+                var invalid_gids = [] ;
+                for (gid in invalid_gifts_response_errors) if (!send_gifts_request_gifts.hasOwnProperty(gid)) invalid_gids.push(gid) ;
+                console.log(pgm + 'invalid_gids = ' + invalid_gids.join(', '));
+                if (invalid_gids.length > 0) {
+                    error = 'Invalid invalid_gifts message. Received gids ' + invalid_gids.join(', ') + ' are not from previous send_gifts message' ;
+                    console.log(pgm + error + '. msg = ' + JSON.stringify(msg));
+                    mailbox.outbox.push({
+                        mid: Gofreerev.get_new_uid(),
+                        msgtype: 'error',
+                        request_mid: msg.mid,
+                        error: error
+                    });
+                    return;
+                } // if
+
+                // ready for pass 1 and 2
+                msg.pass = 1 ;
+            } // if
+
+            // pass 1. verify gifts. recheck error message received in invalid_gifts message
+
+            // check gifts in invalid_gifts message:
+            // - wait for gift action in progress (accepting or deleting gift)
+            // - changed gifts - send new send_gifts message to other client
+            // - verify gift
+            // - verifying gift
+            var send_gift, send_gift_signature, gift ;
+            var client_action_gids = [], changed_gids = [], verify_gids = [], verifying_gids = [] ;
+            for (gid in send_gifts_request_gifts) {
+                if (!send_gifts_request_gifts.hasOwnProperty(gid)) continue ;
+                send_gift = send_gifts_request_gifts[gid] ;
+                // find gift in gifts array
+                if (!gid_to_gifts_index.hasOwnProperty(gid)) {
+                    error = 'System error. Gid ' + gid + ' found in invalid_gifts and send_gifts messages but was not in gid_to_gifts_index. invalid_gifts message processing aborted.' ;
+                    console.log(pgm + 'error message from other client was: ' + invalid_gifts_response_errors[gid]) ;
+                    console.log(pgm + error) ;
+                    // todo: add notification
+                    return ;
+                }
+                // pending gift action?
+                gift = gifts[gid_to_gifts_index[gid]] ;
+                if (['accept','delete'].indexOf(gift.verify_gift_action) != -1) {
+                    // wait for client gift action to complete before continue with invalid_gifts message
+                    client_action_gids.push(gid) ;
+                    continue ;
+                }
+                // changed gift since send_gifts message was sent to other client?
+                send_gift_signature = gift_sha256_for_client(send_gift) ;
+                send_gift.sha256_gift = send_gift_signature[1] ;
+                if (gift.sha256_gift != send_gift.sha256_gift) {
+                    changed_gids.push(gid) ;
+                    continue ;
+                }
+                // verify gift.
+
+                if (!gift.hasOwnProperty('verify_seq')) {
+                    // gift must be server validated before continuing (between pass 1 and pass 2)
+                    verify_gids.push(gid);
+                    verify_gifts_add(gift, 'verify');
+                    continue;
+                };
+                if (!gift.hasOwnProperty('verified_at_server')) {
+                    // gift already in queue for server verification (offline, server not responding or remote gift)
+                    verifying_gids.push(gid);
+                    continue;
+                };
+
+            }; // for
+            if (client_action_gids.length + verify_gids.length + verifying_gids.length > 0) {
+                // wait for gift action and verify gift to complete before processing invalid_gifts message
+                if (client_action_gids.length > 0) console.log(pgm + 'Waiting for ' + client_action_gids.length + ' client gift actions to complete (accept or delete.') ;
+                if (verify_gids.length + verifying_gids.length > 0) console.log(pgm + 'Waiting for ' + (verify_gids.length + verifying_gids.length) + ' gifts to be server verified.');
+                mailbox.read.push(msg);
+                return;
+            } // if
+
+            // pass 2. all gifts in invalid_gifts has been rechecked
+            // - send new send_gifts message (changed gifts)
+            // - return error message (valid in this client + invalid in other client)
+            // - error report and notification
+            send_gifts_sub_message = null ;
+            var send_gifts_users, gift_clone, invalid_gifts = [] ;
+            if (changed_gids.length > 0) {
+                send_gifts_sub_message = {
+                    mid: Gofreerev.get_new_uid(),
+                    msgtype: 'send_gifts',
+                    gifts: [],
+                    users: []
+                };
+                send_gifts_users = [] ;
+            } // if
+
+            for (gid in send_gifts_request_gifts) {
+                if (!send_gifts_request_gifts.hasOwnProperty(gid)) continue ;
+                send_gift = send_gifts_request_gifts[gid] ;
+                gift = gifts[gid_to_gifts_index[gid]] ;
+                if (changed_gids.indexOf(gid) != -1) {
+                    // changed gift. send new send_gifts message with changed gift
+                    error = invalid_gift(gift, [], 'send', mailbox) ;
+                    if (error) {
+                        console.log(pgm + 'Warning. Changed and invalid gift was not added to send_gifts sub message.') ;
+                        console.log(pgm + 'Gift ' + gid + ': ' + JSON.stringify(gift_clone));
+                        console.log(pgm + 'Error message: ' + error) ;
+                        invalid_gifts.push('Gift ' + gid + ': ' + error) ;
+                        continue ;
+                    } // if
+                    gift_clone = make_gift_clone(gift) ;
+                    // save relevant userids (giver, receiver and creator of comments) in gift_users buffer
+                    add_user_ids_to_array(gift.giver_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users) ;
+                    if (gift.hasOwnProperty('comments')) {
+                        if (gift.comments.length > 0) gift_clone.comments = [] ;
+                        for (i=0 ; i<gift.comments.length ; i++) {
+                            new_gift.commments.push(make_comment_clone(gift.comments[i])) ;
+                        }
+
+                    }
+                }
+                else {
+                    // verify gift operation completed. Report error in this and other client
+                }
+            }; // for
+
+            console.log(pgm + 'Error. receive message invalid_gifts not implemented') ;
+        }; // receive_message_invalid_gifts
+
+
+        // communication step 5 - receive any invalid comments (cid and error message) from send_gifts processing from other client
+        var receive_message_invalid_comms = function (device, mailbox, msg) {
+            var pgm = service + '.receive_message_invalid_comms: ';
+            console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox));
+            console.log(pgm + 'msg      = ' + JSON.stringify(msg));
+
+            console.log(pgm + 'Error. Not implemented') ;
+        }; // receive_message_invalid_comms
 
 
         // error in client to client communication
@@ -7073,6 +7333,14 @@ angular.module('gifts')
                             // communication step 4 - sub message from sync_gifts - return requested comments in a send_gifts message
                             receive_message_request_comms(device, mailbox, msg);
                             break;
+                        case 'invalid_gifts':
+                            // communication step 5 - sub message from sync_gifts - receive invalid gifts and error messages from send_gifts message processing
+                            receive_message_invalid_gifts(device, mailbox, msg);
+                            break ;
+                        case 'invalid_comments':
+                            // communication step 5 - sub message from sync_gifts - receive invalid comments and error messages from send_gifts message processing
+                            receive_message_invalid_comms(device, mailbox, msg);
+                            break ;
                         case 'error':
                             // error in client to client communication - print error in log and move previous message to error folder
                             receive_message_error(device, mailbox, msg);

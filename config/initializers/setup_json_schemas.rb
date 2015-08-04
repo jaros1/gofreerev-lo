@@ -1165,33 +1165,43 @@ JSON_SCHEMA = {
                 }
             },
 
-            # syn_gifts optional sub message 5 - gifts with invalid signature - received one or more new gifts in incoming send_gifts message with invalid sha256 signatures
-            # other client should recheck gift signatures (sha256, sha256_action and sha256_deleted), report any error (log & notification) and optional uncreate, unaccept or undelete gift
-            # todo: add object with mid, msgtype etc?
+            # syn_gifts optional sub message 5 - gifts with errors - received one or more new gifts in incoming send_gifts message with errors
+            # other client should verify gift signatures (sha256, sha256_action and sha256_deleted), report any error (log & notification) and optional uncreate, unaccept or undelete gift
             :invalid_gifts => {
-                :type => 'array',
-                :title => 'invalid_gifts sub message. Return send_gift processing errors to other client',
-                :items => {
-                    :type => 'object',
-                    :properties => {
-                        :gid => { :type => 'string', :pattern => uid_pattern },
-                        # gift processing error message
-                        # either a string - english only error message - used for cross server error messages
-                        # or an object with :key and :options - multi-language support - used for within server error messages
-                        :error => {
-                            :type => %w(string object),
+                :type => 'object',
+                :title => 'invalid_gifts sub message. Return errors from gifts in send_gifts message to other client',
+                :properties => {
+                    # mid - unique message id for sub message - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                    :mid => {:type => 'string', :pattern => uid_pattern},
+                    # msgtype = check_gifts
+                    :msgtype => {:type => 'string', :pattern => '^invalid_gifts$'},
+                    # array with invalid gift errors
+                    :gifts => {
+                        :type => 'array',
+                        :title => 'invalid_gifts sub message. Return send_gift processing errors to other client',
+                        :items => {
+                            :type => 'object',
                             :properties => {
-                                :key => { :type => 'string'},
-                                :options => { :type => 'object'}
+                                :gid => { :type => 'string', :pattern => uid_pattern },
+                                # gift processing error message
+                                # either a string - english only error message - used for cross server error messages
+                                # or an object with :key and :options - multi-language support - used for within server error messages
+                                :error => {
+                                    :type => %w(string object),
+                                    :properties => {
+                                        :key => { :type => 'string'},
+                                        :options => { :type => 'object'}
+                                    },
+                                    :required => %w(key),
+                                    :additionalProperties => false
+                                }
                             },
-                            :required => %w(key),
+                            :required => %w(gid error),
                             :additionalProperties => false
-                        }
+                        },
+                        :minItems => 1
                     },
-                    :required => %w(gid error),
-                    :additionalProperties => false
-                },
-                :minItems => 1
+                }
             },
 
             # syn_gifts optional sub message 6 - comments with invalid signature - received one or more new comments in incoming send_gifts message with invalid sha256 signatures

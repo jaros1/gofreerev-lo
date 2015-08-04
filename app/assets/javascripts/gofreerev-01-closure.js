@@ -800,6 +800,7 @@ var Gofreerev = (function() {
     // arguments: list of input fields to sha256 calculation
     // todo: ignore empty fields at end of input? will allow adding new empty fields to gifts and comments signature without destroying old signatures
     function sha256 () {
+        var pgm = 'Gofreerev.sha256: ' ;
         var texts = [] ;
         for (var i=0; i < arguments.length; i++) {
             switch(typeof arguments[i]) {
@@ -824,7 +825,9 @@ var Gofreerev = (function() {
         // strip empty fields from end of sha256 input
         while ((texts.length > 0) && (texts[texts.length-1] == '')) texts.length = texts.length - 1 ;
         var text = texts.length == 0 ? '' : texts.join(',') ;
-        return CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1);
+        var sha256 = CryptoJS.SHA256(text).toString(CryptoJS.enc.Latin1);
+        // console.log(pgm + 'text = ' + text + ', sha256 = ' + sha256)
+        return sha256 ;
     } // sha256
 
     // client login (password from client-login-dialog-form)

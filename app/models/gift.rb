@@ -847,7 +847,7 @@ class Gift < ActiveRecord::Base
         # sha256_deleted signature must match or request must be a delete gift action
         if !((gift.sha256_deleted == sha256_deleted_calc) or (!gift.sha256_deleted and (action == 'delete')))
           error = "#{action_failed}. Invalid request. sha256_deleted signature check failed"
-          logger.warn2 "Gid #{gid} : #{error}. new sha256_deleted calculation = #{sha256_deleted_calc}. old sha256_deleted on server = #{gift.sha256_deleted if gift}."
+          logger.warn2 "Gid #{gid} : #{error}. new sha256_deleted calculation = #{sha256_deleted_calc}. old sha256_deleted on server = #{gift.sha256_deleted if gift}. sha256_deleted_input = #{sha256_deleted_input}"
           Gift.client_response_array_add(client_response_array,
                                 { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_sha256_deleted', :options => {:action => action} },
                                 client_sid, verify_gift)

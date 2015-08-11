@@ -508,7 +508,7 @@ angular.module('gifts')
             var new_deal_action ;
             var new_deal_action_at_client ;
             var new_deal_action_by_user_ids = [];
-            if ((in_gifts && comment.new_deal_action_at_server) || (!in_gifts && comment.new_deal_action_at_client)) {
+            if ((in_gifts && comment.hasOwnProperty('new_deal_action_at_server')) || (!in_gifts && comment.new_deal_action_at_client)) {
                 // new_deal_action completed (cancel, accept or reject new deal proposal)
                 // todo: use internal user ids. comment_sha256_for_client is only used within client.
                 new_deal_action = comment.new_deal_action ;
@@ -521,7 +521,7 @@ angular.module('gifts')
             new_deal_action_by_user_ids = new_deal_action_by_user_ids.join(',');
             // optional delete comment
             var deleted_at_client ;
-            if (comment.hasOwnProperty('deleted_at_server')) deleted_at_client = comment.deleted_at_client ; // delete completed
+            if ((in_gifts && comment.hasOwnProperty('deleted_at_server')) || (!in_gifts && comment.deleted_at_client)) deleted_at_client = comment.deleted_at_client ; // delete completed
             return Gofreerev.sha256(comment.cid, new_deal_action, new_deal_action_by_user_ids, new_deal_action_at_client, deleted_at_client);
         }; // comment_sha256_for_client
 
@@ -549,8 +549,8 @@ angular.module('gifts')
             // todo 1: use internal user ids. gift_sha256_for_client is only used within client.
             // todo 2: only initialize other participant if accepted_at_server. empty array if accept operation is in progress
             // other participant in gift. null until closed/given/received
-            var accepted = ((in_gifts && gift.accepted_at_server) || (!in_gifts && gift.accepted_at_client)) ;
-            var deleted = ((in_gifts && gift.deleted_at_server) || (!in_gifts && gift.deleted_at_client)) ;
+            var accepted = ((in_gifts && gift.hasOwnProperty('accepted_at_server')) || (!in_gifts && gift.accepted_at_client)) ;
+            var deleted = ((in_gifts && gift.hasOwnProperty('deleted_at_server')) || (!in_gifts && gift.deleted_at_client)) ;
             var other_participant_internal_ids = gift.direction == 'giver' ? gift.receiver_user_ids : gift.giver_user_ids;
             if ((typeof other_participant_internal_ids == 'undefined') || (other_participant_internal_ids == null) || !accepted) other_participant_internal_ids = [];
             var other_participant_external_ids = [];
@@ -594,7 +594,7 @@ angular.module('gifts')
             var sha256 = Gofreerev.sha256(gift.gid, other_participant_str, gift.price, gift.currency, likes_str, accepted_cid, accepted_at_client, deleted_at_client, comments_str);
             var sha256_gift = Gofreerev.sha256(gift.gid, other_participant_str, gift.price, gift.currency, likes_str, accepted_cid, accepted_at_client, deleted_at_client);
             var sha256_comments = Gofreerev.sha256(comments_str);
-            console.log(pgm + 'gid = ' + gift.gid + ', comments_str = ' + comments_str + ', sha256 = ' + sha256 + ', sha256_gift = ' + sha256_gift + ', sha256_comments = ' + sha256_comments) ;
+            console.log(pgm + 'gid = ' + gift.gid + ', in_gifts = ' + in_gifts + ', comments_str = ' + comments_str + ', sha256 = ' + sha256 + ', sha256_gift = ' + sha256_gift + ', sha256_comments = ' + sha256_comments) ;
             return [sha256, sha256_gift, sha256_comments];
         }; // gift_sha256_for_client
 
@@ -739,6 +739,12 @@ angular.module('gifts')
         var save_new_gift = function (gift) {
             var pgm = service + '.save_new_gift: ';
 
+            // calc sha256 values for new gift
+            var sha256_values = gift_sha256_for_client(gift) ;
+            gift.sha256 = sha256_values[0];
+            gift.sha256_gift = sha256_values[1]; // sub sha256 values used in gifts sync between devices
+            gift.sha256_comments = sha256_values[2]; // sub sha256 values used in gifts sync between devices
+
             // 1: add new gift to js array
             if (gid_to_gifts_index.hasOwnProperty(gift.gid)) {
                 console.log(pgm + 'error. gift with gid ' + gift.gid + ' is already in gifts array');
@@ -784,6 +790,11 @@ angular.module('gifts')
             if (error) return error ; // invalid update
             var new_gift = prepare_gift_for_save(gift) ;
             Gofreerev.setItem(key, JSON.stringify(new_gift)) ;
+            // recalc sha256 values for changed gift
+            var sha256_values = gift_sha256_for_client(gift) ;
+            gift.sha256 = sha256_values[0];
+            gift.sha256_gift = sha256_values[1]; // sub sha256 values used in gifts sync between devices
+            gift.sha256_comments = sha256_values[2]; // sub sha256 values used in gifts sync between devices
             return null ;
         } ;
 
@@ -1163,31 +1174,45 @@ angular.module('gifts')
                 //}
 
                 // migrate old comment accepted/rejected fields
-                if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
-                    comment = gift.comments[j];
-                    if (comment.hasOwnProperty('accepted_at_client')) {
-                        comment.new_deal_action = 'accepted' ;
-                        comment.new_deal_action_by_user_ids = comment.accepted_by_user_ids ;
-                        comment.new_deal_action_at_client = comment.accepted_at_client ;
-                        delete comment.accepted ;
-                        delete comment.accepted_by_user_ids ;
-                        delete comment.accepted_at_client ;
-                        migration = true ;
-                    }
-                    if (comment.hasOwnProperty('rejected_at_client')) {
-                        comment.new_deal_action = 'rejected' ;
-                        comment.new_deal_action_by_user_ids = comment.rejected_by_user_ids ;
-                        comment.new_deal_action_at_client = comment.rejected_at_client ;
-                        delete comment.rejected ;
-                        delete comment.rejected_by_user_ids ;
-                        delete comment.rejected_at_client ;
-                        migration = true ;
-                    }
-                }; // if
-                
+                //if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
+                //    comment = gift.comments[j];
+                //    if (comment.hasOwnProperty('accepted_at_client')) {
+                //        comment.new_deal_action = 'accepted' ;
+                //        comment.new_deal_action_by_user_ids = comment.accepted_by_user_ids ;
+                //        comment.new_deal_action_at_client = comment.accepted_at_client ;
+                //        delete comment.accepted ;
+                //        delete comment.accepted_by_user_ids ;
+                //        delete comment.accepted_at_client ;
+                //        migration = true ;
+                //    }
+                //    if (comment.hasOwnProperty('rejected_at_client')) {
+                //        comment.new_deal_action = 'rejected' ;
+                //        comment.new_deal_action_by_user_ids = comment.rejected_by_user_ids ;
+                //        comment.new_deal_action_at_client = comment.rejected_at_client ;
+                //        delete comment.rejected ;
+                //        delete comment.rejected_by_user_ids ;
+                //        delete comment.rejected_at_client ;
+                //        migration = true ;
+                //    }
+                //}; // if
+
+                // changed sha256_deleted server side signature. resend delete gifts request to server
+                if (gift.hasOwnProperty('deleted_at_server')) {
+                    delete gift.deleted_at_server ;
+                    migration = true ;
+                }
 
                 // save migrated gift
                 if (migration) Gofreerev.setItem(keys[i], JSON.stringify(gift)) ;
+
+                if (errors=invalid_gift(gift, [], 'load', null)) {
+                    console.log(pgm + 'System error. Gift ' + gift.gid + ' is invalid. ' + errors) ;
+                    console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
+                };
+
+                gifts.push(gift);
+                gid_to_seq[gift.gid] = seq ;
+                seq_to_gid[seq] = gift.gid ;
 
                 // add client side sha256 signatures for gift (not saved in localStorage)
                 sha256_values = gift_sha256_for_client(gift) ;
@@ -1195,6 +1220,8 @@ angular.module('gifts')
                 gift.sha256_gift = sha256_values[1]; // sub sha256 values used in gifts sync between devices
                 gift.sha256_comments = sha256_values[2]; // sub sha256 values used in gifts sync between devices
                 if (!gift.hasOwnProperty('created_at_server')) verify_gifts_add(gift, 'create') ; // resend create gift request
+                if ((gift.created_at_server == 0) && gift.deleted_at_client && !gift.hasOwnProperty('deleted_at_server')) verify_gifts_add(gift, 'delete') ; // resend delete gift request
+
                 // add client side sha256 signature for comments (not saved in localStorage)
                 if (gift.comments) for (j = 0; j < gift.comments.length; j++) {
                     comment = gift.comments[j];
@@ -1205,15 +1232,6 @@ angular.module('gifts')
                     if (comment.deleted_at_client && !comment.hasOwnProperty('deleted_at_server')) verify_comments_add(gift, comment, 'delete') ; // resend delete comment request
                 } ;
                 console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
-
-                if (errors=invalid_gift(gift, [], 'load', null)) {
-                    console.log(pgm + 'System error. Gift ' + gift.gid + ' is invalid. ' + errors) ;
-                    console.log(pgm + 'gift = ' + JSON.stringify(gift)) ;
-                };
-
-                gifts.push(gift);
-                gid_to_seq[gift.gid] = seq ;
-                seq_to_gid[seq] = gift.gid ;
 
             } // for i
             console.log(pgm + 'gifts.length = ' + gifts.length);
@@ -3531,7 +3549,7 @@ angular.module('gifts')
                     request_msgtypes = ['gifts_sha256', 'send_gifts', 'check_gifts', 'request_gifts', 'request_comments'];
                     break;
                 case 'error':
-                    request_msgtypes = ['users_sha256', 'gifts_sh256', 'send_gifts', 'check_gifts', 'request_gifts',  'request_comments'];
+                    request_msgtypes = ['users_sha256', 'gifts_sha256', 'send_gifts', 'check_gifts', 'request_gifts',  'request_comments'];
                     break ;
                 default:
                     request_msgtypes = [];
@@ -4934,6 +4952,7 @@ angular.module('gifts')
                     new_gift.sha256 = sha256_values[0] ;
                     new_gift.sha256_gift = sha256_values[1] ;
                     new_gift.sha256_comments = sha256_values[2] ;
+                    if (gid == '14380945221613232297') console.log(pgm + 'gid = ' + gid + ', new_gift.sha256_comments = ' + new_gift.sha256_comments) ; // todo: remove - debugging
                     if (!new_gift.sha256) {
                         // todo: use key+options error format
                         gift_errors[gid] = 'Client side sha256 calculation failed' ;
@@ -5101,7 +5120,7 @@ angular.module('gifts')
                     }
                     if (old_gift.sha256_gift != new_gift.sha256_gift) {
                         // old gift != new gift when ignoring comments
-                        // many gift fields are readonly but update is allowed for a few fields
+                        // many gift fields are readonly but update is allowed for a few fields (like, unlike, accept and delete)
 
                         // verify gift received from other client
                         if (!new_gift.hasOwnProperty('verify_seq')) {
@@ -5126,7 +5145,12 @@ angular.module('gifts')
                             continue;
                         };
 
-                        // pass 2 - gift has been server verified. check changes
+                        // pass 2 - new gift has been server verified. check and accept changes in this order:
+                        // 1) receive likes and unlikes from other client
+                        // 2) receive accept gift action from other client
+                        // 3) receive delete gift action from other client
+                        // 4) receive other gift changes from other client (errors)
+                        // 5) push any changes gifts from this client to other client (likes, unlikes, accept gift and delete gift). see sync_gifts response to other client at end of this message
 
                         // todo: remove - debugging
                         console.log(pgm + 'old_gift = ' + JSON.stringify(old_gift)) ;
@@ -5179,17 +5203,16 @@ angular.module('gifts')
                                 continue;
                             }
                             if (!old_gift.verified_at_server) {
-                                // invalid signature for old gift - old gift must be deleted and new gift accepted
+                                // invalid signature for old gift - todo: old gift must be deleted and new gift accepted
                                 old_gifts_invalid_sha.push(gid);
                                 continue;
                             }
-                            // BIG problem. valid server side sha256 signature for old and new gift - and changed readonly fields - fatal javascript error
+                            // system error - valid server side sha256 signature for old and new gift - and changed readonly fields
                             gid_validation_system_errors.push(gid);
                             continue;
                         } // if changed readonly fields!
 
-                        // pass 2 - gift from other client has been server validated - few changed fields in gift
-
+                        // pass 2 - gift from other client has been server validated - readonly fields have not been changed
                         // check changes in gift - only few changes are allowed
                         // accept and delete actions changes server side sha256 signature (already validated) and are one direction actions
                         // todo: testcase - accept gift on one client and delete gift on an other client
@@ -5201,7 +5224,7 @@ angular.module('gifts')
                         gift_accept_action = ((old_gift_accepted && !new_gift_accepted) || (!old_gift_accepted && new_gift_accepted));
                         gift_delete_action = ((old_gift.deleted_at_client && !new_gift.deleted_at_client) || (!old_gift.deleted_at_client && new_gift.deleted_at_client));
                         gift_price_action = !gift_accept_action && ((old_gift.price != new_gift.price) || (old_gift.currency != new_gift.currency));
-                        gift_like_action = (old_gift.like != new_gift.like);
+                        gift_like_action = (old_gift.like != new_gift.like); // todo: likes must be an array with like and unlike
                         if (!gift_accept_action && (old_gift_counterpart != new_gift_counterpart)) {
                             // counterpart can only be changed when accepting proposal
                             counterpart_errors.push(gid);
@@ -5254,13 +5277,15 @@ angular.module('gifts')
 
                     } // if old_gift.sha256_gift != new_gift.sha256_gift
 
+                    // old and new gift are identical. check comments
+
                     if (old_gift.sha256_comments == new_gift.sha256_comments) {
                         // comments identical - minor changes in gift - merge gift in pass 3
                         merge_gifts.push(gid);
                         continue;
                     }
 
-                    // comments are not identical
+                    // comments are not identical.
 
 
                     old_cids = [];
@@ -5801,7 +5826,7 @@ angular.module('gifts')
                     gift = gifts[i] ;
                     gid = gift.gid ;
                     // send gift?
-                    send_gift = (send_gifts.indexOf(pid) != -1) ;
+                    send_gift = (send_gifts.indexOf(gid) != -1) ;
                     send_comment = false ;
                     if (!send_gift && gift.hasOwnProperty('comments')) {
                         for (j=0 ; j<((!send_comment && gift.comments.length)) ; j++) {
@@ -6651,6 +6676,7 @@ angular.module('gifts')
             var identical_gids = [] ; // array with gids for identical gift and comments
             var j, msg_comment, cid, merge_comment, my_comment ;
             var return_check_gifts_message = false ;
+            var identical_comments, sha256_values ;
             for (i = 0; i < msg.gifts.length; i++) {
                 msg_gift = msg.gifts[i];
                 gid = msg_gift.gid;
@@ -6673,7 +6699,7 @@ angular.module('gifts')
                 };
                 merge_gift.identical_gift = (merge_gift.my_sha256_gift == merge_gift.msg_sha256_gift) ;
                 merge_gift.identical_comments = (merge_gift.my_sha256_comments == merge_gift.msg_sha256_comments) ;
-                if (merge_gift.identical_gift & merge_gift.identical_comments) {
+                if (merge_gift.identical_gift && merge_gift.identical_comments) {
                     identical_gids.push(gid) ;
                     continue ;
                 }
@@ -6712,6 +6738,24 @@ angular.module('gifts')
                             merge_comment.my_sha256 = my_comment.sha256 ;
                             merge_gift.comments[cid] = merge_comment ;
                         } // for j (my_gift.comments)
+                    } // if
+                    // check comments hash. comments should not be identical
+                    identical_comments = true ;
+                    for (cid in merge_gift.comments) {
+                        if (!merge_gift.comments.hasOwnProperty(cid)) continue ;
+                        merge_comment = merge_gift.comments[cid] ;
+                        if (merge_comment.my_sha256 != merge_comment.msg_sha256) identical_comments = false ;
+                    } // for
+                    if (identical_comments) {
+                        console.log(pgm + 'sha256 calc error for gift ' + gid + '. comments are identical but gift.sha256_comments were not identical.') ;
+                        // recheck sha256 calc for gift in this client
+                        sha256_values = gift_sha256_for_client(my_gift) ;
+                        console.log(pgm + 'merge_gift.my_sha256_comments = ' + merge_gift.my_sha256_comments +
+                            ', merge_gift.msg_sha256_comments = ' + merge_gift.msg_sha256_comments +
+                            ', sha256_values[2] = ' + sha256_values[2]) ;
+                        if (merge_gift.my_sha256_comments == sha256_values[2]) console.log(pgm + 'sha256_comments calc in this client is correct.') ;
+                        else if (merge_gift.msg_sha256_comments == sha256_values[2]) console.log(pgm + 'sha256_comments calc in received check_gifts message is correct.') ;
+                        else console.log(pgm + 'sha256_comments calc is not correct.') ;
                     } // if
                 } // if
                 if (invalid_gids.indexOf(gid) == -1) merge_gifts[gid] = merge_gift;

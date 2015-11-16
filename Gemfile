@@ -75,7 +75,7 @@ gem 'omniauth-vkontakte' # https://github.com/mamantoha/omniauth-vkontakte
 gem 'httparty' # used in vkontakte
 gem 'vkontakte', '0.0.3' , :path => 'vendor/gems/vkontakte-0.0.3' # http://rubygems.org/gems/vkontakte (*)
 
-gem 'mysql2' # laptop and dev2 server
+gem 'mysql2', '~> 0.3.18' # laptop and dev2 server
 
 # Use SCSS for stylesheets
 gem 'sass-rails', '~> 4.0.0'

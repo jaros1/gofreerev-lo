@@ -7,7 +7,7 @@ class OmniAuth::AuthHash
   end # get_language_linkedin
   def get_language_linkedin
     code = get_country()
-    c = Country[code]
+    c = ISO3166::Country[code]
     return BASE_LANGUAGE unless c
     language = c.languages.first
     language = BASE_LANGUAGE unless language

@@ -86,9 +86,9 @@ MAX_AVG_LOAD = `nproc`.to_i - 0.4 # 0.6, 1.6, 2.6, 3.6 etc
 
 # extract country to currency hash from country gem (https://github.com/hexorx/countries) - used as default currency for new users
 # country_to_currency = {} ;
-# Country.all.each do |c1|
+# ISO3166::Country.all.each do |c1|
 #   countrycode = c1[1].downcase
-#   c2 = Country.new countrycode
+#   c2 = ISO3166::Country.new countrycode
 #   currencycode = (c2.currency ? c2.currency.code.downcase : nil )
 #   currencycode = 'gbp' if currencycode and %w(imp jep).index(currencycode)
 #   country_to_currency[countrycode] = currencycode if currencycode

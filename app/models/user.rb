@@ -599,9 +599,9 @@ class User < ActiveRecord::Base
         # Try to get country code from language code
         language_code = options[:language].to_s
         countries = []
-        Country.countries.each do |a|
+        ISO3166::Country.countries.each do |a|
           country_code2 = a[1]
-          country2 = Country[country_code2]
+          country2 = ISO3166::Country[country_code2]
           countries << country_code2 if country2.languages.index(language_code)
         end unless language_code == ""
         if countries.size == 1
@@ -610,7 +610,7 @@ class User < ActiveRecord::Base
           country_code = BASE_COUNTRY
         end
       end # inner if
-      c = Country[country_code]
+      c = ISO3166::Country[country_code]
       if !c
         currency = BASE_CURRENCY
       else

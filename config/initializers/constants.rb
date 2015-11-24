@@ -75,8 +75,9 @@ FIND_FRIENDS_DEV_USERIDS = ENV["#{ENV_PREFIX}en_userids".upcase].to_s.split(' ')
 EMBEDLY_KEY = ENV["#{ENV_PREFIX}EMBEDLY_KEY"]
 EMBEDLY = (EMBEDLY_KEY.to_s != '')
 
-# interval between client pings. start with 60 seconds between client pings
-PING_INTERVAL = 60000
+# interval between client pings. start with 3 seconds between client pings
+PING_INTERVAL = 3000
+
 # http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
 # server load average - number of cores - minus a constant 0.4
 # increase ping interval if load average > MAX_AVG_LOAD

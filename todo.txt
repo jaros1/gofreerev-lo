@@ -1952,4 +1952,12 @@
 450) google bank - takes long time to fetch <n> currency rates
      only get relevant/used currency and only get one currency per client request
 
-select next issue to solve: (rand*450).floor+1
+451) Started GET "/app/geoip.js" for 127.0.0.1 at 2015-11-20 11:38:51 +0100
+     ActionController::RoutingError (No route matches [GET] "/app/geoip.js")
+     could be a security problem. Found on home laptop. timestamp = google+ api login
+
+452) s = Server.first ; s.ping_test_loop
+     RSA 1024 bit CA certificates are loaded due to old openssl compatibility
+     check if there is a security issue here. should never use 1024 bit encryption
+
+select next issue to solve: (rand*452).floor+1

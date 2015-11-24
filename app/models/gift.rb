@@ -710,6 +710,7 @@ class Gift < ActiveRecord::Base
         vg.request_mid = server_mid[server_id]
         vg.original_client_request = verify_gift.to_json
         vg.save!
+        logger.debug2 "vg = #{vg.to_json}"
         # 2) insert verify_gifts request in server_requests hash
         hash = {:seq => vg.server_seq,
                 :gid => gid,

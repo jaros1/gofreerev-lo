@@ -941,6 +941,7 @@ class UtilController < ApplicationController
             includes(:server)
         if pings.size > 0
           # found other online devices
+          logger.debug2 "Found #{pings.size} other online devices"
           login_users_friends = Friend.where(:user_id_giver => login_user_ids)
                                     .find_all { |f| f.friend_status_code == 'Y' }
                                     .collect { |f| f.user_id_receiver }
@@ -982,6 +983,8 @@ class UtilController < ApplicationController
             hash[:server_id] = p.server_id if p.server_id
             hash
           end
+        else
+          logger.debug2 "no other online devices were found"
         end
         # logger.debug2 "pings.size (after) = #{pings.size}"
         # pings.each { |p| logger.debug2 "p.mutual_friends.size = #{p[:mutual_friends].size}, mutual_friends = #{p[:mutual_friends]}" }

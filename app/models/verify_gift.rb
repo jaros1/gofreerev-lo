@@ -46,7 +46,11 @@ class VerifyGift < ActiveRecord::Base
   validates_inclusion_of :verified_at_server, :in => [true, false], :allow_blank => true
   validates_absence_of :verified_at_server, :on => :create
   validates_presence_of :verified_at_server, :on => :update
-  attr_readonly :verified_at_server
+  validates_each :response_mid, :on => :update do |record, attr, value|
+    if record.verified_at_server_was and value != record.verified_at_server_was
+      record.errors.add attr, :invalid #readonly
+    end
+  end
 
   # 8) error. string - response from remote gift verification. blank or an english error message
   validates_absence_of :error, :on => :create
@@ -55,9 +59,10 @@ class VerifyGift < ActiveRecord::Base
       record.errors.add attr, :present if value.class != NilClass
     elsif record.verified_at_server == false
       record.errors.add attr, :blank if value.to_s == ''
+    elsif record.error_was and value != record.error_was
+      record.errors.add attr, :invalid #readonly
     end
   end
-  attr_readonly :error
 
   # 9) request_mid. unique server message id for request (sequence on this server)
   validates_presence_of :request_mid
@@ -66,7 +71,11 @@ class VerifyGift < ActiveRecord::Base
   # 10) response_mid. unique server message id for response (sequence on remote server)
   validates_absence_of :response_mid, :on => :create
   validates_presence_of :response_mid, :on => :update
-  attr_readonly :response_mid
+  validates_each :response_mid, :on => :update do |record, attr, value|
+    if record.response_mid_was and value != record.response_mid_was
+      record.errors.add attr, :invalid #readonly
+    end
+  end
 
   # 11) original_client_request. client request. used in error message if invalid response from other server
   validates_presence_of :original_client_request

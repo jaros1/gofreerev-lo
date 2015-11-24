@@ -945,7 +945,7 @@ JSON_SCHEMA = {
             # msgtype = sync_gifts
             :msgtype => {:type => 'string', :pattern => '^sync_gifts$'},
 
-            # array with internal user ids - must be a subset of mutual friends - from previous gifts_sha256 message
+            # array with internal user ids - must be a subset of mailbox.mutual_friends - from previous gifts_sha256 message
             # use internal user id for within server messages. use sha256 signatures for messages to other gofreerev servers
             :mutual_friends => {:type => 'array', :items => {:type => %w(integer string) }, :minItems => 1},
 

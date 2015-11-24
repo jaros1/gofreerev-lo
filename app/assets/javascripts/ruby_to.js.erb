@@ -1,4 +1,6 @@
-<%# inject some ruby constants to be used in client side JS -%>
+<%# inject some ruby constants to be used in client side JS
+    clear rails cache tmp/cache and browser cache after change in the following constants
+-%>
 Gofreerev.rails['NEG_INT_POS_BALANCE_PER_YEAR'] = <%= NEG_INT_POS_BALANCE_PER_YEAR %> ;
 Gofreerev.rails['NEG_INT_NEG_BALANCE_PER_YEAR'] = <%= NEG_INT_NEG_BALANCE_PER_YEAR %> ;
 Gofreerev.rails['APP_NAME'] = '<%= APP_NAME %>' ;

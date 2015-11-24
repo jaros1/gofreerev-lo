@@ -600,7 +600,7 @@ class User < ActiveRecord::Base
         language_code = options[:language].to_s
         countries = []
         ISO3166::Country.countries.each do |a|
-          country_code2 = a[1]
+          country_code2 = a.alpha2 # a[1]
           country2 = ISO3166::Country[country_code2]
           countries << country_code2 if country2.languages.index(language_code)
         end unless language_code == ""

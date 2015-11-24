@@ -402,7 +402,9 @@ class Server < ActiveRecord::Base
     end
     return "No XSRF-TOKEN was received from #{url.to_s}" unless xsrf_token
     # client.save_cookie_store # not working. discard=true for all cookies
-    client.cookie_manager.save_all_cookies(true, true, true)
+    puts "client.cookie_manager.methods = " + client.cookie_manager.methods.sort.join(', ')
+    # client.cookie_manager.save_all_cookies(true, true, true)
+    client.cookie_manager.save_cookies(true)
 
     # post login request to other gofreerev server
     # todo: more encryption in login request?
@@ -445,7 +447,8 @@ class Server < ActiveRecord::Base
       puts "post #{url.to_s} failed with status #{res.status}"
       return nil
     end
-    client.cookie_manager.save_all_cookies(true, true, true)
+    # client.cookie_manager.save_all_cookies(true, true, true)
+    client.cookie_manager.save_cookies(true)
 
     # json validate login response
     login_response = JSON.parse(res.body)
@@ -1101,15 +1104,16 @@ class Server < ActiveRecord::Base
     # get/check options
     seq = options.delete(:seq) || 0 # id - where was method called from - not used
     msg = options.delete(:msg) # message: online users, verify gifts, changed sha256 etc - used in debug information
-    negative_user_ids = options.delete(:negative_user_ids) || false
+    negative_user_ids_option = options.delete(:negative_user_ids) || false
     sha256_msg = options.delete(:sha256_msg) || false # true if incoming changed sha256 user signature
     allow_changed_sha256 = options.delete(:allow_changed_sha256) || 0
     field = options.delete(:field) || :user_id
+    logger.debug2 "msg = #{msg}, negative_user_ids_option = #{negative_user_ids_option}"
 
     # sha256 = false if sha256 == nil
     raise "invalid :seq param. Must be an integer. Was #{seq} (#{seq.class})" unless seq.class == Fixnum
     raise "invalid :msg param. Must be a string. Was #{msg} (#{msg.class})" unless msg.class == String
-    raise "invalid :negative_user_ids parm. Allowed values are false, true and :translate. Was #{negative_user_ids} (#{negative_user_ids.class})" unless [false, true, :translate].index(negative_user_ids)
+    raise "invalid :negative_user_ids parm. Allowed values are false, true and :translate. Was #{negative_user_ids_option} (#{negative_user_ids_option.class})" unless [false, true, :translate].index(negative_user_ids_option)
     raise "invalid :sha256_msg param. Must be true (incoming changed sha256 signature message) or false. Was #{sha256_msg} (#{sha256_msg.class})" unless [true, false].index(sha256_msg)
     raise "invalid :allow_changed_sha256 param. Must be a integer > 0. Was #{allow_changed_sha256} (#{allow_changed_sha256.class})" unless [Fixnum, Bignum].index(allow_changed_sha256.class) and allow_changed_sha256 >= 0
     raise "invalid :field parm. Allowed values are :id and :user_id. Was #{field} (#{field.class})" unless [:id, :user_id, 'id', 'user_id'].index(field)
@@ -1242,11 +1246,12 @@ class Server < ActiveRecord::Base
     valid_negative_user_ids = []
     invalid_negative_user_ids = []
     if negative_user_ids.size > 0
-      if negative_user_ids == nil
+      logger.debug2 "negative_user_ids.size = #{negative_user_ids.size}, negative_user_ids_option = #{negative_user_ids_option}"
+      if !negative_user_ids_option
         # not allowed in online users message
         errors << "Invalid negative user ids #{negative_user_ids.join(', ')}"
         invalid_negative_user_ids += negative_user_ids
-      elsif negative_user_ids
+      elsif negative_user_ids_option == :translate
         # giver and receiver in verify gifts message
         # todo: how to handle gift creator on one gofreerev server and accepted deal proposal from an other gofreerev server? one or more user ids can be unknown
         positive_user_ids = negative_user_ids.collect { |user_id| -user_id }
@@ -1256,7 +1261,7 @@ class Server < ActiveRecord::Base
         unknown_negative_user_ids = unknown_positive_user_ids.collect { |user_id| -user_id }
         errors << "Invalid negative user ids #{unknown_negative_user_ids.join(', ')}" if unknown_negative_user_ids.size > 0
       else
-        # login users in verify gifts request
+        # negative login users ids in verify gifts request. OK
       end
     end # if
 
@@ -1425,7 +1430,7 @@ class Server < ActiveRecord::Base
               :users => users
           }
           logger.debug2 "send sha256 message #{message}"
-          sym_enc_message = message.to_json.encrypt(:symmetric, :password => su.server.new_password)
+          sym_enc_m,essage = message.to_json.encrypt(:symmetric, :password => su.server.new_password)
           sym_enc_message = Base64.encode64(sym_enc_message)
           m = Message.new
           m.from_did = SystemParameter.did
@@ -2098,6 +2103,7 @@ class Server < ActiveRecord::Base
     # seq must be in verify_gifts table (see Gift.verify_gifts)
     vgs = {}
     VerifyGift.where(:server_seq => server_seqs).each { |vg| vgs[vg.server_seq] = vg }
+    logger.debug2 "vgs = #{vgs.to_json}"
     unknown_seq = []
     invalid_server_id = []
     invalid_gid = []
@@ -2128,7 +2134,9 @@ class Server < ActiveRecord::Base
         ok_response << verify_gift
         vg.verified_at_server = verified_at_server
         vg.error = error
+        vg.response_mid = mid
         vg.save!
+        logger.debug2 "vg = #{vg.to_json}"
       end
     end # each verify_gift
 
@@ -2142,14 +2150,17 @@ class Server < ActiveRecord::Base
     #     {:seq=>226, :gid=>"14253163835441202510", :verified_at_server=>true}, {:seq=>227, :gid=>"14253166119353097472", :verified_at_server=>true},
     #     ...
     #     {:seq=>234, :gid=>"14258782920140696549", :verified_at_server=>true}]
-    ok_response.each do |verify_gift|
-      seq = verify_gift['seq']
-      vg = vgs[seq]
-      vg.verified_at_server = verify_gift['verified_at_server']
-      vg.error = verify_gift['error'] if verify_gift['error']
-      vg.response_mid = mid
-      vg.save!
-    end
+    # ok_response.each do |verify_gift|
+    #   logger.debug2 "ok_response: verify_gift = #{ok_response.to_json}"
+    #   seq = verify_gift['seq']
+    #   vg = vgs[seq]
+    #   logger.debug2 "ok_response: vg before = #{vg.to_json}"
+    #   vg.verified_at_server = verify_gift['verified_at_server']
+    #   vg.error = verify_gift['error'] if verify_gift['error']
+    #   vg.response_mid = mid
+    #   logger.debug2 "ok_response: vg after = #{vg.to_json}"
+    #   vg.save!
+    # end
 
     if unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size > 0
       # send server to server error message
@@ -2594,7 +2605,7 @@ class Server < ActiveRecord::Base
     # secret must exists. Used in users sync between servers
     return {:error => 'Cannot send ping request. No secret was found for server id #{self.id}. Please log in'} unless self.secret
 
-    # all time calc in time with milliseconds
+    # time calc with milliseconds
     now = Time.zone.now.round(3)
     if self.next_ping_at and now < self.next_ping_at
       seconds = (self.next_ping_at-now)
@@ -2612,7 +2623,7 @@ class Server < ActiveRecord::Base
     client = HTTPClient.new
     client.set_cookie_store(self.cookie_filename()) # one cookie file per gofreerev server
 
-    # check session
+    # check session cookie
     xsrf_token = nil
     client.cookie_manager.cookies.each do |cookie|
       # logger.debug2 "cookie = #{cookie.to_json}"
@@ -2676,7 +2687,8 @@ class Server < ActiveRecord::Base
     logger.debug2 "res = #{res}" # todo: only dump res and res.body in log if JSON.parse fails
     FileUtils.rm signature_filename
     return { :error => "post #{url.to_s} failed with status #{res.status}" } unless res.status == 200
-    client.cookie_manager.save_all_cookies(true, true, true)
+    # client.cookie_manager.save_all_cookies(true, true, true)
+    client.cookie_manager.save_cookies(true)
     logger.debug2 "res.body = #{res.body}" # todo: only dump res and res.body in log if JSON.parse fails
 
     # json validate ping response

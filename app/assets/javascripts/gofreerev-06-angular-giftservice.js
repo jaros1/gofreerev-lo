@@ -3155,6 +3155,7 @@ angular.module('gifts')
         // public key has to be requested in a server to server pubkeys request
         // client continues to request remote public key until it is returned
         var pubkeys_request = function () {
+            var pgm = service + '.pubkeys_request: ' ;
             var request = [];
             var mailbox, did;
             for (var i = 0; i < mailboxes.length; i++) {
@@ -3165,6 +3166,7 @@ angular.module('gifts')
                     devices[did] = {};
                 }
             }
+            if (request.length > 0) console.log(pgm + 'request = ' + JSON.stringify(request)) ;
             return request.length == 0 ? null : request;
         };
         var pubkeys_response = function (response) {
@@ -4684,12 +4686,12 @@ angular.module('gifts')
             var unknown_sha256_user_ids = [], i, user_id, index, friend, msg_users_old ;
             if (mailbox.hasOwnProperty('server_id')) {
                 console.log(pgm + 'sync_gifts message from client on an other Gofreerev server. Translate sha256 signatures in msg.users to internal user ids') ;
-                console.log(pgm + 'msg.users (1) = ' + JSON.stringify(msg.users)) ;
+                console.log(pgm + 'msg.mutual_friends (1) = ' + JSON.stringify(msg.mutual_friends)) ;
 
                 // keep a copy of old sha256 user ids before translation (for debug and error messages)
                 var msg_users_sha256 = [] ;
                 var i ;
-                for (i=0 ; i<msg.users.length ; i++) msg_users_sha256.push(msg.users[i]) ;
+                for (i=0 ; i<msg.mutual_friends.length ; i++) msg_users_sha256.push(msg.mutual_friends[i]) ;
 
                 //// print debug information for user id 2, 3, 920, 1126. todo: remove
                 //var debug_users = [2, 3, 920, 1126], debug_user ;
@@ -4703,20 +4705,20 @@ angular.module('gifts')
                 // todo: a message received after secret change can be with old sha256 signature.
                 // todo: keep old sha256 signature as a fallback for one or two minutes for old messages
                 // todo: see more todos in userService.get_friend_by_sha256
-                for (i=msg.users.length-1 ; i>= 0 ; i--) {
-                    user_id = msg.users[i] ;
+                for (i=msg.mutual_friends.length-1 ; i>= 0 ; i--) {
+                    user_id = msg.mutual_friends[i] ;
                     friend = userService.get_friend_by_sha256(user_id) ;
                     if (friend) {
                         console.log(pgm + 'translating sha256 user_id ' + user_id + ' to internal user_id ' + friend.user_id) ;
-                        msg.users[i] = friend.user_id ;
+                        msg.mutual_friends[i] = friend.user_id ;
                     }
                     else {
                         console.log(pgm + 'unknown sha256 user_id ' + user_id) ;
                         unknown_sha256_user_ids.push(user_id) ;
-                        msg.users.splice(i,1) ;
+                        msg.mutual_friends.splice(i,1) ;
                     }
                 }
-                console.log(pgm + 'msg.users (2) = ' + JSON.stringify(msg.users)) ;
+                console.log(pgm + 'msg.mutual_friends (2) = ' + JSON.stringify(msg.mutual_friends)) ;
                 if (unknown_sha256_user_ids.length > 0) console.log(pgm + 'unknown_sha256_user_ids = ' + JSON.stringify(unknown_sha256_user_ids)) ;
             } // if
 
@@ -6524,7 +6526,7 @@ angular.module('gifts')
             // 1) translate users array in message header
             // 2) send_gifts: translate user ids in giver_user_ids, receiver_user_ids, comment user ids and users
             console.log(pgm + 'sync_gifts_message (1) = ' + JSON.stringify(sync_gifts_message));
-            if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.users, 'mutual_friends', mailbox.server_id, sync_gifts_message, false)) {
+            if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.mutual_friends, 'mutual_friends', mailbox.server_id, sync_gifts_message, false)) {
                 // write error in log and return error message to other client
                 error = 'Could not send sync_gifts response to ' + msg.msgtype + ' request. ' + error ;
                 console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
@@ -6600,10 +6602,15 @@ angular.module('gifts')
                 } // for i (gifts)
 
                 // translate user ids in send_gifts.users array
-                if (error=userService.user_ids_to_remote_sha256(sync_gifts_message.send_gifts.users, 'send_gifts.users', mailbox.server_id, sync_gifts_message, true)) {
+
+                // replace internal user ids with remote sha256 signatures
+                var user_ids = [] ;
+                // todo: use clone_array
+                for (i=0 ; i<sync_gifts_message.send_gifts.users.length ; i++) user_ids.push(sync_gifts_message.send_gifts.users[i].user_id) ;
+                if (error=userService.user_ids_to_remote_sha256(user_ids, 'send_gifts.users', mailbox.server_id, sync_gifts_message, true)) {
                     // write error in log and return error message to other client
                     error = 'Could not send sync_gifts response to ' + msg.msgtype + '. ' + error ;
-                    console.log(pgm + error + ' msg = ' + JSON.stringify(msg)) ;
+                    console.log(pgm + error + ', msg = ' + JSON.stringify(msg)) ;
                     mailbox.outbox.push({
                         mid: Gofreerev.get_new_uid(),
                         request_mid: msg.mid,
@@ -6612,6 +6619,8 @@ angular.module('gifts')
                     }) ;
                     return false;
                 };
+                // no errors. replace user ids
+                for (i=0 ; i<sync_gifts_message.send_gifts.users.length ; i++) sync_gifts_message.send_gifts.users[i].user_id = user_ids[i] ;
                 console.log(pgm + 'sync_gifts_message (2) = ' + JSON.stringify(sync_gifts_message));
 
                 // add servers array with translation for internal created_at_server integer to server sha256 signature
@@ -7320,14 +7329,14 @@ angular.module('gifts')
                 index = key_mailbox_index[key] ;
                 mailbox = mailboxes[key_mailbox_index[key]] ;
                 if (!mailbox) {
-                    console.log(pgm + 'Error. Ignoring message from device '  + msg_server_envelope.sender_did + 'with unknown index ' + index + '. message = ' + JSON.stringify(msg_server_envelope)) ;
+                    console.log(pgm + 'Error. Ignoring message from device '  + msg_server_envelope.sender_did + ' with unknown index ' + index + '. message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
                 }
                 did = mailbox.did ;
                 device = devices[did] ;
                 // console.log(pgm + 'did = ' + did  + ', device = ' + JSON.stringify(device)) ;
                 if (!device || !device.pubkey) {
-                    console.log(pgm + 'Error. Ignoring message from device '  + did + 'with key ' + key + '. Public key has not yet been received. Message = ' + JSON.stringify(msg_server_envelope)) ;
+                    console.log(pgm + 'Error. Ignoring message from device '  + did + ' with key ' + key + '. Public key has not yet been received. Message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
                 }
                 if (msg_server_envelope.encryption == 'rsa') {

@@ -736,7 +736,10 @@ angular.module('gifts')
         }
 
         // add new gift to 1) js array and to 2) localStorage. new gift has already been validated in GiftsCtrl.create_new_gift
-        var save_new_gift = function (gift) {
+        // params:
+        // - gift to be added to gifts array in localStorage
+        // - send_gifts_users - only used when receiving gift from an other client - users array from send_gifts message
+        var save_new_gift = function (gift, send_gifts_users) {
             var pgm = service + '.save_new_gift: ';
 
             // calc sha256 values for new gift
@@ -754,10 +757,17 @@ angular.module('gifts')
             init_gifts_index();
 
             // 2: add any new givers/receivers to localStorage.
+            // todo: remove if else? send_gifts_users array with be empty for local gifts and non empty for remote gifts
             if (!gift.hasOwnProperty('created_at_server')) {
-                userService.add_new_login_users(gift.giver_user_ids) ;
-                userService.add_new_login_users(gift.receiver_user_ids) ;
+                // gift created on this client. givers/receives are always in friends array as login users (user.friend == 1)
+                userService.add_new_users(gift.giver_user_ids, []) ;
+                userService.add_new_users(gift.receiver_user_ids, []) ;
             }
+            else {
+                // gift created on other client. givers/receivers are normally friends but can also be unknown users from other client
+                userService.add_new_users(gift.giver_user_ids, send_gifts_users) ;
+                userService.add_new_users(gift.receiver_user_ids, send_gifts_users) ;
+            };
 
             // 3: add new gift to localStorage
             gift = prepare_gift_for_save(gift) ;
@@ -1195,6 +1205,13 @@ angular.module('gifts')
                 //        migration = true ;
                 //    }
                 //}; // if
+
+                // testrun-x. remove remote gift with negative giver user id -4 (replicated from laptop2 to laptop)
+                //if ((gift.gid == '14481197074000741072')&&(gift.giver_user_ids.indexOf(-4) != -1)) {
+                //    console.log(pgm + 'delete gift ' + gift.gid + ' with negative user id -4') ;
+                //    Gofreerev.removeItem(keys[i]) ;
+                //    continue ;
+                //} ;
 
                 // changed sha256_deleted server side signature. resend delete gifts request to server
                 if (gift.hasOwnProperty('deleted_at_server')) {
@@ -5463,6 +5480,7 @@ angular.module('gifts')
                                 } ;
                                 // todo: validate new comment - return any errors to UI
                                 // extra control. gifts have already been validated in validate_send_gifts_message
+                                // todo: add msg.users to invalid_comment call. see invalid_gift call
                                 if (errors = invalid_comment(comment, [], 'receive', mailbox.server_id)) {
                                     console.log(pgm + 'Could not create new comment: ' + errors);
                                     console.log(pgm + 'comment = ' + JSON.stringify(comment));
@@ -5479,7 +5497,7 @@ angular.module('gifts')
                                     old_no_rows = old_no_rows + 1 ;
                                     old_gift.show_no_comments = old_no_rows ;
                                 }
-                                userService.add_new_login_users(comment.user_ids) ;
+                                userService.add_new_users(comment.user_ids, msg.users) ;
                                 save_gift(old_gift) ;
 
 
@@ -5687,7 +5705,7 @@ angular.module('gifts')
                     continue;
                 }
                 // add new gift to 1) JS array and 2) localStorage
-                save_new_gift(gift);
+                save_new_gift(gift, msg.users);
                 new_gift.pass = 3 ;
                 gifts_created.push(gid) ;
                 if (!new_gift.comments || (new_gift.comments.length == 0)) continue ; // new gift without comments
@@ -5727,7 +5745,7 @@ angular.module('gifts')
                             old_no_rows = old_no_rows + 1 ;
                             gift.show_no_comments = old_no_rows ;
                         }
-                        userService.add_new_login_users(comment.user_ids) ;
+                        userService.add_new_users(comment.user_ids, msg.users) ;
                         save_gift(gift) ;
                     } // if
                 } // for j (comments loop

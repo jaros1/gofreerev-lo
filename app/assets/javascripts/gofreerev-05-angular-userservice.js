@@ -19,6 +19,7 @@ angular.module('gifts')
         })();
 
         // friends - downloaded from api friend list and saved temporary in local storage
+        // ( see also users array - users used in gifts and comments permanently stored in local storage )
         var friends = [] ;
         var friends_index_by_user_id = {} ; // from internal user id to index in friends array
         var friends_index_by_sha256 = {} ; // from friend.sha256 to index in friends array (only friends on other Gofreerev servers)
@@ -1018,7 +1019,8 @@ angular.module('gifts')
         // user functions (friends and other users used in gifts and comments) ==>
 
         // js array with users in localStorage - that is users used in gifts and comments
-        // stored so that gifts and comments always are valid if authorization and friend lists changes
+        // stored so that gifts and comments always are valid when authorization and friend lists changes
+        // ( see also friends array - temporary storage of friends list downloaded from api provider )
         var users = [] ;
         var users_index_by_user_id = {} ;
         var init_users_index = function () {
@@ -1057,21 +1059,41 @@ angular.module('gifts')
             return user ;
         }; // get_user
 
-        // add login users used in create_new_gift and create_new_comment to localStorage
+        // add users used in create_new_gift and create_new_comment to localStorage
+        // empty send_gifts_users array: gift created on this client. users must be login users. friend from friends array with friend = 1
+        // non empty send_gifts_users array: gift from an other client. users can be login users, friend or unknown users from send_gifts message
         // users from friends array are always verified users
-        var add_new_login_users = function (login_user_ids) {
-            var pgm = service + '.add_new_login_users: ' ;
-            if ((typeof login_user_ids == 'undefine') || (login_user_ids == null)) return ;
-            if (login_user_ids.length == 0) return ;
-            var save = false, user_id, friend ;
-            for (var i=0 ; i<login_user_ids.length ; i++) {
-                user_id = login_user_ids[i] ;
-                if (users_index_by_user_id.hasOwnProperty(user_id)) continue ; // already in localStorage
-                friend = get_friend(user_id) ; // xxx
-                if (!friend || (friend.friend != 1)) {
-                    console.log(pgm + 'Invalid call. ' + user_id + ' is not an logged in user') ;
-                    continue ;
+        // users from send_gifts_users array are always non verified users
+        var add_new_users = function (user_ids, send_gifts_users) {
+            var pgm = service + '.add_new_users: ' ;
+            if ((typeof user_ids == 'undefine') || (user_ids == null)) return ;
+            if (user_ids.length == 0) return ;
+            var save = false, user_id, friend, i, j, k ;
+            for (i=0 ; i<user_ids.length ; i++) {
+                user_id = user_ids[i] ;
+                if (users_index_by_user_id.hasOwnProperty(user_id)) continue ; // already save in localStorage
+                friend = get_friend(user_id) ;
+                if (send_gifts_users.length == 0) {
+                    // local created gift or comment. user most be a login user
+                    if (!friend || (friend.friend != 1)) {
+                        console.log(pgm + 'Invalid call. ' + user_id + ' is not an logged in user') ;
+                        continue ;
+                    }
                 }
+                else {
+                    // remote created gift or comment. user can be a login user, a friend or an unknown user from send_gifts message users array
+                    if (!friend) {
+                        k = null ;
+                        for (j=0 ; j<send_gifts_users.length ; j++) if (send_gifts_users[j].user_id == user_id) k = j ;
+                        if (k != null) friend = send_gifts_users[k] ;
+                    }
+                    if (!friend) {
+                        console.log(pgm + 'Invalid call. ' + user_id + ' is not an logged in user, a friend or a user from send_gifts message') ;
+                        console.log(pgm + 'user_id = ' + JSON.stringify(user_id)) ;
+                        console.log(pgm + 'send_gifts_users = ' + JSON.stringify(send_gifts_users)) ;
+                        continue ;
+                    }
+                } ;
                 // clone friend before adding to users index. Friend status not used but verification timestamp is required
                 friend = {
                     user_id: friend.user_id,
@@ -1087,7 +1109,7 @@ angular.module('gifts')
                 save = true ;
             } // for i
             if (save) save_users() ;
-        }; // add_new_login_users
+        }; // add_new_users
 
         // add friends from friends array to users array - used in data migration (load_gifts). todo: remove
         var add_friends_to_users = function (user_ids) {
@@ -1159,7 +1181,7 @@ angular.module('gifts')
             expired_tokens_response: expired_tokens_response,
             oauths_response: oauths_response,
             get_external_user_ids: get_external_user_ids,
-            add_new_login_users: add_new_login_users,
+            add_new_users: add_new_users,
             get_user: get_user,
             add_friends_to_users: add_friends_to_users,
             user_ids_to_remote_sha256: user_ids_to_remote_sha256,

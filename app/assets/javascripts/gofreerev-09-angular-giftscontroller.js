@@ -639,7 +639,7 @@ angular.module('gifts')
                 return ;
             };
             // add new gift to 1) JS array and 2) localStorage
-            giftService.save_new_gift(gift) ;
+            giftService.save_new_gift(gift, []) ;
             // send create gift action to server (server side signature)
             giftService.verify_gifts_add(gift, 'create') ;
             // resize description textarea after current digest cycle is finish
@@ -697,7 +697,7 @@ angular.module('gifts')
                 var text = $window.document.getElementById(gift.gid + '-new-comment') ;
                 if (text) Gofreerev.autoresize_text_field(text) ;
             }, 0, false) ;
-            userService.add_new_login_users(new_comment.user_ids) ;
+            userService.add_new_users(new_comment.user_ids, []) ;
             giftService.save_gift(gift) ;
             // send create comment action to server (server side signature)
             giftService.verify_comments_add(gift, new_comment, 'create') ;

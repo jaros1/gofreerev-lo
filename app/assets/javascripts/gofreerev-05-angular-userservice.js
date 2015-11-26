@@ -990,7 +990,7 @@ angular.module('gifts')
 
         // after receiving msg from an other Gofreerev server. Translate known sha256 signatures to internal user ids
         // user ids in msg are either sha256 signatures (remote users) or negative user ids (unknown users)
-        var sha256_to_user_ids = function (sha256_signatures, server_id, msg) {
+        var sha256_to_user_ids = function (sha256_signatures, msg) {
             var pgm = service + '.sha256_to_user_ids: ' ;
             var user_ids = [];
             var i, sha256, friend, translate = false ;
@@ -998,6 +998,7 @@ angular.module('gifts')
                 sha256 = sha256_signatures[i] ;
                 if (typeof sha256 == 'number') {
                     // should be a negative integer for unknown user
+                    // console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
                     if (sha256 >= 0) return 'Invalid integer user id ' + sha256 + ' in ' + msg.msgtype + ' message' ;
                     if (sha256 != Math.round(sha256)) return 'Invalid integer user id ' + sha256 + ' in ' + msg.msgtype + ' message' ;
                     user_ids.push(sha256) ;

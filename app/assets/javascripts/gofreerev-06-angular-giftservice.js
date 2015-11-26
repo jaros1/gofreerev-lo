@@ -837,14 +837,20 @@ angular.module('gifts')
         } // get_gift_keys
 
         // helper function. collect user ids used in gifts and comments and append to array
-        // should normally be a list of integers
+        // should normally be a list of (positive) integers
         // send in load_gifts, validate_send_gifts_message etc
-        function add_user_ids_to_array (user_ids, array) {
+        // params:
+        // - user_ids                 : user ids to add to array
+        // - array                    : buffer with user ids
+        // - ignore_negative_user_ids : ignore negative user ids for remote gift when called from add_friends_to_users
+        function add_user_ids_to_array (user_ids, array, ignore_negative_user_ids) {
             if (!user_ids) return ;
             if (user_ids.length == 0) return ;
+            if ((typeof ignore_negative_user_ids == 'undefined') || (ignore_negative_user_ids == null)) ignore_negative_user_ids = false ;
             var i, user_id ;
             for (i=0 ; i<user_ids.length ; i++) {
                 user_id = user_ids[i] ;
+                if (ignore_negative_user_ids && (typeof user_id == 'number') && (user_id < 0) && (Math.round(user_id) == user_id)) continue ;
                 if (array.indexOf(user_id) == -1) array.push(user_id) ;
             }
         } // add_user_ids_to_array
@@ -856,17 +862,20 @@ angular.module('gifts')
             var pgm = service + '.add_friends_to_users: ' ;
             var migration_user_ids = [] ;
             var i, gift, comment ;
+            var ignore_negative_user_ids ; // negative user id is used for unknown users in gifts and comments from clients on other Gofreerev servers
 
             // find relevant user ids
             for (i=0 ; i<gifts.length ; i++) {
                 gift = gifts[i] ;
+                // ignore negative user ids for remote gifts from client on other gofreerev servers (never in friends array)
+                ignore_negative_user_ids = (gift.created_at_server > 0) ;
                 // migration_user_ids - friends used in gifts and comments must be in users
-                add_user_ids_to_array(gift.giver_user_ids, migration_user_ids) ;
-                add_user_ids_to_array(gift.receiver_user_ids, migration_user_ids) ;
+                add_user_ids_to_array(gift.giver_user_ids, migration_user_ids, ignore_negative_user_ids) ;
+                add_user_ids_to_array(gift.receiver_user_ids, migration_user_ids, ignore_negative_user_ids) ;
                 if (gift.comments) for (j=0 ; j<gift.comments.length ; j++) {
                     comment = gift.comments[j] ;
-                    add_user_ids_to_array(comment.user_ids, migration_user_ids) ;
-                    add_user_ids_to_array(comment.new_deal_action_by_user_ids, migration_user_ids) ;
+                    add_user_ids_to_array(comment.user_ids, migration_user_ids, ignore_negative_user_ids) ;
+                    add_user_ids_to_array(comment.new_deal_action_by_user_ids, migration_user_ids, ignore_negative_user_ids) ;
                 }
             }; // for i
 
@@ -877,6 +886,7 @@ angular.module('gifts')
                 if ((typeof user_id != 'number') || (Math.round(user_id) != user_id) || (user_id < 1)) {
                     console.log(pgm + 'Error. Ignoring invalid user id ' + user_id + ' in copy friends to users operation') ;
                     migration_user_ids.splice(i,1) ;
+                    continue ;
                 }
             }; // for i
 
@@ -3999,8 +4009,8 @@ angular.module('gifts')
                 if (new_gids.indexOf(new_gift.gid) != -1) doublet_gids += 1;
                 else {
                     new_gids.push(new_gift.gid);
-                    add_user_ids_to_array(new_gift.giver_user_ids, expected_user_ids) ;
-                    add_user_ids_to_array(new_gift.receiver_user_ids, expected_user_ids) ;
+                    add_user_ids_to_array(new_gift.giver_user_ids, expected_user_ids, false) ;
+                    add_user_ids_to_array(new_gift.receiver_user_ids, expected_user_ids, false) ;
                     if (expected_server_ids.indexOf(new_gift.created_at_server) == -1) expected_server_ids.push(new_gift.created_at_server) ;
                 }
             } // for i
@@ -4017,8 +4027,8 @@ angular.module('gifts')
                     if (new_cids.indexOf(new_comment.cid) != -1) doublet_cids += 1;
                     else {
                         new_cids.push(new_comment.cid);
-                        add_user_ids_to_array(new_comment.user_ids, expected_user_ids);
-                        add_user_ids_to_array(new_comment.new_deal_action_by_user_ids, expected_user_ids);
+                        add_user_ids_to_array(new_comment.user_ids, expected_user_ids, false);
+                        add_user_ids_to_array(new_comment.new_deal_action_by_user_ids, expected_user_ids, false);
                         if (expected_server_ids.indexOf(new_comment.created_at_server) == -1) expected_server_ids.push(new_comment.created_at_server) ;
                     }
                 } // for j (comments)
@@ -4451,8 +4461,8 @@ angular.module('gifts')
                     // todo: 4 - clone user id arrays if sending gift to other gofreerev server (user id is replaced with sha256 signature)
                     gift_clone = make_gift_clone(gift) ;
                     // save relevant userids (giver, receiver and creator of comments) in gift_users buffer
-                    add_user_ids_to_array(gift.giver_user_ids, send_gifts_users) ;
-                    add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(gift.giver_user_ids, send_gifts_users, false) ;
+                    add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users, false) ;
                     var comment ;
                     if (gift.comments && (gift.comments.length > 0)) {
                         gift_clone.comments = [] ;
@@ -4465,8 +4475,8 @@ angular.module('gifts')
                             // todo: 2 - clone user_ids array if sending message to other gofreerev server (user id is replaced with sha256 signature)
                             gift_clone.comments.push(make_comment_clone(comment));
                             // save relevant comment.user_ids in gift_users buffer
-                            add_user_ids_to_array(comment.user_ids, send_gifts_users) ;
-                            add_user_ids_to_array(comment.new_deal_action_by_user_ids, send_gifts_users) ;
+                            add_user_ids_to_array(comment.user_ids, send_gifts_users, false) ;
+                            add_user_ids_to_array(comment.new_deal_action_by_user_ids, send_gifts_users, false) ;
                         } // for j (comments loop)
                     } // if comments
                     // validate gift_clone before adding gift to send_gifts sub message
@@ -4888,6 +4898,7 @@ angular.module('gifts')
                         // 1) sha256 signatures for remote users or
                         // 2) negative user ids for "unknown" users
                         // translate all received sha256 signatures to internal user ids
+                        // console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
                         error = userService.sha256_to_user_ids(new_gift.giver_user_ids, msg) ;
                         if (error) {
                             // todo: use key+options error format
@@ -5865,8 +5876,8 @@ angular.module('gifts')
                         continue ;
                     }
                     send_gifts_sub_message.push(gift_clone);
-                    add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users) ;
-                    add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users, false) ;
+                    add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users, false) ;
                     if (!gift.hasOwnProperty('comments')) continue ;
                     for (j=0 ; j<gift.comments.length ; j++) {
                         comment = gift.comments[j] ;
@@ -5875,8 +5886,8 @@ angular.module('gifts')
                         if (!send_gift && !send_comment) continue ;
                         // clone, validate and insert comment in send_gift sub message
                         comment_clone = make_comment_clone(comment);
-                        add_user_ids_to_array(comment_clone.user_ids, send_gifts_users) ;
-                        add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users) ;
+                        add_user_ids_to_array(comment_clone.user_ids, send_gifts_users, false) ;
+                        add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users, false) ;
                         gift_clone.comments.push(comment_clone) ;
                     } // for j
                 } // for i
@@ -6200,15 +6211,15 @@ angular.module('gifts')
                     } // if
                     gift_clone = make_gift_clone(gift) ;
                     // save relevant userids (giver, receiver and creator of comments) in gift_users buffer
-                    add_user_ids_to_array(gift.giver_user_ids, send_gifts_users) ;
-                    add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(gift.giver_user_ids, send_gifts_users, false) ;
+                    add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users, false) ;
                     if (gift.hasOwnProperty('comments')) {
                         if (gift.comments.length > 0) gift_clone.comments = [] ;
                         for (i=0 ; i<gift.comments.length ; i++) {
                             comment = gift.comments[i] ;
                             new_gift.commments.push(make_comment_clone(comment)) ;
-                            add_user_ids_to_array(comment.user_ids, expected_user_ids);
-                            add_user_ids_to_array(comment.new_deal_action_by_user_ids, expected_user_ids);
+                            add_user_ids_to_array(comment.user_ids, expected_user_ids, false);
+                            add_user_ids_to_array(comment.new_deal_action_by_user_ids, expected_user_ids, false);
                         }
                     }
                     send_gifts_sub_message.gifts.push(gift_clone) ;
@@ -6378,8 +6389,8 @@ angular.module('gifts')
                 // gift ok and from a mutual friend. Add to send_gifts sub message
                 // save relevant userids in gift_users buffer
                 ok_gids.push(gid) ;
-                add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users) ;
-                add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users) ;
+                add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users, false) ;
+                add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users, false) ;
                 send_gifts_sub_message.gifts.push(gift_clone) ;
 
                 // add comments to send_gifts sub message + save relevant userids in gift_users buffer
@@ -6388,8 +6399,8 @@ angular.module('gifts')
                 gift_clone.comments = [] ;
                 for (j=0 ; j<gift.comments.length ; j++) {
                     comment_clone = make_comment_clone(gift.comments[j]);
-                    add_user_ids_to_array(comment_clone.user_ids, send_gifts_users) ;
-                    add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(comment_clone.user_ids, send_gifts_users, false) ;
+                    add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users, false) ;
                     gift_clone.comments.push(comment_clone) ;
                 } ; // for j
 
@@ -6920,8 +6931,8 @@ angular.module('gifts')
                     // todo: 3 - add url with optional file attachment (file upload has not been implemented yet)
                     gift_clone = make_gift_clone(my_gift) ;
                     // save relevant userids (giver, receiver and creator of comments) in send_gifts_users buffer
-                    add_user_ids_to_array(my_gift.giver_user_ids, send_gifts_users);
-                    add_user_ids_to_array(my_gift.receiver_user_ids, send_gifts_users);
+                    add_user_ids_to_array(my_gift.giver_user_ids, send_gifts_users, false);
+                    add_user_ids_to_array(my_gift.receiver_user_ids, send_gifts_users, false);
                 }; // if send_gift
 
                 if (merge_gift.hasOwnProperty('comments')) {
@@ -6948,8 +6959,8 @@ angular.module('gifts')
                             if (!gift_clone.hasOwnProperty('comments')) gift_clone.comments = [] ;
                             gift_clone.comments.push(make_comment_clone(my_comment)) ;
                             // save relevant comment.user_ids in gift_users buffer
-                            add_user_ids_to_array(my_comment.user_ids, send_gifts_users) ;
-                            add_user_ids_to_array(my_comment.new_deal_action_by_user_ids, send_gifts_users) ;
+                            add_user_ids_to_array(my_comment.user_ids, send_gifts_users, false) ;
+                            add_user_ids_to_array(my_comment.new_deal_action_by_user_ids, send_gifts_users, false) ;
 
                         } // if send_comment
                         if (request_comment) {
@@ -7192,8 +7203,8 @@ angular.module('gifts')
                             continue ;
                         };
                         // save relevant userids in gift_users buffer
-                        add_user_ids_to_array(gift.giver_user_ids, send_gifts_users) ;
-                        add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users) ;
+                        add_user_ids_to_array(gift.giver_user_ids, send_gifts_users, false) ;
+                        add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users, false) ;
                         // add gift to send gifts message
                         gid_to_send_gifts_index[gid] = send_gifts_sub_message.gifts.length ;
                         send_gifts_sub_message.gifts.push(gift_clone) ;
@@ -7203,8 +7214,8 @@ angular.module('gifts')
                     if (!gift_clone.hasOwnProperty('comments')) gift_clone.comments = [] ;
                     gift_clone.comments.push(comment_clone) ;
                     // save relevant userids in gift_users buffer
-                    add_user_ids_to_array(comment_clone.user_ids, send_gifts_users) ;
-                    add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users) ;
+                    add_user_ids_to_array(comment_clone.user_ids, send_gifts_users, false) ;
+                    add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users, false) ;
                     ok_cids.push(cid) ;
                 }; // for j (comments)
             }; // for i (gifts)

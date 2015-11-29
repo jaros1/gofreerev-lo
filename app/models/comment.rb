@@ -1117,12 +1117,12 @@ class Comment < ActiveRecord::Base
           login_user_ids.push(-login_user.id)
         end
       end
-      message = {
+      message_hash = {
           :msgtype => 'verify_comments',
           :mid => server_mid[server_id],
           :login_users => login_user_ids,
           :verify_comments => server_request }
-      logger.debug2 "verify_comments message = #{message}"
+      logger.debug2 "verify_comments message_hash = #{message_hash}"
       # validate json message before sending
       json_schema = :verify_comments_request
       if !JSON_SCHEMA.has_key? json_schema
@@ -1131,10 +1131,10 @@ class Comment < ActiveRecord::Base
               :key => 'no_json', :options => { :schema => json_schema} },
             client_sid, nil)
       end
-      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
       if json_errors.size > 0
         logger.error2 "Failed to sent comments to remote verification. Error in #{json_schema}"
-        logger.error2 "message = #{message}"
+        logger.error2 "message = #{message_hash}"
         logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
         logger.error2 "errors = #{json_errors.join(', ')}"
         return Gift.format_error_response(
@@ -1142,16 +1142,16 @@ class Comment < ActiveRecord::Base
               :key => 'invalid_json', :options => { :schema => json_schema, :error => json_errors.join(', ')} },
             client_sid, nil)
       end
-      # save server to server message - will be sent in next server to server ping
-      sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
-      sym_enc_message = Base64.encode64(sym_enc_message)
+
+      # save mix encrypted server to server message - will be sent in next server to server ping
+      key, message = servers[server_id].mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = SystemParameter.did
       m.to_did = servers[server_id].new_did
       m.server = true
       m.mid = server_mid[server_id]
-      m.encryption = 'sym'
-      m.message = sym_enc_message
+      m.key = key
+      m.message = message
       m.save!
     end # each server_id, server_request
 

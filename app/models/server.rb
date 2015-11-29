@@ -646,14 +646,9 @@ class Server < ActiveRecord::Base
     logger.debug2 "message_hash = #{message_hash.to_json}"
 
     # mix encryption. rsa encrypted random password + symmetric encrypted message
-    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
-    random_password = String.generate_random_string 200
-    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "key (rsa encrypted) = #{key}"
-    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
-    logger.debug2 "message (symmetric encrypted) = #{message}"
+    key, message = self.mix_encrypt_message_hash message_hash
 
-    # add envelope with symmetric encrypted users message
+    # add envelope with mix encrypted users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
@@ -927,12 +922,7 @@ class Server < ActiveRecord::Base
     logger.debug2 "message_hash = #{message_hash.to_json}"
 
     # mix encryption. rsa encrypted random password + symmetric encrypted message
-    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
-    random_password = String.generate_random_string 200
-    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "key (rsa encrypted) = #{key}"
-    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
-    logger.debug2 "message (symmetric encrypted) = #{message}"
+    key, message = self.mix_encrypt_message_hash message_hash
 
     # insert message in messages table. will be returned in a moment in ping response
     m = Message.new
@@ -1058,12 +1048,7 @@ class Server < ActiveRecord::Base
     logger.debug2 "message = #{message_hash.to_json}"
 
     # mix encryption. rsa encrypted random password + symmetric encrypted message
-    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
-    random_password = String.generate_random_string 200
-    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "key (rsa encrypted) = #{key}"
-    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
-    logger.debug2 "message (symmetric encrypted) = #{message}"
+    key, message = self.mix_encrypt_message_hash message_hash
 
     # add envelope with mix encrypted online users message
     envelope = {
@@ -1428,23 +1413,21 @@ class Server < ActiveRecord::Base
       end
       su.save!
       if (i == server_users.size-1 or su.server_id != server_users[i+1].server_id) and  users.size > 0
-          # save message
-          message = {
-              :msgtype => 'sha256',
-              :seq => seq,
-              :users => users
-          }
-          logger.debug2 "send sha256 message #{message}"
-          sym_enc_m,essage = message.to_json.encrypt(:symmetric, :password => su.server.new_password)
-          sym_enc_message = Base64.encode64(sym_enc_message)
-          m = Message.new
-          m.from_did = SystemParameter.did
-          m.to_did = su.server.new_did
-          m.server = true
-          m.encryption = 'sym'
-          m.message = sym_enc_message
-          m.save!
-
+        # save message
+        message_hash = {
+            :msgtype => 'sha256',
+            :seq => seq,
+            :users => users
+        }
+        logger.debug2 "send sha256 message #{message_hash}"
+        key, message = su.server.mix_encrypt_message_hash message_hash
+        m = Message.new
+        m.from_did = SystemParameter.did
+        m.to_did = su.server.new_did
+        m.server = true
+        m.key = key
+        m.message = message
+        m.save!
         users = []
       end # if
     end # do  i
@@ -1513,14 +1496,9 @@ class Server < ActiveRecord::Base
     logger.debug2 "message_hash = #{message_hash.to_json}"
 
     # mix encryption. rsa encrypted random password + symmetric encrypted message
-    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
-    random_password = String.generate_random_string 200
-    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "key (rsa encrypted) = #{key}"
-    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
-    logger.debug2 "message (symmetric encrypted) = #{message_hash}"
+    key, message = self.mix_encrypt_message_hash message_hash
 
-    # add envelope with symmetric encrypted users message
+    # add envelope with mix encrypted users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
@@ -1621,21 +1599,18 @@ class Server < ActiveRecord::Base
       # add public keys message to messages table with
       # - response to ingoing public key requests
       # - public keys request to client. response in next ping
-      message = {
+      message_hash = {
           :msgtype => 'pubkeys',
           :users => request
       }
-      logger.debug2 "message = #{message.to_json}"
-      sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-      sym_enc_message = Base64.encode64(sym_enc_message)
-      logger.debug2 "sym_enc_message = #{sym_enc_message}"
-
+      logger.debug2 "message = #{message_hash.to_json}"
+      key, message = self.mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = SystemParameter.did
       m.to_did = self.new_did
       m.server = true
-      m.encryption = 'sym'
-      m.message = sym_enc_message
+      m.key = key
+      m.message = message
       m.save!
 
     end
@@ -1684,14 +1659,9 @@ class Server < ActiveRecord::Base
     logger.debug2 "message_hash = #{message_hash.to_json}"
 
     # mix encryption. rsa encrypted random password + symmetric encrypted message
-    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
-    random_password = String.generate_random_string 200
-    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "key (rsa encrypted) = #{key}"
-    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
-    logger.debug2 "message (symmetric encrypted) = #{message}"
+    key, message = self.mix_encrypt_message_hash message_hash
 
-    # add envelope with symmetric encrypted users message
+    # add envelope with mix encrypted users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
@@ -1702,9 +1672,7 @@ class Server < ActiveRecord::Base
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
 
-  end
-
-  # create_client_messages
+  end # create_client_messages
 
 
   public
@@ -2011,7 +1979,7 @@ class Server < ActiveRecord::Base
     if request_on_hold.size > 0
       # some gifts in verify gifts requests are waiting for local user info update
       # save request for next ping. Receiver is this current gofreerev server
-      message = {
+      message_hash = {
           :msgtype => 'verify_gifts',
           :login_users => login_users,
           :verify_gifts => request_on_hold
@@ -2021,23 +1989,22 @@ class Server < ActiveRecord::Base
       if !JSON_SCHEMA.has_key? json_schema
         return ["Could not validate verify_gifts message with requests on hold. JSON schema definition #{json_schema.to_s} was not found.", false]
       end
-      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
       if json_errors.size > 0
         logger.error2 "Failed to \"save\" verify_gifts message with requests on hold. Error in #{json_schema}"
-        logger.error2 "message = #{message}"
+        logger.error2 "message = #{message_hash}"
         logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
         logger.error2 "errors = #{json_errors.join(', ')}"
         return "Failed to create verify_gifts message with requests on hold: #{json_errors.join(', ')}"
       end
       # save server to server message - will be procesed in next ping
-      sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
-      sym_enc_message = Base64.encode64(sym_enc_message)
+      key, message = servers[server_id].mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = servers[server_id].new_did
       m.to_did = SystemParameter.did
       m.server = true
-      m.encryption = 'sym'
-      m.message = sym_enc_message
+      m.key = key
+      m.message = message
       m.save!
     end
 
@@ -2054,37 +2021,36 @@ class Server < ActiveRecord::Base
     logger.debug2 "verify_gifts_response = #{verify_gifts_response}"
 
     # format response - note - no login users array
-    message = {
+    message_hash = {
         :msgtype => 'verify_gifts',
         :verify_gifts => verify_gifts_response,
         :mid => Sequence.next_server_mid,
         :request_mid => mid
     }
-    message[:error] = local_verify_gifts_error if local_verify_gifts_error
+    message_hash[:error] = local_verify_gifts_error if local_verify_gifts_error
 
     # validate json message before "sending"
     json_schema = :verify_gifts_response
     if !JSON_SCHEMA.has_key? json_schema
       return ["Could not validate verify_gifts response. JSON schema definition #{json_schema.to_s} was not found.", false]
     end
-    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
     if json_errors.size > 0
       logger.error2 "Failed to return remote verify gifts response. Error in #{json_schema}"
-      logger.error2 "message = #{message}"
+      logger.error2 "message = #{message_hash}"
       logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
       logger.error2 "errors = #{json_errors.join(', ')}"
       return "Failed to return remote verify gifts response: #{json_errors.join(', ')}"
     end
     # save server to server message - will be procesed in next ping
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    sym_enc_message = Base64.encode64(sym_enc_message)
+    key, message = self.mix_encrypt_message_hash message_hash
     m = Message.new
     m.from_did = SystemParameter.did
     m.to_did = self.new_did
     m.server = true
-    m.encryption = 'sym'
-    m.message = sym_enc_message
-    m.mid = message[:mid]
+    m.key = key
+    m.message = message
+    m.mid = message_hash[:mid]
     m.save!
 
   end # receive_verify_gifts_request
@@ -2183,23 +2149,22 @@ class Server < ActiveRecord::Base
       errors << "Invalid seqs (other server): " + invalid_server_id.collect { |vg| vg['seq'] }.join(', ') if invalid_server_id.size > 0
       errors << "Invalid gids: " + invalid_gid.collect { |vg| vg['seq'] }.join(', ') if invalid_gid.size > 0
       errors << "Changed response: " + invalid_response.collect { |vg| vg['seq'] }.join(', ') if invalid_gid.size > 0
-      message = {
+      message_hash = {
           :msgtype => 'error',
           :mid => Sequence.next_server_mid,
           :request_mid => request_mid,
           :response_mid => mid,
           :error => errors.join(', ')
       }
-      logger.debug2 "error message = #{message}"
-      sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-      sym_enc_message = Base64.encode64(sym_enc_message)
+      logger.debug2 "error message = #{message_hash}"
+      key, message = self.mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = SystemParameter.did
       m.to_did = self.new_did
       m.server = true
-      m.encryption = 'sym'
-      m.message = sym_enc_message
-      m.mid = message.mid
+      m.key = key
+      m.message = message
+      m.mid = message_hash.mid
       m.save!
       return errors.join(', ')
     end
@@ -2346,7 +2311,7 @@ class Server < ActiveRecord::Base
     if request_on_hold.size > 0
       # some comments in verify comments requests are waiting for local user info update
       # save request for next ping. Receiver is this current gofreerev server
-      message = {
+      message_hash = {
           :msgtype => 'verify_comments',
           :login_users => login_users,
           :verify_comments => request_on_hold
@@ -2356,23 +2321,22 @@ class Server < ActiveRecord::Base
       if !JSON_SCHEMA.has_key? json_schema
         return ["Could not validate verify_comments message with requests on hold. JSON schema definition #{json_schema.to_s} was not found.", false]
       end
-      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
       if json_errors.size > 0
         logger.error2 "Failed to \"save\" verify_comments message with requests on hold. Error in #{json_schema}"
-        logger.error2 "message = #{message}"
+        logger.error2 "message = #{message_hash}"
         logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
         logger.error2 "errors = #{json_errors.join(', ')}"
         return "Failed to create verify_comments message with requests on hold: #{json_errors.join(', ')}"
       end
       # save server to server message - will be procesed in next ping
-      sym_enc_message = message.to_json.encrypt(:symmetric, :password => servers[server_id].new_password)
-      sym_enc_message = Base64.encode64(sym_enc_message)
+      key, message = servers[server_id].mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = servers[server_id].new_did
       m.to_did = SystemParameter.did
       m.server = true
-      m.encryption = 'sym'
-      m.message = sym_enc_message
+      m.key = key
+      m.message = message
       m.save!
     end
 
@@ -2389,37 +2353,36 @@ class Server < ActiveRecord::Base
     logger.debug2 "verify_comments_response = #{verify_comments_response}"
 
     # format response - note - no login users array
-    message = {
+    message_hash = {
         :msgtype => 'verify_comments',
         :verify_comments => verify_comments_response,
         :mid => Sequence.next_server_mid,
         :request_mid => mid
     }
-    message[:error] = local_verify_comments_error if local_verify_comments_error
+    message_hash[:error] = local_verify_comments_error if local_verify_comments_error
 
     # validate json message before "sending"
     json_schema = :verify_comments_response
     if !JSON_SCHEMA.has_key? json_schema
       return ["Could not validate verify_comments response. JSON schema definition #{json_schema.to_s} was not found.", false]
     end
-    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message)
+    json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
     if json_errors.size > 0
       logger.error2 "Failed to return remote verify comments response. Error in #{json_schema}"
-      logger.error2 "message = #{message}"
+      logger.error2 "message = #{message_hash}"
       logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
       logger.error2 "errors = #{json_errors.join(', ')}"
       return "Failed to return remote verify comments response: #{json_errors.join(', ')}"
     end
     # save server to server message - will be procesed in next ping
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    sym_enc_message = Base64.encode64(sym_enc_message)
+    key, message = self.mix_encrypt_message_hash message_hash
     m = Message.new
     m.from_did = SystemParameter.did
     m.to_did = self.new_did
     m.server = true
-    m.encryption = 'sym'
-    m.message = sym_enc_message
-    m.mid = message[:mid]
+    m.key = key
+    m.message = message
+    m.mid = message_hash[:mid]
     m.save!
 
   end # receive_verify_comments_req
@@ -2507,23 +2470,22 @@ class Server < ActiveRecord::Base
       errors << "Invalid seqs (other server): " + invalid_server_id.collect { |vg| vg['seq'] }.join(', ') if invalid_server_id.size > 0
       errors << "Invalid cids: " + invalid_cid.collect { |vg| vg['seq'] }.join(', ') if invalid_cid.size > 0
       errors << "Changed response: " + invalid_response.collect { |vg| vg['seq'] }.join(', ') if invalid_cid.size > 0
-      message = {
+      message_hash = {
           :msgtype => 'error',
           :mid => Sequence.next_server_mid,
           :request_mid => request_mid,
           :response_mid => mid,
           :error => errors.join(', ')
       }
-      logger.debug2 "error message = #{message}"
-      sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-      sym_enc_message = Base64.encode64(sym_enc_message)
+      logger.debug2 "error message = #{message_hash}"
+      key, message = self.mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = SystemParameter.did
       m.to_did = self.new_did
       m.server = true
-      m.encryption = 'sym'
-      m.message = sym_enc_message
-      m.mid = message.mid
+      m.key = key
+      m.message = message
+      m.mid = message_hash.mid
       m.save!
       return errors.join(', ')
     end
@@ -2784,5 +2746,17 @@ class Server < ActiveRecord::Base
       sleep interval
     end
   end
+
+  # mix encryption. rsa encrypted random password + symmetric encrypted message
+  def mix_encrypt_message_hash (message_hash)
+    logger.debug2 "message_hash = #{message_hash.to_json}"
+    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
+    random_password = String.generate_random_string 200
+    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "key (rsa encrypted) = #{key}"
+    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
+    logger.debug2 "message (symmetric encrypted) = #{message}"
+    [key, message]
+  end # mix_encrypt_message_hash
 
 end

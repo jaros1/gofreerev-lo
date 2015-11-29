@@ -185,7 +185,9 @@ JSON_SCHEMA = {
         :type => 'object',
         :properties => {
             # client userid normally = 1. Old client userid at device logout (provider=null). Allow up to 100 user accounts in localStorage
-            :client_userid => client_userid_type
+            :client_userid => client_userid_type,
+            # did - unique device id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+            :did => {:type => 'string', :pattern => uid_pattern}
         },
         :required => %w(client_userid),
         :additionalProperties => false
@@ -357,14 +359,15 @@ JSON_SCHEMA = {
                           :receiver_sha256 => {:type => 'string'},
                           # server - true for server to server communication. false for client to client communication
                           :server => {:type => 'boolean'},
-                          # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
-                          :encryption => {:type => 'string', :pattern => '^(rsa|sym|mix)$'},
-                          # key is only used in mix encrypted message. key is rsa encrypted and message is symmetric encrypted with key
+                          # encryption. rsa encrypted key and/or symmetric encrypted message
+                          # three encryption models:
+                          # 1) rsa encrypted key only. Symmetric password setup between two clients. Less secure. Identical password for many messages.
+                          # 2) symmetric encrypted message. After 1 has finished. Less secure. Identical encryption for identical messages.
+                          # 3) key and message. rsa encrypted random password and message encrypted with this password. More secure. Different encryption for identical messages.
                           :key => {:type => 'string'},
-                          # message for receiver device encrypted with device public key
                           :message => {:type => 'string'}
                       },
-                      :required => %w(receiver_did server encryption message),
+                      :required => %w(receiver_did server),
                       :additionalProperties => false
                   },
                   :minItems => 1
@@ -576,14 +579,15 @@ JSON_SCHEMA = {
                                   :sender_sha256 => {:type => 'string'},
                                   # server - true for server to server communication. false for client to client communication
                                   :server => {:type => 'boolean'},
-                                  # public/private key encryption (rsa) or symmetric key encryption? start with rsa and continue with symmetric
-                                  :encryption => {:type => 'string', :pattern => '^(rsa|sym|mix)$'},
-                                  # key is only used in mix encrypted message. key is rsa encrypted and message is symmetric encrypted with key
+                                  # encryption. rsa encrypted key and/or symmetric encrypted message
+                                  # three encryption models:
+                                  # 1) rsa encrypted key only. Symmetric password setup between two clients. Less secure. Identical password for many messages.
+                                  # 2) symmetric encrypted message. After 1 has finished. Less secure. Identical encryption for identical messages.
+                                  # 3) key and message. rsa encrypted random password and message encrypted with this password. More secure. Different encryption for identical messages.
                                   :key => {:type => 'string'},
-                                  # message for receiver device encrypted with device public key
                                   :message => {:type => 'string'}
                               },
-                              :required => %w(sender_did server encryption message),
+                              :required => %w(sender_did server),
                               :additionalProperties => false
                           },
                           :minItems => 1

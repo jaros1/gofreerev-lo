@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150806044011) do
+ActiveRecord::Schema.define(version: 20151128144331) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -126,10 +126,9 @@ ActiveRecord::Schema.define(version: 20150806044011) do
     t.string   "from_sha256", limit: 45
     t.string   "to_did",      limit: 20,       null: false
     t.string   "to_sha256",   limit: 45
-    t.text     "message",     limit: 16777215, null: false
+    t.text     "message",     limit: 16777215
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "encryption",  limit: 3,        null: false
     t.boolean  "server",                       null: false
     t.text     "key"
     t.integer  "mid"

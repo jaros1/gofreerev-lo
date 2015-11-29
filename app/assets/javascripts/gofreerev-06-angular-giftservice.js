@@ -3366,7 +3366,7 @@ angular.module('gifts')
             var response = [];
             var mailbox, did, device, messages, msg, message, message_csv, message_json_com, message_csv_rsa_enc, message_with_envelope;
             var encrypt = new JSEncrypt();
-            var password;
+            var random_password, key;
             for (var i = 0; i < mailboxes.length; i++) {
                 mailbox = mailboxes[i];
                 did = mailbox.did;
@@ -3375,6 +3375,7 @@ angular.module('gifts')
                     console.log(pgm + 'Wait. Public key has not yet been received for device ' + did);
                     continue;
                 }
+                encrypt.setPublicKey(devices[did].pubkey);
                 if (!device.password) {
                     // communication step 1 - setup password for symmetric encryption
                     if (!mailbox.online) {
@@ -3395,7 +3396,6 @@ angular.module('gifts')
                     // message => json => rsa encrypt
                     message_csv = message.join(',');
                     // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
-                    encrypt.setPublicKey(devices[did].pubkey);
                     // RSA encrypt with default values - CBC and Pkcs7 (https://code.google.com/p/crypto-js/#Block_Modes_and_Padding)
                     message_csv_rsa_enc = encrypt.encrypt(message_csv);
                     // add envelope - used in rails message buffer - each message have sender, receiver, encryption and message
@@ -3403,8 +3403,7 @@ angular.module('gifts')
                         receiver_did: mailbox.did,
                         receiver_sha256: mailbox.sha256,
                         server: false,
-                        encryption: 'rsa',
-                        message: message_csv_rsa_enc
+                        key: message_csv_rsa_enc
                     };
                     console.log(pgm + 'symmetric password setup: sending rsa message') ;
                     // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
@@ -3473,15 +3472,18 @@ angular.module('gifts')
                     messages: messages // array with messages
                 };
                 console.log(pgm + 'unencrypted message = ' + JSON.stringify(message));
-                // encrypt message in mailbox using symmetric encryption
-                password = device.password;
+
+                // encrypt message in mailbox using mix encryption
+                random_password = Gofreerev.generate_random_password(200);
+                key = encrypt.encrypt(random_password);
                 message_with_envelope = {
                     receiver_did: mailbox.did,
                     receiver_sha256: mailbox.sha256,
                     server: false,
-                    encryption: 'sym',
-                    message: Gofreerev.encrypt(JSON.stringify(message), password)
+                    key: key,
+                    message: Gofreerev.encrypt(JSON.stringify(message), random_password)
                 };
+
                 // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
                 // server_id not needed in client request. server knowns server id for each receiver_did
                 // if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
@@ -7342,6 +7344,7 @@ angular.module('gifts')
             }
             var encrypt, prvkey ;
             var msg_server_envelope, key, index, mailbox, did, device, msg, msg_csv_rsa_enc, msg_csv, msg_json_sym_enc, msg_client_envelope ;
+            var decrypted_key, symmetric_password ;
             // move any temporary parked symmetric encrypted messages to response.messages array
             // ( symmetric encrypted message received before symmetric password setup was completed )
             while (unencrypted_messages.length > 0) {
@@ -7368,29 +7371,36 @@ angular.module('gifts')
                     console.log(pgm + 'Error. Ignoring message from device '  + did + ' with key ' + key + '. Public key has not yet been received. Message = ' + JSON.stringify(msg_server_envelope)) ;
                     continue ;
                 }
-                if (msg_server_envelope.encryption == 'rsa') {
-                    // public/private key decryption (rsa) - password setup for symmetric encryption
-                    console.log(pgm + 'message_with_envelope = ' + JSON.stringify(msg_server_envelope)) ;
+
+                // decrypt incoming message.
+                // field msg_server_envelope.key is rsa encrypted and field msg_server_envelope.message is symmetric encrypted.
+                //  1) .key only (rsa encryption) => communication startup. symmetric password setup between two clients. saved in device.password and used in 2)
+                //  2) .message only (symmetric encryption) => symmetric encrypted message using device.password. Identical encryption for identical messages (less secure)
+                //  3) .key and .message. (combination of rsa and symmetric encryption). rsa encrypted random password and decrypt message with this password. Different encryption for identical messages (more secure)
+
+                // decrypt rsa part of message (key)
+                if (msg_server_envelope.hasOwnProperty('key')) {
+                    // rsa or mix encryption. setup rsa decryption
                     if (!encrypt) {
                         encrypt = new JSEncrypt() ;
                         prvkey = Gofreerev.getItem('prvkey') ;
                         encrypt.setPrivateKey(prvkey);
                     }
-                    // rsa => json
-                    msg_csv_rsa_enc = msg_server_envelope.message ;
-                    msg_csv = encrypt.decrypt(msg_csv_rsa_enc) ;
-                    msg = msg_csv.split(',') ;
-                    // console.log(pgm + 'rsa decrypt: prvkey = ' + prvkey) ;
-                    // console.log(pgm + 'rsa decrypt: msg_json_rsa_enc = ' + msg_json_rsa_enc) ;
-                    // console.log(pgm + 'rsa decrypt: msg_json = ' + msg_json) ;
-                    // console.log(pgm + 'msg = ' + JSON.stringify(msg)) ;
-                    receive_message_password(device, msg) ;
-                    console.log(pgm + 'device.password = ' + device.password) ;
+                    decrypted_key = encrypt.decrypt(msg_server_envelope.key) ;
+                    if (!msg_server_envelope.hasOwnProperty('message')) {
+                        // only rsa encrypted key in message. password setup for symmetric communication (2 - less secure)
+                        msg = decrypted_key.split(',') ;
+                        receive_message_password(device, msg) ;
+                        console.log(pgm + 'device.password = ' + device.password) ;
+                        continue ;
+                    }
+                    // mix encrypted message. random symmetric password in key (3 - more secure)
+                    symmetric_password = decrypted_key
                 }
                 else {
-                    // symmetric key decryption - all other messages
+                    // symmetric encrypted message. receiving password from symmetric communication password setup (1+2 - less secure)
                     if (!device.password) {
-                        // could be symmetric password setup in progress. keep message and check after next ping. wait for max 2 minutes.
+                        // must be symmetric password setup in progress. keep message and check after next ping. wait for max 2 minutes.
                         if (!msg_server_envelope.hasOwnProperty('received_at')) msg_server_envelope.received_at = Gofreerev.unix_timestamp() ;
                         if (Gofreerev.unix_timestamp() - msg_server_envelope.received_at < 120) {
                             unencrypted_messages.push(msg_server_envelope) ;
@@ -7401,28 +7411,33 @@ angular.module('gifts')
                         }
                         continue ;
                     }
-                    msg_json_sym_enc = msg_server_envelope.message ;
-                    try {
-                        msg_csv = Gofreerev.decrypt(msg_json_sym_enc, device.password)
-                    }
-                    catch (err) {
-                        console.log(pgm + 'Ignoring symmetric decrypt error ' + err.message) ;
-                        continue ;
-                    }
-                    msg_client_envelope = JSON.parse(msg_csv) ;
-                    // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
-                    // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
-                    // console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
-                    if (!msg_client_envelope.messages || !msg_client_envelope.messages.length) {
-                        console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
-                        continue ;
-                    }
-                    // move new messages received from server to inbox
-                    while (msg_client_envelope.messages.length > 0) {
-                        msg = msg_client_envelope.messages.shift() ;
-                        mailbox.inbox.push(msg) ;
-                    }
-                } // if else (rsa or sym encryption)
+                    // symmetric password setup ok
+                    symmetric_password = device.password ;
+                }
+
+                // symmetric decrypt message (2 symmetric encryption or 3 mix rsa and symmetric encryption)
+                msg_json_sym_enc = msg_server_envelope.message ;
+                try {
+                    msg_csv = Gofreerev.decrypt(msg_json_sym_enc, symmetric_password)
+                }
+                catch (err) {
+                    console.log(pgm + 'Ignoring symmetric decrypt error ' + err.message) ;
+                    continue ;
+                }
+                msg_client_envelope = JSON.parse(msg_csv) ;
+                // console.log(pgm + 'sym decrypt: msg_json_sym_enc = ' + msg_json_sym_enc) ;
+                // console.log(pgm + 'sym decrypt: msg_json = ' + msg_json) ;
+                // console.log(pgm + 'sym decrypt: client msg = ' + JSON.stringify(msg_client_envelope)) ;
+                if (!msg_client_envelope.messages || !msg_client_envelope.messages.length) {
+                    console.log(pgm + 'Error. Ignoring message from device ' + did + '. Array with messages was not found. Client message = ' + JSON.stringify(msg_client_envelope)) ;
+                    continue ;
+                }
+                // move new messages received from server to inbox
+                while (msg_client_envelope.messages.length > 0) {
+                    msg = msg_client_envelope.messages.shift() ;
+                    mailbox.inbox.push(msg) ;
+                } // while
+
             } // for i (one message from each device)
         }; // receive_messages
 

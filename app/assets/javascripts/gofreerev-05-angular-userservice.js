@@ -951,6 +951,12 @@ angular.module('gifts')
                     console.log(pgm + 'msg     = ' + JSON.stringify(msg)) ;
                     return error ;
                 }
+                if ((user_id < 0) && force) {
+                    // already using negative user id for unknown user received from other Gofreerev server
+                    console.log(pgm + 'Warning for ' + array_name + ' array. Using negative user_id ' + user_id + ' for "old" unknown user in ' + msg.msgtype + ' message') ;
+                    remote_sha256_values.push(user_id) ;
+                    continue ;
+                }
                 if (!friend.remote_sha256) {
                     if (force) {
                         console.log(pgm + 'Warning for ' + array_name + ' array. User id ' + user_id + ' do not have a remote sha256 signature. Using negative user_id ' + (-user_id) + ' in ' + msg.msgtype + ' message') ;
@@ -992,6 +998,7 @@ angular.module('gifts')
         // user ids in msg are either sha256 signatures (remote users) or negative user ids (unknown users)
         var sha256_to_user_ids = function (sha256_signatures, msg) {
             var pgm = service + '.sha256_to_user_ids: ' ;
+            if ((typeof sha256_signatures == 'undefined') || (sha256_signatures == null)) return null ;
             var user_ids = [];
             var i, sha256, friend, translate = false ;
             for (i=0 ; i<sha256_signatures.length ; i++) {

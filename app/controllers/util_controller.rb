@@ -6,6 +6,7 @@ class UtilController < ApplicationController
   before_action :login_required, :except => [:do_tasks, :open_graph, :logout, :login, :ping]
   skip_filter :fetch_users, :only => [:ping, :login, :logout]
   before_action :validate_json_request, :only => [:do_tasks, :open_graph, :login, :logout, :ping]
+  protect_from_forgery :except => [:ping]
 
   #
   # gift link ajax methods
@@ -121,7 +122,10 @@ class UtilController < ApplicationController
       # todo: debug problems with session[:last_row_id]
       logger.debug2 "session[:last_row_id] = #{get_last_row_id()}"
       # todo: debug problems with missing did after login
-      logger.debug2 "get_session_value(:did) = #{get_session_value(:did)}"
+      # workaround for "Did (unique device id) was not found". sent in login request. here setting missing did after page reload. used in util/ping
+      logger.debug2 "1: get_session_value(:did) = #{get_session_value(:did)}"
+      set_session_value :did, params[:did] unless get_session_value(:did)
+      logger.debug2 "2: get_session_value(:did) = #{get_session_value(:did)}"
       # cleanup old tasks
       Task.where("created_at < ? and ajax = ?", 2.minute.ago, 'Y').destroy_all
       Task.where("created_at < ? and ajax = ?", 10.minute.ago, 'N').destroy_all
@@ -745,6 +749,9 @@ class UtilController < ApplicationController
   # client pings are distributed equally over each server ping cycle with mini adjustments
   def ping
     begin
+
+      # forgery protection inside ping method for exception handling
+      verify_authenticity_token
 
       # timestamp for ping adjustment. must that all timestamps are with milliseconds and
       # that ping.last_ping_at and ping.next_ping_at are saved in database as decimal(13,3)

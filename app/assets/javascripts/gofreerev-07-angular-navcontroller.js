@@ -151,7 +151,9 @@ angular.module('gifts')
             if (userid == 0) return ; // only relevant for logged in users
             console.log(pgm + 'start');
             var secret = userService.client_secret() ;
-            var do_tasks_request = {client_userid: userid} ;
+            // client_userid is required for client identification (multiple tabs).
+            // did is sent to server after login, after page reload and after returning som api login
+            var do_tasks_request = {client_userid: userid, did: Gofreerev.getItem('did')} ;
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();

@@ -477,6 +477,7 @@ class Server < ActiveRecord::Base
 
   # create rsa message - symmetric password setup - send/resend until md5 check ok
   # done: false: password setup in progress, true: password setup completed
+  # todo: deprecated method. client to client and server to server communication should use mix encryption (combination of rsa encrypted random password and symmetric encrypted message)
   public
   def sym_password_message (done)
     # rsa symmetric password setup message. array with 3-4 elements. 4 elements if md5 and ready for md5 check
@@ -510,8 +511,7 @@ class Server < ActiveRecord::Base
         sender_did: SystemParameter.did,
         receiver_did: self.new_did,
         server: true,
-        encryption: 'rsa',
-        message: message_str_rsa_enc
+        key: message_str_rsa_enc # rsa encrypted symmetric password
     }
     logger.debug2 "message_with_envelope = #{message_with_envelope}"
     message_with_envelope
@@ -540,9 +540,7 @@ class Server < ActiveRecord::Base
     return "compare users message with doublet sha256 values #{sha256_doublets.join(', ')}" if sha256_doublets.size > 0
     # no doublets in message
     nil
-  end
-
-  # validate_compare_users_message
+  end # validate_compare_users_message
 
 
   # create symmetric encrypted users message. return message or nil if no new users to check
@@ -641,30 +639,32 @@ class Server < ActiveRecord::Base
       return nil
     end
 
-    message = {
+    message_hash = {
         :msgtype => 'users',
         :users => request
     }
-    logger.debug2 "message = #{message.to_json}"
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
-    sym_enc_message = Base64.encode64(sym_enc_message)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    logger.debug2 "message_hash = #{message_hash.to_json}"
+
+    # mix encryption. rsa encrypted random password + symmetric encrypted message
+    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
+    random_password = String.generate_random_string 200
+    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "key (rsa encrypted) = #{key}"
+    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
+    logger.debug2 "message (symmetric encrypted) = #{message}"
 
     # add envelope with symmetric encrypted users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
         :server => true,
-        :encryption => 'sym',
-        :message => sym_enc_message
+        :key => key,
+        :message => message
     }
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
 
-  end
-
-  # create_compare_users_message
+  end # create_compare_users_message
 
 
   # receive symmetric encrypted compare users message on "client" or on "server"
@@ -920,30 +920,32 @@ class Server < ActiveRecord::Base
     error = validate_compare_users_message(request)
     return "#{error} was not sent" if error
 
-    message = {
+    message_hash = {
         :msgtype => 'users',
         :users => request
     }
-    logger.debug2 "message = #{message.to_json}"
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
-    sym_enc_message = Base64.encode64(sym_enc_message)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    logger.debug2 "message_hash = #{message_hash.to_json}"
+
+    # mix encryption. rsa encrypted random password + symmetric encrypted message
+    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
+    random_password = String.generate_random_string 200
+    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "key (rsa encrypted) = #{key}"
+    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
+    logger.debug2 "message (symmetric encrypted) = #{message}"
 
     # insert message in messages table. will be returned in a moment in ping response
     m = Message.new
     m.from_did = SystemParameter.did
     m.to_did = self.new_did
     m.server = true
-    m.encryption = 'sym'
-    m.message = sym_enc_message
+    m.key = key
+    m.message = message
     m.save!
 
     nil
 
-  end
-
-  # receive_compare_users_message
+  end # receive_compare_users_message
 
 
   # send information about online mutual users to other gofreerev server
@@ -1049,29 +1051,32 @@ class Server < ActiveRecord::Base
       return nil
     end
 
-    message = {
+    message_hash = {
         :msgtype => 'online',
         :users => request
     }
-    logger.debug2 "message = #{message.to_json}"
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    sym_enc_message = Base64.encode64(sym_enc_message)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    logger.debug2 "message = #{message_hash.to_json}"
 
-    # add envelope with symmetric encrypted users message
+    # mix encryption. rsa encrypted random password + symmetric encrypted message
+    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
+    random_password = String.generate_random_string 200
+    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "key (rsa encrypted) = #{key}"
+    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
+    logger.debug2 "message (symmetric encrypted) = #{message}"
+
+    # add envelope with mix encrypted online users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
         :server => true,
-        :encryption => 'sym',
-        :message => sym_enc_message
+        :key => key,
+        :message => message
     }
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
 
-  end
-
-  # create_online_users_message
+  end # create_online_users_message
 
 
   # ingoing message (online_users and verify_gifts - convert sha256 signatures to user_ids
@@ -1382,7 +1387,7 @@ class Server < ActiveRecord::Base
     m.from_did = message[:sender_did]
     m.to_did = message[:receiver_did]
     m.server = message[:server]
-    m.encryption = message[:encryption]
+    m.key = message[:key]
     m.message = message[:message]
     m.save!
 
@@ -1501,22 +1506,27 @@ class Server < ActiveRecord::Base
     return nil if request.size == 0
     logger.debug2 "request = #{request}"
 
-    message = {
+    message_hash = {
         :msgtype => 'pubkeys',
         :users => request
     }
-    logger.debug2 "message = #{message.to_json}"
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    sym_enc_message = Base64.encode64(sym_enc_message)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    logger.debug2 "message_hash = #{message_hash.to_json}"
+
+    # mix encryption. rsa encrypted random password + symmetric encrypted message
+    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
+    random_password = String.generate_random_string 200
+    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "key (rsa encrypted) = #{key}"
+    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
+    logger.debug2 "message (symmetric encrypted) = #{message_hash}"
 
     # add envelope with symmetric encrypted users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
         :server => true,
-        :encryption => 'sym',
-        :message => sym_enc_message
+        :key => key,
+        :message => message
     }
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
@@ -1648,15 +1658,15 @@ class Server < ActiveRecord::Base
     Message.includes(:from_pubkey, :to_pubkey).
         where('server = ? and pubkeys.server_id is null and to_pubkeys_messages.server_id = ?', false, self.id).
         references(:from_pubkey, :to_pubkey).order(:id).each do |m|
-      messages << {:from_did => m.from_did,
-                   :from_sha256 => m.from_sha256,
-                   :to_did => m.to_did,
-                   :to_sha256 => m.to_sha256,
-                   :server => m.server,
-                   :encryption => m.encryption,
-                   :key => m.key,
-                   :message => m.message
+      message = {:from_did => m.from_did,
+                 :from_sha256 => m.from_sha256,
+                 :to_did => m.to_did,
+                 :to_sha256 => m.to_sha256,
+                 :server => m.server
       }
+      message[:key] = m.key if m.key
+      message[:message] = m.message if m.message
+      messages << message
       # todo: should first destroy client messages after ok response from other gofreerev server
       m.destroy!
     end
@@ -1667,22 +1677,27 @@ class Server < ActiveRecord::Base
 
     logger.debug2 "messages = #{messages}"
 
-    message = {
+    message_hash = {
         :msgtype => 'client',
         :messages => messages
     }
-    logger.debug2 "message = #{message.to_json}"
-    sym_enc_message = message.to_json.encrypt(:symmetric, :password => self.new_password)
-    sym_enc_message = Base64.encode64(sym_enc_message)
-    logger.debug2 "sym_enc_message = #{sym_enc_message}"
+    logger.debug2 "message_hash = #{message_hash.to_json}"
+
+    # mix encryption. rsa encrypted random password + symmetric encrypted message
+    public_key = OpenSSL::PKey::RSA.new self.new_pubkey
+    random_password = String.generate_random_string 200
+    key = Base64.encode64(public_key.public_encrypt(random_password, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+    logger.debug2 "key (rsa encrypted) = #{key}"
+    message = Base64.encode64(message_hash.to_json.encrypt(:symmetric, :password => random_password))
+    logger.debug2 "message (symmetric encrypted) = #{message}"
 
     # add envelope with symmetric encrypted users message
     envelope = {
         :sender_did => SystemParameter.did,
         :receiver_did => self.new_did,
         :server => true,
-        :encryption => 'sym',
-        :message => sym_enc_message
+        :key => key,
+        :message => message
     }
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
@@ -1807,9 +1822,8 @@ class Server < ActiveRecord::Base
       message.to_did = to.did
       message.to_sha256 = m['to_sha256']
       message.server = false
-      message.encryption = m['encryption']
-      message.key = m['key']
-      message.message = m['message']
+      message.key = m['key'] if m['key']
+      message.message = m['message'] if m['message']
       message.save!
 
     end # each m
@@ -1833,8 +1847,8 @@ class Server < ActiveRecord::Base
         message.from_did = client_message[:sender_did]
         message.to_did = client_message[:receiver_did]
         message.server = true
-        message.encryption = client_message[:encryption]
-        message.message = client_message[:message]
+        message.key = client_message[:key] if client_message[:key]
+        message.message = client_message[:message] if client_message[:message]
         message.save!
       end
     end

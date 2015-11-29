@@ -40,24 +40,17 @@ class Message < ActiveRecord::Base
   validates_presence_of :to_sha256, :if => Proc.new { |rec| rec.server == false }
   validates_absence_of :to_sha256, :if => Proc.new { |rec| rec.server == true }
 
-  # 5) encryption - rsa, sym or mix
-  #    rsa - public private key encryption. key length should be minimum 2048 bits
-  #    sym - symmetric encryption - the 2 parts in communication must previous exchanged password for symmetric communication
-  #    mix - key is rsa encrypted and message is symmetric encrypted with key
-  validates_presence_of :encryption
-  validates_inclusion_of :encryption, :in => %w(rsa sym mix), :allow_blank => true
-
-  # 6) server - true: server to server communication - false: client to client communication
+  # 5) server - true: server to server communication - false: client to client communication
   validates_inclusion_of :server, :in => [true, false]
 
-  # 7) key - only mix - rsa encrypted key used for symmetric encrypted message
-  validates_presence_of :key, :if => Proc.new { |rec| rec.encryption == 'mix' }
-  validates_absence_of :key, :if => Proc.new { |rec| %w(rsa sym).index(rec.encryption) }
+  # 6) key - optional rsa encrypted password
+  # 7) message - optional symmetric encrypted message
+  # three encryption models:
+  # 1) key only - exchange symmetric encrypted password between two Gofreerev servers - less secure - identical encryption for identical messages
+  # 2) message only - symmetric encrypted message using symmetric password from 1 - less secure - identical encryption for identical messages
+  # 3) key and message - rsa encrypted random password and message symmetric encrypted with this random password - more secure - different encryption for identical messages
 
-  # 8) message - rsa or sym encrypted message
-  validates_presence_of :message
-
-  # 9) timestamps
+  # 8) timestamps
 
   # keep_message boolean. Normally messages are deleted when read/received
   # used for verify_gifts message if verify gift request is waiting for local user info update (changed sha256 signature)
@@ -68,11 +61,11 @@ class Message < ActiveRecord::Base
     # receive symmetric password setup message from other Gofreerev server
     # rsa comma separated string with done, password2, password2_at and password_md5
     # gofreerev.js: see GiftService.receive_message_password (client to client)
-    key = OpenSSL::PKey::RSA.new SystemParameter.private_key
-    message_str_rsa_enc = Base64.decode64(self.message)
-    message_str = key.private_decrypt(message_str_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
-    logger.secret2 "message_json = #{message_str}"
-    message = message_str.split(',')
+    private_key = OpenSSL::PKey::RSA.new SystemParameter.private_key
+    key_str_rsa_enc = Base64.decode64(self.key)
+    key_str = private_key.private_decrypt(key_str_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+    logger.secret2 "key_str = #{key_str}"
+    key = key_str.split(',')
     # todo: allow rsa symmetric password setup to be routed through other gofreerev servers?
     #       must include did, site url and public key information - to big for rsa - must use sym or mix encryption
     server = Server.find_by_new_did self.from_did
@@ -88,16 +81,16 @@ class Message < ActiveRecord::Base
     end
     # save symmetric password part 2 received from other Gofreerev server
     server.set_new_password1 unless server.new_password1
-    done = message[0] # 0: password setup in progress, 1: password setup completed
-    server.new_password2 = message[1]
-    server.new_password2_at = message[2].to_i
+    done = key[0] # 0: password setup in progress, 1: password setup completed
+    server.new_password2 = key[1]
+    server.new_password2_at = key[2].to_i
     server.save!
-    client_md5 = Base64.decode64(message[3]) if message.size == 4 # for md5 password check
+    client_md5 = Base64.decode64(key[3]) if key.size == 4 # for md5 password check
     md5_ok = (client_md5 == server.new_password_md5)
     if md5_ok
       logger.debug2 "symmetric password setup completed."
     else
-      logger.debug2 "symmetric password setup in progress. md5_ok = #{md5_ok}, message.size = #{message.size}"
+      logger.debug2 "symmetric password setup in progress. md5_ok = #{md5_ok}, message.size = #{key.size}"
       logger.debug2 "client_md5 = #{client_md5}"
       logger.debug2 "server_md5 = #{server.new_password_md5}"
     end
@@ -110,8 +103,7 @@ class Message < ActiveRecord::Base
     m.from_did = hash[:sender_did]
     m.to_did = hash[:receiver_did]
     m.server = hash[:server]
-    m.encryption = hash[:encryption]
-    m.message = hash[:message]
+    m.key = hash[:key]
     m.save!
 
   end # receive_message_password
@@ -132,20 +124,21 @@ class Message < ActiveRecord::Base
   def receive_message (client, pseudo_user_ids, received_msgtype)
     logger.debug "new mail: #{self.to_json}"
 
-    if self.encryption == 'rsa'
-      # setup password for symmetric communication
+    if !self.message
+      # rsa encrypted key only - setup password for symmetric communication
       # javascript: see GiftService.receive_message_password in gofreerev.js (client to client)
       receive_message_sym_password
       return nil
     end
 
+    # get password from mix encrypted message or from previous symmetric password setup
     server = Server.find_by_new_did(self.from_did)
-    if self.encryption == 'mix'
-      # mix encryption. rsa encrypted password in key
+    if self.key
+      # mix encryption. rsa encrypted random password in key and message encrypted with this random password
       logger.debug2 "received mix encrypted message"
-      key = OpenSSL::PKey::RSA.new SystemParameter.private_key
-      password_rsa_enc = Base64.decode64(self.message)
-      password = key.private_decrypt(password_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+      private_key = OpenSSL::PKey::RSA.new SystemParameter.private_key
+      password_rsa_enc = Base64.decode64(self.key)
+      password = private_key.private_decrypt(password_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
       logger.secret2 "password = #{password}"
     else
       # sym encryption. password has previously been received in password setup message
@@ -159,14 +152,14 @@ class Message < ActiveRecord::Base
         m.from_did = hash[:sender_did]
         m.to_did = hash[:receiver_did]
         m.server = hash[:server]
-        m.encryption = hash[:encryption]
-        m.message = hash[:message]
+        m.key = hash[:key]
         m.save!
         # keep sym encrypted message in mailbox
         return nil
       end
     end
 
+    # decrypt message
     message_json_enc_base64 = self.message
     message_json_enc = Base64.decode64(message_json_enc_base64)
     message_json = message_json_enc.decrypt(:symmetric, :password => password)
@@ -282,14 +275,13 @@ class Message < ActiveRecord::Base
           m.from_did = did
           m.to_did = s.new_did
           m.server = true
-          m.encryption = 'rsa'
           # todo: receive rsa rename did message not implemented
-          message_str = [2, message['receiver_did'], did].join(',')
-          logger.debug2 "message_str.size = #{message_str.size}"
-          key = OpenSSL::PKey::RSA.new s.new_pubkey
-          message_str_rsa_enc = Base64.encode64(key.public_encrypt(message_str, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-          logger.debug2 "message_str_rsa_enc = #{message_str_rsa_enc}"
-          m.message = message_str_rsa_enc
+          key_str = [2, message['receiver_did'], did].join(',')
+          logger.debug2 "key_str.size = #{key_str.size}"
+          public_key = OpenSSL::PKey::RSA.new s.new_pubkey
+          key_str_rsa_enc = Base64.encode64(public_key.public_encrypt(key_str, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
+          logger.debug2 "key_str_rsa_enc = #{key_str_rsa_enc}"
+          m.key = key_str_rsa_enc
           m.save!
           next
         end
@@ -304,9 +296,8 @@ class Message < ActiveRecord::Base
         m.to_did = message['receiver_did']
         m.to_sha256 = message['receiver_sha256']
         m.server = message['server']
-        m.encryption = message['encryption']
-        m.key = message['key']
-        m.message = message['message']
+        m.key = message['key'] if message['key']
+        m.message = message['message'] if message['message']
         m.save!
       end # each message
     end
@@ -389,19 +380,29 @@ class Message < ActiveRecord::Base
       # todo: forwarded messages send in an request to an other gofreerev server can be deleted after ok response
       ms = Message.where(:to_did => sender_did, :server => true).order(:created_at)
     else
-      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256, :server => false).order('created_at, encryption desc')
+      ms = Message.where(:to_did => sender_did, :to_sha256 => sender_sha256, :server => false).order('created_at')
+      # sort. rsa encrypted message (symmetric password setup) before other encryptions
+      ms = ms.sort do |a,b|
+        if a.created_at != b.created_at
+          a.created_at <=> b.created_at
+        elsif !a.message and b.message
+          -1
+        elsif a.message and !b.message
+          1
+        else
+          0
+        end
+      end # sort
     end
     output_messages = ms.collect do |m|
-      hash = {:sender_did => m.from_did,
-              :server => m.server,
-              :encryption => m.encryption,
-              :message => m.message}
+      hash = {:sender_did => m.from_did, :server => m.server}
       hash[:receiver_did] = m.to_did if m.to_did
       hash[:sender_sha256] = m.from_sha256 if m.from_sha256
       hash[:key] = m.key if m.key
+      hash[:message] = m.message if m.message
+      m.destroy
       hash
     end
-    ms.delete_all
 
     output_messages.size == 0 ? nil : { :messages => output_messages }
   end # self.send_messages

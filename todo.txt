@@ -1960,4 +1960,7 @@
      RSA 1024 bit CA certificates are loaded due to old openssl compatibility
      check if there is a security issue here. should never use 1024 bit encryption
 
-select next issue to solve: (rand*452).floor+1
+453) removing symmetric password handshake between two clients and two servers
+     client: send users_sha256 message after receiving public key for new online device
+
+select next issue to solve: (rand*453).floor+1

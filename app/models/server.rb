@@ -103,90 +103,6 @@ class Server < ActiveRecord::Base
   # 11: last_checked_user_id. last user id compared in users message. Compare starts with lowest user id
 
 
-  # password helpers. symmetric password stored in memory encrypted with key stored in database
-  # symmetric passwords used in server to server communication expires after one hour
-
-  # key - symmetric password for password stored in shared memory
-  def set_key
-    self.key = String.generate_random_string(80)
-    logger.secret2 "old key = #{self.key_was}"
-    logger.secret2 "new key = #{self.key}"
-  end
-
-  # password1 - this servers part of symmetric password
-  def new_password1=(password)
-    if password
-      self.set_key unless key
-      Rails.cache.write "#{self.site_url}new_password1", password.encrypt(:symmetric, :password => self.key)
-    else
-      Rails.cache.write "#{self.site_url}new_password1", nil
-    end
-  end
-
-  def new_password1
-    password = Rails.cache.fetch "#{self.site_url}new_password1"
-    password ? password.decrypt(:symmetric, :password => self.key) : nil
-  end
-
-  def new_password1_at=(timestamp)
-    Rails.cache.write "#{self.site_url}new_password1_at", timestamp
-  end
-
-  def new_password1_at
-    Rails.cache.fetch "#{self.site_url}new_password1_at"
-  end
-
-  # symmetric password setup
-  # protected
-  public # todo: change to protected
-  def set_new_password1
-    self.set_key unless key
-    self.new_password1 = String.generate_random_string(80)
-    self.new_password1_at = (Time.now.to_f*1000).floor
-    self.new_password2 = nil
-    self.new_password2_at = nil
-    self.save!
-    logger.secret2 "key = #{self.key}, new_password1 = #{self.new_password1}, new_password1_at = #{self.new_password1_at}"
-  end
-
-  # password 2 - other servers part of symmetric password
-  def new_password2=(password)
-    if password
-      self.set_key unless key
-      Rails.cache.write "#{self.site_url}new_password2", password.encrypt(:symmetric, :password => self.key)
-    else
-      Rails.cache.write "#{self.site_url}new_password2", nil
-    end
-  end
-
-  def new_password2
-    password = Rails.cache.fetch "#{self.site_url}new_password2"
-    password ? password.decrypt(:symmetric, :password => self.key) : nil
-  end
-
-  def new_password2_at=(timestamp)
-    Rails.cache.write "#{self.site_url}new_password2_at", timestamp
-  end
-
-  def new_password2_at
-    Rails.cache.fetch "#{self.site_url}new_password2_at"
-  end
-
-  # new password (password1 from this server and password2 from other server)
-  def new_password
-    return nil unless self.new_password1 and self.new_password2
-    if self.new_password1_at <= self.new_password2_at
-      self.new_password1 + self.new_password2
-    else
-      self.new_password2 + self.new_password1
-    end
-  end
-
-  def new_password_md5
-    new_password = self.new_password
-    new_password ? Digest::MD5.digest(new_password) : nil
-  end
-
 
   # receive did and public key from other gofreerev server
   # saved in new_did and new_public if changed - must be validated before moved to old_did and old_pubkey
@@ -199,7 +115,6 @@ class Server < ActiveRecord::Base
       logger.warn2 "#{site_url}: changing did to #{did}"
       self.new_did = did
       self.new_pubkey = pubkey
-      self.set_new_password1
       self.save!
       return nil
     end
@@ -211,13 +126,11 @@ class Server < ActiveRecord::Base
       logger.warn2 "#{site_url}: received new public key for old did #{did}"
       self.new_did = did # changed old public key
       self.new_pubkey = pubkey
-      self.set_new_password1
     end
     if did == self.new_did and pubkey != self.new_pubkey
       # changed new public key
       logger.debug2 "#{site_url}: received new public key for new did #{did}"
       self.new_pubkey = pubkey
-      self.set_new_password1
     end
     self.save! if self.changed?
     nil
@@ -472,51 +385,6 @@ class Server < ActiveRecord::Base
   end
 
   # login
-
-
-  # create rsa message - symmetric password setup - send/resend until md5 check ok
-  # done: false: password setup in progress, true: password setup completed
-  # todo: deprecated method. client to client and server to server communication should use mix encryption (combination of rsa encrypted random password and symmetric encrypted message)
-  public
-  def sym_password_message (done)
-    # rsa symmetric password setup message. array with 3-4 elements. 4 elements if md5 and ready for md5 check
-    # [0, new_password1, new_password1_at, new_password_md5]
-    if !self.new_password1 or !self.new_password1_at
-      logger.error2 "Error. new_password1 was not found"
-      self.set_new_password1
-      self.save!
-    end
-    message = [(done ? 1 : 0), self.new_password1, self.new_password1_at] # 0 = symmetric password setup, 1 = symmetric password setup completed
-    if new_password_md5 = self.new_password_md5
-      new_password_md5 = Base64.encode64(new_password_md5)
-      message << new_password_md5
-      logger.debug2 "md5 = #{new_password_md5}"
-    end
-    # server.new_password_md5
-    message_str = message.join(',')
-    logger.secret2 "message_json = #{message_str}"
-    key = OpenSSL::PKey::RSA.new self.new_pubkey
-    logger.debug2 "message_str.size = #{message_str.size}"
-    message_str_rsa_enc = Base64.encode64(key.public_encrypt(message_str, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING))
-    logger.debug2 "message_str_rsa_enc = #{message_str_rsa_enc}"
-    # add envelope for encrypted rsa message
-    # receiver_sha256 is only used in client to client communication = sha256 (client_secret + login_user ids)
-    # client_secret is received in login request and saved in sessions table
-    # sha256 values changes when client changes api provider login
-    # ensures that messages are delivered to "correct" mailbox (did + authorization)
-    # messages and api provider authorization must match in client to client messages
-    # for now no usage in server to server messages
-    message_with_envelope = {
-        sender_did: SystemParameter.did,
-        receiver_did: self.new_did,
-        server: true,
-        key: message_str_rsa_enc # rsa encrypted symmetric password
-    }
-    logger.debug2 "message_with_envelope = #{message_with_envelope}"
-    message_with_envelope
-  end
-
-  # sym_password_message
 
 
   # check for user doublets in compare users message before send / after receive
@@ -1395,21 +1263,12 @@ class Server < ActiveRecord::Base
     users = []
     0.upto(server_users.size-1) do |i|
       su = server_users[i]
-      if su.server.new_password
-        users.push({:sha256 => su.user.calc_sha256(su.server.secret),
-                    :pseudo_user_id => su.remote_pseudo_user_id,
-                    :sha256_updated_at => su.user.sha256_updated_at.to_i
-                   })
-        # mark sha256 message as sent
-        su.sha256_message_sent_at = now
-      else
-        # symmetric password setup not yet completed. symmetric passwords are stored in memory and are null after reboot.
-        # or maybe no server to server connection to other gofreerev server
-        # mark sha256 message as not sent. Will be sent later after completed password setup in Message.receive_messages
-        logger.warn2 "symmetric password setup not completed for server #{su.server_id}. sha256 message for #{su.user.debug_info} will be sent later"
-        su.sha256_message_sent_at = nil
-        su.remote_sha256_updated_at = Time.zone.now unless su.remote_sha256_updated_at
-      end
+      users.push({:sha256 => su.user.calc_sha256(su.server.secret),
+                  :pseudo_user_id => su.remote_pseudo_user_id,
+                  :sha256_updated_at => su.user.sha256_updated_at.to_i
+                 })
+      # mark sha256 message as sent
+      su.sha256_message_sent_at = now
       su.save!
       if (i == server_users.size-1 or su.server_id != server_users[i+1].server_id) and  users.size > 0
         # save message
@@ -2532,12 +2391,7 @@ class Server < ActiveRecord::Base
   protected
   def send_messages (pseudo_user_ids)
 
-    # 1) rsa password setup for gofreerev server. Array with new_password1, new_password1 and new_password_md5
-    # password setup complete when my new_password_md5 matches with received new_password_md5
-    if !self.new_password
-      # send rsa password message. array with 2-3 elements. 3 elements if ready for md5 check
-      return [sym_password_message(true)]
-    end # if new_password
+    # 1) symmetric password setup dropped. Now only using mix encrypted messages
 
     # 2) add server to server messages from messages table
     messages_from_mailbox = Message.send_messages self.new_did, nil

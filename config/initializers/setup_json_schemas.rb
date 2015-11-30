@@ -359,15 +359,11 @@ JSON_SCHEMA = {
                           :receiver_sha256 => {:type => 'string'},
                           # server - true for server to server communication. false for client to client communication
                           :server => {:type => 'boolean'},
-                          # encryption. rsa encrypted key and/or symmetric encrypted message
-                          # three encryption models:
-                          # 1) rsa encrypted key only. Symmetric password setup between two clients. Less secure. Identical password for many messages.
-                          # 2) symmetric encrypted message. After 1 has finished. Less secure. Identical encryption for identical messages.
-                          # 3) key and message. rsa encrypted random password and message encrypted with this password. More secure. Different encryption for identical messages.
+                          # encryption. rsa encrypted key and symmetric encrypted message
                           :key => {:type => 'string'},
                           :message => {:type => 'string'}
                       },
-                      :required => %w(receiver_did server),
+                      :required => %w(receiver_did server key message),
                       :additionalProperties => false
                   },
                   :minItems => 1
@@ -579,15 +575,11 @@ JSON_SCHEMA = {
                                   :sender_sha256 => {:type => 'string'},
                                   # server - true for server to server communication. false for client to client communication
                                   :server => {:type => 'boolean'},
-                                  # encryption. rsa encrypted key and/or symmetric encrypted message
-                                  # three encryption models:
-                                  # 1) rsa encrypted key only. Symmetric password setup between two clients. Less secure. Identical password for many messages.
-                                  # 2) symmetric encrypted message. After 1 has finished. Less secure. Identical encryption for identical messages.
-                                  # 3) key and message. rsa encrypted random password and message encrypted with this password. More secure. Different encryption for identical messages.
+                                  # encryption. rsa encrypted key and symmetric encrypted message
                                   :key => {:type => 'string'},
                                   :message => {:type => 'string'}
                               },
-                              :required => %w(sender_did server),
+                              :required => %w(sender_did server key message),
                               :additionalProperties => false
                           },
                           :minItems => 1

@@ -3077,26 +3077,6 @@ angular.module('gifts')
         };
         update_key_mailbox_index();
 
-        var post_symmetric_password_setup = function () {
-            var pgm = service + '.post_symmetric_password_setup: ';
-            var now = (new Date).getTime();
-            var device, elapsed;
-            for (var did in devices) {
-                device = devices[did];
-                if (!device.password_at) continue;
-                elapsed = now - device.password_at;
-                if (elapsed < 60000) continue; // wait - less when 60 seconds since password setup was completed
-                // free some js variables
-                delete device.password1;
-                delete device.password1_at;
-                delete device.password2;
-                delete device.password2_at;
-                delete device.password_md5;
-                delete device.password_at;
-                // console.log(pgm + 'elapsed = ' + elapsed + ', device = ' + JSON.stringify(device)) ;
-            } // for did
-        }; // post_symmetric_password_setup
-
 
         // mailbox actions:
         // - online => offline - continue to buffer messages in javascript arrays
@@ -3156,7 +3136,7 @@ angular.module('gifts')
                     mailbox.sent = []; // messages sent - response not yet received
                     mailbox.done = []; // messages sent - response ok received (request_mid)
                     mailbox.error = []; // messages sent - response error  received (request_mid)
-                    // first outgoing message - sent when symmetric password is ready
+                    // first outgoing message
                     // communication step 2 - compare sha256 checksum for mutual friends
                     hash = {
                         mid: Gofreerev.get_new_uid(),
@@ -3172,8 +3152,6 @@ angular.module('gifts')
             update_key_mailbox_index();
             // console.log(pgm + 'mailboxes = ' + JSON.stringify(mailboxes)) ;
             // console.log(pgm + 'device_pubkey = ' + JSON.stringify(device_pubkey)) ;
-            // cleanup after symmetric password setup
-            post_symmetric_password_setup();
         }; // update_mailboxes
 
         // get/set pubkey for unique device - called in ping - used in client to client communication
@@ -3211,31 +3189,6 @@ angular.module('gifts')
             } // for
         }; // pubkeys_response
 
-        // setup password for symmetric communication. password1 from this device and password2 from other device
-        // password_md5 is used in control for identical symmetric password in communication between the two devices
-        var setup_device_password = function (device) {
-            var pgm = service + '.setup_device_password: ';
-            if (!device.password1) {
-                // todo: jsencrypt. check problems with max length for rsa message. Limit about 128 characters is not correct for a 2048 bit key
-                device.password1 = Gofreerev.generate_random_password(40); // 42 characters password to long for RSA
-                device.password1_at = (new Date).getTime();
-                console.log(pgm + 'symmetric password setup: generated password1') ;
-            }
-            if (!device.password1_at || !device.password2_at) {
-                delete device.password_md5;
-                return;
-            }
-            if (device.password1_at <= device.password2_at) {
-                device.password = device.password1 + device.password2;
-            }
-            else {
-                device.password = device.password2 + device.password1;
-            }
-            console.log(pgm + 'device.password = ' + device.password) ;
-            device.password_at = (new Date).getTime();
-            device.password_md5 = CryptoJS.MD5(device.password).toString(CryptoJS.enc.Latin1);
-            device.ignore_invalid_gifts = [];
-        }; // setup_device_password
 
         // sha256 calculation for a user
         // params:
@@ -3376,47 +3329,6 @@ angular.module('gifts')
                     continue;
                 }
                 encrypt.setPublicKey(devices[did].pubkey);
-                if (!device.password) {
-                    // communication step 1 - setup password for symmetric encryption
-                    if (!mailbox.online) {
-                        // wait - not online
-                        console.log(pgm + 'symmetric password setup: wait. mailbox not online') ;
-                        continue;
-                    }
-                    // send password1 to other device using public/private key encryption (rsa)
-                    if (!device.password1) {
-                        // todo: jsencrypt. check problems with max length for rsa message. Limit about 128 characters is not correct for a 2048 bit key
-                        device.password1 = Gofreerev.generate_random_password(40); // 42 characters password to long for RSA
-                        device.password1_at = (new Date).getTime();
-                        console.log(pgm + 'symmetric password setup: generated password1') ;
-                    }
-                    setup_device_password(device);
-                    message = [0,device.password1, device.password1_at]; // 0: password setup in progress
-                    if (device.password_md5) message.push(device.password_md5); // verify complete symmetric password (password1+password2) for device
-                    // message => json => rsa encrypt
-                    message_csv = message.join(',');
-                    // console.log(pgm + 'rsa encrypt using public key ' + devices[did].pubkey);
-                    // RSA encrypt with default values - CBC and Pkcs7 (https://code.google.com/p/crypto-js/#Block_Modes_and_Padding)
-                    message_csv_rsa_enc = encrypt.encrypt(message_csv);
-                    // add envelope - used in rails message buffer - each message have sender, receiver, encryption and message
-                    message_with_envelope = {
-                        receiver_did: mailbox.did,
-                        receiver_sha256: mailbox.sha256,
-                        server: false,
-                        key: message_csv_rsa_enc
-                    };
-                    console.log(pgm + 'symmetric password setup: sending rsa message') ;
-                    // todo: server_id for remote gofreerev server added to ping :online response. Not tested!
-                    // if (mailbox.hasOwnProperty('server_id')) message_with_envelope.receiver_server_id = mailbox.server_id ;
-                    response.push(message_with_envelope);
-                    // debug
-                    // console.log(pgm + 'message_json = ' + message_json) ;
-                    // console.log(pgm + 'message_json_rsa_enc = ' + message_json_rsa_enc) ;
-                    // console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
-                    // wait with any messages in outbox until symmetric password setup is complete
-                    continue;
-                }
-                // console.log(pgm + 'device.password = ' + device.password) ;
                 if (mailbox.outbox.length == 0) continue; // no new messages for this mailbox
 
                 // send continue with symmetric key communication
@@ -3537,28 +3449,6 @@ angular.module('gifts')
             if (device.ignore_invalid_gifts.indexOf(gid) != -1) return ;
             device.ignore_invalid_gifts.push(gid);
         };
-
-        // communication step 1 - receive symmetric password (part 2) from other device
-        // rails: see Message.receive_message (server to server)
-        var receive_message_password = function (device, msg) {
-            var pgm = service + '.receive_message_password: ';
-            // console.log(pgm + 'device = ' + JSON.stringify(device)) ;
-            // console.log(pgm + 'msg = ' + JSON.stringify(msg));
-            // msg is an array with password, password_at and optional md5 for complete password
-            // password setup is complete when received md5 in msg and password md5 for device are identical
-            var done = msg[0] ; // password setup done on other client?
-            device.password2 = msg[1];
-            device.password2_at = msg[2];
-            // calc password_md5 if possible
-            setup_device_password(device);
-            console.log(pgm + 'device.password = ' + device.password) ;
-            // check of the two devices agree about password
-            var md5_ok = (device.password_md5 && (msg.length == 4) && (device.password_md5 == msg[3]));
-            if (md5_ok) console.log(pgm + 'symmetric password setup completed.');
-            else console.log(pgm + 'symmetric password setup in progress.');
-            console.log(pgm + 'done = ' + done + ', md5_ok = ' + md5_ok) ;
-            if (!md5_ok || !done) delete device.password; // resend rsa password message to other client in next ping
-        }; // receive_message_password;
 
 
         // move previous message from sent to done or error
@@ -7374,48 +7264,16 @@ angular.module('gifts')
 
                 // decrypt incoming message.
                 // field msg_server_envelope.key is rsa encrypted and field msg_server_envelope.message is symmetric encrypted.
-                //  1) .key only (rsa encryption) => communication startup. symmetric password setup between two clients. saved in device.password and used in 2)
-                //  2) .message only (symmetric encryption) => symmetric encrypted message using device.password. Identical encryption for identical messages (less secure)
-                //  3) .key and .message. (combination of rsa and symmetric encryption). rsa encrypted random password and decrypt message with this password. Different encryption for identical messages (more secure)
-
                 // decrypt rsa part of message (key)
-                if (msg_server_envelope.hasOwnProperty('key')) {
-                    // rsa or mix encryption. setup rsa decryption
-                    if (!encrypt) {
-                        encrypt = new JSEncrypt() ;
-                        prvkey = Gofreerev.getItem('prvkey') ;
-                        encrypt.setPrivateKey(prvkey);
-                    }
-                    decrypted_key = encrypt.decrypt(msg_server_envelope.key) ;
-                    if (!msg_server_envelope.hasOwnProperty('message')) {
-                        // only rsa encrypted key in message. password setup for symmetric communication (2 - less secure)
-                        msg = decrypted_key.split(',') ;
-                        receive_message_password(device, msg) ;
-                        console.log(pgm + 'device.password = ' + device.password) ;
-                        continue ;
-                    }
-                    // mix encrypted message. random symmetric password in key (3 - more secure)
-                    symmetric_password = decrypted_key
+                if (!encrypt) {
+                    encrypt = new JSEncrypt();
+                    prvkey = Gofreerev.getItem('prvkey');
+                    encrypt.setPrivateKey(prvkey);
                 }
-                else {
-                    // symmetric encrypted message. receiving password from symmetric communication password setup (1+2 - less secure)
-                    if (!device.password) {
-                        // must be symmetric password setup in progress. keep message and check after next ping. wait for max 2 minutes.
-                        if (!msg_server_envelope.hasOwnProperty('received_at')) msg_server_envelope.received_at = Gofreerev.unix_timestamp() ;
-                        if (Gofreerev.unix_timestamp() - msg_server_envelope.received_at < 120) {
-                            unencrypted_messages.push(msg_server_envelope) ;
-                            console.log(pgm + 'Warning. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
-                        }
-                        else {
-                            console.log(pgm + 'Error. Ignoring message from device '  + did + '. Password for symmetric communication was not found. Message = ' + JSON.stringify(msg_server_envelope)) ;
-                        }
-                        continue ;
-                    }
-                    // symmetric password setup ok
-                    symmetric_password = device.password ;
-                }
+                decrypted_key = encrypt.decrypt(msg_server_envelope.key);
+                symmetric_password = decrypted_key;
 
-                // symmetric decrypt message (2 symmetric encryption or 3 mix rsa and symmetric encryption)
+                // symmetric decrypt message
                 msg_json_sym_enc = msg_server_envelope.message ;
                 try {
                     msg_csv = Gofreerev.decrypt(msg_json_sym_enc, symmetric_password)

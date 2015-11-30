@@ -57,58 +57,6 @@ class Message < ActiveRecord::Base
   attr_accessor :keep_message
 
 
-  def receive_message_sym_password
-    # receive symmetric password setup message from other Gofreerev server
-    # rsa comma separated string with done, password2, password2_at and password_md5
-    # gofreerev.js: see GiftService.receive_message_password (client to client)
-    private_key = OpenSSL::PKey::RSA.new SystemParameter.private_key
-    key_str_rsa_enc = Base64.decode64(self.key)
-    key_str = private_key.private_decrypt(key_str_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
-    logger.secret2 "key_str = #{key_str}"
-    key = key_str.split(',')
-    # todo: allow rsa symmetric password setup to be routed through other gofreerev servers?
-    #       must include did, site url and public key information - to big for rsa - must use sym or mix encryption
-    server = Server.find_by_new_did self.from_did
-    if !server
-      # Unknown server! Cannot handle rsa message. Can be an old message from a server with new did
-      logger.error2 "Ignoring rsa message from unknown server #{self.from_did}"
-      return
-    end
-    if !server.new_pubkey
-      # Public keys are send and received in login request/response
-      logger.error2 "Ignoring rsa message from #{server.site_url} without a public key"
-      return
-    end
-    # save symmetric password part 2 received from other Gofreerev server
-    server.set_new_password1 unless server.new_password1
-    done = key[0] # 0: password setup in progress, 1: password setup completed
-    server.new_password2 = key[1]
-    server.new_password2_at = key[2].to_i
-    server.save!
-    client_md5 = Base64.decode64(key[3]) if key.size == 4 # for md5 password check
-    md5_ok = (client_md5 == server.new_password_md5)
-    if md5_ok
-      logger.debug2 "symmetric password setup completed."
-    else
-      logger.debug2 "symmetric password setup in progress. md5_ok = #{md5_ok}, message.size = #{key.size}"
-      logger.debug2 "client_md5 = #{client_md5}"
-      logger.debug2 "server_md5 = #{server.new_password_md5}"
-    end
-
-    return if done and md5_ok # password setup completed on both Gofreerev servers
-
-    # send/resend password part 1 to other server
-    hash = server.sym_password_message(md5_ok)
-    m = Message.new
-    m.from_did = hash[:sender_did]
-    m.to_did = hash[:receiver_did]
-    m.server = hash[:server]
-    m.key = hash[:key]
-    m.save!
-
-  end # receive_message_password
-
-
   # read message for this server
   # client:
   # - true if called from Server.ping (processing messages in response)
@@ -124,40 +72,13 @@ class Message < ActiveRecord::Base
   def receive_message (client, pseudo_user_ids, received_msgtype)
     logger.debug "new mail: #{self.to_json}"
 
-    if !self.message
-      # rsa encrypted key only - setup password for symmetric communication
-      # javascript: see GiftService.receive_message_password in gofreerev.js (client to client)
-      receive_message_sym_password
-      return nil
-    end
-
-    # get password from mix encrypted message or from previous symmetric password setup
+    # find password in mix encrypted message. mix encryption. rsa encrypted random password in key and message encrypted with this random password
     server = Server.find_by_new_did(self.from_did)
-    if self.key
-      # mix encryption. rsa encrypted random password in key and message encrypted with this random password
-      logger.debug2 "received mix encrypted message"
-      private_key = OpenSSL::PKey::RSA.new SystemParameter.private_key
-      password_rsa_enc = Base64.decode64(self.key)
-      password = private_key.private_decrypt(password_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
-      logger.secret2 "password = #{password}"
-    else
-      # sym encryption. password has previously been received in password setup message
-      logger.debug2 "received sym encrypted message"
-      password = server.new_password
-      logger.secret2 "from_did = #{self.from_did}, password = #{password}"
-      if !password
-        logger.debug2 "password setup not complete. send rsa password setup message"
-        hash = server.sym_password_message(false)
-        m = Message.new
-        m.from_did = hash[:sender_did]
-        m.to_did = hash[:receiver_did]
-        m.server = hash[:server]
-        m.key = hash[:key]
-        m.save!
-        # keep sym encrypted message in mailbox
-        return nil
-      end
-    end
+    logger.debug2 "received mix encrypted message"
+    private_key = OpenSSL::PKey::RSA.new SystemParameter.private_key
+    password_rsa_enc = Base64.decode64(self.key)
+    password = private_key.private_decrypt(password_rsa_enc, OpenSSL::PKey::RSA::PKCS1_OAEP_PADDING)
+    logger.secret2 "password = #{password}"
 
     # decrypt message
     message_json_enc_base64 = self.message

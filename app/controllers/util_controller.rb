@@ -66,9 +66,7 @@ class UtilController < ApplicationController
     json_request = params.clone
     %w(controller action format util).each { |key| json_request.delete(key) }
 
-    # todo: decrypt encrypted rsa or mix request. signature {:encryption => 'rsa', :message => xxx} or
-    #       {:encryption => 'mix', key => xxx, :message => xxx}
-    #       use for insecure http or as extra security for https
+    # todo: decrypt encrypted request before json validation. signature {:key => xxx, :message => yyy}. use for insecure http connections or as extra security in https connections
 
     logger.secret2 "#{json_schema} = #{json_request}"
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], json_request)

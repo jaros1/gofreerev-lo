@@ -962,9 +962,9 @@ var Gofreerev = (function() {
         }
         // validate json request before sending action to server
         if (tv4.validate(json_request, Gofreerev.rails['JSON_SCHEMA'][json_schema])) {
-            // todo: rsa or mix encrypt request before sending ajax request to server
+            // todo: mix encrypt request before sending ajax request to server
             //       required for insecure http connection and could be used as extra security in a https connection
-            //       signature { encryption: 'mix', key: key, message: message } where key is an random rsa encrypted password
+            //       signature { key: key, message: message } where key is an random rsa encrypted password
             return null;
         }
         // report error
@@ -1022,7 +1022,7 @@ var Gofreerev = (function() {
         }
         var json_schema = Gofreerev.rails['JSON_SCHEMA'][json_schemaname] ;
         // todo: decrypt any encrypted response before json validation
-        //       that is response with signature { encryption: 'mix', key: key, message: message }
+        //       that is response with signature { key: key, message: message }
         //       rsa decrypt key and use key to symmetric decrypt message
         //       should always use encryption on insecure http connection
         //       could use encryption as extra security on https connections

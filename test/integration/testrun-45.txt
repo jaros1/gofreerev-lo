@@ -1,3 +1,6 @@
-testrun-45:
+testrun-45 ok after changing encryption from symmetric encryption to mix of rsa and symmetric encryption
 
 client on laptop added comment to gift from laptop2. replicating comment from laptop to laptop2
+
+
+

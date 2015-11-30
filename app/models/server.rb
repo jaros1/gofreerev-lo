@@ -282,7 +282,7 @@ class Server < ActiveRecord::Base
   def self.ping_signature (did, secret, hash)
     if hash[:messages]
       messages = hash[:messages].collect do |m|
-        [m[:sender_did], m[:receiver_did], m[:receiver_sha256], m[:server], m[:encryption], m[:key], m[:message]].join(',')
+        [m[:sender_did], m[:receiver_did], m[:receiver_sha256], m[:server], m[:key], m[:message]].join(',')
       end.join(',')
     else
       messages = ''
@@ -408,8 +408,7 @@ class Server < ActiveRecord::Base
 
     # post login request to other gofreerev server
     # todo: more encryption in login request?
-    #       could use site_url + mix encrypted message
-    #       { :encryption => 'mix', key => xxx, :message => xxx }
+    #       could use mix encrypted message { :key => xxx, :message => xxx }
     #       add /util/login_mix action, decrypt message and redirect to /util/login
     #       or decrypt filter before login
     SystemParameter.generate_key_pair unless SystemParameter.public_key

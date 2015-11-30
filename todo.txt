@@ -1226,8 +1226,7 @@
      schema load - load a initial list of gofreerev servers from db/seeds.db
      server should at startup send handshake signal to a limited number of gofreerev servers
      1) send/request public key
-     2) send/receive password for symmetric encrypted communication
-     3) ping once every ... seconds.
+     2) ping once every ... seconds.
 
 313) register with password for old account
      error message or login on old account?
@@ -1289,7 +1288,7 @@
      add server_id to messages and online
      allow one server to pass messages between other gofreerev servers
      A => B => C. B receives message from A and send message to C
-     B can not read message as message is symmetric encrypted between A and C
+     B can not read message as message if mix encrypted between A and C
 
 327) add server register before first server login?
      send password to server and store sha256 password hash on server
@@ -1340,13 +1339,6 @@
 331) "42 characters password to long for RSA"
      limit with about 128 characters in an RSA message with a 2048 bits key is not correct
      check if jsencrypt has problems with 2048 rsa key
-     test with longer passwords in server symmetric password handshake
-
-332) change rsa/sym encryption setup?
-     drop symmetric password handshake between two clients
-     send message with a "small" rsa encrypted key and a big symmetric encrypted message
-     faster and maybe more secure than symmetric password handshake
-     but both clients should be party in securing communication (sending client could have used an insecure key)
 
 333) device login old laptop
      showing register dialog but accounts already exists
@@ -1355,10 +1347,6 @@
      assets/javascript/cryptojs folder on old laptop from backup disk with 7 js scripts (1-core.js, 2-md5.js, 3-evpkdf.js, 4-enc-base64.js, 5-cipher-core.js, 6-aes.js, 7-sha256.js)
      used in KJUR.asn1.ASN1Util function in jsencrypt.js but I don't think that this function is used
      new laptop is working OK without CryptoJS
-
-335) rsa message - now only used for symmetric password setup
-     use first byte as msgtype. '0' = password setup
-     both js receive_messages and rails receive_messages
 
 336) change password message from json array to comma separated string. Don't used comma in passwords
 
@@ -1373,9 +1361,6 @@
      information about client and server did should also be in pings table on receiving server
      but server to server message could be routed through one or more servers without this information
      and remote client can go offline before message is read
-
-340) end server symmetric password setup with an ok response?
-     continue to send rsa password message until ok response is received from other Gofreerev server
 
 342) server to server messages
      add mid, request_mid and via_did to messages
@@ -1440,7 +1425,7 @@
 
 358) place a copy of public key in /public?
 
-359) symmetric encrypt cookie?
+359) symmetric encrypt server side cookie?
      session cookie is only used by rails
      could keep client part of symmetric password in client and send password rsa encrypted to rails in every request
      server part of symmetric password on server
@@ -1528,13 +1513,7 @@
      handle update to old unknown user from an other Gofreerev server
      handle change from unknown user to known user when receiving sha256 signature for a previously unknown user
 
-381) better to use mix encrypted messages than symmetric encrypted messages?
-     rsa encrypted messages different for identical content
-     sym encrypted messages identical for identical content
-
-382) symmetric password handshake between two clients only succeeds sometimes
-
-383) symmetric encrypt uploaded images with password and add password to gifts
+383) symmetric encrypt uploaded images with password and add password to gifts?
      http://alicebobandmallory.com/articles/2010/10/14/encrypt-images-in-javascript
      http://plea.se/me/cryptimage3.html
      http://tutorialzine.com/2013/11/javascript-file-encrypter/
@@ -1596,10 +1575,6 @@
         /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:168:in `each'
         /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:168:in `get_all_exchange_rates'
         /disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo2/app/models/exchange_rate.rb:136:in `fetch_exchange_rates'
-
-387) faster symmetric password handshake or change to mix encryption!
-     takes almost a minute in test runs
-     added done flag to rsa password array
 
 388) verify gifts from other servers
      case 1 (two servers)
@@ -1754,32 +1729,6 @@
 406) check error handling when receiving messages. pull and push.
      server error messages should be written to log and error message sent to other gofreerev server
 
-407) rescue in generic_post_login: Exception: EncryptedStrings::NoPasswordError (EncryptedStrings::NoPasswordError)
-     rescue in generic_post_login: Backtrace: /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/symmetric_cipher.rb:77:in `initialize'
-     /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/extensions/string.rb:197:in `new'
-     /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/extensions/string.rb:197:in `cipher_from_args'
-     /home/jro/.rvm/gems/ruby-2.0.0-p643@global/gems/encrypted_strings-0.3.3/lib/encrypted_strings/extensions/string.rb:45:in `encrypt'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1402:in `block in save_sha256_changed_message'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1385:in `upto'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:1385:in `save_sha256_changed_message'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/user.rb:2399:in `update_sha256'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/friend.rb:410:in `block in update_api_friends_from_hash'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/friend.rb:327:in `each'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/friend.rb:327:in `update_api_friends_from_hash'
-     /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/controllers/util_controller.rb:272:in `post_login_update_friends'
-     changed user info => sha256 message to other gofreerev server before symmetric password setup has completed
-     for example after server reboot and clearing password info stored in memory
-     as fallback should server_users be marked so that sha256 message is sent after password has completed
-     See Message.receive_messages:
-              # check for any ingoing server messages with changed user sha256 signature.
-              # must sent either changed sha256 signature to other gofreerev server (here)
-              # or update user information on this gofreerev server (client ping)
-              server_users = ServerUser.where(
-                  'verified_at is not null and remote_pseudo_user_id is not null and remote_sha256_updated_at is not null ' +
-                      'and ( sha256_message_sent_at is null or sha256_message_sent_at < ? )', 2.minutes.ago)
-              Server.save_sha256_changed_message(4, server_users) if server_users.size > 0
-     drop sym encryption and only use mix encryption
-
 408) firefox log: Password fields present on an insecure (http://) page. This is a security risk that allows user login credentials to be stolen.[Learn More]
      replace password field with text field + css to hide characters
      http://stackoverflow.com/questions/3574474/change-text-to-dots-in-text-field-with-css-javascript
@@ -1832,7 +1781,6 @@
 429) allow server to buffer some types of client to client messages.
      for example gift likes/unlike that must be replicated direct from client to client
      or comments. client A creates comment when client B is offlline and client B receives comment when client A is offline
-     encryption must be mix. symmetric password can not be used between offline clients.
 
 430) how to replicate gift and comment likes?
      add likes table and server side signatures for likes?
@@ -1959,8 +1907,5 @@
 452) s = Server.first ; s.ping_test_loop
      RSA 1024 bit CA certificates are loaded due to old openssl compatibility
      check if there is a security issue here. should never use 1024 bit encryption
-
-453) removing symmetric password handshake between two clients and two servers
-     client: send users_sha256 message after receiving public key for new online device
 
 select next issue to solve: (rand*453).floor+1

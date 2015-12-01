@@ -1002,7 +1002,7 @@ JSON_SCHEMA = {
                                             # internal user ids for creator of comment - todo: change to uid/provider format to support cross server replication?
                                             :user_ids => {:type => 'array', :items => {:type => %w(integer string) } },
                                             # optional price - can be set when creation a proposal (special comment) for gift/offer
-                                            :price => {:type => %w(undefined number), :minimum => 0, :multipleOf => 0.01},
+                                            :price => {:type => %w(undefined null number), :minimum => 0, :multipleOf => 0.01},
                                             # optional currency - can be set when creation a proposal (special comment) for gift/offer - iso4217 with restrictions
                                             :currency => {:type => %w(undefined string), :pattern => '^[a-zA-Z]{3}$'},
                                             # comment

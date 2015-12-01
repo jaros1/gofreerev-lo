@@ -668,6 +668,7 @@ angular.module('gifts')
                 created_at_client: Gofreerev.unix_timestamp(),
                 new_deal: gift.new_comment.new_deal
             } ;
+            if (new_comment.price == null) delete new_comment.price ;
             var errors ;
             if (errors=giftService.invalid_comment(new_comment, [], 'create', null)) {
                 gift.new_comment.error = 'Could not create new comment: ' + errors ;

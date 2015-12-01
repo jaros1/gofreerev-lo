@@ -29,12 +29,12 @@ encrypt_keys = []
 end
 ENCRYPT_KEYS = encrypt_keys
 
-# negative interest calculation setup.
-# Uses negative interest 5 % for positive balance. negative amounts 10 % for negative balance.
-# year 1: a = 100, b = -100. year 2: a =  95, b =  -90.
-# in that way we get negative interest and an increasing supply of free money between 0 and 5 % per year
-NEG_INT_NEG_BALANCE_PER_YEAR = 10.0 # 10 % negative interest per year for positive balance (gifts given to others)
-NEG_INT_POS_BALANCE_PER_YEAR =  5.0 # 5 % negative interest per year for negative balance (gifts received from others)
+# default alternative currency in Gofreerev. Free xxx (iso 4217 code). For example free usd or free eur.
+# use negative interest 5 % for positive balance. use negative interest 10 % for negative balance.
+# year 0: a = 100, b = -100, sum = 0. year 1: a =  95, b =  -90, sum = 5.
+# in that way we get negative interest and an increasing supply of free money every year
+NEG_INT_NEG_BALANCE_PER_YEAR = 10.0 # 10 % negative interest per year for negative balance (gifts received from others)
+NEG_INT_POS_BALANCE_PER_YEAR =  5.0 # 5 % negative interest per year for negative balance (gifts giver to from others)
 FACTOR_NEG_BALANCE_PER_YEAR = 1.0 - NEG_INT_NEG_BALANCE_PER_YEAR / 100.0 # 0.90 = 100 - 10 %
 FACTOR_POS_BALANCE_PER_YEAR = 1.0 - NEG_INT_POS_BALANCE_PER_YEAR / 100.0 # 0.95 = 100 - 5 %
 FACTOR_NEG_BALANCE_PER_DAY = (Math::E) ** (Math.log(FACTOR_NEG_BALANCE_PER_YEAR,Math::E) / 365) # 0.9997113827109777

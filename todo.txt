@@ -1908,4 +1908,67 @@
      RSA 1024 bit CA certificates are loaded due to old openssl compatibility
      check if there is a security issue here. should never use 1024 bit encryption
 
-select next issue to solve: (rand*453).floor+1
+454) easy way to select/create official and alternative currencies when making a new deal proposal
+     only none or negative interest is allowed. positive interest is not allowed
+     a) select between official or alternative currencies.
+     b) official. Select xxx from default money bank. No interest.
+     c) free xxx. for example free usa. that is usa with
+     d) custom currency. create, select from other user, select from location, select from tag cloud
+
+455) way to connect with other devices without using friend lists / api logins
+     most deals will be done with other then api friends and oauth login cannot be used in a single page app
+     a) share location with app. share location between Gofreerev servers, show nearby users
+     b) connect to other user with a user id, user name, phone nummer etc.
+
+456) change app to a "payment" app.
+
+457) problem with private key password and server start when private key password is stored (partial) in memory
+     add loop with 2 tries before aborting rails server start
+     => Booting WEBrick
+     => Rails 4.0.0 application starting in development on http://0.0.0.0:80
+     => Run `rails server -h` for more startup options
+     => Ctrl-C to shutdown server
+     Error. SystemParameter.private_key failed with bad decrypt. Generating new public private key pair
+     Exiting
+     /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/activemodel-4.0.0/lib/active_model/attribute_methods.rb:436:in `method_missing': undefined method `encrypt_remove_pre_and_postfix' for #<User:0x0000000789a538> (NoMethodError)
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/activerecord-4.0.0/lib/active_record/attribute_methods.rb:131:in `method_missing'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/user.rb:268:in `api_profile_picture_url'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/user.rb:2271:in `calc_sha256'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/system_parameter.rb:189:in `block (2 levels) in new_secret'
+        ...
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/system_parameter.rb:188:in `block in new_secret'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/system_parameter.rb:185:in `loop'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/system_parameter.rb:185:in `new_secret'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/system_parameter.rb:53:in `generate_key_pair'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/config/initializers/constants.rb:177:in `rescue in <top (required)>'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/config/initializers/constants.rb:173:in `<top (required)>'
+        ...
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/config/environment.rb:108:in `<top (required)>'
+        ...
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/config.ru:3:in `block in <main>'
+        ...
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/config.ru:in `new'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/config.ru:in `<main>'
+
+458) error after browser restore. for example after computer restart without closing browser
+     Started POST "/util/do_tasks.json" for 127.0.0.1 at 2015-12-01 08:16:13 +0100
+     Processing by UtilController#do_tasks as JSON
+       Parameters: {"client_userid"=>1, "did"=>"14481194806251567148", "util"=>{"client_userid"=>1, "did"=>"14481194806251567148"}}
+     Can't verify CSRF token authenticity
+     ...
+     -------------------------------
+     Backtrace:
+     -------------------------------
+     Psych::SyntaxError ((<unknown>): did not find expected node content while parsing a block node at line 1 column 1):
+       config/initializers/action_controller_extensions.rb:66:in `eval'
+       app/models/session.rb:236:in `user_ids'
+       config/initializers/action_controller_extensions.rb:66:in `eval'
+       config/initializers/action_controller_extensions.rb:66:in `get_session_value'
+       app/controllers/application_controller.rb:261:in `fetch_users'
+
+459) add wallet to localStorage
+     saldo in wallet = sum of accepted deals
+
+460) add try catch block to other ingoing messages. See receive_message_send_gifts
+
+select next issue to solve: (rand*460).floor+1

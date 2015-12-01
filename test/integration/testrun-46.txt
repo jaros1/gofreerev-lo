@@ -1,0 +1,208 @@
+testrun-46 error
+
+client on laptop2 is rejecting new deal proposal from client on laptop1
+
+
+client 2:
+page reload. load_gifts detects comment with a reject new deal proposal action without a server signature.
+that is comment.new_deal_action_at_client without comment.comment.new_deal_action_at_server
+...
+GiftService.verify_comments_add: added cid 14488910629803885142 to verify comments buffer with action reject
+GiftService.load_gifts:
+gift = {
+  "gid":"14481197074000741072","giver_user_ids":[2,4],"receiver_user_ids":[],"created_at_client":1448119707,"currency":"usd","direction":"giver","description":"laptop2","show":true,
+  "comments":[
+     {"cid":"14485283446016438892","user_ids":[3],"comment":"laptop 1","currency":"usd","created_at_client":1448528344,"created_at_server":1,
+      "sha256":"Ê9É¶0Ö\u0007\u0018zJw7Â\u0006Ì]b\u0016:\\K\u0012iVóà"},
+     {"cid":"14488910629803885142","user_ids":[3],"comment":"laptop 1 proposal","price":null,"currency":"usd","created_at_client":1448891062,"created_at_server":1,
+      "new_deal":true,"new_deal_action":"reject","new_deal_action_by_user_ids":[2],
+      "new_deal_action_at_client":1448971773,"sha256":"\u0000,}g\u0016ùI\u0004ôã^VzÈñc\u0019­:¼©vnÀI¼¡¦",
+      "verify_comment_at":1448982418,"verify_comment_action":"reject"}],
+  "created_at_server":0,"sha256":"yÝqiù\u001aGôÜ½^ÞFOI2o\u001e\t¸\u001f_~?VðÑö",
+  "sha256_gift":"ræ´¸ÀÒï½fÕ·\u001cÑ\r/¾¬EîÎf4sF1lG>c","sha256_comments":"±ò/PUü\u001ff¸R\t¹³A¦\u001a4«\u0004\u001aL¡ëæÌ\"\u000f\rØ"}
+}
+...
+GiftService.verify_comments_request: 1 new comment verification requests sent to server.
+
+
+server 2:
+receiving reject new deal proposal from client 2
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-12-01 16:07:00 +0100
+Processing by UtilController#ping as JSON
+  Parameters:
+  {"client_userid"=>1, "sid"=>"14489571069393650157", "client_timestamp"=>1448982420663,
+   "verify_comments"=>[
+     {"cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "action"=>"reject",
+      "user_ids"=>[3], "sha256_action"=>"{\u001FÇ\u0089,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz",
+      "new_deal_action_by_user_ids"=>[2], "server_id"=>1,
+      "gift"=>{"gid"=>"14481197074000741072", "sha256"=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ",
+               "giver_user_ids"=>[2, 4]},
+      "seq"=>-17
+     }]
+  }
+...
+ping: verify_comments = [{"cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "action"=>"reject", "user_ids"=>[3], "sha256_action"=>"{\u001FÇ\u0089,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz", "new_deal_action_by_user_ids"=>[2], "server_id"=>1, "gift"=>{"gid"=>"14481197074000741072", "sha256"=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", "giver_user_ids"=>[2, 4]}, "seq"=>-17}] (Array)
+verify_comments: verify_comments = [{"cid":"14488910629803885142","sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê","action":"reject","user_ids":[3],"sha256_action":"{\u001FÇ,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz","new_deal_action_by_user_ids":[2],"server_id":1,"gift":{"gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ","giver_user_ids":[2,4]},"seq":-17}]
+verify_comments: login_user_ids = ["1616942831872982/facebook"]
+...
+block in verify_comments: cid = 14488910629803885142, action = reject, gift_hash_required = true
+...
+save request in verify_comments with request_mid.
+  INSERT INTO `verify_comments`
+    (`cid`, `client_seq`, `client_sha256`, `client_sid`, `created_at`,
+     `original_client_request`,
+     `request_mid`, `server_id`, `server_seq`, `updated_at`)
+  VALUES
+    ('14488910629803885142', -17, '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=', '14489571069393650157', '2015-12-01 15:07:00',
+     '{\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"user_ids\":[3],\"sha256_action\":\"{\\u001FÇ,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz\",\"new_deal_action_by_user_ids\":[2],\"server_id\":1,\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[2,4]},\"seq\":-17}',
+     28, 1, 15, '2015-12-01 15:07:00')
+...
+send reject new deal proposal request to server 1 (save in message and wait for next server ping)
+todo 1: gid is nil in gifts hash (used in reject new deal proposal authorization check)
+todo 2: gift.giver_user_ids must be translated into user signatures with sha256, pseudo_user_id and sha256_updated_at
+server_requests =
+  {1=>[
+     {:seq=>15, :cid=>"14488910629803885142", :sha256=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", :action=>"reject",
+      :sha256_action=>"{\u001FÇ\u0089,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz",
+      :user_ids=>[{:sha256=>"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=", :pseudo_user_id=>1, :sha256_updated_at=>1448957114}],
+      :new_deal_action_by_user_ids=>[{:sha256=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", :pseudo_user_id=>2, :sha256_updated_at=>1448957114}],
+      :gift=>{
+         :gid=>nil,
+         :sha256=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê",
+         :giver_user_ids=>["117126429320850988781/google_oauth2", "1616942831872982/facebook"],
+         :server_id=>"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="
+      }}]}
+
+
+console 1:
+ping server 2, receive reject new deal proposal request, check request and return (error) response
+new mail: {"id":437,"from_did":"14489535425390515221","from_sha256":null,"to_did":"14489535375196486915","to_sha256":null,"message":"aXdxT2pEbWZrZVhVQkJ1OFVWakphcTNvdGZLQWRoSjlaUGpXYU1HNklzOVZt\ncDdnaEVuaktRNGw5MHdpCjRWV0NsNW83MzNaMGlYUkYvc3dIektzcHdHZmJJ\neHJraVB0YnZJa3VKdnU5RFpxSm5JazdkTTgvdUR1RApkYlBzN1d6QW9HYUU5\ndW1lMGh5aDh5N3lzQ1NmdU1oRnczZFJaZFJMTDQzQ1hKcFlrbHNjUUpHejVx\nUk0KelQyb245cmN0N285aHN6WnFYZ1RxcEdhMXlIN1FxRzNsaGhhVElNQnBN\nQmlmZGJ2MURlSWtUOEQzVmRSCnIyODlDVGEzUnAxTWtjN0N0WVZCK1YwYkVr\nRjVLVnpGdkYweWFybVU1c2VQUGp3L29IUlB6K0dKM0hyYgp2aHhuV2NwK0Nq\neUkrdytqbmpxSk5FL1JDd2R3V01MUkhoYU1HSTlTWkFPelFjeVNjNVMxeEY1\nNGhJRFcKYmMwUTROck84V2xKRGdlMzFBZDkwc0JjNE1RakNqbDFaZk85dEVC\nWlVJZHc4d2FIWk9pQTkzZHRVcXRSCkRpUi92dUlteTNJS1pZWEFrYzNXSk9u\nMlFUR3FBRFFKbXc2VGdwTWFhNE8zVFN5ZXMvcVd0WDJHaDlYcwpjVGUyZ1B2\nRWNCTExkZ0ZMQ2pMUFNZWW0vR0ZGNGllVTFOVUQzOUxYdWZaTG5PZ0lnaDhi\ndDNnWmR1V2MKS1FIMzVnc2hDWkVUdmtTeTR5cEwxTFdWZGFLcllVUCtlV2Uw\nSHZ1N2oxRHY3VzhBcSsvaVROcENGelBRCk9yTUhENklkV24rbFVmUzBsNWYv\nWWl3Y0JYSjMzMkxjQzRuZm5Xc0VWWkRlVkwyMkZnVVl5NC9hcnFXUwpJMWdL\neVNQUGxNM3grNzNjZERYNThzSXFobmRoYU1ERjg4bFNiSkhlMDEvc1V1M0c2\nTVkwRlpTaGUvM1UKTWtyUS95aTZlUTVKOFVTY2NiY05JYnZEeUdZSFdnVmhp\nYW9udm1ST0RXanVqMzRnMThrakJhOEt0eHphCm95ZXllNUI2YytpckplS3Fi\nRFlXY203UFpqM1VIdUZWUm9XVGpsMVlRa3NFcWpNMzN3bXNNK245WkpHQwpU\nQ1R3YTRSbi9jdXZDQjhieTc5Wmc0YUpRODg2UXd1UG1sL2JqSHJ2dDlEVjYw\nanJ3L21QdDNUeW9yVDcKMEdYRUxoWWV4eGMwNDZMZ3RZd29VK1ZwYnRMMkJO\nZlFXRTVvaWFvOUswRTNLMVNZYzNla2R0NjAyZjluCmV2d085dlU3dXlXazhp\nbjY4NkMxQVFCM1NGd2VGOU1WM1RTVU93QUJWZzJVY0NTWnUwMGFnaG1Vc2No\nOApFbysvRGhnWUczaXp0U2hiczZPbmNWMFV3UkNYVHQ0ZEFGaUNpd1ZFTzJ3\nTkx2VDdPMVd6UFNLNjBQVE0KcVNaQWE3UmJKbDBIRlZ5QTN4VGU2a09lQnJv\nK292NTlnTHdQOURCaHdhN093dEJYK29aNWhXQUs1aFk4CllJODBRUnpreU5P\nRi9FaDJrZkZDM3lMd0tLVlFxV2JVSG9pV1BZL25UZlRoUTdCZG9lV1dUUmpI\nMzVmZAowemYrd3c9PQo=\n","created_at":"2015-12-01T15:07:01.000Z","updated_at":"2015-12-01T15:07:01.000Z","server":true,"key":"k/ME9UH4yGD4WCStSelXzLKi8clh/uJbRZZNLd9dTK6z9QQ/4G83fPT0CAlI\nxeCNRFpcC8VG//KiyyF7RkdKzB1Wb+d7R5ON0C1m/AavdOokAjQz5gKpRiyC\n63mvswR6b5bXJgwpNVhJsrsmU/oRh6sKfCP+9BpiipRv4/vAB+ZDU/iQLkRS\nyf4UwpcuH8pgJi2ngFxgMEMWzm/rCBYT20/r9B5+nLBuIYAS0Oolp3ZbrF9b\nZmYi1jT4+be7xhnaYMeNOJO1kzyaSB1MkNwPqaPwrGTj8/DyQZ3ZiN5/R3Bq\nBCNZDmvR5A9XLrzIBmpL4tOrFhN5H2o21UMHsVcfUQ==\n","mid":null}
+receive_message:
+message_json = {
+  "msgtype":"verify_comments","mid":28,
+  "login_users":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114}],
+  "verify_comments":[
+     {"seq":15,"cid":"14488910629803885142","sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê",
+      "action":"reject","sha256_action":"{\u001FÇ,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz",
+      "user_ids":[{"sha256":"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=","pseudo_user_id":1,"sha256_updated_at":1448957114}],
+      "new_deal_action_by_user_ids":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114}],
+      "gift":{
+         "gid":null,"sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê",
+         "giver_user_ids":["117126429320850988781/google_oauth2","1616942831872982/facebook"],
+         "server_id":"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="}
+     }]
+}
+execute reject new deal proposal request from client 2/server 2:
+from_sha256s_to_user_ids: msg = verify_comments, negative_user_ids_option = true
+block in from_sha256s_to_user_ids: user = {"id":3,"user_id":"1563545817212684/facebook","user_name":"Jan Mobilos Roslind","created_at":"2015-11-15T07:53:19.000Z","updated_at":"2015-12-01T08:03:29.000Z","currency":null,"balance":null,"balance_at":null,"no_api_friends":null,"negative_interest":null,"api_profile_url":null,"api_profile_picture_url":"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-prn2/v/t1.0-1/c17.0.100.100/p100x100/10609482_1516580325242567_8022167412578042073_n.jpg?oh=6f7e921961028a0ca2e89efbc1d3202c\u0026oe=56D505F9\u0026__gda__=1457908312_ab46f53ecede2d71acfe1be126234aee","deleted_at":null,"last_login_at":null,"deauthorized_at":null,"last_friends_find_at":null,"language":null,"access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","old_sha256":"ITUda8On9K5dXvRVlRBUxX/JQH5A7Ly4MZ3iC5wym1c=","sha256_updated_at":"2015-12-01T08:03:29.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+receive_verify_comments_req: login_user_ids = 1563545817212684/facebook
+receive_verify_comments_req: verify_comments (1) = [{"seq"=>15, "cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "action"=>"reject", "sha256_action"=>"{\u001FÇ\u0089,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz", "user_ids"=>[{"sha256"=>"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=", "pseudo_user_id"=>1, "sha256_updated_at"=>1448957114}], "new_deal_action_by_user_ids"=>[{"sha256"=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", "pseudo_user_id"=>2, "sha256_updated_at"=>1448957114}], "gift"=>{"gid"=>nil, "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "giver_user_ids"=>["117126429320850988781/google_oauth2", "1616942831872982/facebook"], "server_id"=>"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="}}]
+from_sha256s_to_user_ids: msg = verify_comments, negative_user_ids_option = translate
+block in from_sha256s_to_user_ids: user = {"id":2,"user_id":"1705481075/facebook","user_name":"Jan Roslind","created_at":"2015-11-15T07:53:16.000Z","updated_at":"2015-12-01T15:06:54.000Z","currency":"USD","balance":{"BALANCE":0.0},"balance_at":"2015-12-01","no_api_friends":1,"negative_interest":{"BALANCE":0.0},"api_profile_url":"https://www.facebook.com/1705481075","api_profile_picture_url":"https://scontent.xx.fbcdn.net/hprofile-xaf1/v/t1.0-1/c0.0.100.100/p100x100/198874_1005137144448_2061879_n.jpg?oh=2423fb91bf62d88baaf37be69911beba\u0026oe=56EE73C0","deleted_at":null,"last_login_at":"2015-12-01T08:03:26.000Z","deauthorized_at":null,"last_friends_find_at":"2015-12-01T08:03:30.000Z","language":"en","access_token":null,"access_token_expires":null,"refresh_token":null,"sha256":"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=","old_sha256":"1ZvuCxcvwezm+pWyTqyMg/m5P0T7ql0qVNUwQpUcRKE=","sha256_updated_at":"2015-12-01T08:03:29.000Z","friend_sha256_updated_at":null,"remote_sha256_updated_at":null,"remote_sha256_update_info":null}
+receive_verify_comments_req: no_errors = 0, response.size = 0, request_on_hold.size = 0, local_request.size = 1
+receive_verify_comments_req: verify_comments (2) = [{"seq"=>15, "cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "action"=>"reject", "sha256_action"=>"{\u001FÇ\u0089,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz", "user_ids"=>[{"sha256"=>"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=", "pseudo_user_id"=>1, "sha256_updated_at"=>1448957114, "status"=>"valid"}], "new_deal_action_by_user_ids"=>[{"sha256"=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", "pseudo_user_id"=>2, "sha256_updated_at"=>1448957114}], "gift"=>{"gid"=>nil, "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "giver_user_ids"=>["117126429320850988781/google_oauth2", "1616942831872982/facebook"], "server_id"=>"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="}}]
+verify_comments: verify_comments = [{"seq":15,"cid":"14488910629803885142","sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê","sha256_action":"{\u001FÇ,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz","user_ids":[2]}]
+verify_comments: login_user_ids = ["1563545817212684/facebook"]
+
+make error to server 2:
+block in verify_comments: cid 14488910629803885142 : System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed
+   (0.2ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = NULL and client_sha256 = NULL and verified_at_server is not null)
+verify_comments: response = [{:seq=>15, :cid=>"14488910629803885142", :verified_at_server=>false, :error=>"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"}]
+verify_comments: server_requests = {}
+receive_verify_comments_req: local_verify_comments_request = [{"seq"=>15, "cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "sha256_action"=>"{\u001FÇ\u0089,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz", "user_ids"=>[2]}]
+receive_verify_comments_req: local_verify_comments_response = {:comments=>[{:seq=>15, :cid=>"14488910629803885142", :verified_at_server=>false, :error=>"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"}]}
+receive_verify_comments_req: local_verify_comments_error =
+receive_verify_comments_req: verify_comments_response = [{:seq=>15, :cid=>"14488910629803885142", :verified_at_server=>false, :error=>"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"}]
+
+
+server 2:
+receive reject new deal proposal response from server 1
+new mail: {"id":813,"from_did":"14489535375196486915","from_sha256":null,"to_did":"14489535425390515221","to_sha256":null,"message":"T0FlU2VJQ1Z6ejNKMkRkZm9yU0RGenRiS2xZeE1sS0N0N0E3dW94c2tFZUpm\nMHNmZlhOb2lVSUhzd25HCjM0ZFZGWHFkbVFzQXc5bHQvUGN5RDNzc1BPQmRR\naDZGUllyVUV6cExOWW1wT2FsWGV5bGZEWEp1TU1pZQpsRzBYTUpocVZMTGd1\nUzVSb0F6c2ZFOGxhZkdXaTQ4ODFHOEFmSENiaEhNdE5iMWNhR0xMeTNzeEpZ\ncU4KZEdRaVdIRFFzVzk2Vlk2YStuVnhKbHhXL1g5ZHlDaWJseFVINlFsbSs5\nZ29rL2JGZEY0UGxxSFRJcU84CnFHNzB4OEU3NmgzME4zWnU0TE81dm4vTmRx\nV1FNYjVpUWEwajhwQWNrUlRicjNrRTNBclpNcklEL2o2aAp2Ly8xSGVGM1Va\nWDBjUkF0bTVLUDJ6cnJoQWxvQys3THY5WEx3aHZITm9NenhSRDh2c1F2cFB4\naVMzOG0KR0RKMEZoYTVIdWJ1MkE9PQo=\n","created_at":"2015-12-01T15:07:04.000Z","updated_at":"2015-12-01T15:07:04.000Z","server":true,"key":"aSDx/unP9G6Haczgzm7qOp2fLicfXVBv27t4R1trTSkSz72NVLpv079owFd9\n8rpEDVS06oAeiQoi5bUlPJKgaSgd65dQCzO02naBnJIJ0FbJFUNVN7u+xVW1\ntJH1ZljmOzttj+CM8pDQTiuK/FBJbkgO5/tRJ41ESlGy+3pBmlOF3dLQfTS9\nkQpZpNJqVsKDqD6kDmWMyJXukakEB4sAxsZv+D3wwE/YCG5FUNrM467NYR0R\n0B59RvMmas2SaZBDWGtzOofW38CXG4mGPe3Ibq3hANqTU43+5D4xuUFeghF9\nUoA2+6Nn4M/jvsICx6ZVFOcuQjdRv8xGYBdg4YUxpg==\n","mid":null}
+  Server Load (0.1ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`new_did` = '14489535375196486915' LIMIT 1
+receive_message: received mix encrypted message
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'private_key' LIMIT 1
+receive_message: password = My5qiiAOjFT3Aiajwin5JEI117oPOMVi4yh14jODs2dBcLgNcvniDbD6J05ov4PmeUBBmSTSxJ1KbLRG1JVXBmnmkicEpg6M0i3wxU1vBQVDDpLOoNLNt3gOA4BR1JVrz2L1W4xtygQxH3a7v3BSXXlDiAj7Qnr65FzxodUfRDqbt0nGnQXjOWfnor1oxfTXCF1meyr5
+receive_message: message_json = {"msgtype":"verify_comments","verify_comments":[{"seq":15,"cid":"14488910629803885142","verified_at_server":false,"error":"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"}],"mid":18,"request_mid":28}
+receive_verify_comments_res: mid = 18, request_mid = 28
+receive_verify_comments_res: verify_comments = [{"seq"=>15, "cid"=>"14488910629803885142", "verified_at_server"=>false, "error"=>"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"}]
+receive_verify_comments_res: error        =  (NilClass)
+  VerifyComment Load (0.2ms)  SELECT `verify_comments`.* FROM `verify_comments` WHERE `verify_comments`.`server_seq` IN (15)
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  UPDATE `verify_comments` SET `verified_at_server` = 0, `error` = 'System error. comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed', `updated_at` = '2015-12-01 15:07:04' WHERE `verify_comments`.`id` = 3
+   (4.6ms)  COMMIT
+receive_verify_comments_res: verify_comments.size = 1, unknown_seq.size = 0, invalid_server_id.size = 0, invalid_cid.size = 0, invalid_response.size = 0, identical_response.size = 0, ok_response.size = 1
+   (0.1ms)  BEGIN
+  SQL (0.3ms)  UPDATE `verify_comments` SET `response_mid` = 18, `updated_at` = '2015-12-01 15:07:04' WHERE `verify_comments`.`id` = 3
+   (3.2ms)  COMMIT
+...
+Completed 200 OK in 208ms (Views: 0.4ms | ActiveRecord: 83.8ms)
+
+
+server 2:
+client 2 ping. return reject new deal proposal response to client 2
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-12-01 16:07:06 +0100
+Processing by UtilController#ping as JSON
+  Parameters: {"client_userid"=>1, "sid"=>"14489571069393650157", "client_timestamp"=>1448982425990, "messages"=>[{"receiver_did"=>"14481194806251567148", "receiver_sha256"=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", "server"=>false, "key"=>"IDrmgKOm6dQT1/Rl96eVisEc15NQ0xiiPNxt/qlauovXl4Dq/uo/G9ZYnZazH+mRJHg/qaSChZv9U7j6adyHB5DHdUqmme9IKM0OrjG21nTA6Y3Q7JlOz5x6TT8mmx9UjQxP5YLJk7kqWREbW/nkIX24eKavZmgaoeDcOAJg1ekLldeCE2scI4bXHlYJVbBVVs+50A9yA0NmWqxbCiwchuA6BiqbJRMwCyH4zGIyhXzS+23R8v8BIzux5STYnGpNiyPU0SQxztp5xM4lIhmsyMLgLTIbEqIa0CRRgdBSBAH9ZW1Nr95dfm669utl/m1QA18w7/JYJtAOr43Y07+dAA==", "message"=>"U2FsdGVkX1/iWZ4cszMcBomZQPPqxdFvQIWVrm7wVnZUivUm65K6eYwR2KWwP4doI5i2atNvXsfuRY1w4Xu23LIV2y2b9xvrmilkbvE7pyYNHRLwmuDSXtQoeOt09Po7a4dfeVVo2zyUrJlAYB6efhZZUqbAjB8Q7Gb33vQlPH8ZfMWydnZsADRCZgtQLR9BD7ReeIGMjh6NjoQEBzCV8wFngJ55hhYF4CYOklsyyJLebo/hEIJwi+k3z7hDyCm4Yf0JHROLHFieJTCu+3H0Ex70l6NYl8khT7RZZNyD7O6LBPwTM33XFUprVZoamgI+Jhe1bc9bGGjf02cxEAGtR72PkddNXaWbrmcQ1DaSCrz4QPb94Ctvj1FaXzdrHw1ghgjhXZC7MueVJQKERPGxc1Cj1tHwmrAFfC2G3DrxG9DoOtg61CJOcWA9XUOZloKRY4tOARBSSpjYcUQWAmm/wfnRtYC1gfr5q1TER7L0RUCLhnWWCaFOaBt2wtcG47Kb0UJdfO3lMeCUYjs2LTsnFgpdxxqQCywxorkclsL5kHo="}], "util"=>{"client_userid"=>1, "sid"=>"14489571069393650157", "client_timestamp"=>1448982425990, "messages"=>[{"receiver_did"=>"14481194806251567148", "receiver_sha256"=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", "server"=>false, "key"=>"IDrmgKOm6dQT1/Rl96eVisEc15NQ0xiiPNxt/qlauovXl4Dq/uo/G9ZYnZazH+mRJHg/qaSChZv9U7j6adyHB5DHdUqmme9IKM0OrjG21nTA6Y3Q7JlOz5x6TT8mmx9UjQxP5YLJk7kqWREbW/nkIX24eKavZmgaoeDcOAJg1ekLldeCE2scI4bXHlYJVbBVVs+50A9yA0NmWqxbCiwchuA6BiqbJRMwCyH4zGIyhXzS+23R8v8BIzux5STYnGpNiyPU0SQxztp5xM4lIhmsyMLgLTIbEqIa0CRRgdBSBAH9ZW1Nr95dfm669utl/m1QA18w7/JYJtAOr43Y07+dAA==", "message"=>"U2FsdGVkX1/iWZ4cszMcBomZQPPqxdFvQIWVrm7wVnZUivUm65K6eYwR2KWwP4doI5i2atNvXsfuRY1w4Xu23LIV2y2b9xvrmilkbvE7pyYNHRLwmuDSXtQoeOt09Po7a4dfeVVo2zyUrJlAYB6efhZZUqbAjB8Q7Gb33vQlPH8ZfMWydnZsADRCZgtQLR9BD7ReeIGMjh6NjoQEBzCV8wFngJ55hhYF4CYOklsyyJLebo/hEIJwi+k3z7hDyCm4Yf0JHROLHFieJTCu+3H0Ex70l6NYl8khT7RZZNyD7O6LBPwTM33XFUprVZoamgI+Jhe1bc9bGGjf02cxEAGtR72PkddNXaWbrmcQ1DaSCrz4QPb94Ctvj1FaXzdrHw1ghgjhXZC7MueVJQKERPGxc1Cj1tHwmrAFfC2G3DrxG9DoOtg61CJOcWA9XUOZloKRY4tOARBSSpjYcUQWAmm/wfnRtYC1gfr5q1TER7L0RUCLhnWWCaFOaBt2wtcG47Kb0UJdfO3lMeCUYjs2LTsnFgpdxxqQCywxorkclsL5kHo="}]}}
+...
+ping: verify_comments =  (NilClass)
+verify_comments: verify_comments = null
+verify_comments: login_user_ids = ["1616942831872982/facebook"]
+   (0.3ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14489571069393650157' and client_sha256 = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' and verified_at_server is not null)
+  CACHE (0.0ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14489571069393650157' and client_sha256 = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' and verified_at_server is not null)
+verify_comments: vcs.size = 1
+  VerifyComment Load (0.2ms)  SELECT `verify_comments`.* FROM `verify_comments` WHERE (client_sid = '14489571069393650157' and client_sha256 = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' and verified_at_server is not null)
+block in verify_comments:
+vc = {
+  "id":3,"client_sid":"14489571069393650157","client_sha256":"0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=","client_seq":-17,"server_id":1,
+  "cid":"14488910629803885142","server_seq":15,"verified_at_server":false,"created_at":"2015-12-01T15:07:00.000Z","updated_at":"2015-12-01T15:07:04.000Z",
+  "error":"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed",
+  "request_mid":28,"response_mid":18,
+  "original_client_request":"{\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"user_ids\":[3],\"sha256_action\":\"{\\u001FÇ,¼q¸m!¯únÂz?÷ÖÂ0TÈ{­LþLxúÏz\",\"new_deal_action_by_user_ids\":[2],\"server_id\":1,\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[2,4]},\"seq\":-17}"}
+
+  SQL (3.3ms)  DELETE FROM `verify_comments` WHERE (client_sid = '14489571069393650157' and client_sha256 = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' and verified_at_server is not null)
+messages: sender_did    = 14481195855569775932
+messages: sender_sha256 = 0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=
+messages: messages      = [{"receiver_did"=>"14481194806251567148", "receiver_sha256"=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", "server"=>false, "key"=>"IDrmgKOm6dQT1/Rl96eVisEc15NQ0xiiPNxt/qlauovXl4Dq/uo/G9ZYnZazH+mRJHg/qaSChZv9U7j6adyHB5DHdUqmme9IKM0OrjG21nTA6Y3Q7JlOz5x6TT8mmx9UjQxP5YLJk7kqWREbW/nkIX24eKavZmgaoeDcOAJg1ekLldeCE2scI4bXHlYJVbBVVs+50A9yA0NmWqxbCiwchuA6BiqbJRMwCyH4zGIyhXzS+23R8v8BIzux5STYnGpNiyPU0SQxztp5xM4lIhmsyMLgLTIbEqIa0CRRgdBSBAH9ZW1Nr95dfm669utl/m1QA18w7/JYJtAOr43Y07+dAA==", "message"=>"U2FsdGVkX1/iWZ4cszMcBomZQPPqxdFvQIWVrm7wVnZUivUm65K6eYwR2KWwP4doI5i2atNvXsfuRY1w4Xu23LIV2y2b9xvrmilkbvE7pyYNHRLwmuDSXtQoeOt09Po7a4dfeVVo2zyUrJlAYB6efhZZUqbAjB8Q7Gb33vQlPH8ZfMWydnZsADRCZgtQLR9BD7ReeIGMjh6NjoQEBzCV8wFngJ55hhYF4CYOklsyyJLebo/hEIJwi+k3z7hDyCm4Yf0JHROLHFieJTCu+3H0Ex70l6NYl8khT7RZZNyD7O6LBPwTM33XFUprVZoamgI+Jhe1bc9bGGjf02cxEAGtR72PkddNXaWbrmcQ1DaSCrz4QPb94Ctvj1FaXzdrHw1ghgjhXZC7MueVJQKERPGxc1Cj1tHwmrAFfC2G3DrxG9DoOtg61CJOcWA9XUOZloKRY4tOARBSSpjYcUQWAmm/wfnRtYC1gfr5q1TER7L0RUCLhnWWCaFOaBt2wtcG47Kb0UJdfO3lMeCUYjs2LTsnFgpdxxqQCywxorkclsL5kHo="}]
+receive_messages: sender_did    = 14481195855569775932
+receive_messages: sender_sha256 = 0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=
+receive_messages: messages      = [{"receiver_did"=>"14481194806251567148", "receiver_sha256"=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", "server"=>false, "key"=>"IDrmgKOm6dQT1/Rl96eVisEc15NQ0xiiPNxt/qlauovXl4Dq/uo/G9ZYnZazH+mRJHg/qaSChZv9U7j6adyHB5DHdUqmme9IKM0OrjG21nTA6Y3Q7JlOz5x6TT8mmx9UjQxP5YLJk7kqWREbW/nkIX24eKavZmgaoeDcOAJg1ekLldeCE2scI4bXHlYJVbBVVs+50A9yA0NmWqxbCiwchuA6BiqbJRMwCyH4zGIyhXzS+23R8v8BIzux5STYnGpNiyPU0SQxztp5xM4lIhmsyMLgLTIbEqIa0CRRgdBSBAH9ZW1Nr95dfm669utl/m1QA18w7/JYJtAOr43Y07+dAA==", "message"=>"U2FsdGVkX1/iWZ4cszMcBomZQPPqxdFvQIWVrm7wVnZUivUm65K6eYwR2KWwP4doI5i2atNvXsfuRY1w4Xu23LIV2y2b9xvrmilkbvE7pyYNHRLwmuDSXtQoeOt09Po7a4dfeVVo2zyUrJlAYB6efhZZUqbAjB8Q7Gb33vQlPH8ZfMWydnZsADRCZgtQLR9BD7ReeIGMjh6NjoQEBzCV8wFngJ55hhYF4CYOklsyyJLebo/hEIJwi+k3z7hDyCm4Yf0JHROLHFieJTCu+3H0Ex70l6NYl8khT7RZZNyD7O6LBPwTM33XFUprVZoamgI+Jhe1bc9bGGjf02cxEAGtR72PkddNXaWbrmcQ1DaSCrz4QPb94Ctvj1FaXzdrHw1ghgjhXZC7MueVJQKERPGxc1Cj1tHwmrAFfC2G3DrxG9DoOtg61CJOcWA9XUOZloKRY4tOARBSSpjYcUQWAmm/wfnRtYC1gfr5q1TER7L0RUCLhnWWCaFOaBt2wtcG47Kb0UJdfO3lMeCUYjs2LTsnFgpdxxqQCywxorkclsL5kHo="}]
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'old_dids' LIMIT 1
+receive_messages: did = 14489535425390515221, old_dids = 14480267322475603698, 14482714030167565139, 14486157044593577235, 14486993865499068432
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  INSERT INTO `messages` (`created_at`, `from_did`, `from_sha256`, `key`, `message`, `server`, `to_did`, `to_sha256`, `updated_at`) VALUES ('2015-12-01 15:07:06', '14481195855569775932', '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=', 'IDrmgKOm6dQT1/Rl96eVisEc15NQ0xiiPNxt/qlauovXl4Dq/uo/G9ZYnZazH+mRJHg/qaSChZv9U7j6adyHB5DHdUqmme9IKM0OrjG21nTA6Y3Q7JlOz5x6TT8mmx9UjQxP5YLJk7kqWREbW/nkIX24eKavZmgaoeDcOAJg1ekLldeCE2scI4bXHlYJVbBVVs+50A9yA0NmWqxbCiwchuA6BiqbJRMwCyH4zGIyhXzS+23R8v8BIzux5STYnGpNiyPU0SQxztp5xM4lIhmsyMLgLTIbEqIa0CRRgdBSBAH9ZW1Nr95dfm669utl/m1QA18w7/JYJtAOr43Y07+dAA==', 'U2FsdGVkX1/iWZ4cszMcBomZQPPqxdFvQIWVrm7wVnZUivUm65K6eYwR2KWwP4doI5i2atNvXsfuRY1w4Xu23LIV2y2b9xvrmilkbvE7pyYNHRLwmuDSXtQoeOt09Po7a4dfeVVo2zyUrJlAYB6efhZZUqbAjB8Q7Gb33vQlPH8ZfMWydnZsADRCZgtQLR9BD7ReeIGMjh6NjoQEBzCV8wFngJ55hhYF4CYOklsyyJLebo/hEIJwi+k3z7hDyCm4Yf0JHROLHFieJTCu+3H0Ex70l6NYl8khT7RZZNyD7O6LBPwTM33XFUprVZoamgI+Jhe1bc9bGGjf02cxEAGtR72PkddNXaWbrmcQ1DaSCrz4QPb94Ctvj1FaXzdrHw1ghgjhXZC7MueVJQKERPGxc1Cj1tHwmrAFfC2G3DrxG9DoOtg61CJOcWA9XUOZloKRY4tOARBSSpjYcUQWAmm/wfnRtYC1gfr5q1TER7L0RUCLhnWWCaFOaBt2wtcG47Kb0UJdfO3lMeCUYjs2LTsnFgpdxxqQCywxorkclsL5kHo=', 0, '14481194806251567148', '3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=', '2015-12-01 15:07:06')
+   (3.2ms)  COMMIT
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'did' LIMIT 1
+  Message Load (0.4ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14489535425390515221' AND `messages`.`server` = 1 ORDER BY `messages`.created_at ASC
+send_messages: sender_did    = 14481195855569775932
+send_messages: sender_sha256 = 0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=
+  Message Load (0.3ms)  SELECT `messages`.* FROM `messages` WHERE `messages`.`to_did` = '14481195855569775932' AND `messages`.`to_sha256` = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' AND `messages`.`server` = 0 ORDER BY created_at
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  DELETE FROM `messages` WHERE `messages`.`id` = 818
+   (3.1ms)  COMMIT
+messages: output_messages = {:messages=>[{:sender_did=>"14481194806251567148", :server=>false, :receiver_did=>"14481195855569775932", :sender_sha256=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", :key=>"CF6Poo7zTB0gJKNp4LJElbjPiTfntnPfVy6v3eiKmQ677fsBhz3g/lyKjIHX5sPODar4ydKW15VGgk3rwUZZca0YBXixBlAbTuh8TukQjqnmZ65C6j8IrxVY3LqmN6alXT+0EkatBX++Isq+axnTwtdn4WrOAKt3ewkiApA9wx+Tknr2xiOO/PFnBVZn0Xg6u15KHxYpbkRehOx5CCQ1Ly+SDCRdFrpf4n1x/GYo3OPsR/biKRSjjTvmRinP8vzEGvrOdnd9Qn4QK9JuEtEyL+2dgBbH+i/I1Fu+9CeZT+glBws5JdEiVcEHRMocBVNVUnS0VtkHENP8C21RRhxazw==", :message=>"U2FsdGVkX19dGiRELhJDIXWVZ5DA1VRlFTUkVMj57CCX/1oa5g83hG1vhoFRCl+KB2y0khrHVkFbEos0R6guFo+Y4qXlcmqC73mcpGaBPOV+tGOZQDATYJIQlEYKQ8DyDGcNpXxqmPC0SaBE1hZPl0DF9LnLyEiFO/1cp/XOaJJ7B61h2AFA8VhjXrPo+JtJZKfhThYeG+qNM3/LFKB68xntW/+/LEC9we0K3tXkW234cXOjNYgslHFtBAuzYWqi+zVxqZ92dcW5JVNGcFhwGIXeYaL3NBg+f8PQuHHQmVV41TD4g+PsE40COFc0IrauNqG6T99fseK5eduGCjqTwer9vWkGctrsWXYWsEMANPCcRf/dmjO/k67gGHzeZU0S63nMcOeJClhhEY4SEODpcBe5L3mDkwqhpq2UwxlGVwr4amC85lZesRVA52bw0JLalp1eu3Qdsw6W/CA+2T1uAkzXzvDY4kcI6bMo0chQylBj+z3meI4h8wrlVabe/MPOqXrxqBuRIfXW8OMlz8cfqE2JU5EGU3d60KxbWkD+bI8="}]}
+ping: @json =
+{:old_client_timestamp=>1448982422990, :interval=>2000,
+ :online=>[{:did=>"14481194806251567148", :sha256=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", :mutual_friends=>[2, 3], :server_id=>1}],
+ :verify_comments=>{
+    :comments=>[
+       {:seq=>-17, :cid=>"14488910629803885142", :verified_at_server=>false,
+        :error=>"System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed"}]},
+ :messages=>{:messages=>[{:sender_did=>"14481194806251567148", :server=>false, :receiver_did=>"14481195855569775932", :sender_sha256=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", :key=>"CF6Poo7zTB0gJKNp4LJElbjPiTfntnPfVy6v3eiKmQ677fsBhz3g/lyKjIHX5sPODar4ydKW15VGgk3rwUZZca0YBXixBlAbTuh8TukQjqnmZ65C6j8IrxVY3LqmN6alXT+0EkatBX++Isq+axnTwtdn4WrOAKt3ewkiApA9wx+Tknr2xiOO/PFnBVZn0Xg6u15KHxYpbkRehOx5CCQ1Ly+SDCRdFrpf4n1x/GYo3OPsR/biKRSjjTvmRinP8vzEGvrOdnd9Qn4QK9JuEtEyL+2dgBbH+i/I1Fu+9CeZT+glBws5JdEiVcEHRMocBVNVUnS0VtkHENP8C21RRhxazw==", :message=>"U2FsdGVkX19dGiRELhJDIXWVZ5DA1VRlFTUkVMj57CCX/1oa5g83hG1vhoFRCl+KB2y0khrHVkFbEos0R6guFo+Y4qXlcmqC73mcpGaBPOV+tGOZQDATYJIQlEYKQ8DyDGcNpXxqmPC0SaBE1hZPl0DF9LnLyEiFO/1cp/XOaJJ7B61h2AFA8VhjXrPo+JtJZKfhThYeG+qNM3/LFKB68xntW/+/LEC9we0K3tXkW234cXOjNYgslHFtBAuzYWqi+zVxqZ92dcW5JVNGcFhwGIXeYaL3NBg+f8PQuHHQmVV41TD4g+PsE40COFc0IrauNqG6T99fseK5eduGCjqTwer9vWkGctrsWXYWsEMANPCcRf/dmjO/k67gGHzeZU0S63nMcOeJClhhEY4SEODpcBe5L3mDkwqhpq2UwxlGVwr4amC85lZesRVA52bw0JLalp1eu3Qdsw6W/CA+2T1uAkzXzvDY4kcI6bMo0chQylBj+z3meI4h8wrlVabe/MPOqXrxqBuRIfXW8OMlz8cfqE2JU5EGU3d60KxbWkD+bI8="}]}}
+
+Completed 200 OK in 67ms (Views: 0.5ms | ActiveRecord: 25.2ms)
+
+
+client 2:
+waiting for remote reject new deal proposal response from laptop2 server
+GiftService.verify_comments_request: Warning. Found 0 local and 1 remote comments in comments actions buffer. 0 create, 0 verify, 0 cancel, 0 accept,  1 reject and 0 delete comments requests
+GiftService.verify_comments_request: Warning. Found 0 local and 1 remote comments in comments actions buffer. 0 create, 0 verify, 0 cancel, 0 accept,  1 reject and 0 delete comments requests
+
+GiftService.send_messages: msg = {"mid":"14489824208456270376","msgtype":"users_sha256","users":[2,3]}
+UserService.user_ids_to_remote_sha256: mutual_friends = [2,3], typeof user_ids = object
+GiftService.send_message_users_sha256: users_sha256_message = {"msgtype":"users_sha256","mid":"14489824208456270376","users":[{"user_id":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","sha256":"6o¬ÙmÃ{X\n\u0017Ó\u0019-â\u0019`ùL\tø±\u001d\u00023\u00105ÿJ"},{"user_id":"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=","sha256":"ªåÑ{òkSÝ'î\u000f13uZþ|ç§\u0012MAz[|ÿ-»\u0013"}]}
+GiftService.send_messages: unencrypted message = {"sent_at_client":1448982425998,"messages":[{"msgtype":"users_sha256","mid":"14489824208456270376","users":[{"user_id":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","sha256":"6o¬ÙmÃ{X\n\u0017Ó\u0019-â\u0019`ùL\tø±\u001d\u00023\u00105ÿJ"},{"user_id":"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=","sha256":"ªåÑ{òkSÝ'î\u000f13uZþ|ç§\u0012MAz[|ÿ-»\u0013"}]}]}
+GiftService.send_messages: message_with_envelope = {"receiver_did":"14481194806251567148","receiver_sha256":"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=","server":false,"key":"IDrmgKOm6dQT1/Rl96eVisEc15NQ0xiiPNxt/qlauovXl4Dq/uo/G9ZYnZazH+mRJHg/qaSChZv9U7j6adyHB5DHdUqmme9IKM0OrjG21nTA6Y3Q7JlOz5x6TT8mmx9UjQxP5YLJk7kqWREbW/nkIX24eKavZmgaoeDcOAJg1ekLldeCE2scI4bXHlYJVbBVVs+50A9yA0NmWqxbCiwchuA6BiqbJRMwCyH4zGIyhXzS+23R8v8BIzux5STYnGpNiyPU0SQxztp5xM4lIhmsyMLgLTIbEqIa0CRRgdBSBAH9ZW1Nr95dfm669utl/m1QA18w7/JYJtAOr43Y07+dAA==","message":"U2FsdGVkX1/iWZ4cszMcBomZQPPqxdFvQIWVrm7wVnZUivUm65K6eYwR2KWwP4doI5i2atNvXsfuRY1w4Xu23LIV2y2b9xvrmilkbvE7pyYNHRLwmuDSXtQoeOt09Po7a4dfeVVo2zyUrJlAYB6efhZZUqbAjB8Q7Gb33vQlPH8ZfMWydnZsADRCZgtQLR9BD7ReeIGMjh6NjoQEBzCV8wFngJ55hhYF4CYOklsyyJLebo/hEIJwi+k3z7hDyCm4Yf0JHROLHFieJTCu+3H0Ex70l6NYl8khT7RZZNyD7O6LBPwTM33XFUprVZoamgI+Jhe1bc9bGGjf02cxEAGtR72PkddNXaWbrmcQ1DaSCrz4QPb94Ctvj1FaXzdrHw1ghgjhXZC7MueVJQKERPGxc1Cj1tHwmrAFfC2G3DrxG9DoOtg61CJOcWA9XUOZloKRY4tOARBSSpjYcUQWAmm/wfnRtYC1gfr5q1TER7L0RUCLhnWWCaFOaBt2wtcG47Kb0UJdfO3lMeCUYjs2LTsnFgpdxxqQCywxorkclsL5kHo="}
+
+GiftService.verify_comments_response:
+reject new deal proposal failed. error message was System error.  comment failed. Invalid request. sha256_action signature without new_deal_action_by_user_ids is not allowed

@@ -589,16 +589,16 @@ class Comment < ActiveRecord::Base
 
         # validate gift hash
         if verify_gift["giver_user_ids"] and (verify_gift["giver_user_ids"].size > 0)
-          giver_user_ids = verify_gift["giver_user_ids"]
+          giver_user_ids2 = verify_gift["giver_user_ids"]
         else
-          giver_user_ids = []
+          giver_user_ids2 = []
         end
         if verify_gift["receiver_user_ids"] and (verify_gift["receiver_user_ids"].size > 0)
-          receiver_user_ids = verify_gift["receiver_user_ids"]
+          receiver_user_ids2 = verify_gift["receiver_user_ids"]
         else
-          receiver_user_ids = []
+          receiver_user_ids2 = []
         end
-        if (giver_user_ids.size == 0) and (receiver_user_ids.size == 0)
+        if (giver_user_ids2.size == 0) and (receiver_user_ids2.size == 0)
           error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. Giver user ids and receiver user ids are missing"
           logger.error2 "cid #{cid} : #{error}"
           Gift.client_response_array_add(
@@ -607,7 +607,7 @@ class Comment < ActiveRecord::Base
               client_sid, verify_comment)
           next
         end
-        if (giver_user_ids.size > 0) and (receiver_user_ids.size > 0) and %w(accept reject).index(action)
+        if (giver_user_ids2.size > 0) and (receiver_user_ids2.size > 0) and %w(accept reject).index(action)
           error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. Giver AND receiver are not allowed for #{action} new deal proposal"
           logger.error2 "gid #{gid} : #{error}"
           Gift.client_response_array_add(
@@ -616,7 +616,7 @@ class Comment < ActiveRecord::Base
               client_sid, verify_comment)
           next
         end
-        if giver_user_ids.size != giver_user_ids.uniq.size
+        if giver_user_ids2.size != giver_user_ids2.uniq.size
           error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. User ids in gift giver user ids list must be unique"
           logger.error2 "cid #{cid} : #{error}"
           Gift.client_response_array_add(
@@ -625,7 +625,7 @@ class Comment < ActiveRecord::Base
               client_sid, verify_comment)
           next
         end
-        if receiver_user_ids.size != receiver_user_ids.uniq.size
+        if receiver_user_ids2.size != receiver_user_ids2.uniq.size
           error = "System error. #{action_failed}. Invalid request. Invalid gift signature data. User ids in gift receiver user ids list must be unique"
           logger.error2 "cid #{cid} : #{error} "
           Gift.client_response_array_add(
@@ -635,38 +635,46 @@ class Comment < ActiveRecord::Base
           next
         end
 
-
-        # read and prepare giver_user_ids and receiver_user_ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers)
-        # comment hash used for accept, reject and some deletes
+        # read and prepare giver_user_ids and receiver_user_ids
+        # - using internal user ids when checking gift sha256 signature local - see giver_user_ids1
+        # - using sha256 user signatures are used instead of internal user ids when communication with other Gofreerev servers - see giver_user_ids2
+        # comment.gift hash is used for accept, reject and some deletes
         # - accept and reject: compare comment creator and login users (remote partial validation - local full validation)
-        # - delete comment: compare comment comment givers and comment receives with login users (validated remote and local)
+        # - delete comment: compare comment.gift.givers and comment.gift.receives with login users (validated remote and local)
 
         # check if giver or receiver is login user. required but not sufficient for accept and reject. required and sufficient for delete comment
         giver_receiver_is_login_user = false
-        giver_user_ids = []
+        giver_user_ids1 = []
+        giver_user_ids2 = []
         giver_error = false
-        verify_gift["giver_user_ids"].each do |user_id|
-          if gift_server_id and user_id < 0 # unknown remote user
-            giver_user_ids << user_id
+        verify_gift['giver_user_ids'].each do |user_id|
+          if comment_server_id and user_id < 0 # unknown remote user - used negative user id as it is
+            giver_user_ids2 << user_id
             next
           end
           giver = users[user_id]
           if giver
-            if gift_server_id
+            # giver_user_ids1 - internal user ids - used in local gift sha256 check
+            if !gift_server_id
+              # local gift sha256 check
+              giver_user_ids1 << giver.user_id
+            end
+            # giver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request 
+            if comment_server_id
               # remote comment verification
-              su = giver.server_users.find { |su| (su.server_id == gift_server_id) and su.verified_at }
+              su = giver.server_users.find { |su| (su.server_id == comment_server_id) and su.verified_at }
               if su
                 # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-                giver_user_ids.push({ :sha256 => giver.calc_sha256(servers[gift_server_id].secret),
+                giver_user_ids2.push({ :sha256 => giver.calc_sha256(servers[comment_server_id].secret),
                                       :pseudo_user_id => su.remote_pseudo_user_id,
                                       :sha256_updated_at => giver.sha256_updated_at.to_i
                                     })
               else
-                giver_user_ids << -giver.id # unknown giver
+                giver_user_ids2 << -giver.id # unknown remote giver
               end
             else
-              # local comment verification
-              giver_user_ids << giver.user_id
+              # local comment verification - use user id as it is
+              giver_user_ids2 << giver.user_id
             end
             friend = friends[giver.user_id]
             giver_receiver_is_login_user = true if friend == 1
@@ -680,35 +688,46 @@ class Comment < ActiveRecord::Base
             giver_error = true
             break
           end
-        end if verify_gift["giver_user_ids"]
+        end if verify_gift['giver_user_ids']
         next if giver_error
-        giver_user_ids.sort! unless gift_server_id
+        giver_user_ids1.sort! unless gift_server_id
+        # logger.debug2 "todo: check translation from internal user ids to user signatures:"
+        # logger.debug2 "verify_gift['giver_user_ids'] = #{verify_gift['giver_user_ids'].to_json}"
+        # logger.debug2 "giver_user_ids1 = #{giver_user_ids1.to_json}"
+        # logger.debug2 "giver_user_ids2 = #{giver_user_ids2.to_json}"
 
-        receiver_user_ids = []
+        receiver_user_ids1 = []
+        receiver_user_ids2 = []
         receiver_error = false
-        verify_gift["receiver_user_ids"].each do |user_id|
-          if gift_server_id and user_id < 0
+        verify_gift['receiver_user_ids'].each do |user_id|
+          if comment_server_id and user_id < 0
             # unknown remote user
-            receiver_user_ids << user_id
+            receiver_user_ids2 << user_id
             next
           end
           receiver = users[user_id]
           if receiver
-            if gift_server_id
+            # receiver_user_ids1 - internal user ids - used in local gift sha256 check
+            if !gift_server_id
+              # local gift sha256 check
+              receiver_user_ids1 << receiver.user_id
+            end
+            # receiver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request
+            if comment_server_id
               # remote comment verification
-              su = receiver.server_users.find { |su| (su.server_id == gift_server_id) and su.verified_at }
+              su = receiver.server_users.find { |su| (su.server_id == comment_server_id) and su.verified_at }
               if su
                 # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-                receiver_user_ids.push({ :sha256 => receiver.calc_sha256(servers[gift_server_id].secret),
+                receiver_user_ids2.push({ :sha256 => receiver.calc_sha256(servers[comment_server_id].secret),
                                          :pseudo_user_id => su.remote_pseudo_user_id,
                                          :sha256_updated_at => receiver.sha256_updated_at.to_i
                                        })
               else
-                receiver_user_ids << -receiver.id # unknown receiver
+                receiver_user_ids2 << -receiver.id # unknown receiver
               end
             else
               # local comment verification
-              receiver_user_ids << receiver.user_id
+              receiver_user_ids2 << receiver.user_id
             end
             friend = friends[receiver.user_id]
             giver_receiver_is_login_user = true if friend == 1
@@ -722,9 +741,13 @@ class Comment < ActiveRecord::Base
             receiver_error = true
             break
           end
-        end if verify_gift["receiver_user_ids"]
+        end if verify_gift['receiver_user_ids']
         next if receiver_error
-        receiver_user_ids.sort! unless gift_server_id
+        receiver_user_ids1.sort! unless gift_server_id
+        # logger.debug2 "todo: check translation from internal user ids to user signatures:"
+        # logger.debug2 "verify_gift['receiver_user_ids'] = #{verify_gift['receiver_user_ids'].to_json}"
+        # logger.debug2 "receiver_user_ids1 = #{receiver_user_ids1.to_json}"
+        # logger.debug2 "receiver_user_ids2 = #{receiver_user_ids2.to_json}"
 
         if !giver_receiver_is_login_user
           # comment authorization failed. not logged in as giver or receiver (=login user is not gift creator). cancel, accept and delete are not allowed
@@ -787,17 +810,17 @@ class Comment < ActiveRecord::Base
             next
           end
 
-          # calculate and check server side gift sha256 signature
+          # calculate and check server side gift sha256 signature using internal user ids format uid/provider
           gift_sha256_client = verify_gift["sha256"]
           gift_direction = nil
-          if giver_user_ids.size > 0
-            gift_sha256_input = ([gid, gift_sha256_client, 'giver'] + giver_user_ids).join(',')
+          if giver_user_ids1.size > 0
+            gift_sha256_input = ([gid, gift_sha256_client, 'giver'] + giver_user_ids1).join(',')
             gift_sha256_calc = Base64.encode64(Digest::SHA256.digest(gift_sha256_input))
             gift_direction = 'giver' if gift.sha256 == gift_sha256_calc
             logger.debug "sha256 check failed with gift_direction = giver. gift_sha256_input = #{gift_sha256_input}, gift_sha256_calc = #{gift_sha256_calc}, gift.sha256 = #{gift.sha256}" unless gift_direction
           end
-          if receiver_user_ids.size > 0
-            gift_sha256_input = ([gid, gift_sha256_client, 'receiver'] + receiver_user_ids).join(',')
+          if receiver_user_ids1.size > 0
+            gift_sha256_input = ([gid, gift_sha256_client, 'receiver'] + receiver_user_ids1).join(',')
             gift_sha256_calc = Base64.encode64(Digest::SHA256.digest(gift_sha256_input))
             gift_direction = 'receiver' if gift.sha256 == gift_sha256_calc
             logger.debug "sha256 check failed with gift_direction = receiver. gift_sha256_input = #{gift_sha256_input}, gift_sha256_calc = #{gift_sha256_calc}, gift.sha256 = #{gift.sha256}" unless gift_direction
@@ -817,11 +840,13 @@ class Comment < ActiveRecord::Base
           # now checking accept and reject new deal proposal authorization (login user must be creator of comment)
           if %w(accept reject).index(action)
             # accept and reject: compare comment creator and login users (remote partial validation - local full validation)
-            comment_creator_user_ids = gift_direction == 'giver' ? giver_user_ids : receiver_user_ids
-            comment_creator_login_user_ids = login_user_ids & comment_creator_user_ids
-            if comment_creator_login_user_ids.length == 0
+            gift_creator_user_ids = gift_direction == 'giver' ? giver_user_ids1 : receiver_user_ids1
+            gift_creator_login_user_ids = login_user_ids & gift_creator_user_ids
+            if gift_creator_login_user_ids.length == 0
               error = "#{action_failed}. Not authorized. New deal proposal can only be accepted and rejected by creator of gift"
               logger.debug2 "cid #{cid} : #{error}"
+              # logger.debug2 "login_user_ids           = #{login_user_ids.to_json}"
+              # logger.debug2 "gift_creator_user_ids = #{gift_creator_user_ids.to_json}"
               Gift.client_response_array_add(
                   client_response_array,
                   { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_accept_gift_not_auth', :options => { :action => action } },
@@ -867,11 +892,11 @@ class Comment < ActiveRecord::Base
 
       if %w(accept reject).index(action) and !comment_server_id
         # local validation only
-        intersect = comment_creator_login_user_ids & new_deal_action_by_user_ids2
+        intersect = gift_creator_login_user_ids & new_deal_action_by_user_ids2
         if intersect.length == 0
           error = "#{action_failed}. Invalid \"new_deal_action_by_user_ids\". New deal proposal must be accepted or rejected by creator of gift"
           logger.debug2 "cid #{cid} : #{error}"
-          logger.debug2 "comment created by users = #{comment_creator_user_ids.join(', ')}"
+          logger.debug2 "comment created by users = #{gift_creator_user_ids.join(', ')}"
           logger.debug2 "login users              = #{login_user_ids.join(', ')}"
           logger.debug2 "new deal action by users = #{new_deal_action_by_user_ids2.join(', ')}"
           Gift.client_response_array_add(
@@ -882,7 +907,7 @@ class Comment < ActiveRecord::Base
         end
         if intersect.length < new_deal_action_by_user_ids2.length
           logger.debug2 "cid #{cid}. Warning. Difference between expected and received new_deal_action_by_user_ids. One or more missing users"
-          logger.debug2 "expected #{comment_creator_login_user_ids.join(', ')}"
+          logger.debug2 "expected #{gift_creator_login_user_ids.join(', ')}"
           logger.debug2 "received #{new_deal_action_by_user_ids2.join(', ')}"
         end
       end # if
@@ -915,9 +940,9 @@ class Comment < ActiveRecord::Base
         comment_hash[:user_ids] = user_ids
         comment_hash[:new_deal_action_by_user_ids] = new_deal_action_by_user_ids2 if verify_comment["sha256_action"]
         if gift_hash_required
-          gift_hash = {:gid => verify_comment['gid'], :sha256 => verify_comment['sha256']}
-          gift_hash[:giver_user_ids] = giver_user_ids if giver_user_ids.length > 0
-          gift_hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.length > 0
+          gift_hash = {:gid => gid, :sha256 => verify_gift['sha256']}
+          gift_hash[:giver_user_ids] = giver_user_ids2 if giver_user_ids2.length > 0
+          gift_hash[:receiver_user_ids] = receiver_user_ids2 if receiver_user_ids2.length > 0
           # optional comment.gift.server_id - use sha256 signature for server id in server to server communication
           if !verify_comment["gift"]["server_id"]
             # comment on remote server. gift on this server

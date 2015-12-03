@@ -2101,9 +2101,12 @@ class Server < ActiveRecord::Base
       seq = verify_comment['seq']
       cid = verify_comment['cid']
       comment_user_ids = verify_comment['user_ids']
+      comment_action_user_ids = verify_comment['new_deal_action_by_user_ids']
+      gift = verify_comment['gift']
       local_changed_comment_users = remote_changed_comment_users = false
+
+      # check and translate comment user ids - creator(s) of comment
       if comment_user_ids.class == Array and comment_user_ids.size > 0
-        # check and translate comment user ids
         error, valid_comment_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
             from_sha256s_to_user_ids(comment_user_ids,
                                      :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
@@ -2111,7 +2114,7 @@ class Server < ActiveRecord::Base
         if error
           logger.debug2 "seq #{seq}: invalid users in #{comment_user_ids}: #{error}"
           verify_comments_response.push({:seq => seq,
-                                      :gid => cid,
+                                      :cid => cid,
                                       :verified_at_server => false,
                                       :error => "invalid users in #{comment_user_ids}: #{error}" })
           no_errors += 1
@@ -2120,7 +2123,7 @@ class Server < ActiveRecord::Base
         if comment_user_ids.size != valid_comment_user_ids.size
           logger.debug2 "seq #{seq}: invalid users in #{comment_user_ids}"
           verify_comments_response.push({:seq => seq,
-                                      :gid => cid,
+                                      :cid => cid,
                                       :verified_at_server => false,
                                       :error => "invalid users in #{comment_user_ids}" })
           no_errors += 1
@@ -2131,6 +2134,105 @@ class Server < ActiveRecord::Base
       else
         comment_user_ids = []
       end
+
+      # check and translate optional comment new_deal_action_by_user_ids - user(s) doing new deal action (accept or reject) or delete comment
+      valid_comment_action_user_ids = nil
+      if comment_action_user_ids.class == Array and comment_action_user_ids.size > 0
+        error, valid_comment_action_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
+            from_sha256s_to_user_ids(comment_action_user_ids,
+                                     :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
+                                     :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
+        if error
+          logger.debug2 "seq #{seq}: invalid users in #{comment_action_user_ids}: #{error}"
+          verify_comments_response.push({:seq => seq,
+                                         :cid => cid,
+                                         :verified_at_server => false,
+                                         :error => "invalid users in #{comment_action_user_ids}: #{error}" })
+          no_errors += 1
+          next
+        end
+        if comment_action_user_ids.size != valid_comment_action_user_ids.size
+          logger.debug2 "seq #{seq}: invalid users in #{comment_action_user_ids}"
+          verify_comments_response.push({:seq => seq,
+                                         :cid => cid,
+                                         :verified_at_server => false,
+                                         :error => "invalid users in #{comment_action_user_ids}" })
+          no_errors += 1
+          next
+        end
+        local_changed_comment_users = true if no_local_changed_signatures > 0
+        remote_changed_comment_users = true if no_remote_changed_signatures > 0
+      else
+        comment_action_user_ids = []
+      end
+
+      # optional gift hash used in authorization check for accept and reject new deal proposal and some delete comment actions
+      valid_gift_giver_user_ids = nil
+      valid_gift_receiver_user_ids = nil
+      if gift
+        gift_giver_user_ids = gift['giver_user_ids']
+        gift_receiver_user_ids = gift['receiver_user_ids']
+
+        if gift_giver_user_ids.class == Array and gift_giver_user_ids.size > 0
+          error, valid_gift_giver_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
+              from_sha256s_to_user_ids(gift_giver_user_ids,
+                                       :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
+                                       :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
+          if error
+            logger.debug2 "seq #{seq}: invalid users in #{gift_giver_user_ids}: #{error}"
+            verify_comments_response.push({:seq => seq,
+                                           :cid => cid,
+                                           :verified_at_server => false,
+                                           :error => "invalid users in #{gift_giver_user_ids}: #{error}" })
+            no_errors += 1
+            next
+          end
+          if gift_giver_user_ids.size != valid_gift_giver_user_ids.size
+            logger.debug2 "seq #{seq}: invalid users in #{gift_giver_user_ids}"
+            verify_comments_response.push({:seq => seq,
+                                           :cid => cid,
+                                           :verified_at_server => false,
+                                           :error => "invalid users in #{gift_giver_user_ids}" })
+            no_errors += 1
+            next
+          end
+          local_changed_comment_users = true if no_local_changed_signatures > 0
+          remote_changed_comment_users = true if no_remote_changed_signatures > 0
+        else
+          gift_giver_user_ids = []
+        end
+
+        if gift_receiver_user_ids.class == Array and gift_receiver_user_ids.size > 0
+          error, valid_gift_receiver_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
+              from_sha256s_to_user_ids(gift_receiver_user_ids,
+                                       :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
+                                       :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
+          if error
+            logger.debug2 "seq #{seq}: invalid users in #{gift_receiver_user_ids}: #{error}"
+            verify_comments_response.push({:seq => seq,
+                                           :cid => cid,
+                                           :verified_at_server => false,
+                                           :error => "invalid users in #{gift_receiver_user_ids}: #{error}" })
+            no_errors += 1
+            next
+          end
+          if gift_receiver_user_ids.size != valid_gift_receiver_user_ids.size
+            logger.debug2 "seq #{seq}: invalid users in #{gift_receiver_user_ids}"
+            verify_comments_response.push({:seq => seq,
+                                           :cid => cid,
+                                           :verified_at_server => false,
+                                           :error => "invalid users in #{gift_receiver_user_ids}" })
+            no_errors += 1
+            next
+          end
+          local_changed_comment_users = true if no_local_changed_signatures > 0
+          remote_changed_comment_users = true if no_remote_changed_signatures > 0
+        else
+          gift_receiver_user_ids = []
+        end
+
+      end
+
       # move to relevant array
       if remote_changed_login_users or remote_changed_comment_users
         # sha256 changed user signature message will be sent to remote server
@@ -2143,6 +2245,7 @@ class Server < ActiveRecord::Base
         hash = {"seq" => seq,
                 "cid" => cid,
                 "sha256" => verify_comment['sha256']}
+        hash["action"] = verify_comment["action"] if verify_comment["action"]
         hash["sha256_action"] = verify_comment["sha256_action"] if verify_comment["sha256_action"]
         hash["sha256_deleted"] = verify_comment["sha256_deleted"] if verify_comment["sha256_deleted"]
         if local_changed_login_users or local_changed_comment_users
@@ -2152,13 +2255,21 @@ class Server < ActiveRecord::Base
         else
           # ready to process verify comments request
           hash["user_ids"] = valid_comment_user_ids
+          hash["new_deal_action_by_user_ids"] = valid_comment_action_user_ids if valid_comment_action_user_ids
+          if gift
+            gift_hash = {"gid" => gift['gid'], "sha256" => gift['sha256']}
+            gift_hash['giver_user_ids'] = valid_gift_giver_user_ids if valid_gift_giver_user_ids
+            gift_hash['receiver_user_ids'] = valid_gift_receiver_user_ids if valid_gift_receiver_user_ids
+            logger.debug2 "todo: translate gift.server_id? gift.server_id = #{gift['server_id']}"
+            hash['gift'] = gift_hash
+          end
           local_verify_comments_request.push(hash)
         end
       end
     end # each verify_comment
 
     logger.debug2 "no_errors = #{no_errors}, response.size = #{verify_comments_response.size}, request_on_hold.size = #{request_on_hold.size}, local_request.size = #{local_verify_comments_request.size}"
-    logger.debug2 "verify_comments (2) = #{verify_comments}"
+    logger.debug2 "verify_comments (with sha256 user signatures) = #{verify_comments}"
 
     if verify_comments.size == request_on_hold.size
       # waiting for local user info update - keep verify comment message for next ping

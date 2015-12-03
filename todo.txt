@@ -1971,4 +1971,34 @@
 
 460) add try catch block to other ingoing messages. See receive_message_send_gifts
 
-select next issue to solve: (rand*460).floor+1
+461) server.ping_test_loop. Don't abort loop after Errno::ECONNREFUSED: Connection refused - connect(2) error
+     wait 60 seconds and continue
+     Errno::ECONNREFUSED: Connection refused - connect(2) (laptop2.gofreerev.com:3000)
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:596:in `initialize'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:596:in `new'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:596:in `create_socket'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:741:in `block in connect'
+     	from /home/jro/.rvm/rubies/ruby-2.0.0-p643/lib/ruby/2.0.0/timeout.rb:66:in `timeout'
+     	from /home/jro/.rvm/rubies/ruby-2.0.0-p643/lib/ruby/2.0.0/timeout.rb:97:in `timeout'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:734:in `connect'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:496:in `query'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient/session.rb:169:in `query'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient.rb:1223:in `do_get_block'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient.rb:1006:in `block in do_request'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient.rb:1114:in `protect_keep_alive_disconnected'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient.rb:1001:in `do_request'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient.rb:843:in `request'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/httpclient-2.7.0.1/lib/httpclient.rb:746:in `post'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:2515:in `ping'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:2594:in `block in ping_test_loop'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:2593:in `loop'
+     	from /Disk-0/OLAP-hosting/Ruby/railsapps/gofreerev-lo/app/models/server.rb:2593:in `ping_test_loop'
+     	from (irb):1
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/railties-4.0.0/lib/rails/commands/console.rb:90:in `start'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/railties-4.0.0/lib/rails/commands/console.rb:9:in `start'
+     	from /home/jro/.rvm/gems/ruby-2.0.0-p643/gems/railties-4.0.0/lib/rails/commands.rb:64:in `<top (required)>'
+     	from bin/rails:4:in `require'
+     	from bin/r
+
+
+select next issue to solve: (rand*461).floor+1

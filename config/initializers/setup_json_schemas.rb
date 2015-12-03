@@ -747,7 +747,7 @@ JSON_SCHEMA = {
     },
 
 
-    # verify_comments server to server message
+    # verify_comments server to server message. from client on one Gofreerev server to other Gofreerev server where comment was created
     :verify_comments_request => {
         :type => 'object',
         :properties => {
@@ -771,7 +771,7 @@ JSON_SCHEMA = {
                 },
                 :minItems => 1
             },
-            # array with verify comments request from clients
+            # array with verify comments request from client to other gofreerev server
             :verify_comments => {
                 :type => 'array',
                 :items => {
@@ -783,8 +783,25 @@ JSON_SCHEMA = {
                         :cid => {:type => 'string', :pattern => uid_pattern},
                         # required sha256 digest of client side comment information (unique gift id + created at client + comment + price + currency + new_deal)
                         :sha256 => {:type => 'string', :maxLength => 32},
+                        # verify: check signature, other: check old signatures and add new signature for new deal action (cancel, accept or reject) or delete comment
+                        :action => {:type => 'string', :pattern => '^(verify|cancel|accept|reject|delete)$'},
                         # only used in new deal proposal actions (cancel, accept and reject) - sha256 digest of client side comment information (sha256 fields + new_deal_action + new_deal_action_at_client)
                         :sha256_action => {:type => 'string', :maxLength => 32},
+                        # optional user signatures for any new_deal_action (cancel, accept or reject) for new deal proposal.
+                        :new_deal_action_by_user_ids => {
+                            :type => %w(NilClass array),
+                            :items => {
+                                :type => %w(object integer),
+                                :properties => { # if object - verified server user
+                                                 :sha256 => { :type => 'string'},
+                                                 :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                                 :sha256_updated_at => { :type => 'integer'}
+                                },
+                                :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                :additionalProperties => false,
+                                :maximum => -1, # if integer - unknown user with negative user id
+                            }
+                        },
                         # only used in delete_comments request - sha256 digest of client side comment information (sha256_action fields + deleted_at_client)
                         :sha256_deleted => {:type => 'string', :maxLength => 32},
                         # internal user ids for creator of comment
@@ -801,8 +818,56 @@ JSON_SCHEMA = {
                                 :additionalProperties => false,
                                 :maximum => -1, # if integer - unknown user with negative user id
                             }
+                        },
+                        # optional gift hash. used in authorization check. required for reject and accept new deal proposal and delete comment requests if comment is deleted by giver or receiver of gift
+                        :gift => {
+                            :type => :object,
+                            :properties => {
+                                # gid - unique gift id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
+                                :gid => {:type => 'string', :pattern => uid_pattern},
+                                # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
+                                :sha256 => {:type => 'string', :maxLength => 32},
+                                # array with user signatures for giver of gift if any. must have giver and/or receiver array
+                                :giver_user_ids => {
+                                    :type => %w(NilClass array),
+                                    :items => {
+                                        :type => %w(object integer),
+                                        :properties => { # if object - verified server user
+                                                         :sha256 => { :type => 'string'},
+                                                         :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                                         :sha256_updated_at => { :type => 'integer'}
+                                        },
+                                        :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                        :additionalProperties => false,
+                                        :maximum => -1, # if integer - unknown user with negative user id
+                                    }
+                                },
+                                # array with user signatures for receiver of gift if any. must have giver and/or receiver array
+                                :receiver_user_ids => {
+                                    :type => %w(NilClass array),
+                                    :items => {
+                                        :type => %w(object integer),
+                                        :properties => { # if object - verified server user
+                                                         :sha256 => { :type => 'string'},
+                                                         :pseudo_user_id => { :type => 'integer', :minimum => 1},
+                                                         :sha256_updated_at => { :type => 'integer'}
+                                        },
+                                        :required => %w(sha256 pseudo_user_id sha256_updated_at),
+                                        :additionalProperties => false,
+                                        :maximum => -1, # if integer - unknown user with negative user id
+                                    }
+                                },
+                                # optional sha256 signature for server (site_url) if gift and comment is on different Gofreerev servers
+                                :server_id => { :type => 'string'}
+                            },
+                            # gift hash options
+                            :required => %w(gid sha256),
+                            :additionalProperties => false
                         }
-                    }
+                    },
+                    # verify comment options
+                    :required => %w(seq cid sha256 user_ids),
+                    :additionalProperties => false
                 }
             }
         },

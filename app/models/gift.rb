@@ -280,8 +280,10 @@ class Gift < ActiveRecord::Base
   # use :error => string for cross server error messages, english only
   # use :error => { :key, :options } for within server error messages with multi-language support
   def self.format_error_response (client_response, client_sid, client_request)
-    debug_info = { :request => client_request, :response => client_response}.to_json
+    # debug info. request and response in exceptions
+    debug_info = { :request => client_request, :response => client_response}
     debug_info.delete(:request) unless client_request
+    debug_info = debug_info.to_json
     if client_response[:error].to_s == ''
       raise InvalidResponse.new("Required error message :error is missing in ERROR response: #{debug_info}")
     end

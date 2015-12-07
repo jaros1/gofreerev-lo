@@ -9,95 +9,7 @@ class Comment < ActiveRecord::Base
   # end
   # add_index "comments", ["cid"], name: "index_comments_on_cid", unique: true, using: :btree
 
-  # receive list with new comments from client,
-  # verify user ids, generate a sha256 digests, save comments and return created_at_server boolean to client
-  # sha256 digest is used as a control when replicating comments between clients
-  # todo: delete - now using verify_comments with action = create
-  private
-  def self.new_comments (new_comments, login_user_ids)
-    # logger.debug2 "new_comments = #{new_comments}"
-    # logger.debug2 "login_user_ids = #{login_user_ids}"
-    msg = "Could not create comment signature on server. "
-    # check params
-    return if !new_comments or new_comments.size == 0 # ignore empty new comments request
-    if login_user_ids.class != Array or login_user_ids.size == 0
-      # system error - util/ping + Gift.new_comments should only be called with logged in users.
-      return { :error => "#{msg}System error. Expected array with one or more login user ids."}
-    end
-    # verify user ids. should never fail. user ids are from sessions table and should be valid
-    # order by user id - order is used in sha256 server signature
-    login_users = User.where(:user_id => login_user_ids).order('user_id')
-    if login_users.size < login_user_ids.size
-      return { :error => "#{msg}System error. Invalid login. Expected #{login_user_ids.size} users. Found #{login_users.size} users."}
-    end
-    # logger.debug2 "login user ids = " + login_users.collect { |u| u.id }.join(', ')
-    login_providers = login_users.collect { |u| u.provider }
-    # logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
-    # check and create sha256 digest signature for the new comment(s)
-    new_comments.shuffle!
-    response = []
-    no_errors = 0
-    # new comments array has already been json schema validated to some extend
-    new_comments.each do |new_comment|
-      # check new_comment hash: gid, sha256 and user_ids array
-      cid = new_comment['cid'].to_s
-      sha256_client = new_comment['sha256'].to_s
-      comment_user_ids = new_comment['user_ids'].uniq
-      # logger.debug2 "cid = #{cid}, comment_user_ids = #{comment_user_ids}"
 
-      # Could not create comment signature on server. Invalid authorization. Expected 2 users. Found 1 users
-      signature_users = login_users.find_all { |u| comment_user_ids.index(u.id)}
-      if signature_users.size == comment_user_ids.size
-        # authorization ok. create server side sha256 digest signature
-        # field are readonly and comment signature check can verify that field is not updated by client
-        sha256_server_text = ([cid, sha256_client] + signature_users.collect { |u| u.user_id }).join(',')
-        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        logger.debug2 "sha256_server = #{sha256_server}"
-        c = Comment.find_by_cid(cid)
-        if c
-          # comment already exists - check signature
-          if c.sha256 == sha256_server
-            response << { :cid => cid, :created_at_server => true }
-          else
-            response << { :cid => cid, :created_at_server => false, :error => "#{msg}Comment exists but sha256 signature is invalid." }
-            no_errors += 1
-          end
-          next
-        end
-        c = Comment.new
-        c.cid = cid
-        c.sha256 = sha256_server
-        c.save!
-        response << { :cid => cid, :created_at_server => true }
-        next
-      end
-
-      # authorization error. maybe api log out on client before new comment signature was created on server.
-      missing_login_user_ids = comment_user_ids - login_users.collect { |u| u.id }
-      missing_login_users = User.where(:id => missing_login_user_ids)
-      missing_login_providers = missing_login_users.collect { |u| u.provider }
-      # logger.debug2 "missing_login_user_ids = #{missing_login_user_ids.join(', ')}"
-      # logger.debug2 "missing login users = " + missing_login_users.collect { |u| u.debug_info }.join(', ')
-      # split missing login users in missing login and changed login
-      changed_login_providers = login_providers & missing_login_providers
-      missing_login_providers = missing_login_providers - changed_login_providers
-      # logger.debug2 "changed_login_providers = #{changed_login_providers.join('. ')}"
-      # logger.debug2 "missing_login_providers = #{missing_login_providers.join('. ')}"
-      # nice informative error message
-      if changed_login_providers.size > 0
-        response << { :cid => cid, :created_at_server => false,
-                      :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since comment was created. Please log in with old #{changed_login_providers.join('. ')} user."}
-      else
-        response << { :cid => cid, :created_at_server => false,
-                      :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since comment was created. Please log in for #{missing_login_providers.join('. ')}."}
-      end
-      no_errors += 1
-
-    end
-    return { :comments => response, :no_errors => no_errors }
-  end # self.new_comments
-
-  
   # verify comments request from client - used when receiving new comments from other clients - check server side sha256 signature and return true or false
   # sha256 is required and must be valid
   # sha256_action and sha256_deleted are optional in request and are validated if supplied
@@ -113,6 +25,11 @@ class Comment < ActiveRecord::Base
   def self.verify_comments (verify_comments, login_user_ids, client_sid, client_sha256)
     logger.debug2 "verify_comments = #{verify_comments.to_json}"
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
+    logger.debug2 "client_sid     = #{client_sid}"
+    logger.debug2 "client_sha256  = #{client_sha256}"
+    is_server_msg = (client_sha256.to_s == '')
+    logger.debug2 "is_server_msg  = #{is_server_msg}"
+
     if !verify_comments
       # empty verify comments request (ping) from client - any remote comment responses ready for this client?
       vcs = VerifyComment.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
@@ -186,8 +103,10 @@ class Comment < ActiveRecord::Base
     Gift.where(:gid => gids.uniq).each { |g| gifts[g.gid] = g }
 
     client_response_array = []
-    server_requests = {} # server_id => array with remote commments verification request
-    server_mid = {} # one mid (unique message id) for each remote server in verify comments request
+    server_verify_comms_requests = {} # server_id => array with remote commments verification request
+    server_verify_comments_mid = {} # one mid (unique message id) for each remote server in verify comments request
+    server_verify_gifts_requests = {} # server_id => array with remote gifts verification request (gift hash in verify comments request)
+    server_verify_gifts_mid = {} # one mid (unique message id) for each remote server in verify gifts request (gift hash in verify comments request)
 
     verify_comments.each do |verify_comment|
       seq = verify_comment['seq']
@@ -370,7 +289,9 @@ class Comment < ActiveRecord::Base
         next
       end
 
-      # prepare comment user ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers)
+      # prepare comment user ids (creator of comment / new deal proposal)
+      # a) use internal user ids uid/provider if comment is on this Gofreerev server (local check only)
+      # b) use sha256 user signatures if comment is on an other Gofreerev server (used in server to server verify comments message
       user_ids = []
       user_error = false
       comment_and_login_user_ids = []
@@ -503,8 +424,10 @@ class Comment < ActiveRecord::Base
       end # case
       logger.debug2 "cid = #{cid}, action = #{action}, gift_hash_required = #{gift_hash_required}"
 
-      # prepare new_deal_action_by_user_ids (sha256 user signatures are used instead of user ids when communication with other Gofreerev servers).
-      # only used for comments with comment.new_deal = true and action = verify comment or cancel, accept or reject new deal proposal
+      # prepare new_deal_action_by_user_ids
+      # a) use internal user ids uid/provider if comment is on this Gofreerev server (local check only)
+      # b) use sha256 user signatures if comment is on an other Gofreerev server (used in server to server verify comments message
+      # used for comments with comment.new_deal = true and action = verify comment or cancel, accept or reject new deal proposal
       # new_deal_action_by_user_ids must be a subset of login user ids (except verify)
       # new_deal_action_by_user_ids must also be:
       # - verify: no restrictions (client side security - comments are replicated only between mutual friends)
@@ -572,8 +495,8 @@ class Comment < ActiveRecord::Base
       end
       if gift_hash_required
         # copy/paste from Gift.verify comments. prepare comment giver_user_ids and receiver_user_ids for cross server communication. check comment.sha256 and find direction and creator of comment
-        # action is accept or reject new deal proposal - login users must be creator of gift
-        # or action is delete and login users must be giver or receiver of gift
+        # a) accept or reject new deal proposal - login users must be creator of gift
+        # b) action is delete and login users must be giver or receiver of gift
         verify_gift = verify_comment['gift']
         gift_server_id = verify_gift['server_id']
         if gift_server_id and !servers.has_key? gift_server_id
@@ -637,10 +560,23 @@ class Comment < ActiveRecord::Base
 
         # read and prepare giver_user_ids and receiver_user_ids
         # - using internal user ids when checking gift sha256 signature local - see giver_user_ids1
-        # - using sha256 user signatures are used instead of internal user ids when communication with other Gofreerev servers - see giver_user_ids2
+        # - using sha256 user signatures instead of internal user ids when communication with other Gofreerev servers - see giver_user_ids2
         # comment.gift hash is used for accept, reject and some deletes
         # - accept and reject: compare comment creator and login users (remote partial validation - local full validation)
         # - delete comment: compare comment.gift.givers and comment.gift.receives with login users (validated remote and local)
+
+        if comment_server_id
+          # sending verify comment request to other Gofreerev server.
+          # use sha256 user signatures for server for comment
+          server_id = comment_server_id
+        elsif gift_server_id
+          # sending verify comments request to other Gofreerev server.
+          # use sha256 user signatures for server for gift
+          server_id = gift_server_id
+        else
+          # 100 local gift verification. use only internal user ids uid/provider
+          server_id = nil
+        end
 
         # check if giver or receiver is login user. required but not sufficient for accept and reject. required and sufficient for delete comment
         giver_receiver_is_login_user = false
@@ -648,7 +584,7 @@ class Comment < ActiveRecord::Base
         giver_user_ids2 = []
         giver_error = false
         verify_gift['giver_user_ids'].each do |user_id|
-          if comment_server_id and user_id < 0 # unknown remote user - used negative user id as it is
+          if server_id and user_id < 0 # unknown remote user - used negative user id as it is
             giver_user_ids2 << user_id
             next
           end
@@ -660,12 +596,12 @@ class Comment < ActiveRecord::Base
               giver_user_ids1 << giver.user_id
             end
             # giver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request 
-            if comment_server_id
-              # remote comment verification
-              su = giver.server_users.find { |su| (su.server_id == comment_server_id) and su.verified_at }
+            if server_id
+              # remote comment or remote gift verification
+              su = giver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
               if su
                 # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-                giver_user_ids2.push({ :sha256 => giver.calc_sha256(servers[comment_server_id].secret),
+                giver_user_ids2.push({ :sha256 => giver.calc_sha256(servers[server_id].secret),
                                       :pseudo_user_id => su.remote_pseudo_user_id,
                                       :sha256_updated_at => giver.sha256_updated_at.to_i
                                     })
@@ -700,7 +636,7 @@ class Comment < ActiveRecord::Base
         receiver_user_ids2 = []
         receiver_error = false
         verify_gift['receiver_user_ids'].each do |user_id|
-          if comment_server_id and user_id < 0
+          if server_id and user_id < 0
             # unknown remote user
             receiver_user_ids2 << user_id
             next
@@ -713,12 +649,12 @@ class Comment < ActiveRecord::Base
               receiver_user_ids1 << receiver.user_id
             end
             # receiver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request
-            if comment_server_id
-              # remote comment verification
-              su = receiver.server_users.find { |su| (su.server_id == comment_server_id) and su.verified_at }
+            if server_id
+              # remote comment or remote gift verification
+              su = receiver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
               if su
                 # verified server user. use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
-                receiver_user_ids2.push({ :sha256 => receiver.calc_sha256(servers[comment_server_id].secret),
+                receiver_user_ids2.push({ :sha256 => receiver.calc_sha256(servers[server_id].secret),
                                          :pseudo_user_id => su.remote_pseudo_user_id,
                                          :sha256_updated_at => receiver.sha256_updated_at.to_i
                                        })
@@ -752,7 +688,7 @@ class Comment < ActiveRecord::Base
         if !giver_receiver_is_login_user
           # comment authorization failed. not logged in as giver or receiver (=login user is not gift creator). cancel, accept and delete are not allowed
           if action == 'delete'
-            # delete comment
+            # delete comment. We are in gift_hash_required section. comment was not deleted by creator of comment
             error = "#{action failed}. delete comment is not allowed. Not logged in as comment creator or as giver or receiver of gift"
             logger.debug2 "cid #{cid} : #{error}"
             Gift.client_response_array_add(
@@ -760,7 +696,7 @@ class Comment < ActiveRecord::Base
                 { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_delete_not_auth', :options => { :action => action } },
                 client_sid, verify_comment)
           else
-            # accept or reject new deal proposal
+            # accept or reject new deal proposal. not logged in as giver or receiver of gift
             error = "#{action_failed}. #{action} new del proposal is not allowed. Not logged in as gift creator"
             logger.debug2 "cid #{cid} : #{error}"
             Gift.client_response_array_add(
@@ -771,30 +707,9 @@ class Comment < ActiveRecord::Base
           next
         end
 
-        if gift_server_id
-          # todo: now validating authorization for accept, reject new deal proposal or delete comment
-          #       gift is on an other Gofreerev server
-          #       check response from previous server to server request is ready (new request, wait, ready or timeout)
-          #       new request:
-          #       send gift verify request to other gofreerev server
-          #       gift must exist on other server and gift sha256 signature must be correct
-          #       other Gofreerev server must return direction to this Gofreerev server (null=invalid sha256, giver or receiver)
-          #       this Gofreerev server must save verify gift request in db and process request after receiving response from other Gofreerev server (ready)
-          #       reuse verify_gifts table? reuse verify_gifts server to server message
-          #       use negative seq for comments without server id but gift hash with server id?
-          #       check page reload problem. no friends array. first verify comments request with gift hash (=negative seq)?!
-          error = "System error. #{action_failed}. Authorization check failed. Gift and comment are on different Gofreerev servers. Not yet implemented"
-          logger.error2 "Cid #{cid} : #{error}"
-          Gift.client_response_array_add(
-              client_response_array,
-              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_auth_not_impl', :options => { :action => action } },
-              client_sid, verify_comment)
-          next
-        end
-
         if !gift_server_id
 
-          # gift on this Gofreerev server. full local validation. check sha256 and find direction = comment creator (giver or receiver)
+          # gift on this Gofreerev server. authorization validation now. check sha256 and find direction = comment creator (giver or receiver)
 
           # check if gift exists
           # todo: see todo issue 441 and 443
@@ -890,8 +805,13 @@ class Comment < ActiveRecord::Base
         end
       end
 
-      if %w(accept reject).index(action) and !comment_server_id
+      if %w(accept reject).index(action) and !comment_server_id and !gift_server_id
         # local validation only
+
+        # todo: gift is on an other Gofreerev server and direction, creators and gift_creator_login_user_ids are unitialized at this point. repeat this check after server to server verify gift and verify comment messages
+
+        logger.debug2 "gift_creator_login_user_ids = #{gift_creator_login_user_ids.to_json}"
+        logger.debug2 "new_deal_action_by_user_ids2 = #{new_deal_action_by_user_ids2.to_json}"
         intersect = gift_creator_login_user_ids & new_deal_action_by_user_ids2
         if intersect.length == 0
           error = "#{action_failed}. Invalid \"new_deal_action_by_user_ids\". New deal proposal must be accepted or rejected by creator of gift"
@@ -919,7 +839,7 @@ class Comment < ActiveRecord::Base
         #       could also be used in a verify comment cache on this gofreerev server
         #       don't send identical verify comments request to other gofreerev server
         # 1) insert row in verify_comments table
-        server_mid[comment_server_id] = Sequence.next_server_mid unless server_mid.has_key?(comment_server_id)
+        server_verify_comments_mid[comment_server_id] = Sequence.next_server_mid unless server_verify_comments_mid.has_key?(comment_server_id)
         vc = VerifyComment.new
         vc.client_sid = client_sid
         vc.client_sha256 = client_sha256
@@ -927,7 +847,7 @@ class Comment < ActiveRecord::Base
         vc.server_id = comment_server_id
         vc.cid = cid
         vc.server_seq = Sequence.next_verify_seq
-        vc.request_mid = server_mid[comment_server_id]
+        vc.request_mid = server_verify_comments_mid[comment_server_id]
         vc.original_client_request = verify_comment.to_json
         vc.save!
         # 2) insert verify_comments request in server_requests hash
@@ -956,10 +876,131 @@ class Comment < ActiveRecord::Base
           end
           comment_hash[:gift] = gift_hash
         end
-        server_requests[comment_server_id] = [] unless server_requests.has_key? comment_server_id
-        server_requests[comment_server_id].push(comment_hash)
+        server_verify_comms_requests[comment_server_id] = [] unless server_verify_comms_requests.has_key? comment_server_id
+        server_verify_comms_requests[comment_server_id].push(comment_hash)
         next
       end # if comment_server_id
+
+      # comment is on this Gofreerev server.
+
+      if gift_server_id
+        # gift is on an other Gofreerev server
+        # check gift sha256, find direction, creator of gift and check action authorization with a verify gifts server to server message
+
+        # case 1: client ping. comment on this Gofreerev server. gift on an other Gofreerev server
+        #         save original client request in verify_comments (todo: add login_user_ids to verify_comments table)
+        #         create and save a verify gifts request in verify gifts table
+        #         send a server to server verify gifts request
+        #         wait for and receive a verify gifts response from other server
+        #         save response in verify_gifts table
+        #         repeat original verify comment request in next client ping and return response (todo: check unchanged login)
+
+        # case 2: client ping. comment on other Gofreerev server. gift on this or a third Gofreerev server
+        #         save original client request in verify comments
+        #         send a server to server verify comments request
+        #         other server: receive verify comments request
+        #         other server: save original verify comments request in verify_comments
+        #         other server: send verify gifts request to a third server
+        #         other server: receive verify gifts response from third server
+        #         other server: save response in
+
+        # check if verify comments request is in verify_comments table.
+        # a) not found: first verify_comments request before sending verify_gifts request to other Gofreerev server
+        # b) found    : second verify_comments request after receiving verify_gifts response from other Gofreerev server
+        # using sha256 index on verify_comments table as helper when checking for old verify comments request
+        original_verify_comm_request = verify_comment.to_json
+        original_vc_request_sha256 = Base64.encode64(Digest::SHA256.digest(original_verify_comm_request))
+        vc = VerifyComment.find_by_original_client_request_sha256_and_original_client_request(original_vc_request_sha256, original_verify_comm_request)
+        if !vc
+
+          logger.debug2 "comment.gift is on an other Gofreerev server. Make verify gifts request and wait for verify gift response before continuing with verify comments request"
+
+          # insert row in verify_comments table including login user ids. request will be retried after receiving verify gifts response from other Gofreerev server
+          # response from server verify gifts will be saved in verify_gifts table.
+          # using identical server_seq and request_mid in verify_gifts and verify_comments table
+          # server.receive_verify_gifts_response will use this information to find and retry original verify comments request
+          server_verify_gifts_mid[gift_server_id] = Sequence.next_server_mid unless server_verify_gifts_mid.has_key?(gift_server_id)
+          vc = VerifyComment.new
+          vc.client_sid = client_sid
+          vc.client_sha256 = client_sha256
+          vc.client_seq = seq
+          vc.server_id = comment_server_id || 0
+          vc.cid = cid
+          vc.server_seq = Sequence.next_verify_seq
+          vc.request_mid = server_verify_gifts_mid[gift_server_id]
+          vc.original_client_request = original_verify_comm_request
+          vc.original_client_request_sha256 = original_vc_request_sha256
+          vc.login_user_ids = login_user_ids
+          vc.save!
+          logger.debug2 "vc = #{vc.to_json}"
+
+          vg = VerifyGift.new
+          vg.client_sid = nil
+          vg.client_sha256 = nil
+          vg.client_seq = vc.server_seq
+          vg.server_id = gift_server_id
+          vg.gid = gid
+          vg.server_seq = vc.server_seq # link between verify comments request and verify gifts response
+          vg.request_mid = vc.request_mid
+          vg.original_client_request = verify_gift.to_json
+          vg.save!
+          logger.debug2 "vg = #{vg.to_json}"
+
+          # create server to server verify gifts request. simple check. only with sha256, giver and receiver. no action and no other sha256 signatures
+          verify_gift_request = {:seq => vc.server_seq, :gid => gid, :sha256 => verify_gift["sha256"]}
+          verify_gift_request[:giver_user_ids] = giver_user_ids2 if giver_user_ids2.size > 0
+          verify_gift_request[:receiver_user_ids] = receiver_user_ids2 if receiver_user_ids2.size > 0
+          logger.debug2 "verify_gift_request = #{verify_gift_request}"
+
+          # add verify_gifts request to server_verify_gifts_requests
+          # one array for each remote Gofreerev server with verify gifts requests
+          # one array for each remote Gofreerev server with fallback info used in case of invalid verify gifts json message
+          server_verify_gifts_requests[gift_server_id] = { :server_requests => [], :json_error_info => []} unless server_verify_gifts_requests.has_key? gift_server_id
+          json_error_info = verify_comment, vc, vg
+          logger.debug2 "verify_gift_request = #{verify_gift_request.to_json}"
+          logger.debug2 "verify_comment = #{verify_comment.to_json}"
+          logger.debug2 "vc = #{vc.to_json}"
+          logger.debug2 "vg = #{vg.to_json}"
+          logger.debug2 "json_error_info = #{json_error_info.to_json}"
+          server_verify_gifts_requests[gift_server_id][:server_requests].push(verify_gift_request)
+          server_verify_gifts_requests[gift_server_id][:json_error_info].push(json_error_info)
+          logger.debug2 "server_verify_gifts_requests = #{server_verify_gifts_requests.to_json}"
+
+          # wait for verify gifts response and new identical verify comments request
+          logger.debug2('todo: add verify_comments call to server.receive_verify_gifts_response')
+          next
+
+        end
+
+        # verify comments request was already in verify comments table
+        # must be second call after receiving verify gifts response from other Gofreerev server
+        # 1) must have login_user_ids information
+        # 2) must have corresponding row in verify gifts table (server_seq)
+        # 3) response from verify gifts request must be ready
+        #    - verified_at_server is not null
+        #    - response_mid is not null
+        #    - direction is not null
+        logger.debug2 "comment.gift is on a other Gofreerev server. Old identical verify comment request found in verify_comments table"
+        logger.debug2 "vc = #{vc.to_json}"
+
+
+
+
+
+
+        # check if verify gifts response already is in verify_gifts table and continue with authorization validation
+        # wait for verify gifts response if verify gifts request has already been sent to other gofreerev server - resend verify comment request to this Gofreerev server
+        # timeout if waiting more when x seconds for verify gifts response from other Gofreerev server
+        # read direction and make authorization check
+        error = "System error. #{action_failed}. Authorization check failed. Gift and comment are on different Gofreerev servers. Not yet implemented"
+        logger.error2 "Cid #{cid} : #{error}"
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_auth_not_impl', :options => { :action => action } },
+            client_sid, verify_comment)
+        next
+      end
+
 
       # local comment action validation
 
@@ -1107,6 +1148,7 @@ class Comment < ActiveRecord::Base
 
     end # each new_comment
 
+
     # any remote verify comment response ready for this client?
     vcs = VerifyComment.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
     if vcs.size > 0
@@ -1122,11 +1164,11 @@ class Comment < ActiveRecord::Base
       vcs.delete_all
     end
 
-    logger.debug2 "response = #{client_response_array}"
-    logger.debug2 "server_requests = #{server_requests}"
+    logger.debug2 "client_response_array = #{client_response_array}"
+    logger.debug2 "server_verify_comms_requests = #{server_verify_comms_requests}"
 
-    # send any server to server verify comments messages
-    server_requests.each do |server_id, server_request|
+    # send any server to server verify comments messages (comment on remote server)
+    server_verify_comms_requests.each do |server_id, server_request|
       # translate login user uds to sha256 signatures (verified server users) or negative user ids (unknown users)
       login_user_ids = []
       login_users.each do |login_user|
@@ -1138,13 +1180,13 @@ class Comment < ActiveRecord::Base
                                 :sha256_updated_at => login_user.sha256_updated_at.to_i
                               })
         else
-          # unknown login user - use negative user id
+          # unknown or unverified user - user unknown on other Gofreerev server <server_id> - use negative user id
           login_user_ids.push(-login_user.id)
         end
       end
       message_hash = {
           :msgtype => 'verify_comments',
-          :mid => server_mid[server_id],
+          :mid => server_verify_comments_mid[server_id],
           :login_users => login_user_ids,
           :verify_comments => server_request }
       logger.debug2 "verify_comments message_hash = #{message_hash}"
@@ -1174,7 +1216,87 @@ class Comment < ActiveRecord::Base
       m.from_did = SystemParameter.did
       m.to_did = servers[server_id].new_did
       m.server = true
-      m.mid = server_mid[server_id]
+      m.mid = server_verify_comments_mid[server_id]
+      m.key = key
+      m.message = message
+      m.save!
+    end # each server_id, server_request
+
+
+
+
+    # send any server to server verify gifts messages (gift on remote server)
+    server_verify_gifts_requests.each do |server_id, server_requests_hash|
+      # translate login user ids to sha256 signatures (verified server users) or negative user ids (unknown users)
+      login_user_ids = []
+      login_users.each do |login_user|
+        su = login_user.server_users.find { |su2| ((su2.server_id == server_id) and su2.verified_at) }
+        if su
+          # verified server user - use sha256 signature as user id and pseudo user id as fallback information (changed sha256 signature)
+          login_user_ids.push({ :sha256 => login_user.calc_sha256(servers[server_id].secret),
+                                :pseudo_user_id => su.remote_pseudo_user_id,
+                                :sha256_updated_at => login_user.sha256_updated_at.to_i
+                              })
+        else
+          # unknown or unverified user - user unknown on other Gofreerev server <server_id> - use negative user id
+          login_user_ids.push(-login_user.id)
+        end
+      end
+      # build and validate json verify gifts server to server message
+      message_hash = {
+          :msgtype => 'verify_gifts',
+          :mid => server_verify_gifts_mid[server_id],
+          :login_users => login_user_ids,
+          :verify_gifts => server_requests_hash[:server_requests] }
+      logger.debug2 "verify_gifts message_hash = #{message_hash}"
+      json_schema = :verify_gifts_request
+      if !JSON_SCHEMA.has_key? json_schema
+        return Gift.format_error_response(
+            { :error => "System error. Could not validate verify_gifts server to server message. JSON schema definition #{json_schema.to_s} was not found.",
+              :key => 'no_json', :options => { :schema => json_schema} },
+            client_sid, nil)
+      end
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
+      if json_errors.size > 0
+        logger.error2 "Failed to sent gifts to remote verification. Error in #{json_schema}"
+        logger.error2 "message = #{message_hash}"
+        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+        logger.error2 "errors = #{json_errors.join(', ')}"
+        json_error = json_errors.join(', ')
+        error = "System error. Failed to sent gifts to remote verification. JSON error in verify_gifts server to server message: #{json_error}."
+
+        # return fatal json error in client_response_array
+        server_requests_hash[:json_error_info].each do |json_error_info|
+          verify_comment, vc, vg = json_error_info
+          logger.debug2 "server_id      = #{server_id}"
+          logger.debug2 "verify_comment = #{verify_comment.to_json}"
+          logger.debug2 "vc             = #{vc.to_json}"
+          logger.debug2 "vg             = #{vg.to_json}"
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => verify_comment['seq'], :cid => verify_comment['cid'], :verified_at_server => false,
+                :error => error, :key => 'invalid_json', :options => {:schema => json_schema, :error => json_error} },
+              client_sid, verify_comment)
+          vc.destroy!
+          vg.destroy!
+        end
+
+        next
+
+        # return Gift.format_error_response(
+        #     { :error => "Failed to create verify_gifts server to server message: #{json_errors.join(', ')}",
+        #       :key => 'invalid_json', :options => { :schema => json_schema, :error => error} },
+        #     client_sid, nil)
+      end
+
+      # save mix encrypted server to server message - will be sent in next server to server ping
+
+      key, message = servers[server_id].mix_encrypt_message_hash message_hash
+      m = Message.new
+      m.from_did = SystemParameter.did
+      m.to_did = servers[server_id].new_did
+      m.server = true
+      m.mid = server_verify_comments_mid[server_id]
       m.key = key
       m.message = message
       m.save!

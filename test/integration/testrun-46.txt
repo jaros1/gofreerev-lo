@@ -5,7 +5,8 @@ gift created by client on server 2
 new deal proposal from client on server 1
 reject new deal proposal action from client on server 2
 
-todo: handle server verify comments request when comment and gift is on two different Gofreerev servers
+todo: handle server verify comments request when comment and gift are on two different Gofreerev servers
+
 
 client 2: send verify comment request to server 2
 GiftService.verify_comments_add: added cid 14488910629803885142 to verify comments buffer with action reject

@@ -58,9 +58,9 @@ class Message < ActiveRecord::Base
 
 
   # read message for this server
-  # client:
-  # - true if called from Server.ping (processing messages in response)
-  # - false if called from util_controller.ping (processing incoming messages in request)
+  # is_client:
+  # - true - client side of communication - called from Server.ping
+  # - false - server side of communication - called from util_controller.ping via Message.receive_messages
   # pseudo_user_ids:
   # - only relevant for client==true. called from Server.ping
   #   hash with user ids in outgoing users message
@@ -69,7 +69,7 @@ class Message < ActiveRecord::Base
   #   not relevant in forwarded users messages
   # received_msgtype:
   # - only relevant for client=false. mark when server has made a respond for a msgtype
-  def receive_message (client, pseudo_user_ids, received_msgtype)
+  def receive_message (is_client, pseudo_user_ids, received_msgtype)
     logger.debug "new mail: #{self.to_json}"
 
     # find password in mix encrypted message. mix encryption. rsa encrypted random password in key and message encrypted with this random password
@@ -90,12 +90,12 @@ class Message < ActiveRecord::Base
 
     if message['msgtype'] == 'users'
       return "Cannot receive users message. Server secret was not found. Server secret should have been received in login request" if !server.secret
-      error = server.receive_compare_users_message(message['users'], client, pseudo_user_ids, received_msgtype) # false: server side of communication
+      error = server.receive_compare_users_message(message['users'], is_client, pseudo_user_ids, received_msgtype) # false: server side of communication
       return error ? error : nil
     end
 
     if message['msgtype'] == 'online'
-      error = server.receive_online_users_message(message['users'], client, received_msgtype) # false: server side of communication
+      error = server.receive_online_users_message(message['users'], is_client, received_msgtype) # false: server side of communication
       return error ? error : nil
     end
 
@@ -105,12 +105,12 @@ class Message < ActiveRecord::Base
     end
 
     if message['msgtype'] == 'pubkeys'
-      error = server.receive_public_keys_message(message['users'], client, received_msgtype) # false: server side of communication
+      error = server.receive_public_keys_message(message['users'], is_client, received_msgtype) # false: server side of communication
       return error ? error : nil
     end
 
     if message['msgtype'] == 'client'
-      error = server.receive_client_messages(message['messages'], client, received_msgtype) # false: server side of communication
+      error = server.receive_client_messages(message['messages'], is_client, received_msgtype) # false: server side of communication
       return error ? error : nil
     end
 
@@ -131,9 +131,11 @@ class Message < ActiveRecord::Base
   end # receive_message
 
 
+  # receive messages from client ()
   # params:
-  # - client          : true: called from Server.ping. received messages are server messages
-  #                     false: called from util_controller.ping. received messages are client messages
+  # - is_client:
+  #   - true - client side of communication - called from Server.ping
+  #   - false - server side of communication - called from util_controller.ping via Message.receive_messages
   # - sender_did      :
   # - sender_sha256   :
   # - pseudo_user_ids : hash with user ids from outgoing users message (only client==true).
@@ -142,15 +144,16 @@ class Message < ActiveRecord::Base
   #                     not relevant in forwarded user messages
   # - input_messages: : client=false: input messages are client messages
   #                     client=true: input messages are server messages
-  def self.receive_messages (client, sender_did, sender_sha256, pseudo_user_ids, input_messages)
+  def self.receive_messages (is_client, sender_did, sender_sha256, pseudo_user_ids, input_messages)
 
     # todo: sender_sha256 is null in server to server messages
 
     logger.debug2 "sender_did    = #{sender_did}"
     logger.debug2 "sender_sha256 = #{sender_sha256}"
     logger.debug2 "messages      = #{input_messages}"
-
-    server = (sender_sha256.to_s == '')
+    is_server_msg = (sender_sha256.to_s == '')
+    logger.debug2 "is_client     = #{is_client}"
+    logger.debug2 "is_server_msg = #{is_server_msg}"
 
     return 'System error in message service. Did for actual client is unknown on server.' unless sender_did
 
@@ -168,8 +171,8 @@ class Message < ActiveRecord::Base
         # sender_did is used in server and only in server to server messages
         if message['sender_did']
           # server to server message. check if incoming message has been forwarded from an other Gofreerev server
-          if !server
-            return 'System error in new message request. :sender_did must be blank. :sender_did is only used in server to server messages.'
+          if !is_server_msg
+            return 'System error in new message request. :sender_did must be blank in client messages. :sender_did is only used in server to server messages.'
           end
           if message['sender_did'] != sender_did
             logger.warn2 "received message forwarded from an other Gofreerev server. Sent from #{message['sender_did']} and forwarded by #{sender_did}."
@@ -181,7 +184,7 @@ class Message < ActiveRecord::Base
             raise "not implemented"
           end
         end
-        if server and !message['sender_did']
+        if is_server_msg and !message['sender_did']
           return 'System error in new message request. :sender_did is required in server to server messages.'
         end
 
@@ -207,8 +210,17 @@ class Message < ActiveRecord::Base
           next
         end
 
-        if server and message['receiver_did'] != did
+        if is_server_msg and message['receiver_did'] != did
           logger.warn2 "received message to be forwarded to gofreerev server #{message['receiver_did']}. message = #{message.to_json}"
+        end
+
+        if message['server'] != is_server_msg
+          logger.debug2 "is_server_msg = #{is_server_msg}, message['server'] = #{message['server']}"
+          if is_server_msg
+            return 'System error in new message request. Expected server message. Received client message'
+          else
+            return 'System error in new message request. Expected client message. Received server message'
+          end
         end
 
         m = Message.new
@@ -222,20 +234,30 @@ class Message < ActiveRecord::Base
         m.save!
       end # each message
     end
+    return nil unless is_server_msg
 
-    # check for any messages to this client or server
+    # check for any messages to this server
 
     # flags for received message types (:users, :online, :pubkeys, :client)
     # server must respond make one and only one response for each message type
     received_msgtype = {}
+
+    # debug info
+    logger.debug2 "find relevant messages"
+    logger.debug2 "is_client           = #{is_client}"
+    logger.debug2 "is_server_msg       = #{is_server_msg}"
+    logger.debug2 "received_msgtype    = #{received_msgtype.to_json}"
+    logger.debug2 "SystemParameter.did = #{SystemParameter.did}"
+    logger.debug2 "sender_did          = #{sender_did}"
+
     errors = []
     Message.where(:to_did => SystemParameter.did, :server => true).order(:created_at).each do |m|
-      error = m.receive_message(client, pseudo_user_ids, received_msgtype)
+      error = m.receive_message(is_client, pseudo_user_ids, received_msgtype)
       m.destroy! unless m.keep_message
       errors << error if error
     end
 
-    return (errors.size == 0 ? nil : errors.join(', ')) if sender_sha256 # called from browser client
+    return (errors.size == 0 ? nil : errors.join(', ')) unless is_server_msg # exit if called from browser client
 
     # call from other gofreerev server
 
@@ -253,7 +275,7 @@ class Message < ActiveRecord::Base
     if !received_msgtype[:users]
       # no ingoing compare users message. check for outgoing users message
       if server.secret
-        error = server.receive_compare_users_message([], client, pseudo_user_ids, received_msgtype) # false: server side of communication
+        error = server.receive_compare_users_message([], is_client, pseudo_user_ids, received_msgtype) # false: server side of communication
       else
         error = "Cannot receive users message. Server secret was not found. Server secret should have been received in login request"
       end
@@ -261,17 +283,17 @@ class Message < ActiveRecord::Base
     end
     if !received_msgtype[:online]
       # no ingoing online users message. check for outgoing online users message
-      error = server.receive_online_users_message([], client, received_msgtype) # false: server side of communication
+      error = server.receive_online_users_message([], is_client, received_msgtype) # false: server side of communication
       errors << error if error
     end
     if !received_msgtype[:pubkeys]
       # no ingoing public keys message. check for outgoing public keys message
-      error = server.receive_public_keys_message([], client, received_msgtype) # false: server side of communication
+      error = server.receive_public_keys_message([], is_client, received_msgtype) # false: server side of communication
       errors << error if error
     end
     if !received_msgtype[:client]
       # no ingoing client messages. check for outgoing client messages
-      error = server.receive_client_messages([], client, received_msgtype) # false: server side of communication
+      error = server.receive_client_messages([], is_client, received_msgtype) # false: server side of communication
       errors << error if error
     end
     logger.debug2 "received_msgtype (2) = #{received_msgtype}"
@@ -329,11 +351,12 @@ class Message < ActiveRecord::Base
   end # self.send_messages
 
 
-  # receive messages from client (or server) and return messages to client (or server)
+  # receive messages from client and return messages to client (or server)
+  # used in /util/ping from browser clients. Not used in server to server communication
   # params:
   # - sender_did: did from calling client
   # - sender_sha256: sha256 signature for calling client (only user in client to client communication)
-  # - input_messages: array with messages from calling client (browser or other Gofreerev server)
+  # - input_messages: array with messages from calling client
   def self.messages (sender_did, sender_sha256, input_messages)
 
     # todo: sender_sha256 is null in server to server messages

@@ -876,8 +876,11 @@ class Gift < ActiveRecord::Base
           gift.update_attribute :sha256_deleted, sha256_deleted_calc
       end # case
 
-      # ok response for client
-      Gift.client_response_array_add client_response_array, { :seq => seq, :gid => gid, :verified_at_server => true }, client_sid, verify_gift
+      # ok response for client.
+      # direction is used in server to server messages (authorization check in verify comments message). not used in client to server verify gift message
+      verify_gift_response = { :seq => seq, :gid => gid, :verified_at_server => true }
+      verify_gift_response[:direction] = direction unless client_sid
+      Gift.client_response_array_add client_response_array, verify_gift_response, client_sid, verify_gift
 
     end # each new_gift
 

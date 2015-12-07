@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20151203065226) do
+ActiveRecord::Schema.define(version: 20151206080717) do
 
   create_table "ajax_comments", force: true do |t|
     t.string   "user_id",    limit: 40, null: false
@@ -355,27 +355,30 @@ ActiveRecord::Schema.define(version: 20151203065226) do
   add_index "users", ["user_id"], name: "index_users_on_user_id", unique: true, using: :btree
 
   create_table "verify_comments", force: true do |t|
-    t.string   "client_sid",              limit: 20, null: false
-    t.string   "client_sha256",           limit: 45, null: false
-    t.integer  "client_seq",                         null: false
-    t.integer  "server_id",                          null: false
-    t.string   "cid",                     limit: 20, null: false
-    t.integer  "server_seq",                         null: false
+    t.string   "client_sid",                     limit: 20
+    t.string   "client_sha256",                  limit: 45
+    t.integer  "client_seq",                                null: false
+    t.integer  "server_id",                                 null: false
+    t.string   "cid",                            limit: 20, null: false
+    t.integer  "server_seq",                                null: false
     t.boolean  "verified_at_server"
     t.datetime "created_at"
     t.datetime "updated_at"
     t.text     "error"
-    t.integer  "request_mid",                        null: false
+    t.integer  "request_mid",                               null: false
     t.integer  "response_mid"
-    t.text     "original_client_request",            null: false
+    t.text     "original_client_request",                   null: false
+    t.string   "login_user_ids"
+    t.string   "original_client_request_sha256", limit: 45
   end
 
   add_index "verify_comments", ["client_sid", "client_sha256", "client_seq"], name: "index_verify_comment_pk", unique: true, using: :btree
+  add_index "verify_comments", ["original_client_request_sha256"], name: "index_verify_comment_ix1", using: :btree
   add_index "verify_comments", ["server_seq"], name: "index_verify_comment_uk", unique: true, using: :btree
 
   create_table "verify_gifts", force: true do |t|
-    t.string   "client_sid",              limit: 20, null: false
-    t.string   "client_sha256",           limit: 45, null: false
+    t.string   "client_sid",              limit: 20
+    t.string   "client_sha256",           limit: 45
     t.integer  "client_seq",                         null: false
     t.integer  "server_id",                          null: false
     t.string   "gid",                     limit: 20, null: false
@@ -387,6 +390,7 @@ ActiveRecord::Schema.define(version: 20151203065226) do
     t.integer  "request_mid"
     t.integer  "response_mid"
     t.text     "original_client_request",            null: false
+    t.string   "direction",               limit: 10
   end
 
   add_index "verify_gifts", ["client_sid", "client_sha256", "client_seq"], name: "index_verify_gift_pk", unique: true, using: :btree

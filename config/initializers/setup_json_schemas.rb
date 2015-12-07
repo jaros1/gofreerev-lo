@@ -657,7 +657,7 @@ JSON_SCHEMA = {
                 },
                 :minItems => 1
             },
-            # array with verify gifts request from clients
+            # array with verify gifts request from clients to other Gofreerev server
             :verify_gifts => {
                 :type => 'array',
                 :items => {
@@ -669,10 +669,12 @@ JSON_SCHEMA = {
                         :gid => {:type => 'string', :pattern => uid_pattern},
                         # required sha256 digest of client side gift information (created at client + description + 4 open graph fields)
                         :sha256 => {:type => 'string', :maxLength => 32},
-                        # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
-                        :sha256_deleted => {:type => 'string', :maxLength => 32},
+                        # gift action: create, verify, accept or delete. create: new signature, verify: check signature(s), accept and delete: check old signatures and add new signature for action
+                        :action => {:type => 'string', :pattern => '^(verify|accept|delete)$'},
                         # only used in accepted_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + accepted_at_client)
                         :sha256_accepted => {:type => 'string', :maxLength => 32},
+                        # only used in delete_gifts request - sha256 digest of client side gift information (created at client + description + 4 open graph fields + deleted_at_client)
+                        :sha256_deleted => {:type => 'string', :maxLength => 32},
                         # internal user ids for either giver or receiver
                         :giver_user_ids => {
                             :type => %w(NilClass array),
@@ -702,8 +704,11 @@ JSON_SCHEMA = {
                                 :maximum => -1, # if integer - unknown user with negative user id
                             }
                         }
-                    }
-                }
+                    },
+                    :required => %w(seq gid sha256 action),
+                    :additionalProperties => false
+                },
+                :minItems => 1
             }
         },
         :required => %w(msgtype mid login_users verify_gifts),
@@ -732,8 +737,10 @@ JSON_SCHEMA = {
                         :sha256_changed => { :type => 'boolean'},
                         # true if verify gift request was ok. false if not. See more info in error field
                         :verified_at_server => { :type => 'boolean'},
-                        # optional additional error info. Only "system" errors
-                        :error => { :type => 'string'}
+                        # optional additional error info. Only "system" errors (english only - not using translations)
+                        :error => { :type => 'string'},
+                        # optional gift direction in response. used in server to server verify comments message authorization check
+                        :direction => { :type => 'string', :pattern => '^(giver|receiver)$'}
                     },
                     :required => %w(seq),
                     :additionalProperties => false

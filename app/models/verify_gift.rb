@@ -22,11 +22,9 @@ class VerifyGift < ActiveRecord::Base
   # add_index "verify_gifts", ["client_sid", "client_sha256", "client_seq"], name: "index_verify_gift_pk", unique: true, using: :btree
   # add_index "verify_gifts", ["server_seq"], name: "index_verify_gift_uk", unique: true, using: :btree
 
-  # 1) client_sid - unique session id from browser client ( = a browser tab )
-  validates_presence_of :client_sid
+  # 1) client_sid - unique session id from browser client ( = a browser tab ). null if verify gifts server to server message from verify comments
 
-  # 2) client_sha256 - sha256 signature for unique device - changes if client login changes
-  validates_presence_of :client_sha256
+  # 2) client_sha256 - sha256 signature for unique device - changes if client login changes. null if verify gifts server to server message from verify comments
 
   # 3) client_seq - unique client seq from client verify_gifts request - always negative for remote gift verification
   validates_presence_of :client_seq
@@ -42,13 +40,20 @@ class VerifyGift < ActiveRecord::Base
   validates_presence_of :server_seq
   validates_uniqueness_of :server_seq, :allow_blank => true
 
-  # 7) verified_at_server boolean - response from remote gift verification
-  validates_inclusion_of :verified_at_server, :in => [true, false], :allow_blank => true
-  validates_absence_of :verified_at_server, :on => :create
-  validates_presence_of :verified_at_server, :on => :update
-  validates_each :response_mid, :on => :update do |record, attr, value|
-    if record.verified_at_server_was and value != record.verified_at_server_was
-      record.errors.add attr, :invalid #readonly
+  # 7) verified_at_server boolean - response from remote gift verification. Blank at create. true or false at update
+  validates_each :verified_at_server do |record, attr, value|
+    if record.new_record?
+      # must be blank at create
+      record.errors.add attr, :blank if value.to_s != ''
+    else
+      # must be true or false at update and cannot change
+      if value == nil or value == ''
+        record.errors.add attr, :present
+      elsif ![true, false].index(value)
+        record.errors.add attr, :invalid # invalid value
+      elsif record.verified_at_server_was.to_s != '' and value != record.verified_at_server_was
+        record.errors.add attr, :invalid # readonly
+      end
     end
   end
 

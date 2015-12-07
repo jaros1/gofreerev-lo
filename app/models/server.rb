@@ -536,8 +536,8 @@ class Server < ActiveRecord::Base
   #   user_id>0 and server - User from other gofreerev server in response to outgoing users message. save for next outgoing users message
   #   user_id<0 and client - User from other gofreerev server in incoming users message
   #   user_id<0 and server - My user from response to a previously incoming users message
-  # client:
-  # - true - server side of communication - called from Server.ping
+  # is_client:
+  # - true - client side of communication - called from Server.ping
   # - false - server side of communication - called from util_controller.ping via Message.receive_messages
   # pseudo_user_ids:
   # - only relevant for client==true. called from Server.ping
@@ -546,12 +546,12 @@ class Server < ActiveRecord::Base
   #   only relevant for direct server to server user compare
   #   not relevant in forwarded users messages
   public
-  def receive_compare_users_message (response, client, pseudo_user_ids, received_msgtype)
+  def receive_compare_users_message (response, is_client, pseudo_user_ids, received_msgtype)
     logger.debug2 "users = #{response}"
-    if client
-      logger.debug2 "client = #{client} - called from Server.ping. received incoming compare users message. response to outgoing compare users message (create_compare_users_message)"
+    if is_client
+      logger.debug2 "client = #{is_client} - called from Server.ping. received incoming compare users message. response to outgoing compare users message (create_compare_users_message)"
     else
-      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+      logger.debug2 "client = #{is_client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
     # doublet check 1 - no doublet user ids are allowed in users array
@@ -561,11 +561,11 @@ class Server < ActiveRecord::Base
 
     max_checked_user_id = last_checked_user_id || 0
 
-    request = [] unless client
+    request = [] unless is_client
 
     response.each do |usr|
       logger.debug2 "usr = #{usr}"
-      if client
+      if is_client
         # client: called from Server.ping. received incoming users message. response to outgoing users message (create_users_message)
         if usr["user_id"] > 0
           # user_id > 0. My user in response to outgoing users message.
@@ -714,7 +714,7 @@ class Server < ActiveRecord::Base
       logger.debug2 "max_checked_user_id = #{max_checked_user_id}, self.last_checked_user_id = #{self.last_checked_user_id}"
     end
 
-    return nil if client # client - called from Server.ping
+    return nil if is_client # client - called from Server.ping
 
     # server - called from UtilController.ping
     # add sha256 signatures for reverse request/response cycle (request in response and response in request). user_id < 0
@@ -1122,6 +1122,9 @@ class Server < ActiveRecord::Base
       end
     end # if
 
+    # check invalid sha256 signatures - never allowed
+    errors << "Invalid sha256 user signatures #{invalid_sha_signatures.to_json}" if invalid_sha_signatures.size > 0
+
     # debug info
     if changed_sha_signatures.size > 0 or invalid_sha_signatures.size > 0 or invalid_negative_user_ids.size > 0 or local_changed_sha_signatures > 0 or remote_changed_sha_signatures > 0
       logger.debug2 "#{msg} message. #{user_signatures.size} user ids. #{sha_signatures.size} signatures and #{negative_user_ids.size} negative user ids"
@@ -1139,18 +1142,21 @@ class Server < ActiveRecord::Base
   end # from_sha256s_to_user_ids
 
 
+  # is_client:
+  # - true - client side of communication - called from Server.ping
+  # - false - server side of communication - called from util_controller.ping via Message.receive_messages
   public
-  def receive_online_users_message (response, client, received_msgtype)
+  def receive_online_users_message (response, is_client, received_msgtype)
 
     logger.debug2 "users = #{response}"
     # users = [{"session_id"=>"9c653cde5b1cd771756cf2dc49a1376d", "last_ping_at"=>1427021803.289,
     #           "did"=>"14252356907464191530", "user_ids"=>["QoTMDQkHpw7Gyjl9NBcuIHk6JwdK7THv2RKXVoTNWM0=\n"],
     #           "sha256"=>"0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n"}]
 
-    if client
-      logger.debug2 "client = #{client} - called from Server.ping. received incoming online users message. response to outgoing online users message (create_online_users_message)"
+    if is_client
+      logger.debug2 "client = #{is_client} - called from Server.ping. received incoming online users message. response to outgoing online users message (create_online_users_message)"
     else
-      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+      logger.debug2 "client = #{is_client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
     # delete old remote pings
@@ -1223,7 +1229,7 @@ class Server < ActiveRecord::Base
       p.save!
     end
 
-    if client
+    if is_client
       return errors.size == 0 ? nil : errors.join(', ')
     end
 
@@ -1367,20 +1373,20 @@ class Server < ActiveRecord::Base
     logger.debug2 "envelope = #{envelope.to_json}"
     envelope
 
-  end
+  end # create_public_keys_message
 
-  # create_public_keys_message
-
-
+  # is_client:
+  # - true - client side of communication - called from Server.ping
+  # - false - server side of communication - called from util_controller.ping via Message.receive_messages
   public
-  def receive_public_keys_message (response, client, received_msgtype)
+  def receive_public_keys_message (response, is_client, received_msgtype)
 
     logger.debug2 "pubkeys = #{response}"
 
-    if client
-      logger.debug2 "client = #{client} - called from Server.ping. received incoming public keys message. response to outgoing public keys message (create_public_keys_message)"
+    if is_client
+      logger.debug2 "client = #{is_client} - called from Server.ping. received incoming public keys message. response to outgoing public keys message (create_public_keys_message)"
     else
-      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+      logger.debug2 "client = #{is_client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
     errors = []
@@ -1415,7 +1421,7 @@ class Server < ActiveRecord::Base
         else
           errors << "Receive changed public key for did #{p['did']} in public keys response from Gofreerev server id #{self.id}"
         end
-      elsif client
+      elsif is_client
         # client, called from Server.ping, request with did in ping response. save for next outgoing ping request
         spr = ServerPubkeyRequest.find_by_server_id_and_did(self.id, p['did'])
         if spr
@@ -1438,7 +1444,7 @@ class Server < ActiveRecord::Base
       end
     end # each
 
-    if !client
+    if !is_client
 
       if received_msgtype[:pubkeys]
         # more than one ingoing public keys (response already in messages table)
@@ -1533,8 +1539,11 @@ class Server < ActiveRecord::Base
   end # create_client_messages
 
 
+  # is_client:
+  # - true - client side of communication - called from Server.ping
+  # - false - server side of communication - called from util_controller.ping via Message.receive_messages
   public
-  def receive_client_messages (response, client, received_msgtype)
+  def receive_client_messages (response, is_client, received_msgtype)
 
     logger.debug2 "client messages = #{response}"
     # client messages = [{"from_did"=>"14252356907464191530", "from_sha256"=>"14252356907464191530",
@@ -1547,10 +1556,10 @@ class Server < ActiveRecord::Base
     #                     "message"=>"GjqACV7ie1vnnabZ/6yP5XOfu2A6d+z0VhVXWlbzKGuSK0d2OsIgnrL+/QLFIgY2ltdlhLdd0/f96FPbKnvPA3+WLf5XDkoxRCjwqsc+1qMGPzI9+Cw54Hwk5Qj8XS44iSgWHIZFcd6PqjdF1zxV/IxsPMXZrJ655PjC2eiv+jCv7EWIHPPGVJxsjfSSEzpFHCDwEHBLUU7bkOananuHsH0CbUsIk4h5oTgYOslZzqxzOpNDC717Xo87L9TnrP83/fG+2m5SnIqyc6X8ESro+z8iUbvkTtkwVCu/UvIS5Vtp6movOQk8g4SrsbnQTHBfcusWqEdInRMumRhT5Vnq6A=="}
     #                   ]
 
-    if client
-      logger.debug2 "client = #{client} - called from Server.ping. received incoming client messages. response to outgoing client messages (create_public_keys_message)"
+    if is_client
+      logger.debug2 "client = #{is_client} - called from Server.ping. received incoming client messages. response to outgoing client messages (create_public_keys_message)"
     else
-      logger.debug2 "client = #{client} - called from called from util_controller.ping via Message.receive_messages"
+      logger.debug2 "client = #{is_client} - called from called from util_controller.ping via Message.receive_messages"
     end
 
     errors = []
@@ -1655,7 +1664,7 @@ class Server < ActiveRecord::Base
     end # each m
 
     logger.debug2 "errors = #{errors.join(', ')}"
-    return errors.size == 0 ? nil : errors.join(', ') if client
+    return errors.size == 0 ? nil : errors.join(', ') if is_client
 
     # server
 
@@ -1663,7 +1672,7 @@ class Server < ActiveRecord::Base
     received_msgtype[:client] = true
 
 
-    if !client
+    if !is_client
       # called from receive_message via util_controller.ping
       # any client messages to be returned to calling gofreerev server
       # will be returned in ping response in Server.ping
@@ -1686,6 +1695,7 @@ class Server < ActiveRecord::Base
   # receive_client_messages
 
   # receive remote gift verification message (request and response)
+
   # request: with login_users array and without verified_at_server boolean in verify_gifts array
   #   {"msgtype" : "verify_gifts",
   #    "login_users" : [{"sha256" : "jAn3w9ZxeiadO57GC43eCBvmPx/+/HZmBzQNVnrShPw=", "pseudo_user_id" : 6542}],
@@ -1836,7 +1846,7 @@ class Server < ActiveRecord::Base
 
     if request_on_hold.size > 0
       # some gifts in verify gifts requests are waiting for local user info update
-      # save request for next ping. Receiver is this current gofreerev server
+      # save request for next ping. Receiver is this gofreerev server
       message_hash = {
           :msgtype => 'verify_gifts',
           :login_users => login_users,
@@ -1953,6 +1963,7 @@ class Server < ActiveRecord::Base
       gid = verify_gift['gid']
       verified_at_server = verify_gift['verified_at_server']
       error = verify_gift['error']
+      direction = verify_gift['direction']
       vg = vgs[seq]
       if !vg
         unknown_seq << verify_gift
@@ -1961,7 +1972,7 @@ class Server < ActiveRecord::Base
       elsif vg.gid != gid
         invalid_gid << verify_gift
       elsif vg.verified_at_server.class != NilClass
-        if (verified_at_server != vg.verified_at_server or error != vg.error)
+        if (verified_at_server != vg.verified_at_server or error != vg.error or direction != vg.direction)
           # has already received a different response for this request
           invalid_response << verify_gift
         else
@@ -1973,8 +1984,17 @@ class Server < ActiveRecord::Base
         vg.verified_at_server = verified_at_server
         vg.error = error
         vg.response_mid = mid
+        vg.direction = direction
+        logger.debug2 "vg before save = #{vg.to_json}"
         vg.save!
-        logger.debug2 "vg = #{vg.to_json}"
+        logger.debug2 "vg after save = #{vg.to_json}"
+
+        logger.debug2 "todo: check for pending verify comments request waiting for this verify gifts response"
+        # - row in verify_comments table with identical server_seq, request_mid and with login_user_ids
+        # must repeat original verify comments request
+        # original verify comments request can by a client ping and must be returned in /util/ping response
+        # original verify comments request can be a server to server request and must be returned in a verify gifts server to server response
+
       end
     end # each verify_gift
 
@@ -2075,6 +2095,7 @@ class Server < ActiveRecord::Base
     # changes sha256 user signatures
     # - local changed signatures - wait for this server to refresh user info before processing verify comments request (keep verify request)
     # - remote changed signatures - return verify comment request and wait for remote server to send a new verify comment request with correct user signatures
+
     keep_message = false
     error, login_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
         from_sha256s_to_user_ids(login_users,
@@ -2082,6 +2103,7 @@ class Server < ActiveRecord::Base
                                  :allow_changed_sha256 => 5.minutes.to_i, :field => :user_id)
     return ["verify_comments request message was rejected. #{error}", keep_message] if error
     return ["verify_comments request message was rejected. Message must have minimum one verified server user. login users = #{login_users}", keep_message] if login_user_ids.size == 0
+    # login_user_ids are valid user ids from from_sha256s_to_user_ids call without any negative user ids (unknown users)
     logger.debug2 "login_user_ids = #{login_user_ids.join(', ')}"
     local_changed_login_users = (no_local_changed_signatures > 0)
     remote_changed_login_users = (no_remote_changed_signatures > 0)
@@ -2105,7 +2127,8 @@ class Server < ActiveRecord::Base
       gift = verify_comment['gift']
       local_changed_comment_users = remote_changed_comment_users = false
 
-      # check and translate comment user ids - creator(s) of comment
+      # check and translate comment user ids - creator(s) of comment.
+      # must translate all user ids to valid users. used in comment sha256 signature
       if comment_user_ids.class == Array and comment_user_ids.size > 0
         error, valid_comment_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
             from_sha256s_to_user_ids(comment_user_ids,
@@ -2136,6 +2159,7 @@ class Server < ActiveRecord::Base
       end
 
       # check and translate optional comment new_deal_action_by_user_ids - user(s) doing new deal action (accept or reject) or delete comment
+      # must translate all user ids to valid users. used in comment sha256_action signature
       valid_comment_action_user_ids = nil
       if comment_action_user_ids.class == Array and comment_action_user_ids.size > 0
         error, valid_comment_action_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
@@ -2170,13 +2194,23 @@ class Server < ActiveRecord::Base
       valid_gift_giver_user_ids = nil
       valid_gift_receiver_user_ids = nil
       if gift
+        # translate user ids:
+        # a) gift on this Gofreerev server. Must translate user ids to valid users. use :negative_user_ids => :translate
+        # b) gift on other Gofreerev server. Negative user ids are allowed. Verify gifts server to server request will be sent to other Gofreerev server
+        if gift.has_key?('server_id')
+          negative_user_ids = true
+        else
+          negative_user_ids = :translate
+        end
+        logger.debug2 "check gift giver and receiver. negative_user_ids = #{negative_user_ids}"
+
         gift_giver_user_ids = gift['giver_user_ids']
         gift_receiver_user_ids = gift['receiver_user_ids']
 
         if gift_giver_user_ids.class == Array and gift_giver_user_ids.size > 0
           error, valid_gift_giver_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
               from_sha256s_to_user_ids(gift_giver_user_ids,
-                                       :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
+                                       :seq => 3, :msg => 'verify_comments', :negative_user_ids => negative_user_ids,
                                        :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
           if error
             logger.debug2 "seq #{seq}: invalid users in #{gift_giver_user_ids}: #{error}"
@@ -2187,7 +2221,8 @@ class Server < ActiveRecord::Base
             no_errors += 1
             next
           end
-          if gift_giver_user_ids.size != valid_gift_giver_user_ids.size
+          # only checking valid_gift_giver_user_ids array size for local gifts
+          if !gift.has_key?('server_id') and gift_giver_user_ids.size != valid_gift_giver_user_ids.size
             logger.debug2 "seq #{seq}: invalid users in #{gift_giver_user_ids}"
             verify_comments_response.push({:seq => seq,
                                            :cid => cid,
@@ -2205,7 +2240,7 @@ class Server < ActiveRecord::Base
         if gift_receiver_user_ids.class == Array and gift_receiver_user_ids.size > 0
           error, valid_gift_receiver_user_ids, no_local_changed_signatures, no_remote_changed_signatures =
               from_sha256s_to_user_ids(gift_receiver_user_ids,
-                                       :seq => 3, :msg => 'verify_comments', :negative_user_ids => :translate,
+                                       :seq => 3, :msg => 'verify_comments', :negative_user_ids => negative_user_ids,
                                        :allow_changed_sha256 => 5.minutes.to_i, :field => :id)
           if error
             logger.debug2 "seq #{seq}: invalid users in #{gift_receiver_user_ids}: #{error}"
@@ -2216,7 +2251,8 @@ class Server < ActiveRecord::Base
             no_errors += 1
             next
           end
-          if gift_receiver_user_ids.size != valid_gift_receiver_user_ids.size
+          # only checking valid_gift_giver_user_ids array size for local gifts
+          if !gift.has_key?('server_id') and gift_receiver_user_ids.size != valid_gift_receiver_user_ids.size
             logger.debug2 "seq #{seq}: invalid users in #{gift_receiver_user_ids}"
             verify_comments_response.push({:seq => seq,
                                            :cid => cid,
@@ -2231,7 +2267,7 @@ class Server < ActiveRecord::Base
           gift_receiver_user_ids = []
         end
 
-      end
+      end # if gift
 
       # move to relevant array
       if remote_changed_login_users or remote_changed_comment_users
@@ -2260,7 +2296,10 @@ class Server < ActiveRecord::Base
             gift_hash = {"gid" => gift['gid'], "sha256" => gift['sha256']}
             gift_hash['giver_user_ids'] = valid_gift_giver_user_ids if valid_gift_giver_user_ids
             gift_hash['receiver_user_ids'] = valid_gift_receiver_user_ids if valid_gift_receiver_user_ids
-            logger.debug2 "todo: translate gift.server_id? gift.server_id = #{gift['server_id']}"
+            if gift.has_key? "server_id"
+              # translate server sha256 signature to server_id before local verify comments request
+              gift_hash['server_id'] = Server.sha256_to_server_id_hash[gift['server_id']]
+            end
             hash['gift'] = gift_hash
           end
           local_verify_comments_request.push(hash)
@@ -2314,6 +2353,10 @@ class Server < ActiveRecord::Base
       local_verify_comments_response = Comment.verify_comments(local_verify_comments_request, login_user_ids, nil, nil) # client_sid = client_sha256 = nil (local verification)
       logger.debug2 "local_verify_comments_request = #{local_verify_comments_request}"
       logger.debug2 "local_verify_comments_response = #{local_verify_comments_response}"
+      if !local_verify_comments_response
+        logger.debug2 "empty Comment.verify_comments response. must be verify comments requests with pending verify remote gift response. Should receive verify gift response within a few seconds"
+        return [nil, false]
+      end
       local_verify_comments_error = local_verify_comments_response[:error]
       verify_comments_response += local_verify_comments_response[:comments] if local_verify_comments_response[:comments]
     end

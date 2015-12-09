@@ -426,6 +426,7 @@ class Gift < ActiveRecord::Base
 
       # logical validate row in verify gift request (has already been JSON validated)
 
+      # check seq
       if server_id
         # remote gift action
         if seq >= 0
@@ -466,6 +467,26 @@ class Gift < ActiveRecord::Base
               client_sid, verify_gift)
           next
         end
+      end
+
+      # double check action. already validated with json
+      if action.to_s == ''
+        error = "System error. Invalid verify gift request. action is missing"
+        logger.error2 "gid #{gid} : #{error}"
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_no_action' },
+            client_sid, verify_gift)
+        next
+      end
+      if !%w(verify accept delete).index(action)
+        error = "System error. Invalid verify gift request. Invalid action. Allowed values are \"verify\", \"accept\" and \"delete\""
+        logger.error2 "gid #{gid} : #{error}"
+        Gift.client_response_array_add(
+            client_response_array,
+            { :seq => seq, :gid => gid, :verified_at_server => false, :error => error, :key => 'syserr_invalid_action' },
+            client_sid, verify_gift)
+        next
       end
 
       # validate row in gift action request
@@ -753,16 +774,16 @@ class Gift < ActiveRecord::Base
         sha256_input = ([gid, sha256_client, 'giver'] + giver_user_ids).join(',')
         sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
         direction = 'giver' if (gift and (gift.sha256 == sha256_calc)) or ((action == 'create') and !gift)
-        # logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
+        logger.debug "sha256 check failed with direction = giver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
       end
       if receiver_user_ids.size > 0
         sha256_input = ([gid, sha256_client, 'receiver'] + receiver_user_ids).join(',')
         sha256_calc = Base64.encode64(Digest::SHA256.digest(sha256_input))
         direction = 'receiver' if (gift and (gift.sha256 == sha256_calc)) or ((action == 'create') and !gift)
-        # logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
+        logger.debug "sha256 check failed with direction = receiver. sha256_input = #{sha256_input}, sha256_calc = \"#{sha256_calc}\", gift.sha256 = \"#{gift.sha256 if gift}\"" unless direction
       end
       if !direction
-        error = "#{action_failed}. Invalid request. sha256 signature check failed"
+        error = "#{action_failed}. Invalid request. Gift sha256 signature check failed"
         logger.debug2 "Gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,

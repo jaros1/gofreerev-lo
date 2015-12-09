@@ -1513,6 +1513,7 @@ angular.module('gifts')
         // server adds extra information to signatures from client and checks server side sha256 signatures in all requests
         // that should ensure that gift information on client is not changed
         var gift_signature_for_server = function (gift) {
+            var pgm = service + '.gift_signature_for_server: ' ;
             var signature = {
                 sha256: Gofreerev.sha256(gift.created_at_client, gift.description, gift.open_graph_url,
                                          gift.open_graph_title, gift.open_graph_description, gift.open_graph_image)
@@ -1525,6 +1526,8 @@ angular.module('gifts')
                 gift.created_at_client, gift.description, gift.open_graph_url,
                 gift.open_graph_title, gift.open_graph_description, gift.open_graph_image,
                 gift.price, gift.currency, gift.accepted_cid, gift.accepted_at_client, gift.deleted_at_client);
+            // todo: testrun-46. debugging invalid gift sha256 signature in reject new deal proposal request
+            console.log(pgm + 'gid = ' + gift.gid + ', signature = ' + JSON.stringify(signature)) ;
             return signature;
         }; // gift_signature_for_server
 
@@ -2500,6 +2503,8 @@ angular.module('gifts')
                         request: hash
                     };
                     request.push(hash);
+                    // todo: testrun-46. debugging invalid gift sha256 signature in reject new deal proposal request
+                    console.log(pgm + 'hash = ' + JSON.stringify(hash)) ;
                     new_request += 1 ;
                 }
             } // verify_comments while loop

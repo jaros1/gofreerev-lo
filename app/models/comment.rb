@@ -850,6 +850,8 @@ class Comment < ActiveRecord::Base
         vc.request_mid = server_verify_comments_mid[comment_server_id]
         vc.original_client_request = verify_comment.to_json
         vc.save!
+        logger.debug2 "vc = #{vc.to_json}"
+
         # 2) insert verify_comments request in server_requests hash
         comment_hash = {:seq => vc.server_seq,
                 :cid => cid,
@@ -876,9 +878,16 @@ class Comment < ActiveRecord::Base
           end
           comment_hash[:gift] = gift_hash
         end
-        server_verify_comms_requests[comment_server_id] = [] unless server_verify_comms_requests.has_key? comment_server_id
-        server_verify_comms_requests[comment_server_id].push(comment_hash)
+
+        # add comment_hash to server_verify_comms_requests hash
+        # - one array for each remote Gofreerev server with verify gifts requests
+        # - one array for each remote Gofreerev server with fallback info used in case of invalid verify comments json message
+        server_verify_comms_requests[comment_server_id] = { :server_requests => [], :json_error_info => []} unless server_verify_comms_requests.has_key? comment_server_id
+        json_error_info = verify_comment, vc
+        server_verify_comms_requests[comment_server_id][:server_requests].push(comment_hash)
+        server_verify_comms_requests[comment_server_id][:json_error_info].push(json_error_info)
         next
+
       end # if comment_server_id
 
       # comment is on this Gofreerev server.
@@ -930,7 +939,7 @@ class Comment < ActiveRecord::Base
           vc.request_mid = server_verify_gifts_mid[gift_server_id]
           vc.original_client_request = original_verify_comm_request
           vc.original_client_request_sha256 = original_vc_request_sha256
-          vc.login_user_ids = login_user_ids
+          vc.login_user_ids = login_user_ids.to_json # array
           vc.save!
           logger.debug2 "vc = #{vc.to_json}"
 
@@ -946,35 +955,38 @@ class Comment < ActiveRecord::Base
           vg.save!
           logger.debug2 "vg = #{vg.to_json}"
 
-          # create server to server verify gifts request. simple check. only with sha256, giver and receiver. no action and no other sha256 signatures
-          verify_gift_request = {:seq => vc.server_seq, :gid => gid, :sha256 => verify_gift["sha256"]}
+          # create server to server verify gifts request. simple verify check. only with sha256, giver and receiver and verify sha256 signature only
+          verify_gift_request = {:seq => vc.server_seq, :gid => gid, :sha256 => verify_gift["sha256"], :action => 'verify'}
           verify_gift_request[:giver_user_ids] = giver_user_ids2 if giver_user_ids2.size > 0
           verify_gift_request[:receiver_user_ids] = receiver_user_ids2 if receiver_user_ids2.size > 0
           logger.debug2 "verify_gift_request = #{verify_gift_request}"
 
-          # add verify_gifts request to server_verify_gifts_requests
-          # one array for each remote Gofreerev server with verify gifts requests
-          # one array for each remote Gofreerev server with fallback info used in case of invalid verify gifts json message
+          # add verify_gifts request to server_verify_gifts_requests hash
+          # - one array for each remote Gofreerev server with verify gifts requests
+          # - one array for each remote Gofreerev server with fallback info used in case of invalid verify gifts json message
           server_verify_gifts_requests[gift_server_id] = { :server_requests => [], :json_error_info => []} unless server_verify_gifts_requests.has_key? gift_server_id
           json_error_info = verify_comment, vc, vg
-          logger.debug2 "verify_gift_request = #{verify_gift_request.to_json}"
-          logger.debug2 "verify_comment = #{verify_comment.to_json}"
-          logger.debug2 "vc = #{vc.to_json}"
-          logger.debug2 "vg = #{vg.to_json}"
-          logger.debug2 "json_error_info = #{json_error_info.to_json}"
+          # logger.debug2 "verify_gift_request = #{verify_gift_request.to_json}"
+          # logger.debug2 "verify_comment = #{verify_comment.to_json}"
+          # logger.debug2 "vc = #{vc.to_json}"
+          # logger.debug2 "vg = #{vg.to_json}"
+          # logger.debug2 "json_error_info = #{json_error_info.to_json}"
           server_verify_gifts_requests[gift_server_id][:server_requests].push(verify_gift_request)
           server_verify_gifts_requests[gift_server_id][:json_error_info].push(json_error_info)
-          logger.debug2 "server_verify_gifts_requests = #{server_verify_gifts_requests.to_json}"
+          # logger.debug2 "server_verify_gifts_requests = #{server_verify_gifts_requests.to_json}"
 
           # wait for verify gifts response and new identical verify comments request
           logger.debug2('todo: add verify_comments call to server.receive_verify_gifts_response')
           next
 
-        end
+        end # if !vc
+
 
         # verify comments request was already in verify comments table
         # must be second call after receiving verify gifts response from other Gofreerev server
-        # 1) must have login_user_ids information
+        # see server.receive_verify_gifts_response - pending_verify_comms_requests loop
+
+        # 1) must have login_user_ids information. always ok. called from server.receive_verify_gifts_response
         # 2) must have corresponding row in verify gifts table (server_seq)
         # 3) response from verify gifts request must be ready
         #    - verified_at_server is not null
@@ -982,10 +994,53 @@ class Comment < ActiveRecord::Base
         #    - direction is not null
         logger.debug2 "comment.gift is on a other Gofreerev server. Old identical verify comment request found in verify_comments table"
         logger.debug2 "vc = #{vc.to_json}"
+        # vc = {
+        #     "id":29,"client_sid":null,"client_sha256":null,"client_seq":63,"server_id":0,
+        #     "cid":"14488910629803885142","server_seq":49,"verified_at_server":null,
+        #     "created_at":"2015-12-08T16:05:28.000Z","updated_at":"2015-12-08T16:05:28.000Z",
+        #     "error":null,"request_mid":95,"response_mid":null,
+        #      "original_client_request":"{\"seq\":63,\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"sha256_action\":\"¼=Ý\\\"¬b^\\u0011ó(é.¥ó·{(b\\u0004aZ`éüÜ\\u0014»è\",\"user_ids\":[2],\"new_deal_action_by_user_ids\":[3],\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3],\"server_id\":1}}",
+        #     "login_user_ids":"[\"1563545817212684/facebook\"]",
+        #     "original_client_request_sha256":"Cmi3CLMkW8IQ/95gLvb1pRYnNA8CS5/DqS6KTY3LIyo=\n"
+        # }
 
-
-
-
+        vg = VerifyGift.find_by_server_seq(vc.server_seq)
+        if !vg
+          error = "System error. #{action_failed}. Authorization check failed. Expected verify gift response was not found in verify_gifts table"
+          logger.error2 "Cid #{cid} : #{error}"
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_res_not_found_1', :options => { :action => action } },
+              client_sid, verify_comment)
+          next
+        end
+        logger.debug2 "vg = #{vg.to_json}"
+        # vg = {
+        #    "id":34,"client_sid":null,"client_sha256":null,"client_seq":50,"server_id":1,
+        #    "gid":"14481197074000741072","server_seq":50,
+        #    "verified_at_server":false,"created_at":"2015-12-09T08:49:15.000Z","updated_at":"2015-12-09T08:49:17.000Z",
+        #    "error":" gift action failed. Invalid request. sha256 signature check failed",
+        #    "request_mid":97,"response_mid":84,
+        #    "original_client_request":"{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3],\"server_id\":1}",
+        #    "direction":null}
+        if ![true, false].index(vg.verified_at_server)
+          error = "System error. #{action_failed}. Authorization check failed. Expected verify gift response was not found in verify_gifts table"
+          logger.error2 "Cid #{cid} : #{error}"
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_res_not_found_2', :options => { :action => action } },
+              client_sid, verify_comment)
+          next
+        end
+        if !vg.verified_at_server
+          error = "#{action_failed}. Authorization check failed. Verify gift failed with error message \"#{vg.error}\""
+          logger.error2 "Cid #{cid} : #{error}"
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_invalid', :options => { :action => action, :error => vg.error } },
+              client_sid, verify_comment)
+          next
+        end
 
 
         # check if verify gifts response already is in verify_gifts table and continue with authorization validation
@@ -1168,7 +1223,8 @@ class Comment < ActiveRecord::Base
     logger.debug2 "server_verify_comms_requests = #{server_verify_comms_requests}"
 
     # send any server to server verify comments messages (comment on remote server)
-    server_verify_comms_requests.each do |server_id, server_request|
+    # todo: add json error handling. see how it is done for verify gifts messages
+    server_verify_comms_requests.each do |server_id, server_requests_hash|
       # translate login user uds to sha256 signatures (verified server users) or negative user ids (unknown users)
       login_user_ids = []
       login_users.each do |login_user|
@@ -1184,31 +1240,84 @@ class Comment < ActiveRecord::Base
           login_user_ids.push(-login_user.id)
         end
       end
+
+      # build and validate json verify comments server to server message
       message_hash = {
           :msgtype => 'verify_comments',
           :mid => server_verify_comments_mid[server_id],
           :login_users => login_user_ids,
-          :verify_comments => server_request }
+          :verify_comments => server_requests_hash[:server_requests] }
       logger.debug2 "verify_comments message_hash = #{message_hash}"
-      # validate json message before sending
+
+      # check that json schema exists
       json_schema = :verify_comments_request
       if !JSON_SCHEMA.has_key? json_schema
-        return Gift.format_error_response(
-            { :error => "System error. Could not validate verify_comments server to server message. JSON schema definition #{json_schema.to_s} was not found.",
-              :key => 'no_json', :options => { :schema => json_schema} },
-            client_sid, nil)
+
+        # error message in log
+        logger.error2 "Failed to sent comments to remote verification. JSON schema #{json_schema} was not found"
+        error = "System error. Failed to sent comments to remote verification. JSON schema #{json_schema} was not found"
+
+        # cleanup + return fatal json error in client_response_array
+        logger.debug2 "Cleanup after JSON error and return error message to client"
+        server_requests_hash[:json_error_info].each do |json_error_info|
+          verify_comment, vc = json_error_info
+          logger.debug2 "server_id      = #{server_id}"
+          logger.debug2 "verify_comment = #{verify_comment.to_json}"
+          logger.debug2 "vc             = #{vc.to_json}"
+          # return error message to client
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => verify_comment['seq'], :cid => verify_comment['cid'], :verified_at_server => false,
+                :error => error, :key => 'no_json', :options => {:schema => json_schema} },
+              client_sid, verify_comment)
+          vc.destroy!
+        end
+
+        next # unable to check json - don't send verify comments server to server message
+
+        # return Gift.format_error_response(
+        #     { :error => "System error. Could not validate verify_comments server to server message. JSON schema definition #{json_schema.to_s} was not found.",
+        #       :key => 'no_json', :options => { :schema => json_schema} },
+        #     client_sid, nil)
+
       end
+
+      # check that json is valid
       json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
       if json_errors.size > 0
+
+        # write error message in server log
+        json_error = json_errors.join(', ')
         logger.error2 "Failed to sent comments to remote verification. Error in #{json_schema}"
         logger.error2 "message = #{message_hash}"
         logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
-        logger.error2 "errors = #{json_errors.join(', ')}"
-        return Gift.format_error_response(
-            { :error => "Failed to create verify_comments server to server message: #{json_errors.join(', ')}",
-              :key => 'invalid_json', :options => { :schema => json_schema, :error => json_errors.join(', ')} },
-            client_sid, nil)
-      end
+        logger.error2 "errors = #{json_error}"
+        error = "System error. Failed to sent comments to remote verification. JSON error in verify_comments server to server message: #{json_error}."
+
+        # cleanup + return fatal json error in client_response_array
+        logger.debug2 "Cleanup after JSON error and return error message to client"
+        server_requests_hash[:json_error_info].each do |json_error_info|
+          verify_comment, vc = json_error_info
+          logger.debug2 "server_id      = #{server_id}"
+          logger.debug2 "verify_comment = #{verify_comment.to_json}"
+          logger.debug2 "vc             = #{vc.to_json}"
+          # return error message to client
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => verify_comment['seq'], :cid => verify_comment['cid'], :verified_at_server => false,
+                :error => error, :key => 'invalid_json', :options => {:schema => json_schema, :error => json_error} },
+              client_sid, verify_comment)
+          vc.destroy!
+        end # server_requests_hash[:json_error_info] loop
+
+        next # don't send invalid verify comments server to server message
+
+        # return Gift.format_error_response(
+        #     { :error => "Failed to create verify_comments server to server message: #{json_errors.join(', ')}",
+        #       :key => 'invalid_json', :options => { :schema => json_schema, :error => json_errors.join(', ')} },
+        #     client_sid, nil)
+
+      end # if
 
       # save mix encrypted server to server message - will be sent in next server to server ping
       key, message = servers[server_id].mix_encrypt_message_hash message_hash
@@ -1220,9 +1329,8 @@ class Comment < ActiveRecord::Base
       m.key = key
       m.message = message
       m.save!
-    end # each server_id, server_request
 
-
+    end # server_verify_comms_requests loop
 
 
     # send any server to server verify gifts messages (gift on remote server)
@@ -1242,6 +1350,7 @@ class Comment < ActiveRecord::Base
           login_user_ids.push(-login_user.id)
         end
       end
+
       # build and validate json verify gifts server to server message
       message_hash = {
           :msgtype => 'verify_gifts',
@@ -1249,29 +1358,63 @@ class Comment < ActiveRecord::Base
           :login_users => login_user_ids,
           :verify_gifts => server_requests_hash[:server_requests] }
       logger.debug2 "verify_gifts message_hash = #{message_hash}"
+
+      # check that json schema exists
       json_schema = :verify_gifts_request
       if !JSON_SCHEMA.has_key? json_schema
-        return Gift.format_error_response(
-            { :error => "System error. Could not validate verify_gifts server to server message. JSON schema definition #{json_schema.to_s} was not found.",
-              :key => 'no_json', :options => { :schema => json_schema} },
-            client_sid, nil)
-      end
-      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
-      if json_errors.size > 0
-        logger.error2 "Failed to sent gifts to remote verification. Error in #{json_schema}"
-        logger.error2 "message = #{message_hash}"
-        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
-        logger.error2 "errors = #{json_errors.join(', ')}"
-        json_error = json_errors.join(', ')
-        error = "System error. Failed to sent gifts to remote verification. JSON error in verify_gifts server to server message: #{json_error}."
 
-        # return fatal json error in client_response_array
+        # error message in log
+        logger.error2 "Failed to sent gifts to remote verification. JSON schema #{json_schema} was not found"
+        error = "System error. Failed to sent gifts to remote verification. JSON schema #{json_schema} was not found"
+
+        # cleanup + return fatal json error in client_response_array
+        logger.debug2 "Cleanup after JSON error and return error message to client"
         server_requests_hash[:json_error_info].each do |json_error_info|
           verify_comment, vc, vg = json_error_info
           logger.debug2 "server_id      = #{server_id}"
           logger.debug2 "verify_comment = #{verify_comment.to_json}"
           logger.debug2 "vc             = #{vc.to_json}"
           logger.debug2 "vg             = #{vg.to_json}"
+          # return error message to client
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => verify_comment['seq'], :cid => verify_comment['cid'], :verified_at_server => false,
+                :error => error, :key => 'no_json', :options => {:schema => json_schema} },
+              client_sid, verify_comment)
+          vc.destroy!
+          vg.destroy!
+        end
+
+        next # unable to check json - don't send verify gifts server to server message
+
+        # return Gift.format_error_response(
+        #     { :error => "System error. Could not validate verify_gifts server to server message. JSON schema definition #{json_schema.to_s} was not found.",
+        #       :key => 'no_json', :options => { :schema => json_schema} },
+        #     client_sid, nil)
+
+      end
+
+      # check that json is valid
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
+      if json_errors.size > 0
+
+        # write error message in server log
+        json_error = json_errors.join(', ')
+        logger.error2 "Failed to sent gifts to remote verification. Error in #{json_schema}"
+        logger.error2 "message = #{message_hash}"
+        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+        logger.error2 "errors = #{json_error}"
+        error = "System error. Failed to sent gifts to remote verification. JSON error in verify_gifts server to server message: #{json_error}."
+
+        # cleanup + return fatal json error in client_response_array
+        logger.debug2 "Cleanup after JSON error and return error message to client"
+        server_requests_hash[:json_error_info].each do |json_error_info|
+          verify_comment, vc, vg = json_error_info
+          logger.debug2 "server_id      = #{server_id}"
+          logger.debug2 "verify_comment = #{verify_comment.to_json}"
+          logger.debug2 "vc             = #{vc.to_json}"
+          logger.debug2 "vg             = #{vg.to_json}"
+          # return error message to client
           Gift.client_response_array_add(
               client_response_array,
               { :seq => verify_comment['seq'], :cid => verify_comment['cid'], :verified_at_server => false,
@@ -1279,18 +1422,18 @@ class Comment < ActiveRecord::Base
               client_sid, verify_comment)
           vc.destroy!
           vg.destroy!
-        end
+        end # server_requests_hash[:json_error_info] loop
 
-        next
+        next # don't send invalid verify gifts server to server message
 
         # return Gift.format_error_response(
         #     { :error => "Failed to create verify_gifts server to server message: #{json_errors.join(', ')}",
         #       :key => 'invalid_json', :options => { :schema => json_schema, :error => error} },
         #     client_sid, nil)
-      end
+
+      end # if
 
       # save mix encrypted server to server message - will be sent in next server to server ping
-
       key, message = servers[server_id].mix_encrypt_message_hash message_hash
       m = Message.new
       m.from_did = SystemParameter.did
@@ -1300,10 +1443,11 @@ class Comment < ActiveRecord::Base
       m.key = key
       m.message = message
       m.save!
-    end # each server_id, server_request
+
+    end # server_verify_gifts_requests loop
+
 
     return nil if client_response_array.size == 0
-
     client_response_array.size == 0 ? nil : { :comments => client_response_array }
 
   rescue InvalidResponse => e

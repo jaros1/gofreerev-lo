@@ -1105,11 +1105,11 @@ class Server < ActiveRecord::Base
     if negative_user_ids.size > 0
       logger.debug2 "negative_user_ids.size = #{negative_user_ids.size}, negative_user_ids_option = #{negative_user_ids_option}"
       if !negative_user_ids_option
-        # not allowed in online users message
+        # nil or false: not allowed in online users message
         errors << "Invalid negative user ids #{negative_user_ids.join(', ')}"
         invalid_negative_user_ids += negative_user_ids
       elsif negative_user_ids_option == :translate
-        # giver and receiver in verify gifts message
+        # translate: giver and receiver in verify gifts message
         # todo: how to handle gift creator on one gofreerev server and accepted deal proposal from an other gofreerev server? one or more user ids can be unknown
         positive_user_ids = negative_user_ids.collect { |user_id| -user_id }
         users = User.where(:id => positive_user_ids)
@@ -1118,7 +1118,9 @@ class Server < ActiveRecord::Base
         unknown_negative_user_ids = unknown_positive_user_ids.collect { |user_id| -user_id }
         errors << "Invalid negative user ids #{unknown_negative_user_ids.join(', ')}" if unknown_negative_user_ids.size > 0
       else
-        # negative login users ids in verify gifts request. OK
+        # true: negative login users ids in verify gifts request. Keep unchanged
+        # todo: testrun-46: keep unknown negative user ids in gift.giver_user_ids hash (simple verify gifts request)
+        valid_negative_user_ids += negative_user_ids
       end
     end # if
 
@@ -1816,9 +1818,7 @@ class Server < ActiveRecord::Base
                        :sha256_changed => true})
       else
         # ready for local gift verification or waiting for local user info to be updated (changed sha256 signatures)
-        hash = {"seq" => seq,
-                "gid" => gid,
-                "sha256" => verify_gift['sha256']}
+        hash = {"seq" => seq, "gid" => gid, "sha256" => verify_gift['sha256'], "action" => verify_gift['action']}
         hash["sha256_deleted"] = verify_gift["sha256_deleted"] if verify_gift["sha256_deleted"]
         hash["sha256_accepted"] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
         if local_changed_login_users or local_changed_givers or local_changed_receivers
@@ -1958,6 +1958,7 @@ class Server < ActiveRecord::Base
     invalid_response = []
     identical_response = []
     ok_response = []
+    pending_verify_comms_requests = []
     verify_gifts.each do |verify_gift|
       seq = verify_gift['seq']
       gid = verify_gift['gid']
@@ -1990,6 +1991,13 @@ class Server < ActiveRecord::Base
         logger.debug2 "vg after save = #{vg.to_json}"
 
         logger.debug2 "todo: check for pending verify comments request waiting for this verify gifts response"
+
+        vc = VerifyComment.find_by_server_seq(vg.server_seq)
+        if vc
+          logger.debug2 "found old verify comments request waiting for verify gifts response. vc = #{vc.to_json}"
+          pending_verify_comms_requests << vc
+        end
+
         # - row in verify_comments table with identical server_seq, request_mid and with login_user_ids
         # must repeat original verify comments request
         # original verify comments request can by a client ping and must be returned in /util/ping response
@@ -2001,28 +2009,84 @@ class Server < ActiveRecord::Base
     logger.debug2 "verify_gifts.size = #{verify_gifts.size}, unknown_seq.size = #{unknown_seq.size}, " +
                       "invalid_server_id.size = #{invalid_server_id.size}, invalid_gid.size = #{invalid_gid.size}, " +
                       "invalid_response.size = #{invalid_response.size}, identical_response.size = #{identical_response.size}, " +
-                      "ok_response.size = #{ok_response.size}"
+                      "ok_response.size = #{ok_response.size}, old_pending_vc_requests.size = #{pending_verify_comms_requests.size}"
 
-    # verify_gifts =
-    #    [{:seq=>224, :gid=>"14253148989837740200", :verified_at_server=>true}, {:seq=>225, :gid=>"14253152345973353338", :verified_at_server=>true},
-    #     {:seq=>226, :gid=>"14253163835441202510", :verified_at_server=>true}, {:seq=>227, :gid=>"14253166119353097472", :verified_at_server=>true},
-    #     ...
-    #     {:seq=>234, :gid=>"14258782920140696549", :verified_at_server=>true}]
-    # ok_response.each do |verify_gift|
-    #   logger.debug2 "ok_response: verify_gift = #{ok_response.to_json}"
-    #   seq = verify_gift['seq']
-    #   vg = vgs[seq]
-    #   logger.debug2 "ok_response: vg before = #{vg.to_json}"
-    #   vg.verified_at_server = verify_gift['verified_at_server']
-    #   vg.error = verify_gift['error'] if verify_gift['error']
-    #   vg.response_mid = mid
-    #   logger.debug2 "ok_response: vg after = #{vg.to_json}"
-    #   vg.save!
-    # end
+
+    # loop for each pending verify_comments requests. execute verify_comments request with correct login_users and set response to correct server
+    pending_verify_comms_requests.each do |vc|
+
+      logger.debug2 "repeat old verify comments request. vc = #{vc.to_json}"
+
+      local_verify_comments_request = [JSON.parse(vc.original_client_request)]
+      login_user_ids = JSON.parse(vc.login_user_ids)
+
+      # comment verify requests ready for local verification
+      local_verify_comments_response = Comment.verify_comments(local_verify_comments_request, login_user_ids, nil, nil) # client_sid = client_sha256 = nil (local verification)
+      logger.debug2 "local_verify_comments_request = #{local_verify_comments_request}"
+      logger.debug2 "local_verify_comments_response = #{local_verify_comments_response}"
+      if !local_verify_comments_response
+        # empty response!
+        error = "System error. Empty Comment.verify_comments response while repeating old pending verify comments request"
+        logger.debug2 error
+        local_verify_comments_response = { :error => error }
+      elsif local_verify_comments_response[:error]
+        # error response with fatal error. Ignore any verify comments responses
+        local_verify_comments_response.delete(:comments)
+      else
+        # ok response
+        if local_verify_comments_response[:comments].class != Array or local_verify_comments_response[:comments].size != 1
+          error = "System error. Expected one and only one Comment.verify_comments response row while repeating old pending verify comments request"
+          local_verify_comments_response = { :error => error }
+        end
+      end
+
+      # format response - note - no login users array in verify comments response
+      message_hash = {
+          :msgtype => 'verify_comments',
+          :mid => Sequence.next_server_mid,
+          :request_mid => mid
+      }
+      message_hash[:verify_comments] = local_verify_comments_response[:comments] if local_verify_comments_response[:comments]
+      message_hash[:error] = local_verify_comments_response[:error] if local_verify_comments_response[:error]
+      logger.debug2 "todo: witch mid to use in verify comments response with old verify comments requests?"
+      logger.debug2 "message_hash = #{message_hash}"
+      logger.debug2 "vc = #{vc.to_json}"
+
+      # validate json message before "sending"
+      json_schema = :verify_comments_response
+      if !JSON_SCHEMA.has_key? json_schema
+        logger.debug2 "todo: send could not validate verify_comments response. JSON schema definition #{json_schema.to_s} was not found error message to other Gofreerev server"
+        return ["Could not validate verify_comments response. JSON schema definition #{json_schema.to_s} was not found.", false]
+      end
+      json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
+      if json_errors.size > 0
+        logger.error2 "Failed to return remote verify comments response. Error in #{json_schema}"
+        logger.error2 "message = #{message_hash}"
+        logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
+        logger.error2 "errors = #{json_errors.join(', ')}"
+        logger.debug2 "todo: send Failed to return remote verify comments response. Error in #{json_schema} 1error message to other Gofreerev server"
+        return "Failed to return remote verify comments response: #{json_errors.join(', ')}"
+      end
+      # save server to server message - will be procesed in next ping
+      key, message = self.mix_encrypt_message_hash message_hash
+      m = Message.new
+      m.from_did = SystemParameter.did
+      m.to_did = self.new_did
+      m.server = true
+      m.key = key
+      m.message = message
+      m.mid = message_hash[:mid]
+      m.save!
+      logger.debug2 "correct to_did in verify comments response message?"
+      logger.debug2 "m = #{m.to_json}"
+      logger.debug2 "vc = #{vc.to_json}"
+
+    end # pending_verify_comms_requests loop
+
 
     if unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size > 0
       # send server to server error message
-      errors = [ "#{unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size} rows in verify gift response" ]
+      errors = ["#{unknown_seq.size + invalid_server_id.size + invalid_gid.size + invalid_response.size} rows in verify gift response"]
       errors << "Unknown or deleted seqs: " + unknown_seq.collect { |vg| vg['seq'] }.join(', ') if unknown_seq.size > 0
       errors << "Invalid seqs (other server): " + invalid_server_id.collect { |vg| vg['seq'] }.join(', ') if invalid_server_id.size > 0
       errors << "Invalid gids: " + invalid_gid.collect { |vg| vg['seq'] }.join(', ') if invalid_gid.size > 0
@@ -2221,6 +2285,10 @@ class Server < ActiveRecord::Base
             no_errors += 1
             next
           end
+          logger.debug2 "todo: testrun 46. checking giver user ids before and after translate:"
+          logger.debug2 "negative_user_ids         = #{negative_user_ids}"
+          logger.debug2 "gift_giver_user_ids       = #{gift_giver_user_ids}"
+          logger.debug2 "valid_gift_giver_user_ids = #{valid_gift_giver_user_ids}"
           # only checking valid_gift_giver_user_ids array size for local gifts
           if !gift.has_key?('server_id') and gift_giver_user_ids.size != valid_gift_giver_user_ids.size
             logger.debug2 "seq #{seq}: invalid users in #{gift_giver_user_ids}"

@@ -5853,14 +5853,15 @@ angular.module('gifts')
                             gift_errors[gid] = 'Gift in incoming send_gifts sub message was ignores and gift in outgoing send_gifts sub message could not be sent due to error: ' + error;
                             continue;
                         }
-                        send_gifts_sub_message.push(gift_clone);
+                        send_gifts_sub_message.gifts.push(gift_clone);
                         add_user_ids_to_array(gift_clone.giver_user_ids, send_gifts_users, false);
                         add_user_ids_to_array(gift_clone.receiver_user_ids, send_gifts_users, false);
                         if (!gift.hasOwnProperty('comments')) continue;
+                        // todo: check that only relevant (changed) comments are sent to other client
                         for (j = 0; j < gift.comments.length; j++) {
                             comment = gift.comments[j];
                             cid = comment.cid;
-                            if (!send_gift) send_comment = send_comments.hasOwnProperty(cid);
+                            if (!send_gift) send_comment = (send_comments.indexOf(comment.cid) != -1);
                             if (!send_gift && !send_comment) continue;
                             // clone, validate and insert comment in send_gift sub message
                             comment_clone = make_comment_clone(comment);

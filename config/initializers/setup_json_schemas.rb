@@ -1088,7 +1088,7 @@ JSON_SCHEMA = {
                                             # optional new_deal_action. Only used for new deal proposals.
                                             :new_deal_action => {:type => %w(undefined string), :pattern => '^(cancel|accept|reject)$'},
                                             # optional new_deal_action user id, log in users for cancel, accept or reject action, subset of gift creator (accept, reject) or subset of comment creator (cancel)
-                                            :new_deal_action_by_user_ids => {:type => %w(undefined array), :items => {:type => 'integer'}},
+                                            :new_deal_action_by_user_ids => {:type => %w(undefined array), :items => {:type => %w(integer string)}},
                                             # optional new_deal_action_at_client unix timestamp
                                             :new_deal_action_at_client => {:type => %w(undefined integer), :minimum => uid_from, :maximum => uid_to},
                                             # optional deleted at timestamp if comment has been deleted by giver, receiver or commenter

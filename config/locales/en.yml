@@ -1106,6 +1106,8 @@ en:
         comment_syserr_gift_res_not_found_1: "System error. %{action} comment failed. Authorization check failed. Expected verify gift response was not found in verify_gifts table."
         comment_syserr_gift_res_not_found_2: "System error. %{action} comment failed. Authorization check failed. Expected verify gift response was not found in verify_gifts table."
         comment_syserr_gift_invalid: "%{action} comment failed. Authorization check failed. Verify gift failed with \"%{error}\"."
+        comment_syserr_gift_no_direction: "System error. #{action} comment failed. Authorization check failed. Verify gift response without direction."
+        comment_syserr_gift_direction: "System error. #{action} comment failed. Authorization check failed. Invalid direction in verify gift response."
         comment_syserr_gift_not_found: "%{action} comment failed. Authorization check failed. Gift %{gid} was not found."
         comment_syserr_gift_sha256: "%{action} comment failed. Authorization check failed. Gift sha256 signature check failed."
         comment_accept_gift_not_auth: "%{action} new deal proposal failed. Not authorized. New deal proposal can only be accepted and rejected by creator of gift."

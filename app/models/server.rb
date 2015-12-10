@@ -655,7 +655,7 @@ class Server < ActiveRecord::Base
             su.save!
             logger.debug2 "su = #{su.to_json}"
           else
-            # todo: respond with sha2546 = nil
+            # todo: respond with sha256 = nil
             logger.debug2 "user does not exists. return null user.sha256 signature"
             request << {'user_id' => usr["user_id"]}
           end
@@ -1119,7 +1119,6 @@ class Server < ActiveRecord::Base
         errors << "Invalid negative user ids #{unknown_negative_user_ids.join(', ')}" if unknown_negative_user_ids.size > 0
       else
         # true: negative login users ids in verify gifts request. Keep unchanged
-        # todo: testrun-46: keep unknown negative user ids in gift.giver_user_ids hash (simple verify gifts request)
         valid_negative_user_ids += negative_user_ids
       end
     end # if
@@ -2285,10 +2284,9 @@ class Server < ActiveRecord::Base
             no_errors += 1
             next
           end
-          logger.debug2 "todo: testrun 46. checking giver user ids before and after translate:"
-          logger.debug2 "negative_user_ids         = #{negative_user_ids}"
-          logger.debug2 "gift_giver_user_ids       = #{gift_giver_user_ids}"
-          logger.debug2 "valid_gift_giver_user_ids = #{valid_gift_giver_user_ids}"
+          # logger.debug2 "negative_user_ids         = #{negative_user_ids}"
+          # logger.debug2 "gift_giver_user_ids       = #{gift_giver_user_ids}"
+          # logger.debug2 "valid_gift_giver_user_ids = #{valid_gift_giver_user_ids}"
           # only checking valid_gift_giver_user_ids array size for local gifts
           if !gift.has_key?('server_id') and gift_giver_user_ids.size != valid_gift_giver_user_ids.size
             logger.debug2 "seq #{seq}: invalid users in #{gift_giver_user_ids}"

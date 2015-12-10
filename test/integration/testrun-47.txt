@@ -1,0 +1,268 @@
+testrun-47 ok
+
+client 2: reject new deal proposal from client 1
+setup before test:
+- gift previously created by client 2 on server 2
+- new deal proposal from client 1 on server 1
+
+messaages:
+Client 2 must send reject new deal proposal to server 2
+Server 2 must forward reject new deal proposal to server 1
+server 1 must forward simple verify gift request to server 2
+server 2 must check gift and return direction (gift creator) to server 1
+server 1 must complete reject new deal proposal request and return answer to server 2
+server 2 must forward reject new deal proposal response to client 2
+
+
+test log:
+
+client 2: page refresh + send reject new deal proposal to server 2
+...
+GiftService.load_gifts:
+client 2: gift on local Gofreerev server (created_on_server=0). Comment on remote Gofreerev server (created_on_server=1)
+gift = {
+   "gid":"14481197074000741072","giver_user_ids":[2,4],"receiver_user_ids":[],"created_at_client":1448119707,"currency":"usd","direction":"giver","description":"laptop2","show":true,
+   "comments":[
+      {"cid":"14485283446016438892","user_ids":[3],"comment":"laptop 1","currency":"usd","created_at_client":1448528344,"created_at_server":1,
+       "sha256":"Ê9É¶0Ö\u0007\u0018zJw7Â\u0006Ì]b\u0016:\\K\u0012iVóà"},
+      {"cid":"14488910629803885142","user_ids":[3],"comment":"laptop 1 proposal","price":null,"currency":"usd","created_at_client":1448891062,"created_at_server":1,
+       "new_deal":true,"sha256":"\u0000,}g\u0016ùI\u0004ôã^VzÈñc\u0019­:¼©vnÀI¼¡¦"}],
+   "created_at_server":0,
+   "sha256":"yÝqiù\u001aGôÜ½^ÞFOI2o\u001e\t¸\u001f_~?VðÑö",
+   "sha256_gift":"ræ´¸ÀÒï½fÕ·\u001cÑ\r/¾¬EîÎf4sF1lG>c","sha256_comments":"±ò/PUü\u001ff¸R\t¹³A¦\u001a4«\u0004\u001aL¡ëæÌ\"\u000f\rØ"
+}
+GiftService.load_gifts: gifts.length = 2
+...
+GiftService.verify_comments_add: added cid 14488910629803885142 to verify comments buffer with action reject
+GiftService.gift_signature_for_server: gid = 14481197074000741072, signature = {"sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ"}
+GiftService.verify_comments_request: hash = {"cid":"14488910629803885142","sha256":"åñ N\u001eÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê","action":"reject","user_ids":[3],"sha256_action":"\u0012Ýº/è\u00133ovN\u001fÃÔ\u0018Np´\u001d\u000f\fe\u0014ýd§Ð","new_deal_action_by_user_ids":[2],"server_id":1,"gift":{"gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ","giver_user_ids":[2,4]},"seq":-85}
+GiftService.verify_comments_request: 1 new comment verification requests sent to server.
+
+client 2: waiting for reject new deal proposal response:
+GiftService.verify_comments_request: Warning. Found 0 local and 1 remote comments in comments actions buffer. 0 create, 0 verify, 0 cancel, 0 accept,  1 reject and 0 delete comment requests
+GiftService.verify_comments_request: Warning. Found 0 local and 1 remote comments in comments actions buffer. 0 create, 0 verify, 0 cancel, 0 accept,  1 reject and 0 delete comment requests
+...
+
+
+server 2: received reject new deal proposal request from client 2
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-12-10 09:19:41 +0100
+Processing by UtilController#ping as JSON
+  Parameters: {
+     "client_userid"=>1, "sid"=>"14490425872282057342", "client_timestamp"=>1449735581572,
+     "verify_comments"=>[
+        {"cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê",
+         "action"=>"reject", "user_ids"=>[3], "sha256_action"=>"\u0012\u0090Ýº\u0093/è\u00133ovN\u001FÃ\u009A\u0094Ô\u0018Np´\u001D\u000F\fe\u0014ýd\u0093§\u007FÐ",
+         "new_deal_action_by_user_ids"=>[2], "server_id"=>1,
+         "gift"=>{
+            "gid"=>"14481197074000741072", "sha256"=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ",
+            "giver_user_ids"=>[2, 4]
+         },
+         "seq"=>-85}],
+     "pubkeys"=>["14481194806251567148"],
+     "util"=>{"client_userid"=>1, "sid"=>"14490425872282057342", "client_timestamp"=>1449735581572, "verify_comments"=>[{"cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "action"=>"reject", "user_ids"=>[3], "sha256_action"=>"\u0012\u0090Ýº\u0093/è\u00133ovN\u001FÃ\u009A\u0094Ô\u0018Np´\u001D\u000F\fe\u0014ýd\u0093§\u007FÐ", "new_deal_action_by_user_ids"=>[2], "server_id"=>1, "gift"=>{"gid"=>"14481197074000741072", "sha256"=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", "giver_user_ids"=>[2, 4]}, "seq"=>-85}], "pubkeys"=>["14481194806251567148"]}}
+...
+verify_comments: verify_comments = [{"cid":"14488910629803885142","sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê","action":"reject","user_ids":[3],"sha256_action":"\u0012Ýº/è\u00133ovN\u001FÃÔ\u0018Np´\u001D\u000F\fe\u0014ýd§Ð","new_deal_action_by_user_ids":[2],"server_id":1,"gift":{"gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ","giver_user_ids":[2,4]},"seq":-85}]
+verify_comments: login_user_ids = ["1616942831872982/facebook"]
+verify_comments: client_sid     = 14490425872282057342
+verify_comments: client_sha256  = 0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=
+verify_comments: is_server_msg  = false
+...
+
+server 2: save client 2 request and forward reject new deal proposal to server 1
+   (0.1ms)  BEGIN
+  SQL (0.3ms)  INSERT INTO `verify_comments` (`cid`, `client_seq`, `client_sha256`, `client_sid`, `created_at`, `original_client_request`, `request_mid`, `server_id`, `server_seq`, `updated_at`) VALUES ('14488910629803885142', -85, '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=', '14490425872282057342', '2015-12-10 08:19:41', '{\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"user_ids\":[3],\"sha256_action\":\"\\u0012Ýº/è\\u00133ovN\\u001FÃÔ\\u0018Np´\\u001D\\u000F\\fe\\u0014ýd§Ð\",\"new_deal_action_by_user_ids\":[2],\"server_id\":1,\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[2,4]},\"seq\":-85}', 109, 1, 77, '2015-12-10 08:19:41')
+   (4.6ms)  COMMIT
+block in verify_comments: vc = {"id":63,"client_sid":"14490425872282057342","client_sha256":"0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=","client_seq":-85,"server_id":1,"cid":"14488910629803885142","server_seq":77,"verified_at_server":null,"created_at":"2015-12-10T08:19:41.806Z","updated_at":"2015-12-10T08:19:41.806Z","error":null,"request_mid":109,"response_mid":null,"original_client_request":"{\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"user_ids\":[3],\"sha256_action\":\"\\u0012Ýº/è\\u00133ovN\\u001FÃÔ\\u0018Np´\\u001D\\u000F\\fe\\u0014ýd§Ð\",\"new_deal_action_by_user_ids\":[2],\"server_id\":1,\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[2,4]},\"seq\":-85}","login_user_ids":null,"original_client_request_sha256":null}
+  Server Load (0.1ms)  SELECT `servers`.* FROM `servers`
+   (0.3ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = '14490425872282057342' and client_sha256 = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' and verified_at_server is not null)
+verify_comments: client_response_array = []
+verify_comments: server_verify_comms_requests = {1=>{:server_requests=>[{:seq=>77, :cid=>"14488910629803885142", :sha256=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", :action=>"reject", :sha256_action=>"\u0012\u0090Ýº\u0093/è\u00133ovN\u001FÃ\u009A\u0094Ô\u0018Np´\u001D\u000F\fe\u0014ýd\u0093§\u007FÐ", :user_ids=>[{:sha256=>"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=", :pseudo_user_id=>1, :sha256_updated_at=>1448957114}], :new_deal_action_by_user_ids=>[{:sha256=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", :pseudo_user_id=>2, :sha256_updated_at=>1448957114}], :gift=>{:gid=>"14481197074000741072", :sha256=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", :giver_user_ids=>[{:sha256=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", :pseudo_user_id=>2, :sha256_updated_at=>1448957114}, -4], :server_id=>"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="}}], :json_error_info=>[[{"cid"=>"14488910629803885142", "sha256"=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", "action"=>"reject", "user_ids"=>[3], "sha256_action"=>"\u0012\u0090Ýº\u0093/è\u00133ovN\u001FÃ\u009A\u0094Ô\u0018Np´\u001D\u000F\fe\u0014ýd\u0093§\u007FÐ", "new_deal_action_by_user_ids"=>[2], "server_id"=>1, "gift"=>{"gid"=>"14481197074000741072", "sha256"=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", "giver_user_ids"=>[2, 4]}, "seq"=>-85}, #<VerifyComment id: 63, client_sid: "14490425872282057342", client_sha256: "0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=", client_seq: -85, server_id: 1, cid: "14488910629803885142", server_seq: 77, verified_at_server: nil, created_at: "2015-12-10 08:19:41", updated_at: "2015-12-10 08:19:41", error: nil, request_mid: 109, response_mid: nil, original_client_request: "{\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ...", login_user_ids: nil, original_client_request_sha256: nil>]]}}
+block in verify_comments: verify_comments message_hash = {:msgtype=>"verify_comments", :mid=>109, :login_users=>[{:sha256=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", :pseudo_user_id=>2, :sha256_updated_at=>1448957114}], :verify_comments=>[{:seq=>77, :cid=>"14488910629803885142", :sha256=>"åñ N\u001EÈ«\u0088\u0011@Û\bþë$XæròEE¼Q\u0084ù¤\a\u0082ê\u009Aßê", :action=>"reject", :sha256_action=>"\u0012\u0090Ýº\u0093/è\u00133ovN\u001FÃ\u009A\u0094Ô\u0018Np´\u001D\u000F\fe\u0014ýd\u0093§\u007FÐ", :user_ids=>[{:sha256=>"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=", :pseudo_user_id=>1, :sha256_updated_at=>1448957114}], :new_deal_action_by_user_ids=>[{:sha256=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", :pseudo_user_id=>2, :sha256_updated_at=>1448957114}], :gift=>{:gid=>"14481197074000741072", :sha256=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", :giver_user_ids=>[{:sha256=>"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=", :pseudo_user_id=>2, :sha256_updated_at=>1448957114}, -4], :server_id=>"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="}}]}
+mix_encrypt_message_hash: message_hash =
+{"msgtype":"verify_comments","mid":109,
+ "login_users":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114}],
+ "verify_comments":[
+    {"seq":77,"cid":"14488910629803885142","sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê",
+     "action":"reject","sha256_action":"\u0012Ýº/è\u00133ovN\u001FÃÔ\u0018Np´\u001D\u000F\fe\u0014ýd§Ð",
+     "user_ids":[{"sha256":"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=","pseudo_user_id":1,"sha256_updated_at":1448957114}],
+     "new_deal_action_by_user_ids":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114}],
+     "gift":{
+        "gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ",
+        "giver_user_ids":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114},-4],
+        "server_id":"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="
+     }}]
+}
+...
+
+server 2: waiting for simple verify gifts request from server 1
+...
+
+
+server 1: received reject new deal proposal from server 2:
+new mail: {"id":2487,"from_did":"14490276623158192023","from_sha256":null,"to_did":"14490276591379728338","to_sha256":null,"message":"bFJVNDVFRVk5b3lub1AvN0V2a3RYSUpVU2ZqNWdpczJ0bGN1MnJwYWRCMk5M\na2hkZzZWTTBXR1UrK2ZnCjhablpQUDFrWHpYWjJUcXRISVpFblZYY1pNWisw\nOURYR3cvOWtTMTBtTlUvL3BjVTgxYkluM2lBaFBuVQpPR1hiT1AzMW4rQ0VU\nSFpielNkYm94a1crbmFveDl3M09Qc3ZTU0pGWVovZ3ZtNHhCc2Q2MEhqTzZa\nL2gKYy9Wd2tDTzc2dXd6RlNrS1I3YUVBL2V0MkNkdlFXaFd3N1hNOFdVN05M\nbFFIWW42YTZjZHA3cTRIV2RZClkzQndCL2lSNWhienAzY1pEdDB0bUJVOEJs\nMXAzYm9XSkk2MGpHeUx5S0hJZGlSMUlTcWYyaURzZkRRbApOSlFKbzJGKzA2\nemMxVVc0MHdrV0F3VXJVamhQTnRCaGMrWHNOM0ZRclVnNFJLY1ZqSk96NDVI\nL2h3TUUKNy8wQTdkL0FxdGFIcGZMR0JDakwvUnJyZlVyeFZERjYwalV0Ti9W\nOTIzQWtWT2M5UkhFcjNKTk1IcWlUCnduTkx3UmttSjFPUFVPMUI0STVnM2xW\naC9xS0FsTnhCSVVkVW9zMHRCT05PNW96SUk1VUR5TzlMK2hOZgp2RzVHamFU\nMU96MzFYTmpvR3UwcnYxRFNEZyt0ZnhMbjBYTkRqMmNxaXJRNkJhc3ZWOS8y\nYlYzS3orSHEKNmEwYllReklaeW9NMUhocHpKL3FUcTV6N1Y4Y1p4TnVxMXY3\nb3FoZUpINWt0US95T051R2NRS0JLZlBkCktYM2w4SjBtckpjU0NIbDYzT1JI\nTGJ1WGRkVVdhb2ZHcktOaUIrNnFYYytrMVZ3Vi9RUC9wa0Y3ZkFsYQpjSTJk\neUM1bjhkZ1RVQXJ4Z21ibi84V0tYdnNSYWZkMEd0c0JnRjhrUU5xcTFrSUJx\nakNveSt2N1RUcW0Keit3b2hlYzFyb2RLWVpzSktqQ3dvQlMzVTQyckFPMllP\nbmFSWFdMR1FzRld1cmhzWkE4YVZTTDFsQnUwCkkyTUl6UERBMVpzUVlUTVdX\naHZua3hNVlErcndGWWhocjNRRlc2dWhsSEJseHZUb0NQN3A5NGtOLy9PcApa\nODRwcGNMMkZnRitidW1rblpBYWtKM1BZMld3VUZKUWlvRGZMbXJlMEgxd0dK\nS1ZpZmZQVVpnOGgwU1MKUUdzYUJ0bFhWZWtBVXVOaDdjbkVNTmVqM0ZkRnBt\ndmR0WldXQ0RtV3VZMlEzenkvYzg1QXNEMVBuWTNSCmpxNTRRd2haZUJJcnh3\nMDlMMmQzYXRLaUZ2OE1IUjZVT2lTUnVmVURDc0ZNZ2hZU0pkYnJEbEVBelhC\nRQpmRXlFb1VMQ3M5bUIzM0wxU1FLelZZa3FjZ0Zuaklnb0JWNkpVYWM1dURY\nVmF2OEw5K0xTV0JwZFZKbUwKUlEvdHdwNVcyZ1M4d0NwbUN0a2FDSXdMZUxz\ncEpiUjNaY1RBQkRnTUxpQlNKYTN3Y1RlKy95d292WmtlCjU2b3lKNTMzTlhm\nZk1aNE1xWlB6QlZoTkJGRUVOVTRwblhYMXJrb0JtZkgrV2dzUDV1bWdTbzFE\nbjROdQpVYjJjSnJFbXNLZE9GREF3RFBsUEF3NkRJOXoxWFM3ZEhrMEFWRUNw\na3RMTDlkUVpYYS9uMjAzVm1RZDMKR2xpQmZwL3BlVk5IR2pJUzNxVHB1UDhm\neVllUHJReHZlOFNUcWwvanE5MCtGQTE0cWdVcytUWlYxbnEwCkZodz0K\n","created_at":"2015-12-10T08:19:42.000Z","updated_at":"2015-12-10T08:19:42.000Z","server":true,"key":"ZX3r8YqEhS/Qd6CjuSj8IRiuAJTpiU5GwX9u87douQrYCsf+SrHl6B70hh7T\nOshp9iePaIcis0Mt6xIrfpchfJNhBTHyWBt92ETJzWt2CaDkMODVw1f/pOVQ\nuLarL1ALQtrnY5vlaDECCSclklpKUzea84mfdG8UTSoQqzwlUOSihKyzJYzT\nKrKhKkuCNtCWmpg7CQz2Uj7k2ybrTTIhyfSjPTWjKGnHqLMoWTyws/pnlTAQ\nzpXIlWOQhXUGJJVJWmXJTYKGYNuFS//5u09ZdkpcTKzemXu3Ieq93VzEjIQ6\n0phCLG7tEW7dZoZt5fUmtr+7NFZlKjL6TWjobL5XZw==\n","mid":null}
+  Server Load (0.3ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`new_did` = '14490276623158192023' LIMIT 1
+receive_message: received mix encrypted message
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'private_key' LIMIT 1
+receive_message: password = 54B5gz2u0jFKPnBiF0NgJzFIEeiANMQPkkMMJwP1atoDgNdGuIM1GGQdpbSNas8ShuiJupyZXngqdpiileDhQBYyZcGQIqEXw01EsdL1cwG0G5lVRN0tnBlfiwucN1habbnW8bicLFZonurV32jAPGjby8foJLwBIeZBE568We5FwEOkW52WwadVLEWLLWiP5PWfk6CQ
+receive_message:
+message_json = {
+   "msgtype":"verify_comments","mid":109,
+   "login_users":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114}],
+   "verify_comments":[
+      {"seq":77,"cid":"14488910629803885142","sha256":"åñ N\u001EÈ«\u0011@Û\bþë$XæròEE¼Qù¤\u0007êßê",
+       "action":"reject","sha256_action":"\u0012Ýº/è\u00133ovN\u001FÃÔ\u0018Np´\u001D\u000F\fe\u0014ýd§Ð",
+       "user_ids":[{"sha256":"xksXbdmbE/q1lvAgpEAX4DW07/9QV04pN5J6B9fHmLE=","pseudo_user_id":1,"sha256_updated_at":1448957114}],
+       "new_deal_action_by_user_ids":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114}],
+       "gift":{
+          "gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ",
+          "giver_user_ids":[{"sha256":"O7QYDZU0xp4nPlre6VhCIKkQ0PjljI/TEtaCenfBhVk=","pseudo_user_id":2,"sha256_updated_at":1448957114},-4],
+          "server_id":"c7RMen6sdUjB1rmBdtZIpqQyvzJuV9+sNDceb3Ae7d0="
+       }}]
+}
+...
+block in verify_comments: comment.gift is on an other Gofreerev server. Make verify gifts request and wait for verify gift response before continuing with verify comments request
+...
+server 1: save reject new deal proposal from server 2 and send simple verify gifts request to server 2
+   (0.1ms)  BEGIN
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_mid' LIMIT 1
+  SQL (0.2ms)  UPDATE `sequences` SET `value` = 123, `updated_at` = '2015-12-10 08:19:42' WHERE `sequences`.`id` = 6
+   (5.0ms)  COMMIT
+   (0.1ms)  BEGIN
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'verify_seq' LIMIT 1
+  SQL (0.2ms)  UPDATE `sequences` SET `value` = 63, `updated_at` = '2015-12-10 08:19:42' WHERE `sequences`.`id` = 7
+   (4.9ms)  COMMIT
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  INSERT INTO `verify_comments` (`cid`, `client_seq`, `created_at`, `login_user_ids`, `original_client_request`, `original_client_request_sha256`, `request_mid`, `server_id`, `server_seq`, `updated_at`) VALUES ('14488910629803885142', 77, '2015-12-10 08:19:42', '[\"1563545817212684/facebook\"]', '{\"seq\":77,\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"sha256_action\":\"\\u0012Ýº/è\\u00133ovN\\u001FÃÔ\\u0018Np´\\u001D\\u000F\\fe\\u0014ýd§Ð\",\"user_ids\":[2],\"new_deal_action_by_user_ids\":[3],\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3,-4],\"server_id\":1}}', 'lKQ9dS9s8+93/M5pFBQPk6Bal58pGA3XXrlUnvVNiSs=\n', 123, 0, 63, '2015-12-10 08:19:42')
+   (4.6ms)  COMMIT
+block in verify_comments: vc = {"id":43,"client_sid":null,"client_sha256":null,"client_seq":77,"server_id":0,"cid":"14488910629803885142","server_seq":63,"verified_at_server":null,"created_at":"2015-12-10T08:19:42.389Z","updated_at":"2015-12-10T08:19:42.389Z","error":null,"request_mid":123,"response_mid":null,"original_client_request":"{\"seq\":77,\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"sha256_action\":\"\\u0012Ýº/è\\u00133ovN\\u001FÃÔ\\u0018Np´\\u001D\\u000F\\fe\\u0014ýd§Ð\",\"user_ids\":[2],\"new_deal_action_by_user_ids\":[3],\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3,-4],\"server_id\":1}}","login_user_ids":"[\"1563545817212684/facebook\"]","original_client_request_sha256":"lKQ9dS9s8+93/M5pFBQPk6Bal58pGA3XXrlUnvVNiSs=\n"}
+   (0.1ms)  BEGIN
+  VerifyGift Exists (0.3ms)  SELECT 1 AS one FROM `verify_gifts` WHERE (`verify_gifts`.`client_seq` = BINARY 63 AND `verify_gifts`.`client_sid` IS NULL AND `verify_gifts`.`client_sha256` IS NULL) LIMIT 1
+  VerifyGift Exists (0.2ms)  SELECT 1 AS one FROM `verify_gifts` WHERE `verify_gifts`.`server_seq` = BINARY 63 LIMIT 1
+  SQL (0.2ms)  INSERT INTO `verify_gifts` (`client_seq`, `created_at`, `gid`, `original_client_request`, `request_mid`, `server_id`, `server_seq`, `updated_at`) VALUES (63, '2015-12-10 08:19:42', '14481197074000741072', '{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3,-4],\"server_id\":1}', 123, 1, 63, '2015-12-10 08:19:42')
+   (4.7ms)  COMMIT
+block in verify_comments: vg = {"id":47,"client_sid":null,"client_sha256":null,"client_seq":63,"server_id":1,"gid":"14481197074000741072","server_seq":63,"verified_at_server":null,"created_at":"2015-12-10T08:19:42.434Z","updated_at":"2015-12-10T08:19:42.434Z","error":null,"request_mid":123,"response_mid":null,"original_client_request":"{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3,-4],\"server_id\":1}","direction":null}
+block in verify_comments: verify_gift_request = {:seq=>63, :gid=>"14481197074000741072", :sha256=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", :action=>"verify", :giver_user_ids=>[{:sha256=>"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=", :pseudo_user_id=>8, :sha256_updated_at=>1448957009}, -4]}
+block in verify_comments: todo: add verify_comments call to server.receive_verify_gifts_response
+   (0.2ms)  SELECT COUNT(*) FROM `verify_comments` WHERE (client_sid = NULL and client_sha256 = NULL and verified_at_server is not null)
+verify_comments: client_response_array = []
+verify_comments: server_verify_comms_requests = {}
+block in verify_comments: verify_gifts message_hash = {:msgtype=>"verify_gifts", :mid=>123, :login_users=>[{:sha256=>"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=", :pseudo_user_id=>8, :sha256_updated_at=>1448957009}], :verify_gifts=>[{:seq=>63, :gid=>"14481197074000741072", :sha256=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", :action=>"verify", :giver_user_ids=>[{:sha256=>"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=", :pseudo_user_id=>8, :sha256_updated_at=>1448957009}, -4]}]}
+mix_encrypt_message_hash:
+message_hash = {
+   "msgtype":"verify_gifts","mid":123,
+   "login_users":[{"sha256":"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=","pseudo_user_id":8,"sha256_updated_at":1448957009}],
+   "verify_gifts":[
+      {"seq":63,"gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ","action":"verify",
+       "giver_user_ids":[{"sha256":"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=","pseudo_user_id":8,"sha256_updated_at":1448957009},-4]}]}
+
+
+
+server 2: received simple verify gifts request from server 1
+new mail: {"id":4731,"from_did":"14490276591379728338","from_sha256":null,"to_did":"14490276623158192023","to_sha256":null,"message":"eGZFL3JzZEUrSHdocmFBZlNXZGdRMmNWM1kyNzRNVk1ZeDRsYm5HU2tkb1M3\ncERXZXA5S2ZNUkhnUGNpCkJORURKZVVlQk5xY3lpTnpCcnZrbHUxNDJlVnRw\nRGk0eFB1dUIvQTRqUGtyZFprZVpHVFF2TXhHbDV3VApIUnBiZ25QWVo5UDBz\nL09BN0tjTXRXODR3RnpsckUrbWRqMmtuWFF5cXFHTmhFY2lNd1lha0dUUG42\nS0kKWFJlSFFCRFFkcnYwMHBHTDVjelhYN1Q4bEJoczlyZnZPQ0tET2lBZlhU\nWWNwU3lpR1Y0OEFBTjNvL2dLCnM0MXRaTWk2UlNoZVM3UzdiTDJiMTBqM0Rm\nMzdlS3pUQzB0UE1wZXFqZXVRbFdoVWtEZHRSSE1UNHdIZAp6V1VIeWhtNkNF\neUVYckdwaGQvbXIwTGVudXFoM2xIVitzS0dYRjVZOXhUNnFhWjhHWGpkN2hY\naTN4VzYKTHVlRU1OQVNpTDJnQXplYjhrTE01MSsveWdrRzkxTnB1d0I0MEhF\ndG9iQW9yY2dWZ3BaRy9IWm0rOFZ4Cml5U1pBK3JweXR4OXlRTmwrdFdEMnNN\nWXZVTDE0L3hkeSthME9yc0ZOMVdtRytySTJFSW5BbTF5U1JpUgpEZ1ZTanl5\ndGlZdWRmZGJpZVZObkd1QTVmWWpwc2wvbVhlV1dsdjlJa1RsdG5HMmcrUVpm\nQURrM3l3bHAKT1lPaUNlSFV5OFU1N25JVVpLZVRBRk00eDU1cmx5d0lSTjNN\naHY2SHpMSkRNa2c9Cg==\n","created_at":"2015-12-10T08:19:45.000Z","updated_at":"2015-12-10T08:19:45.000Z","server":true,"key":"kFB2rCSPMywK+1/XSuNMjQZULHaxYe9upbhgD1u83Ocg6qvn7mET9NBocAt1\n+wjGoGyR6BeidiFpn0NKXWLLV9uU1S2qeLWrK5+h99KAsFz4UZjcC9dXmnM7\neT8QBUGMjxoaJAzrLCEyyO3FVfyFLKSHJmXrOz9IEy3iVOk8f1voFqSlIjjT\nE/4Qc30pqP/3vpmOcgsS9Oy7FlT4vyO0JWnvUu+ihG7gNxYR8IRI2wQvlkDz\nXYszcseTsB/Dby4wlXUmRy/IR7mT05kZgPi9XPWi3/TemmWC2K+kPL8v/lel\nQjgS4aO6j3fdIrpkUQMs4Ux/poXEax8TogkbfW8oKw==\n","mid":null}
+  Server Load (0.1ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`new_did` = '14490276591379728338' LIMIT 1
+receive_message: received mix encrypted message
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'private_key' LIMIT 1
+receive_message: password = LdNXBJrjJYuH0qffCPAWT1bPO0iXg8NjRNFu2EinrDaEkcZJ8tBuXGr1BpMIeYnYenKvXqU50WbyZ0lx1Y1e7q5sy0L0JjxcvxGhE5yQHWozlfb71hoSL1G24H3vorCtYfrDb8maqVWicBtycqxrlaMkwhFQUXLPiEpJz74HnNacTRmTAIyYtBlL4epRXFkSR05E8aIh
+receive_message: message_json =
+{"msgtype":"verify_gifts","mid":123,
+ "login_users":[{"sha256":"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=","pseudo_user_id":8,"sha256_updated_at":1448957009}],
+ "verify_gifts":[
+    {"seq":63,"gid":"14481197074000741072","sha256":"é%Bòóô~hË·¹òÕyÍ¬\u0006åbd\u0017ÿ77d¿ñ","action":"verify",
+     "giver_user_ids":[{"sha256":"is61v0jPoxTnEw6rpJUpRfNV1wKEE8UnJcKnrEuHeUc=","pseudo_user_id":8,"sha256_updated_at":1448957009},-4]}]}
+...
+
+server 2: return simple verify gift response to server 1
+verify_gifts: response = [{:seq=>63, :gid=>"14481197074000741072", :verified_at_server=>true, :direction=>"giver"}]
+verify_gifts: server_requests = {}
+receive_verify_gifts_request: local_verify_gifts_request = [{"seq"=>63, "gid"=>"14481197074000741072", "sha256"=>"é%Bòó\u0098ô~hË\u009C·\u0097¹ò\u009FÕyÍ¬\u0006åbd\u0017ÿ7\u00947d¿ñ", "action"=>"verify", "giver_user_ids"=>[2, 4], "receiver_user_ids"=>nil}]
+receive_verify_gifts_request: local_verify_gifts_response = {:gifts=>[{:seq=>63, :gid=>"14481197074000741072", :verified_at_server=>true, :direction=>"giver"}]}
+receive_verify_gifts_request: local_verify_gifts_error =
+receive_verify_gifts_request: verify_gifts_response = [{:seq=>63, :gid=>"14481197074000741072", :verified_at_server=>true, :direction=>"giver"}]
+   (0.1ms)  BEGIN
+  Sequence Load (0.2ms)  SELECT `sequences`.* FROM `sequences` WHERE `sequences`.`name` = 'server_mid' LIMIT 1
+  SQL (0.2ms)  UPDATE `sequences` SET `value` = 110, `updated_at` = '2015-12-10 08:19:45' WHERE `sequences`.`id` = 6
+   (3.2ms)  COMMIT
+mix_encrypt_message_hash: message_hash = {"msgtype":"verify_gifts","verify_gifts":[{"seq":63,"gid":"14481197074000741072","verified_at_server":true,"direction":"giver"}],"mid":110,"request_mid":123}
+mix_encrypt_message_hash: key (rsa encrypted) = CqHRcc1jjDuLLp1XsChepwkh4Z6hau3ZDXViSfxd8+HHd6Q7XqzjGiOUI0Az
+GjYEXqvBNzkx8G4PKWIk9p3Y/h90mSZjiPnf3h883i3pfxdmblkokVrkJ+Vy
+4VAlmKZw0AY9294q7WwKli1gfnqBnHcZABV5HHKw2xdmGvjfNc4s0sBqWZm/
+F4uE4/44WMVpIJTM7TJZzNUP3Cl7Wz9CDKAuiDxlfSyEbVDVEWLqRrHbIXI8
+hsXsxvPIvYH1pyZuCWSzMI0rgIyvtWlGCel34imT5IG5adoTHgu0LN4MX0Pw
+z3ifGVVOihoR74lm8BtLsME5glHvivrIFDV/g5Xzdw==
+
+
+server 2: wait for reject new deal proposal response from server 1
+...
+
+
+server 1: received simple verify gifts response from server 2
+new mail: {"id":2491,"from_did":"14490276623158192023","from_sha256":null,"to_did":"14490276591379728338","to_sha256":null,"message":"YkFRbDhtR21oOWtiTEhyVlVnaXc2eC9Tbmd0M1FJb1lNRjM4aDNLQVZ1c2ps\ncFhCemRnb3FUeDFraEJuClE3cFV1Zks5dXpJcXFHM3FrVzgydk9vZUVha0hH\nUml3YUI3WlhTVWJwTzhpb1N6cCttWmNCQ1lHbHhEbwpsZGxDZWprYjJ0b2ox\nUWx0QW0wb1p5VmhHeHVjeEpORTJ6NUhTMDlicjBUN0xVMHJ6elVabXNWZllI\nOTcKUU93Wm1aWjc2QnVJQitPQVUzQ0ZtdVNPTkJ1QWF0UUwwUT09Cg==\n","created_at":"2015-12-10T08:19:45.000Z","updated_at":"2015-12-10T08:19:45.000Z","server":true,"key":"CqHRcc1jjDuLLp1XsChepwkh4Z6hau3ZDXViSfxd8+HHd6Q7XqzjGiOUI0Az\nGjYEXqvBNzkx8G4PKWIk9p3Y/h90mSZjiPnf3h883i3pfxdmblkokVrkJ+Vy\n4VAlmKZw0AY9294q7WwKli1gfnqBnHcZABV5HHKw2xdmGvjfNc4s0sBqWZm/\nF4uE4/44WMVpIJTM7TJZzNUP3Cl7Wz9CDKAuiDxlfSyEbVDVEWLqRrHbIXI8\nhsXsxvPIvYH1pyZuCWSzMI0rgIyvtWlGCel34imT5IG5adoTHgu0LN4MX0Pw\nz3ifGVVOihoR74lm8BtLsME5glHvivrIFDV/g5Xzdw==\n","mid":null}
+  Server Load (0.3ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`new_did` = '14490276623158192023' LIMIT 1
+receive_message: received mix encrypted message
+  SystemParameter Load (0.2ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'private_key' LIMIT 1
+receive_message: password = kfX0yngWnGmSVXakcxjuPyfEtjmX2ssigMdzyzgP1gz0jEtubGztA3Stf6kAoV0MSrtMSAE17PDDJVXsx5D54yOQavIWVAtN22UibndscWEfXbubvFcnuPS0AqXMQgg3HTb26NlWDNcd1AFEL6ra7NlNSiRjqafypjuDq1oCntiBqkgMvemjyjWgqtKPehOmWcJdMzdH
+receive_message:
+message_json = {
+   "msgtype":"verify_gifts",
+   "verify_gifts":[{"seq":63,"gid":"14481197074000741072","verified_at_server":true,"direction":"giver"}],
+   "mid":110,"request_mid":123}
+...
+block in receive_verify_gifts_response: found old verify comments request waiting for verify gifts response. vc = {"id":43,"client_sid":null,"client_sha256":null,"client_seq":77,"server_id":0,"cid":"14488910629803885142","server_seq":63,"verified_at_server":null,"created_at":"2015-12-10T08:19:42.000Z","updated_at":"2015-12-10T08:19:42.000Z","error":null,"request_mid":123,"response_mid":null,"original_client_request":"{\"seq\":77,\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"sha256_action\":\"\\u0012Ýº/è\\u00133ovN\\u001FÃÔ\\u0018Np´\\u001D\\u000F\\fe\\u0014ýd§Ð\",\"user_ids\":[2],\"new_deal_action_by_user_ids\":[3],\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3,-4],\"server_id\":1}}","login_user_ids":"[\"1563545817212684/facebook\"]","original_client_request_sha256":"lKQ9dS9s8+93/M5pFBQPk6Bal58pGA3XXrlUnvVNiSs=\n"}
+block in receive_verify_gifts_response: repeat old verify comments request. vc = {"id":43,"client_sid":null,"client_sha256":null,"client_seq":77,"server_id":0,"cid":"14488910629803885142","server_seq":63,"verified_at_server":null,"created_at":"2015-12-10T08:19:42.000Z","updated_at":"2015-12-10T08:19:42.000Z","error":null,"request_mid":123,"response_mid":null,"original_client_request":"{\"seq\":77,\"cid\":\"14488910629803885142\",\"sha256\":\"åñ N\\u001EÈ«\\u0011@Û\\bþë$XæròEE¼Qù¤\\u0007êßê\",\"action\":\"reject\",\"sha256_action\":\"\\u0012Ýº/è\\u00133ovN\\u001FÃÔ\\u0018Np´\\u001D\\u000F\\fe\\u0014ýd§Ð\",\"user_ids\":[2],\"new_deal_action_by_user_ids\":[3],\"gift\":{\"gid\":\"14481197074000741072\",\"sha256\":\"é%Bòóô~hË·¹òÕyÍ¬\\u0006åbd\\u0017ÿ77d¿ñ\",\"giver_user_ids\":[3,-4],\"server_id\":1}}","login_user_ids":"[\"1563545817212684/facebook\"]","original_client_request_sha256":"lKQ9dS9s8+93/M5pFBQPk6Bal58pGA3XXrlUnvVNiSs=\n"}
+
+server 1: send reject new deal proposal response to server 2
+mix_encrypt_message_hash:
+message_hash = {
+   "msgtype":"verify_comments",
+   "mid":124,"request_mid":110,
+   "verify_comments":[{"seq":77,"cid":"14488910629803885142","verified_at_server":true}]}
+
+
+server 2: received reject new deal proposal response from server 1
+new mail: {"id":4738,"from_did":"14490276591379728338","from_sha256":null,"to_did":"14490276623158192023","to_sha256":null,"message":"YlZEdERpVEZiTllkd05kVmpmMFF6UjhkUzlqeFRqaDJVK0R1NFhEVldQRmxq\nOFdSOGtRODZuZ3hKUFJ6CkdGNVJMTGtTTjljc2hyMlpZK3g5eWYyUGczUGhn\nMTZ6S1Y4U0FLeDAweEVaY2ZUVVpIb0pZZUYvaEFVZwpldGtDdCt2TWpZTWRt\ndGtpS1NYMHFucyt0UFl6b09KQlJUYmtxN3BiQnRNV2c5blNJUk9XRGZhOG1Y\naUMKTUhKcHVHTFNCczdZCg==\n","created_at":"2015-12-10T08:19:47.000Z","updated_at":"2015-12-10T08:19:47.000Z","server":true,"key":"PyKgMWUEqsLIHnXZSse2TcyNA3mae3ri4eRlEP4Oz4uy5QDy2eDs9IqWQ6bp\nw82DimtvUHKIj1o+5Wrx2+Roj9nAynNUa4vYzMJoCiwjLMlI88LQq6Mcbaop\nyENx06SH4SZFmvwzyPeGhs8VhV3m65qqu53IoW8sNMbxiCG4z4sl19q57935\nO9804dYvSSfpIJN12l2OabOFhU5vj72hO0W9lZ1R46SelrcA0oUwXnMChI+n\n29VCQlbd2luHdLHKC/EIuJAUW8S/FqdNcGUUtvNYwGeS7bZJaK7jpIGJL8iA\nqScxXmok0AvqNiciv+vMpsTjRm9NOclz22lh+zr/uA==\n","mid":null}
+  Server Load (0.1ms)  SELECT `servers`.* FROM `servers` WHERE `servers`.`new_did` = '14490276591379728338' LIMIT 1
+receive_message: received mix encrypted message
+  SystemParameter Load (0.1ms)  SELECT `system_parameters`.* FROM `system_parameters` WHERE `system_parameters`.`name` = 'private_key' LIMIT 1
+receive_message: password = wVJZBok6s85ezH2JUWyGRuOZAZvK3LphQiRTTmbTl3i0aqU2hY1Dtb5RDbG1cflz2Lg3jx5EfVcHctNqamyyiD2PfvjoAML0oysZElUyutln7iqt1PuDqvTDK0pQIMd44EnbAoBC8XsGgPWynY6qECgpbfJYM3hbSr5UjdWmwOpXyDgGS3tmCrnPYWfCvmSMXY2mOo0r
+receive_message: message_json = {"msgtype":"verify_comments","mid":124,"request_mid":110,"verify_comments":[{"seq":77,"cid":"14488910629803885142","verified_at_server":true}]}
+receive_verify_comments_res: mid = 124, request_mid = 110
+receive_verify_comments_res: verify_comments = [{"seq"=>77, "cid"=>"14488910629803885142", "verified_at_server"=>true}]
+receive_verify_comments_res: error        =  (NilClass)
+  VerifyComment Load (0.3ms)  SELECT `verify_comments`.* FROM `verify_comments` WHERE `verify_comments`.`server_seq` IN (77)
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  UPDATE `verify_comments` SET `verified_at_server` = 1, `updated_at` = '2015-12-10 08:19:47' WHERE `verify_comments`.`id` = 63
+   (3.4ms)  COMMIT
+receive_verify_comments_res: verify_comments.size = 1, unknown_seq.size = 0, invalid_server_id.size = 0, invalid_cid.size = 0, invalid_response.size = 0, identical_response.size = 0, ok_response.size = 1
+   (0.1ms)  BEGIN
+  SQL (0.2ms)  UPDATE `verify_comments` SET `response_mid` = 124, `updated_at` = '2015-12-10 08:19:47' WHERE `verify_comments`.`id` = 63
+   (3.1ms)  COMMIT
+   (0.1ms)  BEGIN
+  SQL (0.1ms)  DELETE FROM `messages` WHERE `messages`.`id` = 4738
+   (2.7ms)  COMMIT
+
+
+server 2: ping from client 2: return ready reject new deal proposal response to client 2
+Started POST "/util/ping.json" for 127.0.0.1 at 2015-12-10 09:19:48 +0100
+Processing by UtilController#ping as JSON
+  Parameters: {"client_userid"=>1, "sid"=>"14490425872282057342", "client_timestamp"=>1449735588072, "util"=>{"client_userid"=>1, "sid"=>"14490425872282057342", "client_timestamp"=>1449735588072}}
+...
+ping: verify_comments =  (NilClass)
+verify_comments: verify_comments = null
+verify_comments: login_user_ids = ["1616942831872982/facebook"]
+verify_comments: client_sid     = 14490425872282057342
+verify_comments: client_sha256  = 0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=
+verify_comments: is_server_msg  = false
+...
+  SELECT `verify_comments`.*
+  FROM `verify_comments`
+  WHERE (client_sid = '14490425872282057342' and client_sha256 = '0tzeb3+hCyuqqfKO25jbhSL9TNJ+/2QLNidFx3dgpJ8=' and verified_at_server is not null)
+...
+@json = {
+   :old_client_timestamp=>1449735585978, :interval=>2000,
+   :online=>[{:did=>"14481194806251567148", :sha256=>"3Rf35epojarDFzMj6laxbNhhxqyzznBcBsjJQE8BmSI=", :mutual_friends=>[2, 3], :server_id=>1}],
+   :verify_comments=>{:comments=>[{:seq=>-85, :cid=>"14488910629803885142", :verified_at_server=>true}]}}
+Completed 200 OK in 76ms (Views: 0.4ms | ActiveRecord: 19.6ms)
+
+
+client 2: received reject new deal proposal response:
+GiftService.verify_comments_response: Received response for 1 comment actions (1 valid and 0 invalid).

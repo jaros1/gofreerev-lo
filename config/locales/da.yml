@@ -1110,6 +1110,8 @@ da:
         comment_syserr_gift_res_not_found_1: "Systemfejl. %{action} kommentar fejlede. Adgangstjek fejlede. Kontrol af opslag fejlede. Fandt ikke forventet svar i verify_gifts tabellen."
         comment_syserr_gift_res_not_found_2: "Systemfejl. %{action} kommentar fejlede. Adgangstjek fejlede. Kontrol af opslag fejlede. Fandt ikke forventet svar i verify_gifts tabellen."
         comment_syserr_gift_invalid: "%{action} kommentar fejlede. Adgangstjek fejlede. Tjek opslag fejlede med \"%{error}\"."
+        comment_syserr_gift_no_direction: "Systemfejl. #{action} kommentar fejlede. Adgangstjek fejlede. Tjek opslag svar mangler \"direction\"."
+        comment_syserr_gift_direction: "Systemfejl. #{action} kommentar fejlede. Adgangstjek fejlede. Ugyldig \"direction\" i svar fra tjek opslag."
         comment_syserr_gift_not_found: "%{action} kommentar fejlede. Opslag med gid %{gid} findes ikke."
         comment_syserr_gift_sha256: "%{action} kommentar fejlede. Adgangstjek fejlede. Gift sha256 signatur tjek fejlede."
         comment_accept_gift_not_auth: "%{action} tilbud fejlede. Adgangstjek fejlede. Tilbud kan kun blive accepteret eller afvist af den der har oprettet opslag."

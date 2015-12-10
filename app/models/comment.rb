@@ -591,11 +591,8 @@ class Comment < ActiveRecord::Base
           giver = users[user_id]
           if giver
             # giver_user_ids1 - internal user ids - used in local gift sha256 check
-            if !gift_server_id
-              # local gift sha256 check
-              giver_user_ids1 << giver.user_id
-            end
-            # giver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request 
+            giver_user_ids1 << giver.user_id
+            # giver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request
             if server_id
               # remote comment or remote gift verification
               su = giver.server_users.find { |su| (su.server_id == server_id) and su.verified_at }
@@ -629,8 +626,8 @@ class Comment < ActiveRecord::Base
         giver_user_ids1.sort! unless gift_server_id
         # logger.debug2 "todo: check translation from internal user ids to user signatures:"
         # logger.debug2 "verify_gift['giver_user_ids'] = #{verify_gift['giver_user_ids'].to_json}"
-        # logger.debug2 "giver_user_ids1 = #{giver_user_ids1.to_json}"
-        # logger.debug2 "giver_user_ids2 = #{giver_user_ids2.to_json}"
+        logger.debug2 "giver_user_ids1 = #{giver_user_ids1.to_json}"
+        logger.debug2 "giver_user_ids2 = #{giver_user_ids2.to_json}"
 
         receiver_user_ids1 = []
         receiver_user_ids2 = []
@@ -644,10 +641,7 @@ class Comment < ActiveRecord::Base
           receiver = users[user_id]
           if receiver
             # receiver_user_ids1 - internal user ids - used in local gift sha256 check
-            if !gift_server_id
-              # local gift sha256 check
-              receiver_user_ids1 << receiver.user_id
-            end
+            receiver_user_ids1 << receiver.user_id
             # receiver_user_ids2 - user sha256 signatures - used in verify remote comment server to server request
             if server_id
               # remote comment or remote gift verification
@@ -1041,19 +1035,62 @@ class Comment < ActiveRecord::Base
               client_sid, verify_comment)
           next
         end
+        if vg.direction.to_s == ''
+          error = "System error. #{action_failed}. Authorization check failed. Verify gift response without direction"
+          logger.error2 "Cid #{cid} : #{error}"
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_no_direction', :options => { :action => action } },
+              client_sid, verify_comment)
+          next
+        end
+        if !%w(giver receiver).index(vg.direction)
+          error = "System error. #{action_failed}. Authorization check failed. Invalid direction in verify gift response"
+          logger.error2 "Cid #{cid} : #{error}"
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_direction', :options => { :action => action } },
+              client_sid, verify_comment)
+          next
+        end
 
+        # check authorization.
+        # delete authorization has already been checked. see if !giver_receiver_is_login_user.
+        # now checking accept and reject new deal proposal authorization (login user must be creator of comment)
+        if %w(accept reject).index(action)
+          # accept and reject: compare comment creator and login users (remote partial validation - local full validation)
+          gift_creator_user_ids = vg.direction == 'giver' ? giver_user_ids1 : receiver_user_ids1
+          gift_creator_login_user_ids = login_user_ids & gift_creator_user_ids
+          if gift_creator_login_user_ids.length == 0
+            error = "#{action_failed}. Not authorized. New deal proposal can only be accepted and rejected by creator of gift"
+            logger.debug2 "cid #{cid} : #{error}"
+            logger.debug2 "vg.direction          = #{vg.direction}"
+            logger.debug2 "giver_user_ids1       = #{giver_user_ids1.to_json}"
+            logger.debug2 "giver_user_ids2       = #{giver_user_ids2.to_json}"
+            logger.debug2 "receiver_user_ids1    = #{receiver_user_ids1}"
+            logger.debug2 "receiver_user_ids2    = #{receiver_user_ids2}"
+            logger.debug2 "login_user_ids        = #{login_user_ids.to_json}"
+            logger.debug2 "gift_creator_user_ids = #{gift_creator_user_ids.to_json}"
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_accept_gift_not_auth', :options => { :action => action } },
+                client_sid, verify_comment)
+            next
+          end
+        end
 
-        # check if verify gifts response already is in verify_gifts table and continue with authorization validation
-        # wait for verify gifts response if verify gifts request has already been sent to other gofreerev server - resend verify comment request to this Gofreerev server
-        # timeout if waiting more when x seconds for verify gifts response from other Gofreerev server
-        # read direction and make authorization check
-        error = "System error. #{action_failed}. Authorization check failed. Gift and comment are on different Gofreerev servers. Not yet implemented"
-        logger.error2 "Cid #{cid} : #{error}"
-        Gift.client_response_array_add(
-            client_response_array,
-            { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_auth_not_impl', :options => { :action => action } },
-            client_sid, verify_comment)
-        next
+        # # check if verify gifts response already is in verify_gifts table and continue with authorization validation
+        # # wait for verify gifts response if verify gifts request has already been sent to other gofreerev server - resend verify comment request to this Gofreerev server
+        # # timeout if waiting more when x seconds for verify gifts response from other Gofreerev server
+        # # read direction and make authorization check
+        # error = "System error. #{action_failed}. Authorization check failed. Gift and comment are on different Gofreerev servers. Not yet implemented"
+        # logger.error2 "Cid #{cid} : #{error}"
+        # Gift.client_response_array_add(
+        #     client_response_array,
+        #     { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_syserr_gift_auth_not_impl', :options => { :action => action } },
+        #     client_sid, verify_comment)
+        # next
+
       end
 
 

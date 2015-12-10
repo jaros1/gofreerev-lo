@@ -2001,5 +2001,13 @@
      	from bin/rails:4:in `require'
      	from bin/r
 
+462) only return direction in simple verify gifts server to server request
+     do not return direction in client verify gifts request
 
-select next issue to solve: (rand*461).floor+1
+463) oauth login (redirect) can not be used in native a single page app
+     allow device to device friendship. Request + allow/reject
+
+464) allow non friend transactions. For example payments with a phone number, user name or ?
+     an accepted gift is a payment operation. You get x and pay with y.
+
+select next issue to solve: (rand*464).floor+1

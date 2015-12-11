@@ -1970,8 +1970,6 @@
 459) add wallet to localStorage
      saldo in wallet = sum of accepted deals
 
-460) add try catch block to other ingoing messages. See receive_message_send_gifts
-
 461) server.ping_test_loop. Don't abort loop after Errno::ECONNREFUSED: Connection refused - connect(2) error
      wait 60 seconds and continue
      Errno::ECONNREFUSED: Connection refused - connect(2) (laptop2.gofreerev.com:3000)
@@ -2001,8 +1999,8 @@
      	from bin/rails:4:in `require'
      	from bin/r
 
-462) only return direction in simple verify gifts server to server request
-     do not return direction in client verify gifts request
+462) only return direction in simple verify gifts server to server request (authorization check started from verify comments)
+     do not return direction in client verify gifts request (normal verify gifts request started from verify gifts)
 
 463) oauth login (redirect) can not be used in native a single page app
      allow device to device friendship. Request + allow/reject

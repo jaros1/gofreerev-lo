@@ -86,8 +86,9 @@ class Comment < ActiveRecord::Base
       cids << new_comment["cid"]
       comments_user_ids += new_comment["user_ids"]
       comments_user_ids += new_comment["new_deal_action_by_user_ids"] if new_comment["new_deal_action_by_user_ids"]
-      if new_comment["gift"] and !new_comment["gift"]["server_id"]
-        # comment with gift signature info. gift is also on this Gofreerev server
+      # todo: get known users for gift on an other Gofreerev server?
+      if new_comment["gift"] # and !new_comment["gift"]["server_id"]
+        # todo: remove this comment? comment with gift signature info. gift is also on this Gofreerev server
         comments_user_ids += new_comment["gift"]["giver_user_ids"] if new_comment["gift"]["giver_user_ids"]
         comments_user_ids += new_comment["gift"]["receiver_user_ids"] if new_comment["gift"]["receiver_user_ids"]
       end

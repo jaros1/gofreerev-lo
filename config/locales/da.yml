@@ -1039,7 +1039,7 @@ da:
         syserr_server_id: "%{action} opslag fejlede. Ugyldigt kald. Ukendt server id %{server_id}."
         syserr_pos_seq: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"seq\" skal være et positivt tal for %{action} opslag på aktuelle Gofreerev server."
         syserr_no_action: "Systemfejl. Ugyldigt kontroller opslag kald. \"Action\" mangler i kald."
-        syserr_invalid_action: "Systemfejl. Ugyldigt kontroller opslag kald. Ugyldig action. Tilladte værdier er \"verify\", \"accept\" og \"delete\"."
+        syserr_invalid_action: "Systemfejl. Ugyldigt kontroller opslag kald. Ugyldig action. Tilladte værdier er \"create\", \"verify\", \"accept\" og \"delete\"."
         syserr_giver_receiver: "Systemfejl. %{action} opslag fejlede. Ugyldigt kald. \"giver_user_ids\" og \"receiver_user_ids\" mangler."
         create_giver_receiver: "Systemfejl. Opret opslag fejlede. Ugyldigt kald. \"giver_user_ids\" OG \"receiver_user_ids\" er ikke tilladt ved oprettelse af opslag."
         accept_giver_receiver: "Systemfejl. Godkend tilbud fejlede. Ugyldigt kald. \"giver_user_ids\" OG \"receiver_user_ids\" er krævede ved godkendelse af tilbud."

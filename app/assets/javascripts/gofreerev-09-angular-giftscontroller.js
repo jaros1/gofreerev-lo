@@ -269,7 +269,15 @@ angular.module('gifts')
             if (!confirm(confirm_text)) return ;
             gift.deleted_at_client = Gofreerev.unix_timestamp() ;
             giftService.save_gift(gift) ;
-            giftService.verify_gifts_add(gift, 'delete') ;
+            var error ;
+            if (error=giftService.verify_gifts_add(gift, 'delete')) {
+                // delete gift failed. undelete gift
+                console.log(pgm + 'delete gift failed with ' + error) ;
+                gift.link_error = error ;
+                gift.link_error_at = Gofreerev.unix_timestamp() ;
+                delete gift.deleted_at_client ;
+                giftService.save_gift(gift) ;
+            };
         }; // delete_gift
 
         self.hide_gift = function (gift) {
@@ -338,7 +346,16 @@ angular.module('gifts')
                 comment.deleted_at_client = Gofreerev.unix_timestamp() ;
                 if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments - 1 ;
                 giftService.save_gift(gift) ;
-                giftService.verify_comments_add(gift, comment, 'delete') ;
+                var error ;
+                if (error=giftService.verify_comments_add(gift, comment, 'delete')) {
+                    // delete failed. undelete
+                    console.log(pgm + 'delete comment failed with ' + error) ;
+                    comment.link_error = error ;
+                    comment.link_error_at = Gofreerev.unix_timestamp() ;
+                    delete comment.deleted_at_client ;
+                    if (typeof gift.show_no_comments != 'undefined') gift.show_no_comments = gift.show_no_comments + 1 ;
+                    giftService.save_gift(gift) ;
+                } ;
             };
             // console.log(pgm + 'cid = ' + comment.cid + ', deleted_at_client = ' + comment.deleted_at_client) ;
         };
@@ -535,6 +552,7 @@ angular.module('gifts')
                 self.new_gift.open_graph_error = $sce.trustAsHtml('Error in preview request for link. See more information in browser log.') ;
                 return ;
             }
+            if (!is_online) console.log(pgm + 'todo: how to handle open_graph requests when offline?') ;
             $http.post('/util/open_graph.json', open_graph_request, config)
                 .then(function (response) {
                     // OK response - can be empty - could by be an error message
@@ -641,7 +659,16 @@ angular.module('gifts')
             // add new gift to 1) JS array and 2) localStorage
             giftService.save_new_gift(gift, []) ;
             // send create gift action to server (server side signature)
-            giftService.verify_gifts_add(gift, 'create') ;
+            var error ;
+            if (error=giftService.verify_gifts_add(gift, 'create')) {
+                // create gift failed. uncreate gift
+                console.log(pgm + 'create gift failed with ' + error) ;
+                gift.link_error = error +
+                    '. todo: must delete gift from gifts array and move to create new gift box (if empty)' +
+                    '. todo: Must create space in page for more than one failed create new gift request';
+                gift.link_error_at = Gofreerev.unix_timestamp() ;
+                // todo: or keep gift in gifts js array but remove gift from localStorage. Will be removed after next page refresh
+            } ;
             // resize description textarea after current digest cycle is finish
             resize_textarea(gift.description) ;
             // reset new gift form
@@ -701,7 +728,16 @@ angular.module('gifts')
             userService.add_new_users(new_comment.user_ids, []) ;
             giftService.save_gift(gift) ;
             // send create comment action to server (server side signature)
-            giftService.verify_comments_add(gift, new_comment, 'create') ;
+            var error ;
+            if (error=giftService.verify_comments_add(gift, new_comment, 'create')) {
+                // create failed. uncreate comment
+                console.log(pgm + 'create comment failed with ' + error) ;
+                comment.link_error = error +
+                    '. todo: must delete comment from comments array and move to create new comment box (if empty)' +
+                    '. todo: Must create space in page for more than one failed create new comment request';
+                comment.link_error_at = Gofreerev.unix_timestamp() ;
+                // todo: or keep comment in js array but remove comment from localStorage. Will be removed after next page refresh
+            } ;
         }; // create_new_comment
 
         // end GiftsCtrl

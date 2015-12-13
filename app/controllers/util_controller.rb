@@ -748,8 +748,19 @@ class UtilController < ApplicationController
   def ping
     begin
 
-      # forgery protection inside ping method for exception handling
+      # forgery protection inside ping method. reset session and return nice error message to client
       verify_authenticity_token
+      if !verified_request?
+        # could be first ping after browser page restore. create new session and return error to client
+        logger.debug2 "protect from forgery. Could be first ping after browser page restore. Create new session and return nice error to client"
+        reset_session
+        @json[:error] = 'Not logged in'
+        logger.debug2 "@json[:error] = #{@json[:error]}"
+        @json[:interval] = 10000
+        validate_json_response
+        format_response
+        return
+      end
 
       # timestamp for ping adjustment. must that all timestamps are with milliseconds and
       # that ping.last_ping_at and ping.next_ping_at are saved in database as decimal(13,3)

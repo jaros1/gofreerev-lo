@@ -62,4 +62,9 @@ angular.module('gifts', ['ngRoute'])
             });
         // end config (ng-routes)
     }
-);
+)
+    // cache routeprovider template urls so that inside page navigation is working offline
+    .run(['$templateCache', '$http', function($templateCache, $http) {
+    $http.get('main/auth', {cache:$templateCache})
+    $http.get('main/gifts', {cache:$templateCache})
+}]);

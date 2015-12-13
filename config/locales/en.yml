@@ -1035,7 +1035,7 @@ en:
         syserr_server_id: "%{action} gift failed. Invalid request. Unknown server id %{server_id}."
         syserr_pos_seq: "System error. %{action} gift failed. Invalid request. seq must be postive for local gift actions."
         syserr_no_action: "System error. Invalid verify gifts request. Action is missing."
-        syserr_invalid_action: "System error. Invalid verify gifts request. Action is invalid. Allowed values are \"verify\", \"accept\" and \"delete\"."
+        syserr_invalid_action: "System error. Invalid verify gifts request. Action is invalid. Allowed values are \"create\", \"verify\", \"accept\" and \"delete\"."
         syserr_giver_receiver: "System error. %{action} gift failed. Invalid request. Giver user ids and receiver user ids are missing."
         create_giver_receiver: "System error. Create gift failed. Invalid request. Giver AND receiver are not allowed for action create."
         accept_giver_receiver: "System error. %{action} gift failed. Invalid request. Giver and receiver are required for action %{action}."

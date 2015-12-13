@@ -18,6 +18,9 @@ angular.module('gifts')
             // console.log(service + ': providers = ' + JSON.stringify(providers)) ;
         })();
 
+        // see navController.ping. keep track of client online/offline status ;
+        var is_online = true ;
+
         // friends - downloaded from api friend list and saved temporary in local storage
         // ( see also users array - users used in gifts and comments permanently stored in local storage )
         var friends = [] ;
@@ -561,6 +564,7 @@ angular.module('gifts')
             if (provider) logout_request.provider = provider ;
             var json_errors ;
             if (json_errors=Gofreerev.is_json_request_invalid(pgm, logout_request, 'logout')) return $q.reject(json_errors) ;
+            if (!is_online) console.log(pgm + 'todo: how to handle logout request when offline?') ;
             $http.post('/util/logout.json', logout_request)
                 .then(function (response) {
                     console.log(pgm + 'logout ok = ' + JSON.stringify(response)) ;
@@ -799,6 +803,7 @@ angular.module('gifts')
             var json_errors ;
             if (json_errors=Gofreerev.is_json_request_invalid(pgm, login_request, 'login')) return $q.reject(json_errors) ;
             console.log(pgm + 'login_request = ' + JSON.stringify(login_request)) ;
+            if (!is_online) console.log(pgm + 'todo: how to handle login request when offline. should disable login button until online.') ;
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
@@ -1159,6 +1164,7 @@ angular.module('gifts')
 
 
         return {
+            is_online: is_online,
             providers: providers,
             load_users: load_users,
             is_logged_in: is_logged_in,

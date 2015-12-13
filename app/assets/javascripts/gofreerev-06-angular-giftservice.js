@@ -1879,6 +1879,7 @@ angular.module('gifts')
             var gift_verification, gid, new_gifts, key, verify_gift_action ;
             var no_gifts = { all: 0, create: 0, verify: 0, accept: 0, delete: 0, local: 0, remote: 0, syserr1: 0, syserr2: 0, syserr3: 0, resend: 0, true: 0, false: 0} ;
             var empty_new_gift_form ;
+            var send_gids = [] ; // post verify gifts response. Send new or changed gifts to mutual friends
             while (response.gifts.length > 0) {
                 gift_verification = response.gifts.shift();
                 // ignore response from old remote gift actions (from before page reload)
@@ -1994,6 +1995,8 @@ angular.module('gifts')
                                 delete gift.verify_seq ;
                                 delete gift.verify_gift_at ;
                                 delete gift.verify_gift_action ;
+                                // send new gifts to online mutual friends
+                                if (send_gids.indexOf(gift.gid) == -1) send_gids.push(gift.gid) ;
                                 save_gift(gift) ;
                             }
                             else {
@@ -2046,9 +2049,11 @@ angular.module('gifts')
                         case 'accept':
                             if (gift_verification.verified_at_server) {
                                 // gift accept ok. add accepted_at_server = created_at_server
+                                console.log(pgm + 'accept gift not implemented') ;
                             }
                             else {
                                 // gift accept failed.
+                                console.log(pgm + 'failed accept gift not implemented') ;
                                 // todo: must rollback accept gift action (gift and comment)
                                 // todo: should display error message (from server)
                             };
@@ -2078,6 +2083,9 @@ angular.module('gifts')
                                 } // if
                                 // delete gift ok
                                 gift.deleted_at_server = gift.created_at_server ;
+                                // send deleted gifts to online mutual friends
+                                if (send_gids.indexOf(gift.gid) == -1) send_gids.push(gift.gid) ;
+
                             }
                             else {
                                 // delete gift failed.
@@ -2120,7 +2128,7 @@ angular.module('gifts')
             // receipt
             // todo: add number create, verify, accept, delete, local, remote, syserr1, resend, true and false in receipt
             console.log(pgm + 'Received response for ' + no_gifts.all + ' gift actions (' + no_gifts.true + ' valid and ' + no_gifts.false + ' invalid).') ;
-
+            if (send_gids.length > 0) console.log('todo: send new or changed gifts to online mutual friends. send_gids = ' + JSON.stringify(send_gids)) ;
         }; // verify_gifts_response
 
 
@@ -2569,6 +2577,7 @@ angular.module('gifts')
             var comment_verification, cid, new_comments, key, verify_comment_action, gift, comment_found ;
             var no_comments = { all: 0, create: 0, verify: 0, cancel: 0, accept: 0, reject: 0, delete: 0, local: 0, remote: 0, syserr1: 0, syserr2: 0, syserr3: 0, resend: 0, true: 0, false: 0} ;
             var empty_new_comment_form ;
+            var send_cids = [] ; // post verify comments response. Send new or changed comments to mutual friends
             while (response.comments.length > 0) {
                 comment_verification = response.comments.shift();
                 // ignore response from old remote comment actions (from before page reload)
@@ -2689,6 +2698,8 @@ angular.module('gifts')
                                 delete comment.verify_seq ;
                                 delete comment.verify_comment_at ;
                                 delete comment.verify_comment_action ;
+                                // send new comment to mutual online friends
+                                if (send_cids.indexOf(comment.cid) == -1) send_cids.push(cid) ;
                             }
                             else {
                                 // comment created failed
@@ -2762,6 +2773,8 @@ angular.module('gifts')
                                 } // if
                                 // cancel new deal proposal ok
                                 comment.new_deal_action_at_server = comment.created_at_server ;
+                                // send cancelled new proposal to mutual online friends
+                                if (send_cids.indexOf(comment.cid) == -1) send_cids.push(cid) ;
                             }
                             else {
                                 // cancel new deal proposal failed.
@@ -2796,9 +2809,11 @@ angular.module('gifts')
                         case 'accept':
                             if (comment_verification.verified_at_server) {
                                 // accept new deal proposal ok. add comment.action_at_server = comment.created_at_server and gift.accepted_at_server = gift.created_at_server
+                                console.log(pgm + 'todo: accept new deal proposal not implemented') ;
                             }
                             else {
                                 // accept new deal proposal failed. Chance back to a not accepted new deal proposal and display error message from server
+                                console.log(pgm + 'todo: failed accept new deal proposal not implemented') ;
                             }; // if
                             break ;
 
@@ -2826,6 +2841,8 @@ angular.module('gifts')
                                 } // if
                                 // reject new deal proposal ok
                                 comment.new_deal_action_at_server = comment.created_at_server ;
+                                // send rejected new proposal to mutual online friends
+                                if (send_cids.indexOf(comment.cid) == -1) send_cids.push(cid) ;
                             }
                             else {
                                 // reject new deal proposal failed.
@@ -2881,6 +2898,8 @@ angular.module('gifts')
                                 } // if
                                 // delete comment ok
                                 comment.deleted_at_server = comment.created_at_server ;
+                                // send deleted comment to mutual online friends
+                                if (send_cids.indexOf(comment.cid) == -1) send_cids.push(cid) ;
                             }
                             else {
                                 // delete comment failed.
@@ -2924,6 +2943,7 @@ angular.module('gifts')
 
             // receipt
             console.log(pgm + 'Received response for ' + no_comments.all + ' comment actions (' + no_comments.true + ' valid and ' + no_comments.false + ' invalid).') ;
+            if (send_cids.length > 0) console.log(pgm + 'todo: send new or changed comments to online mutual friend. send_cids = ' + JSON.stringify(send_cids)) ;
 
         }; // verify_comments_response
 
@@ -5138,13 +5158,11 @@ angular.module('gifts')
                                 verify_gifts_add(new_gift, 'verify');
                                 continue;
                             }
-                            ;
                             if (!new_gift.hasOwnProperty('verified_at_server')) {
-                                // new gift already in queue for server verification (offline, server not responding or remote gift)
+                                // new gift already in queue for server verification (offline, server not responding, server error or remote gift)
                                 verifying_new_gifts += 1;
                                 continue;
                             }
-                            ;
                             if (!new_gift.verified_at_server) {
                                 // invalid signature for new gift - changed on other client or not correct in message
                                 // old gift exist on this client:
@@ -5155,7 +5173,6 @@ angular.module('gifts')
                                 no_gift_errors += 1;
                                 continue;
                             }
-                            ;
 
                             // pass 2 - new gift has been server verified. check and accept changes in this order:
                             // 1) receive likes and unlikes from other client

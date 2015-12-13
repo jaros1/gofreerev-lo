@@ -158,123 +158,6 @@ class Gift < ActiveRecord::Base
     # Process.kill('INT', Process.pid) # stop rails server
   end
 
-  # receive list with newly gifts from client,
-  # verify user ids, generate a sha256 digest, save gifts and return created_at_server = true/false to client
-  # note that created_at_server is an boolean in this response but is an integer (server number) on client. 1 = this server
-  # gift.sha256 digest is used as a control when replicating gifts between clients
-  # todo: delete - now using verify_gifts with action = create
-  private
-  def self.new_gifts (new_gifts, login_user_ids)
-    # logger.debug2 "new_gifts = #{new_gifts}"
-    # logger.debug2 "login_user_ids = #{login_user_ids}"
-    msg = "Could not create gift signature on server. "
-    # check params
-    return if !new_gifts or new_gifts.size == 0 # ignore empty new gifts request
-
-    # check logged in users - should never fail
-    if login_user_ids.class != Array or login_user_ids.size == 0
-      # system error - util/ping + Gift.new_gifts should only be called with logged in users.
-      return {:error => "#{msg}System error. Expected array with one or more login user ids."}
-    end
-    # order by user id - order is used in sha256 server signature
-    login_users = User.where(:user_id => login_user_ids).order('user_id')
-    if login_users.size < login_user_ids.size
-      return {:error => "#{msg}System error. Invalid login. Expected #{login_user_ids.size} users. Found #{login_users.size} users."}
-    end
-    # logger.debug2 "login user ids = " + login_users.collect { |u| u.id }.join(', ')
-    login_providers = login_users.collect { |u| u.provider }
-    # logger.debug2 "login users internal ids = " + login_users.collect { |u| u.id }.join(', ')
-
-    # check and create sha256 digest signatures for new gifts
-    # returns created_at_server = true or an error message for each gid
-    new_gifts.shuffle!
-    response = []
-    no_errors = 0
-    # new gifts array has already been json schema validated to some extend
-    new_gifts.each do |new_gift|
-      # check new_gift hash: gid, sha256 and either a giver_user_ids array or a receiver_user_ids array
-      gid = new_gift['gid'].to_s
-      sha256_client = new_gift['sha256'].to_s
-      # check giver/receiver user ids. Must have either giver or receiver but not both
-      if new_gift.has_key?('giver_user_ids') and new_gift['giver_user_ids'].class == Array and new_gift['giver_user_ids'].size > 0
-        giver_user_ids = new_gift['giver_user_ids']
-      else
-        giver_user_ids = nil
-      end
-      if new_gift.has_key?('receiver_user_ids') and new_gift['receiver_user_ids'].class == Array and new_gift['receiver_user_ids'].size > 0
-        receiver_user_ids = new_gift['receiver_user_ids']
-      else
-        receiver_user_ids = nil
-      end
-      if !giver_user_ids and !receiver_user_ids
-        response << {:gid => gid, :created_at_server => false, :error => "#{msg}giver_user_ids or receiver_user_ids property was missing"}
-        no_errors += 1
-        next
-      end
-      if giver_user_ids and receiver_user_ids
-        response << {:gid => gid, :created_at_server => false, :error => "#{msg}both giver_user_ids and receiver_user_ids properties are not allowed for a new gift."}
-        no_errors += 1
-        next
-      end
-
-      # check authorization. login user ids from rails session and gift user ids from client must match.
-      # can fail if social network logins has changed between time when gift was created at client and gifts upload to server (offline client)
-      direction = giver_user_ids ? 'giver' : 'receiver'
-      gift_user_ids = (giver_user_ids || receiver_user_ids).uniq
-      # logger.debug2 "gid = #{gid}, direction = #{direction}, gift_user_ids = #{gift_user_ids}"
-      signature_users = login_users.find_all { |u| gift_user_ids.index(u.id) }
-      if signature_users.size == gift_user_ids.size
-        # authorization ok. create server side sha256 digest signature
-        sha256_server_text = ([gid, sha256_client, direction] + signature_users.collect { |u| u.user_id }).join(',')
-        sha256_server = Base64.encode64(Digest::SHA256.digest(sha256_server_text))
-        logger.debug2 "sha256_server = #{sha256_server}"
-        g = Gift.find_by_gid(gid)
-        if g
-          # gift already exists - check signature
-          if g.sha256 == sha256_server
-            response << {:gid => gid, :created_at_server => true}
-          else
-            response << {:gid => gid, :created_at_server => false, :error => "#{msg}Gift exists but sha256 signature is invalid."}
-            no_errors += 1
-          end
-          next
-        end
-        g = Gift.new
-        g.gid = gid
-        g.sha256 = sha256_server
-        g.save!
-        response << {:gid => gid, :created_at_server => true}
-        # logger.debug2 "new gift #{gid} was created. sha256_server_text = #{sha256_server_text}, sha256_server = #{sha256_server}, g.sha256 = #{g.sha256}"
-        # g.reload
-        # logger.debug2 "g.sha256 after reload = #{g.sha256}"
-        next
-      end
-
-      # authorization error. maybe api log out on client before new gift signature was created on server.
-      missing_login_user_ids = gift_user_ids - login_users.collect { |u| u.id }
-      missing_login_users = User.where(:id => missing_login_user_ids)
-      missing_login_providers = missing_login_users.collect { |u| u.provider }
-      # logger.debug2 "missing_login_user_ids = #{missing_login_user_ids.join(', ')}"
-      # logger.debug2 "missing login users = " + missing_login_users.collect { |u| u.debug_info }.join(', ')
-      # split missing login users in missing login and changed login
-      changed_login_providers = login_providers & missing_login_providers
-      missing_login_providers = missing_login_providers - changed_login_providers
-      # logger.debug2 "changed_login_providers = #{changed_login_providers.join('. ')}"
-      # logger.debug2 "missing_login_providers = #{missing_login_providers.join('. ')}"
-      # nice informative error message
-      if changed_login_providers.size > 0
-        response << {:gid => gid, :created_at_server => false,
-                     :error => "#{msg}Log in has changed for #{changed_login_providers.join('. ')} since gift was created. Please log in with old #{changed_login_providers.join('. ')} user."}
-      else
-        response << {:gid => gid, :created_at_server => false,
-                     :error => "#{msg}Log out for #{missing_login_providers.join('. ')} since gift was created. Please log in for #{missing_login_providers.join('. ')}."}
-      end
-      no_errors += 1
-
-    end
-    return {:gifts => response, :no_errors => no_errors}
-  end # self.new_gifts
-
 
   # convert error hash from { :error => string, :key => string, :options => hash } to { :error => string or :error => { :key => string, :options => hash}}
   # use :error => string for cross server error messages, english only
@@ -355,6 +238,7 @@ class Gift < ActiveRecord::Base
     logger.debug2 "login_user_ids = #{login_user_ids.to_json}"
     if !verify_gifts
       # empty verify gifts request (ping) from client - any remote verify gift responses ready for client?
+      return nil unless client_sid and client_sha256
       vgs = VerifyGift.where("client_sid = ? and client_sha256 = ? and verified_at_server is not null", client_sid, client_sha256)
       return nil if vgs.size == 0
       logger.debug2 "vgs.size = #{vgs.size}"
@@ -479,8 +363,8 @@ class Gift < ActiveRecord::Base
             client_sid, verify_gift)
         next
       end
-      if !%w(verify accept delete).index(action)
-        error = "System error. Invalid verify gift request. Invalid action. Allowed values are \"verify\", \"accept\" and \"delete\""
+      if !%w(create verify accept delete).index(action)
+        error = "System error. Invalid verify gift request. Invalid action. Allowed values are \"create\", \"verify\", \"accept\" and \"delete\""
         logger.error2 "gid #{gid} : #{error}"
         Gift.client_response_array_add(
             client_response_array,

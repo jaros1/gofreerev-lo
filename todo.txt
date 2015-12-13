@@ -1877,12 +1877,14 @@
 
 444) also use translation for Gift.verify_gifts and Comment.verify_comments fatal errors { :error => error, :key => key, options => options }
 
-445) giftService. new_gift object was moved from giftController to giftService
-     rename local new_gift variable used in giftService functions
+445) giftService. new_gift object used in new gift form was moved from giftController to giftService
+     rename local new_gift variable used in giftService functions to avoid mistakes
 
 446) giftsController. check all giftService.verify_comments_add calls. Should check for error. see giftController.cancel_new_deal
+     ok but not tested
 
 447) giftsController. check all giftService.verify_gifts_add calls. Should check for error. see giftController.cancel_new_deal
+     ok but not tested
 
 448) sync gifts between clients
      don't include actions in progress in client side sha256 signatures and sync gifts operation
@@ -1905,9 +1907,30 @@
      ActionController::RoutingError (No route matches [GET] "/app/geoip.js")
      could be a security problem. Found on home laptop. timestamp = google+ api login
 
-452) s = Server.first ; s.ping_test_loop
-     RSA 1024 bit CA certificates are loaded due to old openssl compatibility
-     check if there is a security issue here. should never use 1024 bit encryption
+452) server.ping_test_loop
+     RSA 1024 bit CA certificates are loaded due to old openssl compatibility - should never use 1024 bit encryption
+     warning from httpclient-2.7.0.1 (ssl_config.rb)
+     # Use 2014 bit certs trust anchor if possible.
+     # CVE-2015-1793 requires: OpenSSL >= 1.0.2d or OpenSSL >= 1.0.1p
+     # OpenSSL before 1.0.1 does not have CVE-2015-1793 problem
+     def load_cacerts(cert_store)
+       ver = OpenSSL::OPENSSL_VERSION
+       if (ver.start_with?('OpenSSL 1.0.1') && ver >= 'OpenSSL 1.0.1p') ||
+           (ver.start_with?('OpenSSL ') && ver >= 'OpenSSL 1.0.2d') || defined?(JRuby)
+         filename = 'cacert.pem'
+       else
+         warn("RSA 1024 bit CA certificates are loaded due to old openssl compatibility")
+         filename = 'cacert1024.pem'
+       end
+       file = File.join(File.dirname(__FILE__), filename)
+       add_trust_ca_to_store(cert_store, file)
+       @cert_store_items << file
+     end
+     heartbleed vulnerability?
+     check if seerver has heartbleed vulnerability
+     - download and compile latest openssl from github https://mark911.wordpress.com/2015/01/10/how-to-compile-and-install-newest-version-of-openssl-in-ubuntu-14-04-lts-64-bit-via-github/
+       recompile ruby 2.0.0: rvm reinstall --disable-binary 2.0.0
+       did not work. ruby 2.0.0 is still using openssl 1.0.1f
 
 454) easy way to select/create official and alternative currencies when making a new deal proposal
      only none or negative interest is allowed. positive interest is not allowed
@@ -1921,7 +1944,7 @@
      a) share location with app. share location between Gofreerev servers, show nearby users
      b) connect to other user with a user id, user name, phone nummer etc.
 
-456) change app to a "payment" app.
+456) change app to a "payment" app with custom currencies
 
 457) problem with private key password and server start when private key password is stored (partial) in memory
      add loop with 2 tries before aborting rails server start
@@ -1966,6 +1989,7 @@
        config/initializers/action_controller_extensions.rb:66:in `eval'
        config/initializers/action_controller_extensions.rb:66:in `get_session_value'
        app/controllers/application_controller.rb:261:in `fetch_users'
+     moved protect_from_forgery check inside ping method. added exception handler +
 
 459) add wallet to localStorage
      saldo in wallet = sum of accepted deals
@@ -1999,7 +2023,7 @@
      	from bin/rails:4:in `require'
      	from bin/r
 
-462) only return direction in simple verify gifts server to server request (authorization check started from verify comments)
+462) only return direction in simple verify gifts server to server request (authorization check started from verify comments) -
      do not return direction in client verify gifts request (normal verify gifts request started from verify gifts)
 
 463) oauth login (redirect) can not be used in native a single page app
@@ -2008,4 +2032,18 @@
 464) allow non friend transactions. For example payments with a phone number, user name or ?
      an accepted gift is a payment operation. You get x and pay with y.
 
-select next issue to solve: (rand*464).floor+1
+465) send small send_gifts messages after successful verify gifts and verify comments response
+     see do or rollback actions section in giftService.verify_gifts_response and giftService.verify_comments_response
+     created, accepted or deleted gift - send gift to online mutual friends
+     created, cancelled, rejected, accepted or deleted comment - send comment to online mutual friends
+
+466) GiftService.receive_message_send_gifts: Waited 34 seconds for gift 14499240619599393956 verification
+     add timeout while waiting for gifts and comments verifications.
+     change to error after <n> seconds, write error in log and send error message to other client
+
+467) added userService.is_online to userService
+     check is_online before sending other than ping requests to server (login/logout)
+     disable login/logout buttons while offline
+     test browse offline in firefox
+
+select next issue to solve: (rand*467).floor+1

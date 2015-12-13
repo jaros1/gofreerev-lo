@@ -8,8 +8,10 @@ angular.module('gifts')
         self.userService = userService ;
         self.texts = textService.texts ;
 
-        // ping server once every minute - server maintains a list of online users / devices
+        // ping server once <ping_interval> milliseconds (online devices, send/receive messages etc)
+        // server sets ping interval at start and adjust ping interval in each ping to equalize and minimize server load
         var ping_interval = Gofreerev.rails['PING_INTERVAL'] ;
+
         var ping = function (old_ping_interval) {
             var pgm = controller + '.ping: ' ;
             var userid = userService.client_userid() ;
@@ -61,6 +63,8 @@ angular.module('gifts')
                     // console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (response.data.interval && (response.data.interval >= 1000)) ping_interval = response.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                    if (!userService.is_online) console.log(pgm + 'client gone online. ' + ping_interval + ' milliseconds until next server ping') ;
+                    userService.is_online = true ;
 
                     // validate ping response received from server
                     // todo: report ping errors to inbox.
@@ -114,9 +118,16 @@ angular.module('gifts')
                 },
                 function (error) {
                     // schedule next ping
-                    console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval) ;
-                    $timeout(function () { ping(ping_interval); }, ping_interval) ;
-                    console.log(pgm + 'error = ' + JSON.stringify(error)) ;
+                    if (error.status == 0) {
+                        if (userService.is_online) {
+                            console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval + ', error = ' + JSON.stringify(error)) ;
+                            console.log(pgm + 'client gone offline. 60 seconds until next server ping') ;
+                        }
+                        userService.is_online = false ;
+                    }
+                    else console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval + ', error = ' + JSON.stringify(error)) ;
+                    if (userService.is_online) $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                    else $timeout(function () { ping(60000); }, 60000) ;
 
                     // move messages from mailbox.sending to mailbox.outbox - resend in next ping
                     giftService.messages_not_sent() ;
@@ -144,7 +155,7 @@ angular.module('gifts')
             else Gofreerev.add2log('stop_tasks_form_spinner: spinner was not found') ;
         }; // stop_tasks_form_spinner
 
-        // post page task - execute some post-page / post-login ajax tasks and get fresh json data from server (oauth and users)
+        // post page task - execute some post-page reload / post-login ajax tasks and get fresh json data from server (oauth and users)
         var do_tasks = function () {
             var pgm = controller + '.do_tasks: ' ;
             var userid = userService.client_userid() ;
@@ -157,6 +168,7 @@ angular.module('gifts')
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();
+            if (!userService.is_online) console.log(pgm + 'todo: how to do_tasks when offline? should never be offline after page refresh or after api provider login') ;
             $http.post('/util/do_tasks.json', do_tasks_request)
                 .then(function (response) {
                     // console.log(pgm + 'response = ' + JSON.stringify(response)) ;

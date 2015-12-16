@@ -63,8 +63,8 @@ angular.module('gifts')
                     // console.log(pgm + 'ok. ok.data.interval = ' + ok.data.interval) ;
                     if (response.data.interval && (response.data.interval >= 1000)) ping_interval = response.data.interval ;
                     $timeout(function () { ping(ping_interval); }, ping_interval) ;
-                    if (!userService.is_online) console.log(pgm + 'client gone online. ' + ping_interval + ' milliseconds until next server ping') ;
-                    userService.is_online = true ;
+                    if (!userService.is_client_online()) console.log(pgm + 'client gone online. ' + ping_interval + ' milliseconds until next server ping') ;
+                    userService.set_client_online() ;
 
                     // validate ping response received from server
                     // todo: report ping errors to inbox.
@@ -88,7 +88,7 @@ angular.module('gifts')
                     // get result of new servers request (unknown server sha256 signatures received from other devices (new gifts))
                     if (response.data.new_servers) giftService.new_servers_response(response.data.new_servers) ;
                     // get result of gift verification (gifts received from other devices)
-                    if (response.data.verify_gifts) giftService.verify_gifts_response(response.data.verify_gifts) ;
+                    giftService.verify_gifts_response(response.data.verify_gifts) ;
                     // get result of comment verification (comments received from other devices)
                     if (response.data.verify_comments) giftService.verify_comments_response(response.data.verify_comments) ;
                     // check expired access token (server side check)
@@ -119,14 +119,14 @@ angular.module('gifts')
                 function (error) {
                     // schedule next ping
                     if (error.status == 0) {
-                        if (userService.is_online) {
+                        if (userService.is_client_online()) {
                             console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval + ', error = ' + JSON.stringify(error)) ;
                             console.log(pgm + 'client gone offline. 60 seconds until next server ping') ;
+                            userService.set_client_offline();
                         }
-                        userService.is_online = false ;
                     }
                     else console.log(pgm + 'error. old_ping_interval = ' + old_ping_interval + ', error = ' + JSON.stringify(error)) ;
-                    if (userService.is_online) $timeout(function () { ping(ping_interval); }, ping_interval) ;
+                    if (userService.is_client_online()) $timeout(function () { ping(ping_interval); }, ping_interval) ;
                     else $timeout(function () { ping(60000); }, 60000) ;
 
                     // move messages from mailbox.sending to mailbox.outbox - resend in next ping
@@ -168,7 +168,7 @@ angular.module('gifts')
             var msg = ' Some server tasks was not executed and the page will not be working 100% as expected' ;
             if (Gofreerev.is_json_request_invalid(pgm, do_tasks_request, 'do_tasks', msg)) return ;
             start_do_tasks_spinner();
-            if (!userService.is_online) console.log(pgm + 'todo: how to do_tasks when offline? should never be offline after page refresh or after api provider login') ;
+            if (!userService.is_client_online()) console.log(pgm + 'todo: how to do_tasks when offline? should never be offline after page refresh or after api provider login') ;
             $http.post('/util/do_tasks.json', do_tasks_request)
                 .then(function (response) {
                     // console.log(pgm + 'response = ' + JSON.stringify(response)) ;

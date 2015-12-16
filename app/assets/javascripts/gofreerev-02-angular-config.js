@@ -65,6 +65,21 @@ angular.module('gifts', ['ngRoute'])
 )
     // cache routeprovider template urls so that inside page navigation is working offline
     .run(['$templateCache', '$http', function($templateCache, $http) {
-    $http.get('main/auth', {cache:$templateCache})
-    $http.get('main/gifts', {cache:$templateCache})
+        // auth page - login and logout
+        $http.get('main/auth', {cache:$templateCache})
+        $http.get('/images/gofreerev.png', {cache:$templateCache})
+        $http.get('/images/connected.png', {cache:$templateCache})
+        $http.get('/images/disconnect.png', {cache:$templateCache})
+        $http.get('/images/facebook.png', {cache:$templateCache})
+        $http.get('/images/flickr.png', {cache:$templateCache})
+        $http.get('/images/disconnected.png', {cache:$templateCache})
+        $http.get('/images/connect.png', {cache:$templateCache})
+        $http.get('/images/foursquare.png', {cache:$templateCache})
+        $http.get('/images/google_oauth2.png', {cache:$templateCache})
+        $http.get('/images/twitter.png', {cache:$templateCache})
+        $http.get('/images/linkedin.png', {cache:$templateCache})
+        $http.get('/images/vkontakte.png', {cache:$templateCache})
+        $http.get('/images/instagram.png', {cache:$templateCache})
+        // gifts page
+        $http.get('main/gifts', {cache:$templateCache})
 }]);

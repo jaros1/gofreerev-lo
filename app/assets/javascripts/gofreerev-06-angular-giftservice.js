@@ -907,8 +907,7 @@ angular.module('gifts')
         var verify_gifts = []; // array with gifts for next verify_gifts request - there can be doublets in array if a gift is received from multiple clients
         // verify gifts buffer - index by seq and key
         var verify_gifts_key_to_seq = {} ; // helper: hash key=>seq, key = gid+sha256+userids
-        var verify_gifts_seq_to_gifts = {} ; // helper: from seq to one or more gifts
-        var verify_gifts_online = true ; // todo: set to false if ping does not respond - set to true if ping respond
+        var verify_comments_seq_to_comms = {} ; // helper: from seq to one or more gifts
         var verify_gifts_old_remote_seq = Gofreerev.getItem('seq') ; // ignore old remote gift verifications
 
         // add gift to verify_gifts array. actions: create, verify, accept or delete gift.
@@ -1730,20 +1729,22 @@ angular.module('gifts')
 
         var verify_gifts_request = function () {
             var pgm = service + '.verify_gifts_request: ';
+            // issue 472 - make cleanup routine for verify gifts buffer
+            console.log(pgm + 'verify_gifts_seq_to_gifts = ' + JSON.stringify(verify_comments_seq_to_comms)) ;
             // check buffer for "old gifts". should normally be empty except for gifts with negative seq (remote gifts - remote actions)
             // local gifts are allowed if device is offline or if server does not respond
             var local_seq = 0 ;
             var seq ;
             var no_gifts = { local: 0, remote: 0, create: 0, verify: 0, accept: 0, delete: 0 } ;
             var request = [] ;
-            for (seq in verify_gifts_seq_to_gifts) {
+            for (seq in verify_comments_seq_to_comms) {
                 // count old actions
-                if (['create', 'verify', 'accept', 'delete'].indexOf(verify_gifts_seq_to_gifts[seq].action) != -1) {
-                    no_gifts[verify_gifts_seq_to_gifts[seq].action] += 1 ;
+                if (['create', 'verify', 'accept', 'delete'].indexOf(verify_comments_seq_to_comms[seq].action) != -1) {
+                    no_gifts[verify_comments_seq_to_comms[seq].action] += 1 ;
                 }
                 else {
-                    console.log(pgm + 'System error. Found invalid action ' + verify_gifts_seq_to_gifts[seq].action + ' in verify gifts buffer.');
-                    console.log(pgm + 'verify_gifts_seq_to_gifts[' + seq + '] = ' + verify_gifts_seq_to_gifts[seq]) ;
+                    console.log(pgm + 'System error. Found invalid action ' + verify_comments_seq_to_comms[seq].action + ' in verify gifts buffer.');
+                    console.log(pgm + 'verify_gifts_seq_to_gifts[' + seq + '] = ' + verify_comments_seq_to_comms[seq]) ;
                     continue ;
                 };
                 // count local/remote
@@ -1751,12 +1752,15 @@ angular.module('gifts')
                     // found "old" local gifts action in buffer. device must be offline or server is not responding. resend previous request
                     no_gifts.local += 1;
                     if (parseInt(seq) > local_seq) local_seq = parseInt(seq) ;
-                    request.push(verify_gifts_seq_to_gifts[seq].request) ;
+                    request.push(verify_comments_seq_to_comms[seq].request) ;
                 }
-                else no_gifts.remote += 1 ; // ok - remote gift actions can take some time (verify, accept or delete)
+                else {
+                    // ok - remote gift actions can take some time (verify, accept or delete).
+                    no_gifts.remote += 1 ;
+                }
             }; // for seq
             
-            if (verify_gifts_online && (no_gifts.local + no_gifts.remote > 0)) {
+            if (no_gifts.local + no_gifts.remote > 0) {
                 // warning. Old requests found in gifts action buffer
                 console.log(pgm + 'Found ' + no_gifts.local + ' local and ' + no_gifts.remote + ' remote gifts in gifts action buffer. ' +
                     no_gifts.create + ' create, '  + no_gifts.verify + ' verify, ' + no_gifts.accept + ' accept and ' + no_gifts.delete + ' delete gift requests') ;
@@ -1792,9 +1796,9 @@ angular.module('gifts')
                 if (seq) {
                     // key/request already in verify gifts buffer (must be identical gift received in multiple incoming messages - verify gift requests)
                     verify_gift.verify_seq = seq ;
-                    verify_gifts_seq_to_gifts[seq].gifts.push(verify_gift);
-                    if (verify_gifts_seq_to_gifts[seq].action != 'verify') {
-                        console.log(pgm + 'Warning. Multiple ' + verify_gifts_seq_to_gifts[seq].action + ' gift requests for ' +  verify_gifts_seq_to_gifts[seq].gid) ;
+                    verify_comments_seq_to_comms[seq].gifts.push(verify_gift);
+                    if (verify_comments_seq_to_comms[seq].action != 'verify') {
+                        console.log(pgm + 'Warning. Multiple ' + verify_comments_seq_to_comms[seq].action + ' gift requests for ' +  verify_comments_seq_to_comms[seq].gid) ;
                     };
                 }
                 else {
@@ -1807,12 +1811,13 @@ angular.module('gifts')
                     else hash.seq = -Gofreerev.get_next_seq() ; // remote verification. negative seq. gift created in an other Gofreerev server
                     verify_gift.verify_seq = hash.seq ;
                     verify_gifts_key_to_seq[key] = hash.seq ;
-                    verify_gifts_seq_to_gifts[hash.seq] = {
+                    verify_comments_seq_to_comms[hash.seq] = {
                         gid: verify_gift.gid,
                         action: verify_gift.verify_gift_action,
                         key: key,
                         gifts: [verify_gift],
-                        request: hash
+                        request: hash,
+                        count: 0
                     };
                     request.push(hash);
                     new_request += 1 ;
@@ -1830,6 +1835,9 @@ angular.module('gifts')
             var pgm = service + '.verify_gifts_response: ';
             var error ;
 
+            // empty verify_gifts response. check old remote verify gift actions only. negative seq.
+            if ((typeof response == 'undefined') || (response == null)) response = { gifts: []} ;
+
             if (response.error) {
                 // fatal error
                 if (typeof response.error == 'object') error =  I18n.t('js.gift_actions.' + response.error.key, response.error.options);
@@ -1846,7 +1854,7 @@ angular.module('gifts')
                 seq = gift.seq;
                 if (seqs.indexOf(seq) == -1) {
                     seqs.push(seq) ;
-                    if (!verify_gifts_seq_to_gifts[seq]) {
+                    if (!verify_comments_seq_to_comms[seq]) {
                         // unknown seq!
                         if (seq >= 0) invalid_local_seq += 1 ;
                         else {
@@ -1859,11 +1867,10 @@ angular.module('gifts')
                             else invalid_remote_seq += 1 ;
                         }
                     }
-                    else if (verify_gifts_seq_to_gifts[seq].gid != gift.gid) invalid_gid += 1 ;
+                    else if (verify_comments_seq_to_comms[seq].gid != gift.gid) invalid_gid += 1 ;
                 }
                 else not_unique_seq += 1 ;
             } ; // for i
-            seqs = null ;
 
             // receipt - abort if errors in verify gifts response
             if (not_unique_seq > 0) console.log(pgm + 'Error. ' + not_unique_seq + ' not unique seq in verify gifts response.') ;
@@ -1872,6 +1879,37 @@ angular.module('gifts')
             if (invalid_gid > 0) console.log(pgm + invalid_gid + ' invalid gift id (gid) in verify gifts response.') ;
             if (old_remote_seq.length > 0) console.log(pgm + 'Warning. ' + old_remote_seq + ' old unknown remote seq in verify gifts response') ;
             if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_gid > 0) return ; // abort after fatal system errors. todo: add notification
+
+            // check remote gift actions - negative seq - timeout after 35 server pings without response for remote gift action
+            for (seq in verify_comments_seq_to_comms) {
+                seq = parseInt(seq) ;
+                if (seq >= 0) continue ; // local gift action
+                if (seqs.indexOf(seq) != -1) continue ; // response ready for this seq
+                verify_comments_seq_to_comms[seq].count += 1 ;
+                if (verify_comments_seq_to_comms[seq].count < 35) continue ;
+                // timeout while waiting for remote gift action (verify, accept or delete)
+                // there should be a previous error in client or server log that was not handled by correct waiting action or waiting message
+                // receive_message_send_gifts, receive_message_invalid_gifts and friends should handle timeout instead of this fallback
+                if (verify_comments_seq_to_comms[seq].count == 35) {
+                    // insert pseudo timeout response. error should be handled in "do or rollback actions" section in "while (response.gifts.length > 0)" loop in this method
+                    console.log(pgm + 'Timeout while waiting for remote gift response for gid ' + verify_comments_seq_to_comms[seq].gid +
+                        '. Timeout should be detected and handled in receive_message_send_gifts and receive_message_invalid_gifts') ;
+                    response.gifts.push({
+                        seq: seq,
+                        gid: verify_comments_seq_to_comms[seq].gid,
+                        verified_at_server: false,
+                        error: { key: 'timeout', options: { action: verify_comments_seq_to_comms[seq].action } }
+                    }) ;
+                }
+                else if (verify_comments_seq_to_comms[seq].count > 35) {
+                    // system error. fallback at count = 35 failed!
+                    console.log(pgm + 'Timeout while waiting for remote gift response for gid ' + verify_comments_seq_to_comms[seq].gid +
+                        '. Timeout should be detected and handled by receive_message_xxx methods. See receive_message_send_gifts and receive_message_invalid_gifts' +
+                        '. Timeout was not handled correct in verify_gifts_response. Removing verify gift action from buffer');
+                    delete verify_comments_seq_to_comms[seq] ;
+                }
+            } // for seq
+            seqs = null ;
 
             // loop for each row in verify gifts response (create, verify, accept or delete)
             // one row in response can be answer to multiple verify gifts requests (verify_gifts_seq_to_gifts[seq].gifts)
@@ -1886,13 +1924,13 @@ angular.module('gifts')
                 seq = gift_verification.seq ;
                 if (old_remote_seq.indexOf(seq) != -1) continue ;
                 // seq is ok - checked in previous loop
-                gid = verify_gifts_seq_to_gifts[seq].gid ;
-                verify_gift_action = verify_gifts_seq_to_gifts[seq].action ;
+                gid = verify_comments_seq_to_comms[seq].gid ;
+                verify_gift_action = verify_comments_seq_to_comms[seq].action ;
                 // logical validate verify gift response. must be an ok response (verified_at_server=true) without error message (error=key=options=null) or must be
                 // an error response (verified_at_server=false) with either error (cross server error message) or key+options (within server error message)
                 if (gift_verification.verified_at_server && (gift_verification.hasOwnProperty('error') || gift_verification.hasOwnProperty('key') ||gift_verification.hasOwnProperty('options'))) {
                     console.log(pgm + 'System error in ' + verify_gift_action + ' response from server for gift ' + gid + '. OK response but error information was also returned');
-                    console.log(pgm + 'request  = ' + JSON.stringify(verify_gifts_seq_to_gifts[seq].request)) ;
+                    console.log(pgm + 'request  = ' + JSON.stringify(verify_comments_seq_to_comms[seq].request)) ;
                     console.log(pgm + 'response = ' + JSON.stringify(gift_verification)) ;
                     // todo: system error count + notification
                     continue ;
@@ -1901,27 +1939,27 @@ angular.module('gifts')
                     // gift action rejected by server. check error format. error format must be :error or :key+:options
                     if (!gift_verification.hasOwnProperty('error') && !gift_verification.hasOwnProperty('key') && !gift_verification.hasOwnProperty('options')) {
                         console.log(pgm + 'System error in ' + verify_gift_action + ' response from server for gift ' + gid + '. Inconsistent error response without any error information');
-                        console.log(pgm + 'request  = ' + JSON.stringify(verify_gifts_seq_to_gifts[seq].request)) ;
+                        console.log(pgm + 'request  = ' + JSON.stringify(verify_comments_seq_to_comms[seq].request)) ;
                         console.log(pgm + 'response = ' + JSON.stringify(gift_verification)) ;
                         // todo: system error count + notification
                         continue ;
                     };
                     if (gift_verification.hasOwnProperty('error') && (gift_verification.hasOwnProperty('key') || gift_verification.hasOwnProperty('options'))) {
                         console.log(pgm + 'System error in ' + verify_gift_action + ' response from server for gift ' + gid + '. Inconsistent error response with :error and :key+:options');
-                        console.log(pgm + 'request  = ' + JSON.stringify(verify_gifts_seq_to_gifts[seq].request)) ;
+                        console.log(pgm + 'request  = ' + JSON.stringify(verify_comments_seq_to_comms[seq].request)) ;
                         console.log(pgm + 'response = ' + JSON.stringify(gift_verification)) ;
                         // todo: system error count + notification
                         continue ;
                     };
                     if (gift_verification.hasOwnProperty('options') && !gift_verification.hasOwnProperty('key')) {
                         console.log(pgm + 'System error in ' + verify_gift_action + ' response from server for gift ' + gid + '. Inconsistent error response with :options without :key');
-                        console.log(pgm + 'request  = ' + JSON.stringify(verify_gifts_seq_to_gifts[seq].request)) ;
+                        console.log(pgm + 'request  = ' + JSON.stringify(verify_comments_seq_to_comms[seq].request)) ;
                         console.log(pgm + 'response = ' + JSON.stringify(gift_verification)) ;
                         // todo: system error count + notification
                         continue ;
                     };
                 }; // if
-                new_gifts = verify_gifts_seq_to_gifts[seq].gifts;
+                new_gifts = verify_comments_seq_to_comms[seq].gifts;
                 // one or more gifts in verify gifts buffer with this seq/key
                 while (new_gifts.length > 0) {
                     no_gifts.all += 1 ;
@@ -1940,11 +1978,11 @@ angular.module('gifts')
                     // recheck key. check if gift has changed between verify gifts request and response (remote verification can take some time)
                     hash = verify_gift_to_hash(gift);
                     key = JSON.stringify(hash);
-                    if (key != verify_gifts_seq_to_gifts[seq].key) {
+                    if (key != verify_comments_seq_to_comms[seq].key) {
                         // gift changed between verify gifts request and verify gifts response.
-                        if (verify_gifts_seq_to_gifts[seq].action != gift.verify_gift_action) {
+                        if (verify_comments_seq_to_comms[seq].action != gift.verify_gift_action) {
                             console.log(pgm + 'System error. gift.verify_gift_action for gift ' + gift.gid +
-                                ' was changed between verify gifts request (' + verify_gifts_seq_to_gifts[seq].action +
+                                ' was changed between verify gifts request (' + verify_comments_seq_to_comms[seq].action +
                                 ') and verify gifts response (' + gift.verify_gift_action + ')') ;
                             no_gifts.syserr1 += 1 ;
                             continue ;
@@ -1952,7 +1990,7 @@ angular.module('gifts')
                         // write warning in log and and send a new verify gifts request with changed gift
                         // todo: check verify_gift_action. ok to resend verify. Maybe not ok to resend create, accept or delete gift.
                         console.log(pgm + 'Warning. Gift ' + gift.gid + ' was changed between verify gifts request and verify gifts response.') ;
-                        console.log(pgm + 'old key = ' + verify_gifts_seq_to_gifts[seq].key) ;
+                        console.log(pgm + 'old key = ' + verify_comments_seq_to_comms[seq].key) ;
                         console.log(pgm + 'new key = ' + key) ;
                         console.log(pgm + 'Resending gift ' + gift.gid + ' to server for verification') ;
                         delete gift.verify_gift_at ;
@@ -2120,14 +2158,14 @@ angular.module('gifts')
 
                 }; // while
                 // remove from verify gifts buffer
-                key = verify_gifts_seq_to_gifts[seq].key ;
-                delete verify_gifts_seq_to_gifts[seq] ;
+                key = verify_comments_seq_to_comms[seq].key ;
+                delete verify_comments_seq_to_comms[seq] ;
                 delete verify_gifts_key_to_seq[key] ;
             } // while response.length > 0
 
             // receipt
             // todo: add number create, verify, accept, delete, local, remote, syserr1, resend, true and false in receipt
-            console.log(pgm + 'Received response for ' + no_gifts.all + ' gift actions (' + no_gifts.true + ' valid and ' + no_gifts.false + ' invalid).') ;
+            if (no_gifts.all > 0) console.log(pgm + 'Received response for ' + no_gifts.all + ' gift actions (' + no_gifts.true + ' valid and ' + no_gifts.false + ' invalid).') ;
             if (send_gids.length > 0) console.log('todo: send new or changed gifts to online mutual friends. send_gids = ' + JSON.stringify(send_gids)) ;
         }; // verify_gifts_response
 
@@ -2437,7 +2475,10 @@ angular.module('gifts')
                     if (parseInt(seq) > local_seq) local_seq = parseInt(seq) ;
                     request.push(verify_comments_seq_to_comms[seq].request) ; 
                 }
-                else no_comments.remote += 1 ; // ok - remote comment actions can take some time (verify, cancel, accept, reject or delete)
+                else {
+                    // ok - remote comment actions can take some time (verify, cancel, accept, reject or delete)
+                    no_comments.remote += 1 ;
+                }
             }; // for seq
             
             if (verify_comments_online && (no_comments.local + no_comments.remote > 0)) {
@@ -2508,7 +2549,8 @@ angular.module('gifts')
                         key: key,
                         gift: gift,
                         comments: [verify_comment],
-                        request: hash
+                        request: hash,
+                        count: 0
                     };
                     request.push(hash);
                     // todo: testrun-46. debugging invalid gift sha256 signature in reject new deal proposal request
@@ -2527,6 +2569,9 @@ angular.module('gifts')
         var verify_comments_response = function (response) {
             var pgm = service + '.verify_comments_response: ';
             var error ;
+
+            // empty verify_comments response. check old remote verify comments actions only. negative seq.
+            if ((typeof response == 'undefined') || (response == null)) response = { comments: []} ;
 
             if (response.error) {
                 // fatal error
@@ -2561,7 +2606,6 @@ angular.module('gifts')
                 }
                 else not_unique_seq += 1 ;
             }; // for
-            seqs = null ;
 
             // receipt - abort if errors in verify comments response
             if (not_unique_seq > 0) console.log(pgm + 'Error. ' + not_unique_seq + ' not unique seq in verify comments response.') ;
@@ -2570,6 +2614,37 @@ angular.module('gifts')
             if (invalid_cid > 0) console.log(pgm + invalid_cid + ' invalid unique comment id (cid) in verify comments response.') ;
             if (old_remote_seq.length > 0) console.log(pgm + 'Warning. ' + old_remote_seq + ' old unknown remote seq in verify comments response') ;
             if (not_unique_seq + invalid_local_seq + invalid_remote_seq + invalid_cid > 0) return ; // abort
+
+            // check remote comment actions - negative seq - timeout after 35 server pings without response for remote comment action
+            for (seq in verify_comments_seq_to_comms) {
+                seq = parseInt(seq) ;
+                if (seq >= 0) continue ; // local comment action
+                if (seqs.indexOf(seq) != -1) continue ; // response ready for this seq
+                verify_comments_seq_to_comms[seq].count += 1 ;
+                if (verify_comments_seq_to_comms[seq].count < 35) continue ;
+                // timeout while waiting for remote comment action (verify, cancel, reject, accept or delete)
+                // there should be a previous error in client or server log that was not handled by correct waiting action or waiting message
+                // receive_message_send_gifts, receive_message_invalid_comms and friends should handle timeout instead of this fallback
+                if (verify_comments_seq_to_comms[seq].count == 35) {
+                    // insert pseudo timeout response. error should be handled in "do or rollback actions" section in "while (response.comments.length > 0)" loop in this method
+                    console.log(pgm + 'Timeout while waiting for remote comment response for cid ' + verify_comments_seq_to_comms[seq].cid +
+                        '. Timeout should be detected and handled in receive_message_send_gifts and receive_message_invalid_comms') ;
+                    response.comments.push({
+                        seq: seq,
+                        cid: verify_comments_seq_to_comms[seq].cid,
+                        verified_at_server: false,
+                        error: { key: 'timeout', options: { action: verify_comments_seq_to_comms[seq].action } }
+                    }) ;
+                }
+                else if (verify_comments_seq_to_comms[seq].count > 35) {
+                    // system error. fallback at count = 35 failed!
+                    console.log(pgm + 'Timeout while waiting for remote comment response for cid ' + verify_comments_seq_to_comms[seq].cid +
+                        '. Timeout should be detected and handled in receive_message_send_gifts and receive_message_invalid_comms' +
+                        '. Timeout was not handled correct in verify_comments_response. Removing verify comment action from buffer');
+                    delete verify_comments_seq_to_comms[seq] ;
+                }
+            } // for seq
+            seqs = null ;
 
             // loop for each row in verify comments response (create, verify, cancel, accept, reject or delete)
             // one row in response can be answer to multiple verify comments requests (verify_comments_seq_to_comms[seq].comments)
@@ -4757,6 +4832,9 @@ angular.module('gifts')
                 if (msg.send_gifts) {
                     msg.send_gifts.request_mid = msg.request_mid;
                     msg.send_gifts.pass = 0; // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - waiting to be processed, 3: done:
+                    msg.send_gifts.count = 0; // count number of receive_message_send_gifts passes. Abort waiting for gifts verification if count > 30
+                    msg.send_gifts.verifying_remote_gifts = [] ; // keep track of remote verify gifts request. cleanup verify gifts buffer at end
+                    msg.send_gifts.verifying_remote_comments = [] ; // keep track of remote verify gifts request. cleanup verify comments buffer at end
                     msg.send_gifts.mutual_friends = Gofreerev.clone_array(msg_mutual_friends); // mutual friends array - used in sync_gifts response
                     mailbox.inbox.push(msg.send_gifts);
                 }
@@ -4860,7 +4938,11 @@ angular.module('gifts')
 
                 console.log(pgm + 'mailbox  = ' + JSON.stringify(mailbox));
                 console.log(pgm + 'msg      = ' + JSON.stringify(msg));
-                console.log(pgm + 'msg.pass = ' + msg.pass); // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified - reasy for pass 2, 3: done
+                console.log(pgm + 'msg.pass = ' + msg.pass); // 0: new send_gifts message, 1: waiting for gifts verification, 2: verified, 3: done
+
+                // count number of receive_message_send_gifts call for this send_gifts message
+                // abort waiting for gifts and comments verification if count > 30
+                msg.count += 1 ;
 
                 // collect gift error messages (invalid gifts and failed verify gifts requests)
                 var gid, gift_errors = {}, no_gift_errors = 0, gift_error;
@@ -5077,17 +5159,25 @@ angular.module('gifts')
                 var client_gift_actions = 0; // number of client gift actions in progress (accept or delete)
                 var client_comment_actions = 0; // number of client comment actions in progress (accept or delete)
                 var identical_gift_and_comments = []; // array with gids
+
                 var verify_new_gifts = 0; // number of new gifts that must be server validated
                 var verifying_new_gifts = 0; // number of new gifts already in queue for server validation (offline client, remote gifts or errors)
+                var new_gifts_timeout = []; // array with gids. verify gift request failed with timeout
                 var new_gifts_invalid_sha = []; // array with gids. verify gift request failed for incoming new gift
                 var verify_old_gifts = 0; // number of old gifts that must be server validated (gift changed and new gift is valid)
                 var verifying_old_gifts = 0; // number of old gifts already in queue for server validation (offline client, remote gifts or errors)
+                var old_gifts_timeout = [] ; // array with gids. verify gift request failed with timeout
                 var old_gifts_invalid_sha = []; // array with gids
+
                 var verify_new_comments = 0; // number of new comments that must be server validated
                 var verifying_new_comments = 0; // number of new comments already in queue for server validation (offline client, remote gifts or errors)
+                var new_comments_timeout = []; // array with cids. verify comment request failed with timeout
                 var new_comments_invalid_sha = []; // array with cids
                 var verify_old_comments = 0; // number of old comments that must be server validated (comment changed and new comment is valid)
                 var verifying_old_comments = 0; // number of old comments already in queue for server validation (offline client, remote comments or errors)
+                var old_comments_timeout = []; // array with cids. verify comment request failed with timeout
+                var old_comments_invalid_sha = []; // array with cids
+
                 var gift_index_system_errors = []; // gid array with gift index system errors - fatal javascript error
                 var gid_validation_system_errors = []; // gid array with sha validation system errors - fatal javascript error
                 var cid_validation_system_errors = []; // cid array with sha validation system errors - fatal javascript error
@@ -5129,14 +5219,12 @@ angular.module('gifts')
                             gift_index_system_errors.push(gid);
                             continue;
                         }
-                        ;
                         old_gift = gifts[index];
                         if (!old_gift || (old_gift.gid != gid)) {
                             // system error - error in javascript
                             gift_index_system_errors.push(gid);
                             continue;
                         }
-                        ;
                         if (['accept', 'delete'].indexOf(old_gift.verify_gift_action) != -1) {
                             // wait for current client gift action to complete (accept or delete) before continue with compare/merge gift operation
                             client_gift_actions += 1;
@@ -5156,11 +5244,24 @@ angular.module('gifts')
                                 // new gift must be server validated before continuing (between pass 1 and pass 2)
                                 verify_new_gifts += 1;
                                 verify_gifts_add(new_gift, 'verify');
+                                if (msg.verifying_remote_gifts.indexOf(new_gift) == -1) msg.verifying_remote_gifts.push(new_gift) ;
                                 continue;
                             }
                             if (!new_gift.hasOwnProperty('verified_at_server')) {
                                 // new gift already in queue for server verification (offline, server not responding, server error or remote gift)
-                                verifying_new_gifts += 1;
+                                seconds = Gofreerev.unix_timestamp() - new_gift.verify_gift_at;
+                                if (msg.count > 30) {
+                                    // more that 30 passes for this send_gifts message. Abort with error
+                                    console.log(pgm + 'Error. Timeout. Waited ' + seconds + ' seconds for gift ' + new_gift.gid + ' verification');
+                                    new_gifts_timeout.push(gid);
+                                    // todo: use key+options error format
+                                    gift_errors[gid] = 'Timeout while waiting for gift verification. There should be a previous error in client or server log' ;
+                                    no_gift_errors += 1 ;
+                                }
+                                else {
+                                    console.log(pgm + 'Waited ' + seconds + ' seconds for gift ' + new_gift.gid + ' verification');
+                                    verifying_new_gifts += 1;
+                                }
                                 continue;
                             }
                             if (!new_gift.verified_at_server) {
@@ -5216,11 +5317,24 @@ angular.module('gifts')
                                     verify_old_gifts += 1;
                                     delete old_gift.verified_at_server;
                                     verify_gifts_add(old_gift, 'verify');
+                                    if (msg.verifying_remote_gifts.indexOf(old_gift) == -1) msg.verifying_remote_gifts.push(old_gift) ;
                                     continue;
                                 }
                                 if (!old_gift.hasOwnProperty('verified_at_server')) {
                                     // old gift already in queue for server verification (offline, server not responding or remote gift)
-                                    verifying_old_gifts += 1;
+                                    seconds = Gofreerev.unix_timestamp() - old_gift.verify_gift_at;
+                                    if (msg.count > 30) {
+                                        // more that 30 passes for this send_gifts message. Abort with error
+                                        console.log(pgm + 'Error. Timeout. Waited ' + seconds + ' seconds for gift ' + old_gift.gid + ' verification');
+                                        old_gifts_timeout.push(gid);
+                                        // todo: use key+options error format
+                                        gift_errors[gid] = 'Timeout while waiting for gift verification. There should be a previous error in client or server log' ;
+                                        no_gift_errors += 1 ;
+                                    }
+                                    else {
+                                        console.log(pgm + 'Waited ' + seconds + ' seconds for gift ' + old_gift.gid + ' verification');
+                                        verifying_old_gifts += 1;
+                                    }
                                     continue;
                                 }
                                 if (!old_gift.verified_at_server) {
@@ -5294,7 +5408,8 @@ angular.module('gifts')
                                 }
 
 
-                            } // if pass 3
+                            } // if pass 3termtop
+
 
                         } // if old_gift.sha256_gift != new_gift.sha256_gift
 
@@ -5375,24 +5490,29 @@ angular.module('gifts')
                                     // new comment must be server validated before continuing (between pass 1 and pass 2)
                                     verify_new_comments += 1;
                                     verify_comments_add(new_gift, new_comment, 'verify');
+                                    if (msg.verifying_remote_comments.indexOf(new_comment) == -1) msg.verifying_remote_comments.push(new_comment) ;
                                     comments_pass = 1;
                                     continue; // wait for verify comments
                                 }
                                 if (!new_comment.hasOwnProperty('verified_at_server')) {
                                     // new comment already in queue for server verification (offline, server not responding or remote comment)
-                                    // todo: how long time to wait for:
-                                    //   a: offline client - no internet connection
-                                    //   b: server not responding (error or timeout)
-                                    //   c: remote comment verification (error or remote server not responding)
                                     seconds = Gofreerev.unix_timestamp() - new_comment.verify_comment_at;
-                                    console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
-                                    verifying_new_comments += 1;
-                                    comments_pass = 1;
-                                    continue; // wait for verify comments
+                                    if (msg.count > 30) {
+                                        // more that 30 passes for this send_gifts message. Abort with error
+                                        console.log(pgm + 'Error. Timeout. Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
+                                        new_comments_timeout.push(new_comment.cid);
+                                    }
+                                    else {
+                                        // wait for verify comments
+                                        console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + new_comment.cid + ' verification');
+                                        verifying_new_comments += 1;
+                                        comments_pass = 1;
+                                    }
+                                    continue;
                                 }
                                 if (!new_comment.verified_at_server) {
                                     // invalid signature for new comment - invalid on other client or incorrect in message
-                                    new_comments_invalid_sha.push(gid);
+                                    new_comments_invalid_sha.push(cid);
                                     continue;
                                 }
                                 // new comment has been server verified and is ready for pass 2
@@ -5410,20 +5530,25 @@ angular.module('gifts')
                                         // old comment must be server validated before continuing (between pass 1 and pass 2)
                                         verify_old_comments += 1;
                                         verify_comments_add(old_gift, old_comment, 'verify');
+                                        if (msg.verifying_remote_comments.indexOf(old_comment) == -1) msg.verifying_remote_comments.push(old_comment) ;
                                         comments_pass = 1;
                                         continue; // wait for verify comments
                                     }
                                     if (!old_comment.hasOwnProperty('verified_at_server')) {
                                         // old comment already in queue for server verification (offline, server not responding or remote comment)
-                                        // todo: how long time to wait for:
-                                        //   a: offline client - no internet connection
-                                        //   b: server not responding (error or timeout)
-                                        //   c: remote comment verification (error or remote server not responding)
                                         seconds = Gofreerev.unix_timestamp() - old_comment.verify_comment_at;
-                                        console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + old_comment.cid + ' verification');
-                                        verifying_old_comments += 1;
-                                        comments_pass = 1;
-                                        continue; // wait for verify comments
+                                        if (msg.count > 30) {
+                                            // more that 30 passes for this send_gifts message. Abort with error
+                                            console.log(pgm + 'Error. Timeout. Waited ' + seconds + ' seconds for comment ' + old_comment.cid + ' verification');
+                                            old_comments_timeout.push(old_comment.cid);
+                                        }
+                                        else {
+                                            // wait for verify comments
+                                            console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + old_comment.cid + ' verification');
+                                            verifying_old_comments += 1;
+                                            comments_pass = 1;
+                                        }
+                                        continue ;
                                     }
                                     if (!old_comment.verified_at_server) {
                                         // invalid signature for old comment - system error or unauthorized changed in localStorage in this client
@@ -5435,7 +5560,6 @@ angular.module('gifts')
                                         for (k = 0; k < old_gift.comments.length; k++) {
                                             if (old_gift.comments[k].cid == new_comment.cid) old_comment_index = k;
                                         }
-                                        ;
                                         old_gift.comments.splice(old_comment_index, 1);
                                         save_gift(old_gift);
                                         // old comment has been deleted. treat as gift with a new comment
@@ -5597,27 +5721,13 @@ angular.module('gifts')
                     // local gifts (other users on this gofreerev server) are validated in next ping cycle
                     // remote gifts (from users on other gofreerev servers) take a little longer as gifts have to be remote validated
 
-                    if (mailbox.hasOwnProperty('server_id')) {
-                        // user ids have already been translated from sha256 signatures to internal user id or negative user id (unknown user)
-                        // See userService.sha256_to_user_ids calls for user_id_giver, user_id_receiver and comment.user_id
-                        // server id (created_at_server) has already been translated from sha256 signature to integer in end of pass 0.
-                        console.log(pgm + 'pass = ' + msg.pass + ', verify remote gift ' + JSON.stringify(new_gift));
-                        // verify remote gift
-                        //   {"gid":"14254791174816684686","giver_user_ids":[2,-790],"receiver_user_ids":[],
-                        //    "created_at_client":1425479117,"created_at_server":1,"currency":"usd","direction":"giver",
-                        //    "description":"e","like":false,"deleted_at_client":1425804186,
-                        //    "sha256":"Çî\u0002t 31gõ¤7NÈªãÃÏ\u0018ÂØ\u0013 ×Ü*á\u0013ùÑ",
-                        //    "sha256_gift":"\"&»º¡&Q§æíB\rö)Uz/\u0019B\u0018,·E>Q°qÜ",
-                        //    "sha256_comments":"_ìëfÿÈo8ÙRxlmilyÂÛÂ9ÝN´g)×:'ûWé"}
-
-                    }
                     if (!new_gift.hasOwnProperty('verify_seq')) {
                         // new gift must be server validated before continuing (between pass 1 and pass 2)
                         verify_new_gifts += 1;
                         verify_gifts_add(new_gift, 'verify');
+                        if (msg.verifying_remote_gifts.indexOf(new_gift) == -1) msg.verifying_remote_gifts.push(new_gift) ;
                         continue; // wait for verify gifts
                     }
-                    ;
                     if (!new_gift.hasOwnProperty('verified_at_server')) {
                         // new gift already in queue for server verification (offline, server not responding or remote gift)
                         // todo: how long time to wait for:
@@ -5625,11 +5735,20 @@ angular.module('gifts')
                         //   b: server not responding (error or timeout)
                         //   c: remote gift verification (error or remote server not responding)
                         seconds = Gofreerev.unix_timestamp() - new_gift.verify_gift_at;
-                        console.log(pgm + 'Waited ' + seconds + ' seconds for gift ' + gid + ' verification');
-                        verifying_new_gifts += 1;
+                        if (msg.count > 30) {
+                            // more that 30 passes for this send_gifts message. Abort with error
+                            console.log(pgm + 'Error. Timeout. Waited ' + seconds + ' seconds for gift ' + gid + ' verification');
+                            new_gifts_timeout.push(gid);
+                            // todo: use key+options error format
+                            gift_errors[gid] = 'Timeout while waiting for gift verification. There should be a previous error in client or server log' ;
+                            no_gift_errors += 1 ;
+                        }
+                        else {
+                            console.log(pgm + 'Waited ' + seconds + ' seconds for gift ' + gid + ' verification');
+                            verifying_new_gifts += 1;
+                        }
                         continue; // wait for verify gifts
                     }
-                    ;
                     if (!new_gift.verified_at_server) {
                         // invalid signature for new gift - changed on other client or incorrect in message
                         // todo: send a special invalid signature error message to other client
@@ -5652,14 +5771,25 @@ angular.module('gifts')
                                 verify_new_comments += 1;
                                 // verify_comments.push({gid: gid, comment: new_comment});
                                 verify_comments_add(new_gift, new_comment, 'verify');
+                                if (msg.verifying_remote_comments.indexOf(new_comment) == -1) msg.verifying_remote_comments.push(new_comment) ;
                                 comments_pass = 1;
                                 continue;
                             }
                             if (!new_comment.hasOwnProperty('verified_at_server')) {
                                 // between pass 1 and 2 - new comment already in queue for server verification (offline, server not responding or remote gift)
-                                verifying_new_comments += 1;
-                                comments_pass = 1;
-                                continue;
+                                seconds = Gofreerev.unix_timestamp() - new_comment.verify_comment_at;
+                                if (msg.count > 30) {
+                                    // more that 30 passes for this send_gifts message. Abort with error
+                                    console.log(pgm + 'Error. Timeout. Waited ' + seconds + ' seconds for comment ' + cid + ' verification');
+                                    new_comments_timeout.push(cid);
+                                }
+                                else {
+                                    // wait for verify comments
+                                    console.log(pgm + 'Waited ' + seconds + ' seconds for comment ' + cid + ' verification');
+                                    verifying_new_comments += 1;
+                                    comments_pass = 1;
+                                }
+                                continue ;
                             }
                             // pass 2 - comment has been server verified
                             if (!new_comment.verified_at_server) {
@@ -5790,9 +5920,8 @@ angular.module('gifts')
                     });
                     return;
                 }
-                ;
 
-                if (client_gift_actions + client_comment_actions + verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts + verify_new_comments + verifying_new_comments > 0) {
+                if (client_gift_actions + client_comment_actions + verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts + verify_new_comments + verifying_new_comments  + verify_old_comments + verifying_old_comments > 0) {
                     // between pass 1 and pass 2.
                     // - waiting for local gift and comment action to complete. recheck after next ping.
                     // - waiting for server verification of gifts and comments. recheck after next ping.
@@ -5800,34 +5929,96 @@ angular.module('gifts')
                     if (client_gift_actions > 0) console.log(pgm + 'Waiting for ' + client_gift_actions + ' client gift actions to complete (accept or delete.');
                     if (client_comment_actions > 0) console.log(pgm + 'Waiting for ' + client_comment_actions + ' client comment actions to complete (cancel, accept, reject or delete.');
                     if (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts > 0) console.log(pgm + 'Waiting for ' + (verify_new_gifts + verifying_new_gifts + verify_old_gifts + verifying_old_gifts) + ' gifts to be server verified.');
-                    if (verify_new_comments + verifying_new_comments > 0) console.log(pgm + 'Waiting for ' + (verify_new_comments + verifying_new_comments) + ' comments to be server verified.');
+                    if (verify_new_comments + verifying_new_comments + verify_old_comments + verifying_old_comments > 0) console.log(pgm + 'Waiting for ' + (verify_new_comments + verifying_new_comments + verify_old_comments + verifying_old_comments) + ' comments to be server verified.');
                     mailbox.read.push(msg);
                     console.log(pgm + 'mailbox.read.length = ' + mailbox.read.length);
-
-                    // debug
-                    console.log(pgm + 'verify_gifts = ' + JSON.stringify(verify_gifts));
-                    console.log(pgm + 'verify_comments = ' + JSON.stringify(verify_comments));
                     return;
                 }
-                ;
 
                 // error report in log and send error message. pass should be 3
                 console.log(pgm + 'pass = ' + msg.pass + ', error report not full implemented');
+
+                // issue 468. cleanup verify gifts and verify comments arrays
+                // console.log(pgm + 'issue 468. cleanup verify comments buffer for verifications in this send_gifts message');
+                var verify_gift ;
+                for (i=0 ; i<msg.verifying_remote_gifts.length ; i++) {
+                    gift = msg.verifying_remote_gifts[i] ;
+                    if (!gift.hasOwnProperty('verify_seq')) continue ; // gift not in or has been removed from verify gifts buffer
+                    if (gift.verify_seq >= 0) continue ; // ignore local gift verifications
+                    if (gift.hasOwnProperty('verified_at_server')) continue ; // response received - gift no longer in verify gifts buffer
+                    // found remote gift verification. should be timeout while waiting for remote gift verification
+                    if ((old_gifts_timeout.indexOf(gift.gid) == -1) && (new_gifts_timeout.indexOf(gift.gid) == -1)) {
+                        console.log(pgm + 'System error. Found gift ' + gift.gid + ' waiting for remote gift verification but gift was not found in old_gifts_timeout or new_gifts_timeout arrays. gift = ' + JSON.stringify(gift)) ;
+                        continue ;
+                    }
+                    if (!verify_comments_seq_to_comms.hasOwnProperty(gift.verify_seq)) {
+                        console.log(pgm + 'System error. Gift ' + gift.gid + ' with verify_seq ' + gift.verify_seq + ' was not found in verify gifts buffer (1). gift = ' + JSON.stringify(gift)) ;
+                        continue ;
+                    }
+                    // ok gift waiting for remote gift verification, in verify gift buffer and in xxx_gifts_timeout array. cleanup
+                    verify_gift = verify_comments_seq_to_comms[gift.verify_seq] ;
+                    j = verify_gift.gifts.indexOf(gift);
+                    if (j == -1) {
+                        console.log(pgm + 'System error. Gift ' + gift.gid + ' with verify_seq ' + gift.verify_seq + ' was not found in verify gifts buffer (2). gift = ' + JSON.stringify(gift)) ;
+                        continue ;
+                    }
+                    // remove gift from verify gifts buffer
+                    // console.log(pgm + 'removing gift ' + gift.gid + ' from verify gifts buffer') ;
+                    if (verify_gift.gifts.length == 1) {
+                        // one and only one gift in verify gifts buffer with this seq.
+                        delete verify_comments_seq_to_comms[gift.verify_seq] ;
+                        continue ;
+                    }
+                    else verify_gift.gifts.splice(j,1) ;
+                } // for i
+                var verify_comment ;
+                for (i=0 ; i<msg.verifying_remote_comments.length ; i++) {
+                    comment = msg.verifying_remote_comments[i] ;
+                    if (!comment.hasOwnProperty('verify_seq')) continue ; // comment not in or has been removed from verify comments buffer
+                    if (comment.verify_seq >= 0) continue ; // ignore local comment verifications
+                    if (comment.hasOwnProperty('verified_at_server')) continue ; // response received - comment no longer in verify comments buffer
+                    // found remote comment verification. should be timeout while waiting for remote comment verification
+                    if ((old_comments_timeout.indexOf(comment.gid) == -1) && (new_comments_timeout.indexOf(comment.gid) == -1)) {
+                        console.log(pgm + 'System error. Found comment ' + comment.gid + ' waiting for remote comment verification but comment was not found in old_comments_timeout or new_comments_timeout arrays. comment = ' + JSON.stringify(comment)) ;
+                        continue ;
+                    }
+                    if (!verify_comments_seq_to_comms.hasOwnProperty(comment.verify_seq)) {
+                        console.log(pgm + 'System error. comment ' + comment.gid + ' with verify_seq ' + comment.verify_seq + ' was not found in verify comments buffer (1). comment = ' + JSON.stringify(comment)) ;
+                        continue ;
+                    }
+                    // ok comment waiting for remote comment verification, in verify comment buffer and in xxx_comments_timeout array. cleanup
+                    verify_comment = verify_comments_seq_to_comms[comment.verify_seq] ;
+                    j = verify_comment.comments.indexOf(comment);
+                    if (j == -1) {
+                        console.log(pgm + 'System error. comment ' + comment.gid + ' with verify_seq ' + comment.verify_seq + ' was not found in verify comments buffer (2). comment = ' + JSON.stringify(comment)) ;
+                        continue ;
+                    }
+                    // remove comment from verify comments buffer
+                    // console.log(pgm + 'removing comment ' + comment.gid + ' from verify comments buffer') ;
+                    if (verify_comment.comments.length == 1) {
+                        // one and only one comment in verify comments buffer with this seq.
+                        delete verify_comments_seq_to_comments[comment.verify_seq] ;
+                        continue ;
+                    }
+                    else verify_comment.comments.splice(j,1) ;
+                } // for i
 
                 // gifts_already_on_ignore_list included in gifts_hash
                 if (gifts_already_on_ignore_list.length > 0) console.log(pgm + 'Warning. Received gifts ' + gifts_already_on_ignore_list.join(', ') + ' already in ignore list (invalid on other client)');
                 if (identical_gift_and_comments.length > 0) console.log(pgm + 'Ok. Received gifts ' + identical_gift_and_comments.join(', ') + ' already up-to-date');
                 // new_gifts_invalid_sha included in gifts_hash
+                if (new_gifts_timeout.length > 0) console.log(pgm + 'Error. Timeout while waiting for new gifts ' + new_gifts_timeout.join(', ') + ' verification. There should be a previous error message in client or server log');
                 if (new_gifts_invalid_sha.length > 0) console.log(pgm + 'Error. Received gifts ' + new_gifts_invalid_sha.join(', ') + ' with invalid sha256 signature (invalid on other client)');
+                if (old_gifts_timeout.length > 0) console.log(pgm + 'Error. Timeout while waiting for old gifts ' + old_gifts_timeout.join(', ') + ' verification. There should be a previous error message in client or server log');
                 if (old_gifts_invalid_sha.length > 0) console.log(pgm + 'Error. Replacing gifts ' + old_gifts_invalid_sha.join(', ') + ' invalid on this client with valid gifts received from other client');
                 // counterpart_errors are included in gift_errors hash
                 if (counterpart_errors.length > 0) console.log(pgm + 'System error. Received gifts ' + counterpart_errors.join(', ') + ' with invalid counterpart update');
                 if (gifts_created.length > 0) console.log(pgm + 'Ok. Created gifts ' + gifts_created.join(', '));
                 if (send_gifts.length > 0) console.log(pgm + 'todo: send gifts ' + send_gifts.join(', ') + ' with action (cancel, accept, reject or delete) on this client to other client.');
                 if (send_comments.length > 0) console.log(pgm + 'todo: send comments ' + send_comments.join(', ') + ' with action (cancel, accept, reject or delete) on this client to other client.');
-                if (no_gift_errors > 0) { // xx
+                if (no_gift_errors > 0) {
                     // write gift error messages to log. will be sent to other client in invalid_gifts sub message
-                    console.log(pgm + 'Found ' + no_gift_errors + ' gifts with errors. gift_errors = ' + JSON.stringify(gift_errors));
+                    console.log(pgm + 'Found ' + no_gift_errors + ' gifts with errors');
                     errors = [];
                     for (gid in gift_errors) {
                         gift_error = gift_errors[gid];
@@ -6178,16 +6369,12 @@ angular.module('gifts')
                         verify_gifts_add(gift, 'verify');
                         continue;
                     }
-                    ;
                     if (!gift.hasOwnProperty('verified_at_server')) {
                         // gift already in queue for server verification (offline, server not responding or remote gift)
                         verifying_gids.push(gid);
                         continue;
                     }
-                    ;
-
-                }
-                ; // for
+                } // for
                 if (client_action_gids.length + verify_gids.length + verifying_gids.length > 0) {
                     // wait for gift action and verify gift to complete before processing invalid_gifts message
                     if (client_action_gids.length > 0) console.log(pgm + 'Waiting for ' + client_action_gids.length + ' client gift actions to complete (accept or delete.');

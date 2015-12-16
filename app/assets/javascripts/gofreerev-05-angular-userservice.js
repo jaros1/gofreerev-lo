@@ -20,6 +20,15 @@ angular.module('gifts')
 
         // see navController.ping. keep track of client online/offline status ;
         var is_online = true ;
+        var set_client_online = function () {
+            is_online = true ;
+        };
+        var set_client_offline = function () {
+            is_online = false ;
+        };
+        var is_client_online = function () {
+            return is_online ;
+        };
 
         // friends - downloaded from api friend list and saved temporary in local storage
         // ( see also users array - users used in gifts and comments permanently stored in local storage )
@@ -564,7 +573,7 @@ angular.module('gifts')
             if (provider) logout_request.provider = provider ;
             var json_errors ;
             if (json_errors=Gofreerev.is_json_request_invalid(pgm, logout_request, 'logout')) return $q.reject(json_errors) ;
-            if (!is_online) console.log(pgm + 'todo: how to handle logout request when offline?') ;
+            if (!is_client_online()) console.log(pgm + 'todo: how to handle logout request when offline?') ;
             $http.post('/util/logout.json', logout_request)
                 .then(function (response) {
                     console.log(pgm + 'logout ok = ' + JSON.stringify(response)) ;
@@ -803,7 +812,7 @@ angular.module('gifts')
             var json_errors ;
             if (json_errors=Gofreerev.is_json_request_invalid(pgm, login_request, 'login')) return $q.reject(json_errors) ;
             console.log(pgm + 'login_request = ' + JSON.stringify(login_request)) ;
-            if (!is_online) console.log(pgm + 'todo: how to handle login request when offline. should disable login button until online.') ;
+            if (!is_client_online()) console.log(pgm + 'todo: how to handle login request when offline. should disable login button until online.') ;
             return $http.post('/util/login.json', login_request)
                 .then(function (response) {
                     // console.log(pgm + 'post login response = ' + JSON.stringify(response)) ;
@@ -1164,7 +1173,9 @@ angular.module('gifts')
 
 
         return {
-            is_online: is_online,
+            is_client_online: is_client_online,
+            set_client_online: set_client_online,
+            set_client_offline: set_client_offline,
             providers: providers,
             load_users: load_users,
             is_logged_in: is_logged_in,

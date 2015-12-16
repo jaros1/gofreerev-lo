@@ -2040,10 +2040,32 @@
 466) GiftService.receive_message_send_gifts: Waited 34 seconds for gift 14499240619599393956 verification
      add timeout while waiting for gifts and comments verifications.
      change to error after <n> seconds, write error in log and send error message to other client
+     must be <n> seconds after last coming online.
+     could also be implemented as max number off send_gifts passes. try max 30 times before changing waiting to error
 
-467) added userService.is_online to userService
-     check is_online before sending other than ping requests to server (login/logout)
-     disable login/logout buttons while offline
-     test browse offline in firefox
+467) added userService.is_client_online to userService
+     check is_client_online before sending other than ping requests to server (login/logout)
+     added todo in console.log for all /util/ requests when offline
+     disable login/logout buttons while offline?
+     browse offline in firefox / pull network cable does not work in a standalone setup (client==server)
 
-select next issue to solve: (rand*467).floor+1
+468) add cleanup verify gifts buffer and verify comments buffer to receive_message_send_gifts
+     after last pass of send_gifts message (ok or error) remove gifts and comments from verify buffers
+     add msg.verifying_gifts and msg.verifying_comments array
+     delete gifts and comments from verify buffers before ending send_gifts message passing
+
+469) add cleanup verify gifts buffer and verify comments buffer to receive_message_invalid_gifts
+     after last pass of send_gifts message (ok or error) remove gifts and comments from verify buffers
+     add msg.verifying_gifts and msg.verifying_comments array
+     delete gifts and comments from verify buffers before ending send_gifts message passing
+
+470) check all verify_gift_add calls. must check for error.
+
+471) check all verify_comment_add calls. must check for error.
+
+472) add auto cleanup in verify gifts and verify comments buffers (lost remote verifications / lost remote actions)
+     receive_message_send_gifts and receive_message_invalid_gifts should abort waiting after 30 passes
+     auto cleanup in verify gifts and comments message should find missing cleanup in receive_message_send_gifts and receive_message_invalid_gifts
+     must also cleanup and report lost verify actions (delete, cancel, reject and accept). report error in log and UI and rollback action
+
+select next issue to solve: (rand*472).floor+1

@@ -552,7 +552,7 @@ angular.module('gifts')
                 self.new_gift.open_graph_error = $sce.trustAsHtml('Error in preview request for link. See more information in browser log.') ;
                 return ;
             }
-            if (!is_online) console.log(pgm + 'todo: how to handle open_graph requests when offline?') ;
+            if (!userService.is_client_online()) console.log(pgm + 'todo: how to handle open_graph requests when offline?') ;
             $http.post('/util/open_graph.json', open_graph_request, config)
                 .then(function (response) {
                     // OK response - can be empty - could by be an error message

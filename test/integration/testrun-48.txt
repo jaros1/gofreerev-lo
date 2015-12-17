@@ -1,16 +1,2 @@
-testrun-48 error.
-sending two newly created gifts from client 1 on server 1 to client 2 on server 2
-
-todo:
-1) JSON validation error when sending gift verification from server 2 to server 1
-   server 2 should return verified_at_server = false and error message for the two gifts to client 2
-   so that client 2 can stop waiting for gifts verification at once and return error to client 2 log and send error message to client 1
-2) error 1 is returned to client 2 but client 2 is waiting for verify gifts response when never comes
-   add timeout to verify gifts and verify comments requests in giftController.receive_message_send_gifts
-   no timeout if client is offline. See 3)
-3) giftController.receive_message_send_gifts offline client
-   received send_gifts message from other client but is offline and cannot verify comments/gifts
-   how often to ping server when offline? Could be an app on a mobile device. Don't use power/cpu for nothing
-
-
-
+testrun-48 ok.
+sending four newly created gifts from client 1 on server 1 to client 2 on server 2

@@ -2037,12 +2037,6 @@
      created, accepted or deleted gift - send gift to online mutual friends
      created, cancelled, rejected, accepted or deleted comment - send comment to online mutual friends
 
-466) GiftService.receive_message_send_gifts: Waited 34 seconds for gift 14499240619599393956 verification
-     add timeout while waiting for gifts and comments verifications.
-     change to error after <n> seconds, write error in log and send error message to other client
-     must be <n> seconds after last coming online.
-     could also be implemented as max number off send_gifts passes. try max 30 times before changing waiting to error
-
 467) added userService.is_client_online to userService
      check is_client_online before sending other than ping requests to server (login/logout)
      added todo in console.log for all /util/ requests when offline
@@ -2063,9 +2057,6 @@
 
 471) check all verify_comment_add calls. must check for error.
 
-472) add auto cleanup in verify gifts and verify comments buffers (lost remote verifications / lost remote actions)
-     receive_message_send_gifts and receive_message_invalid_gifts should abort waiting after 30 passes
-     auto cleanup in verify gifts and comments message should find missing cleanup in receive_message_send_gifts and receive_message_invalid_gifts
-     must also cleanup and report lost verify actions (delete, cancel, reject and accept). report error in log and UI and rollback action
+473) add verify gift timeout detection to receive_message_invalid_gifts
 
-select next issue to solve: (rand*472).floor+1
+select next issue to solve: (rand*473).floor+1

@@ -622,7 +622,8 @@ class Gift < ActiveRecord::Base
         # make remote verify gift request
         hash = {:seq => vg.server_seq,
                 :gid => gid,
-                :sha256 => verify_gift["sha256"]}
+                :sha256 => verify_gift["sha256"],
+                :action => verify_gift["action"]}
         hash[:sha256_deleted] = verify_gift["sha256_deleted"] if verify_gift["sha256_deleted"]
         hash[:sha256_accepted] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
         hash[:giver_user_ids] = giver_user_ids if giver_user_ids.size > 0

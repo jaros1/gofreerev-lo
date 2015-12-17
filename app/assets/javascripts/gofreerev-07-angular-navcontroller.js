@@ -90,7 +90,7 @@ angular.module('gifts')
                     // get result of gift verification (gifts received from other devices)
                     giftService.verify_gifts_response(response.data.verify_gifts) ;
                     // get result of comment verification (comments received from other devices)
-                    if (response.data.verify_comments) giftService.verify_comments_response(response.data.verify_comments) ;
+                    giftService.verify_comments_response(response.data.verify_comments) ;
                     // check expired access token (server side check)
                     if (response.data.expired_tokens) userService.expired_tokens_response(response.data.expired_tokens, 'ping') ;
                     // check for new oauth authorization (google+ only)

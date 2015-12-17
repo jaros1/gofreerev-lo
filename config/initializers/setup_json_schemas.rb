@@ -1299,7 +1299,10 @@ JSON_SCHEMA = {
                     :additionalProperties => false
                 },
                 :minItems => 1
-            }
+            },
+
+            # optional warning. write warning in log and continue with sync_gifts sub messages
+            :warning => { :type => 'string' }
         },
         :required => %w(mid request_mid msgtype mutual_friends),
         :additionalProperties => false

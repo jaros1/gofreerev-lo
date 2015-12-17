@@ -1060,7 +1060,7 @@ en:
         syserr_not_deleted: "%{action} gift failed. sha256_deleted signature in request but gift has not been deleted (no deleted signature on server)"
         syserr_sha256_accepted_required2: "%{action} gift failed. sha256_deleted signature in request but gift has previously been accepted and sha256 accepted signature was missing in request."
         syserr_sha256_deleted: "%{action} gift failed. Invalid request. sha256_deleted signature check failed."
-        timeout: "%{action} gift failed. Timeout while waiting for remote gift %{action}. Could be a system error. Check client and server logs for errors."
+        timeout: "%{action} gift failed. Timeout while waiting for remote gift %{action}. Could be a system error. Please check client and server logs for errors."
      new_comment:
         ajax_error: "Error when creating comment. %{error}. More information in server log."
         ajax_error2: "Error when creating comment. %{error} (%{location},%{debug}). More information in client and server logs."
@@ -1123,7 +1123,7 @@ en:
         comment_syserr_not_deleted: "%{action_failed}. sha256_deleted signature in request but comment has not been deleted (no deleted signature on server)."
         comment_syserr_sha256_action_required2: "%{action} comment failed. sha256_deleted signature in request but new deal proposal has previously been cancelled, accepted or rejected and sha256_action signature is missing in request."
         comment_sha256_deleted: "%{action} kommentar fejlede. Invalid sha256_deleted signature."
-
+        timeout: "%{action} comment failed. Timeout while waiting for remote comment %{action}. Could be a system error. Please check client and server logs for errors."
      post_on_wall:
         ajax_error: "Error when changing \"Post?\" choice. %{error}. More information in server log."
      client_login_dialog:

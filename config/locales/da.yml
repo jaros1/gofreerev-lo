@@ -1064,7 +1064,7 @@ da:
         syserr_not_deleted: "%{action} opslag fejlede. \"sha256_deleted\" signatur i kald men opslag er ikke blevet slettet (ingen slet opslag signatur på server)"
         syserr_sha256_accepted_required2: "%{action} opslag fejlede. \"sha256_deleted\" signatur i kald, men tilbud er tidligere blevet accepteret og \"sha256_accepted\" signatur mangler i kald."
         syserr_sha256_deleted: "%{action} opslag fejlede. Ugyldigt kald. sha256_deleted signatur tjek fejlede."
-        timeout: "%{action} opslag fejlede. %{action} opslag tog for lang tid. Kan være en systemfejl. Tjek log på klient og server for fejl meddelelser."
+        timeout: "%{action} opslag fejlede. %{action} opslag tog for lang tid. Kan være en systemfejl. Tjek venligst log på klient og server for fejl meddelelser."
      new_comment:
         ajax_error: "Fejl ved oprettelse af kommentar. %{error}. Mere information i server log."
         ajax_error2: "Fejl ved oprettelse af kommentar. %{error} (%{location},%{debug}). Mere information i klient og server log."
@@ -1127,7 +1127,7 @@ da:
         comment_syserr_not_deleted: "%{action} kommentar fejlede. \"sha256_deleted\" signatur i kald, men kommentar er ikke blevet slettet (ingen slet signatur på server)."
         comment_syserr_sha256_action_required2: "%{action} kommentar fejlede. sha256_deleted signatur i kald, men tilbud er tidligere blevet fortrudt, accepteret eller afvist og sha256_action signatur mangler i kald."
         comment_sha256_deleted: "%{action} kommentar fejlede. sha256_deleted signatur tjek fejlede."
-
+        timeout: "%{action} kommentar fejlede. %{action} kommentar tog for lang tid. Kan være en systemfejl. Tjek venligst logs på klient og server for fejl meddelelser."
      post_on_wall:
         ajax_error: "Fejl ved ændring af \"Opslag?\" valg. %{error}. Mere information i server log."
      client_login_dialog:

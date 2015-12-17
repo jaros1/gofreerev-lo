@@ -6441,7 +6441,7 @@ angular.module('gifts')
                             invalid_gift_error = I18n.t('js.gift_actions.' + invalid_gift_error, invalid_gift_error.options);
                         }
                         else invalid_gift_error_key = null;
-                        console.log(pgm + 'Error message from other client was: ' + error);
+                        console.log(pgm + 'Error message from other client was: ' + invalid_gift_error);
                         if (gift.verified_at_server) {
                             console.log(pgm + 'No error was found for gift on this client!');
                             gift_error_key = null;

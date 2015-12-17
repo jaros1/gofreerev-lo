@@ -618,7 +618,8 @@ class Gift < ActiveRecord::Base
         vg.original_client_request = verify_gift.to_json
         vg.save!
         logger.debug2 "vg = #{vg.to_json}"
-        # 2) insert verify_gifts request in server_requests hash
+
+        # make remote verify gift request
         hash = {:seq => vg.server_seq,
                 :gid => gid,
                 :sha256 => verify_gift["sha256"]}
@@ -626,8 +627,14 @@ class Gift < ActiveRecord::Base
         hash[:sha256_accepted] = verify_gift["sha256_accepted"] if verify_gift["sha256_accepted"]
         hash[:giver_user_ids] = giver_user_ids if giver_user_ids.size > 0
         hash[:receiver_user_ids] = receiver_user_ids if receiver_user_ids.size > 0
-        server_requests[server_id] = [] unless server_requests.has_key? server_id
-        server_requests[server_id].push(hash)
+
+        # 2) insert verify_gifts request in server_requests hash
+        # - one array for each remote Gofreerev server with verify gifts requests
+        # - one array for each remote Gofreerev server with fallback info used in case of invalid verify gifts json message
+        server_requests[server_id] = { :server_requests => [], :json_error_info => []} unless server_requests.has_key? server_id
+        json_error_info = verify_gift, vg
+        server_requests[server_id][:server_requests].push(hash)
+        server_requests[server_id][:json_error_info].push(json_error_info)
         next
       end
 
@@ -808,7 +815,7 @@ class Gift < ActiveRecord::Base
     logger.debug2 "server_requests = #{server_requests}"
 
     # send any server to server verify gifts messages
-    server_requests.each do |server_id, server_request|
+    server_requests.each do |server_id, server_requests_hash|
       # translate login user uds to sha256 signatures (verified server users) or negative user ids (unknown users)
       login_user_ids = []
       login_users.each do |login_user|
@@ -828,26 +835,73 @@ class Gift < ActiveRecord::Base
           :msgtype => 'verify_gifts',
           :mid => server_mid[server_id],
           :login_users => login_user_ids,
-          :verify_gifts => server_request }
+          :verify_gifts => server_requests_hash[:server_requests] }
       logger.debug2 "verify_gifts message = #{message_hash}"
       # validate json message before sending
       json_schema = :verify_gifts_request
       if !JSON_SCHEMA.has_key? json_schema
-        return Gift.format_error_response(
-            { :error => "System error. Could not validate verify_gifts server to server message. JSON schema definition #{json_schema.to_s} was not found",
-              :key => 'no_json', :options => { :schema => json_schema} },
-            client_sid, nil)
+
+        # error message to log
+        logger.error2 "Failed to sent gifts to remote verification. JSON schema #{json_schema} was not found"
+        error = "System error. Failed to sent gifts to remote verification. JSON schema #{json_schema} was not found"
+
+        # cleanup + return fatal json error in client_response_array
+        logger.debug2 "Cleanup after JSON error and return error message to client"
+        server_requests_hash[:json_error_info].each do |json_error_info|
+          verify_gift, vg = json_error_info
+          logger.debug2 "server_id   = #{server_id}"
+          logger.debug2 "verify_gift = #{verify_gift.to_json}"
+          logger.debug2 "vg          = #{vg.to_json}"
+          # return error message to client
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => verify_gift['seq'], :gid => verify_gift['gid'], :verified_at_server => false,
+                :error => error, :key => 'no_json', :options => {:schema => json_schema} },
+              client_sid, verify_gift)
+          vg.destroy!
+        end
+
+        next # unable to check json - don't send verify gifts server to server message
+
+        # return Gift.format_error_response(
+        #     { :error => "System error. Could not validate verify_gifts server to server message. JSON schema definition #{json_schema.to_s} was not found",
+        #       :key => 'no_json', :options => { :schema => json_schema} },
+        #     client_sid, nil)
+
       end
       json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], message_hash)
       if json_errors.size > 0
+
+        # write error message in server log
         logger.error2 "Failed to sent gifts to remote verification. Error in #{json_schema}"
         logger.error2 "message = #{message_hash}"
         logger.error2 "json_schema = #{JSON_SCHEMA[json_schema]}"
         logger.error2 "errors = #{json_errors.join(', ')}"
-        return Gift.format_error_response(
-            { :error => "System error. Failed to create verify_gifts server to server message: #{json_errors.join(', ')}",
-              :key => 'invalid_json', :options => { :schema => json_schema, :error => json_errors.join(', ')} },
-            client_sid, nil)
+        error = "System error. Failed to sent gifts to remote verification. JSON error in verify_gifts server to server message: #{json_errors}."
+
+        # cleanup + return fatal json error in client_response_array
+        logger.debug2 "Cleanup after JSON error and return error message to client"
+        server_requests_hash[:json_error_info].each do |json_error_info|
+          verify_gift, vg = json_error_info
+          logger.debug2 "server_id   = #{server_id}"
+          logger.debug2 "verify_gift = #{verify_gift.to_json}"
+          logger.debug2 "vg          = #{vg.to_json}"
+          # return error message to client
+          Gift.client_response_array_add(
+              client_response_array,
+              { :seq => verify_gift['seq'], :gid => verify_gift['gid'], :verified_at_server => false,
+                :error => error, :key => 'invalid_json', :options => {:schema => json_schema, :error => json_errors.join(', ')} },
+              client_sid, verify_gift)
+          vg.destroy!
+        end
+
+        next # unable to check json - don't send verify gifts server to server message
+
+        # return Gift.format_error_response(
+        #     { :error => "System error. Failed to create verify_gifts server to server message: #{json_errors.join(', ')}",
+        #       :key => 'invalid_json', :options => { :schema => json_schema, :error => json_errors.join(', ')} },
+        #     client_sid, nil)
+
       end
       # save server to server message - will be sent in next server to server ping
       key, message = servers[server_id].mix_encrypt_message_hash message_hash

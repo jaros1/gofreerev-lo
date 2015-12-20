@@ -2075,4 +2075,8 @@
      collect send/receive gift and comment info in ping response
      make and send sync gifts message in next ping request
 
-select next issue to solve: (rand*475).floor+1
+476) giftService.receive_message_send_gifts
+     ok gift merge. clear any gift previous error message
+     ok comment merge. clear any previous error message
+
+select next issue to solve: (rand*476).floor+1

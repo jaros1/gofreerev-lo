@@ -3596,8 +3596,7 @@ angular.module('gifts')
 
                 if (request_comments.length > 0) {
                     for (j=0 ; j<request_comments.length ; j++) {
-                        comment = request_comments[j] ;
-                        cid = comment.cid ;
+                        cid = request_comments[j] ;
                         request_comments_sub_message.comments.push(cid) ;
                     } // for j (send_comments loop)
                 } // if request_comments

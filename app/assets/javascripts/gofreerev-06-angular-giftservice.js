@@ -2654,6 +2654,7 @@ angular.module('gifts')
             var no_comments = { all: 0, create: 0, verify: 0, cancel: 0, accept: 0, reject: 0, delete: 0, local: 0, remote: 0, syserr1: 0, syserr2: 0, syserr3: 0, resend: 0, true: 0, false: 0} ;
             var empty_new_comment_form ;
             var send_cids = [] ; // post verify comments response. Send new or changed comments to mutual friends
+            var request_cids = [] ; // post verify comments response. request out of date comments from mutual friends
             while (response.comments.length > 0) {
                 comment_verification = response.comments.shift();
                 // ignore response from old remote comment actions (from before page reload)
@@ -2850,7 +2851,7 @@ angular.module('gifts')
                                 // cancel new deal proposal ok
                                 comment.new_deal_action_at_server = comment.created_at_server ;
                                 // send cancelled new proposal to mutual online friends
-                                if (send_cids.indexOf(comment.cid) == -1) send_cids.push(cid) ;
+                                if (send_cids.indexOf(cid) == -1) send_cids.push(cid) ;
                             }
                             else {
                                 // cancel new deal proposal failed.
@@ -2873,6 +2874,8 @@ angular.module('gifts')
                                 if (typeof comment_verification.error == 'object') comment.link_error = I18n.t('js.comment_actions.' + comment_verification.error.key, comment_verification.error.options);
                                 else comment.link_error = comment_verification.error ;
                                 console.log(pgm + 'cancel new deal proposal failed. error message was ' + comment.link_error) ;
+                                // request possible out of date comment from mutual online friends
+                                if (request_cids.indexOf(cid) == -1) request_cids.push(cid)
                             }; // if
                             // save gift - cancelled (success) or uncancel (failure)
                             // cleanup info used in verify comment request & response
@@ -2941,6 +2944,8 @@ angular.module('gifts')
                                 if (typeof comment_verification.error == 'object') comment.link_error = I18n.t('js.comment_actions.' + comment_verification.error.key, comment_verification.error.options);
                                 else comment.link_error = comment_verification.error ;
                                 console.log(pgm + 'reject new deal proposal failed. error message was ' + comment.link_error) ;
+                                // request possible out of date comment from mutual online friends
+                                if (request_cids.indexOf(cid) == -1) request_cids.push(cid)
                             }; // if
                             // save gift - rejected (success) or unrejected (failure)
                             // cleanup info used in verify comment request & response
@@ -3020,6 +3025,49 @@ angular.module('gifts')
             // receipt
             if (no_comments.all > 0) console.log(pgm + 'Received response for ' + no_comments.all + ' comment actions (' + no_comments.true + ' valid and ' + no_comments.false + ' invalid).') ;
             if (send_cids.length > 0) console.log(pgm + 'todo: send new or changed comments to online mutual friend. send_cids = ' + JSON.stringify(send_cids)) ;
+            if (request_cids.length > 0) console.log(pgm + 'todo: request possible out off date comments from online mutual friend. request_cids = ' + JSON.stringify(request_cids)) ;
+            if (send_cids.length + request_cids.length == 0) return ;
+
+            // copy new cids in send_cids and request_cids arrays to relevant mailboxes - only for gifts with mutual friends
+            var send_cid, request_cid, k, mailbox, in_mutual_friends, user_id ;
+            for (i=0 ; i<gifts.length ; i++) {
+                gift = gifts[i] ;
+                if (!gift.hasOwnProperty('comments')) continue ; // next gift
+                if (gift.comments.length == 0) continue ; // next gift
+                for (j=0 ; j<gift.comments.length ; j++) {
+                    comment = gift.comments[j] ;
+                    cid = comment.cid ;
+                    send_cid = (send_cids.indexOf(cid) != -1) ;
+                    request_cid = (request_cids.indexOf(cid) != -1) ;
+                    if (!send_cid && !request_cid) continue ; // next comment
+                    // send and/or request comment to/from other devices. Only gifts with mutual friends
+                    for (k=0 ; k<mailboxes.length ; k++) {
+                        mailbox = mailboxes[k] ;
+                        // todo: only send/request comments if device is online?
+                        in_mutual_friends = false;
+                        if (gift.hasOwnProperty('giver_user_ids')) {
+                            for (k = 0; k < gift.giver_user_ids.length; k++) {
+                                user_id = gift.giver_user_ids[k];
+                                if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
+
+                            } // for k
+                        } // if
+                        if (gift.hasOwnProperty('receiver_user_ids')) {
+                            for (k = 0; k < gift.receiver_user_ids.length; k++) {
+                                user_id = gift.receiver_user_ids[k];
+                                if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
+
+                            } // for k
+                        } // if
+                        if (!in_mutual_friends) continue ; // next mailbox
+                        // send/request comment to/from this device
+                        if (send_cid && (mailbox.send_comments.indexOf(cid) == -1)) mailbox.send_comments.push(cid) ;
+                        if (request_cid && (mailbox.request_comments.indexOf(cid) == -1)) mailbox.request_comments.push(cid) ;
+                    } // for k (mailboxes loop)
+                } // for j (comments loop)
+            } // for i (gifts loop)
+            // todo: check that cids was added to relevant mailboxes
+            console.log(pgm + 'todo: mailboxes = ' + JSON.stringify(mailboxes));
 
         }; // verify_comments_response
 
@@ -3159,7 +3207,7 @@ angular.module('gifts')
         // key = did+sha256 is used as mailbox index.
         var mailboxes = []; // list with online and offline devices
         var key_mailbox_index = {}; // from key (did+sha256) to index
-        var devices = {}; // hash with public key and symmetric password for each unique device (did)
+        var devices = {}; // hash with public key for each unique device (did)
         var user_mailboxes = {}; // list with relevant mailboxes for each user id (mutual friend) - how to notify about changes in gifts
         var unencrypted_messages = [] ; // temporary buffer symmetric encrypted messages (waiting for public key / symmetric password )
 
@@ -3242,6 +3290,16 @@ angular.module('gifts')
                     mailbox.sent = []; // messages sent - response not yet received
                     mailbox.done = []; // messages sent - response ok received (request_mid)
                     mailbox.error = []; // messages sent - response error  received (request_mid)
+
+                    // small transactions/changes to/from other devices
+                    // send/request gifts and comments to/from device.
+                    // initialized in verify_gifts_response and verify_comments_response (gift actions and comment actions)
+                    // send as messages to other online clients in ping request (giftService.send_messages)
+                    mailbox.send_gifts = [] ; // array with gids. changed on this device. Send gift to other device
+                    mailbox.request_gifts = [] ; // array with gids. gift out of date on this device. Request gift from other device
+                    mailbox.send_comments = [] ; // array with cids. changed on this device. Send comment to other device
+                    mailbox.request_comments = [] ; // array with cids. comment out of date on this device. Request comment from other device
+
                     // first outgoing message
                     // communication step 2 - compare sha256 checksum for mutual friends
                     hash = {
@@ -3253,8 +3311,8 @@ angular.module('gifts')
                     console.log(pgm + 'New online mailbox ' + JSON.stringify(mailbox) + ' with mutual friends ' + mailbox.mutual_friends.join(', ') + '. Added message = ' + JSON.stringify(hash) + ' to outbox') ;
                     mailbox.outbox.push(hash);
                     mailboxes.push(mailbox);
-                }
-            }
+                } // if
+            } // for
             update_key_mailbox_index();
             // console.log(pgm + 'mailboxes = ' + JSON.stringify(mailboxes)) ;
             // console.log(pgm + 'device_pubkey = ' + JSON.stringify(device_pubkey)) ;
@@ -3419,6 +3477,230 @@ angular.module('gifts')
 
         }; // send_message_gifts_sha256
 
+
+        // any changed or out of date gifts and comments for this mailbox?
+        // empty arrays with gids and cids and create sync_gifts message
+        var send_and_request_gids_and_cids = function (mailbox) {
+            var pgm = service + '.send_and_request_gids_and_cids: ' ;
+            if (mailbox.send_gifts.length + mailbox.request_gifts.length + mailbox.send_comments.length + mailbox.request_comments.length == 0) return ;
+            console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
+
+            // create sync_gifts message with send_gifts, request_gifts and/or request_comments sub messages for this mailbox
+
+            // 1-3 sync_gifts sub messages
+            var send_gifts_sub_message = {
+                mid: Gofreerev.get_new_uid(),
+                msgtype: 'send_gifts',
+                gifts: [],
+                users: []
+            }, send_gifts_users = [];
+            var request_gifts_sub_message = {
+                mid: Gofreerev.get_new_uid(),
+                msgtype: 'request_gifts',
+                gifts: []
+            };
+            var request_comments_sub_message = {
+                mid: Gofreerev.get_new_uid(),
+                msgtype: 'request_comments',
+                comments: []
+            };
+            var i, j, k, gift, gid, send_gift, request_gift, send_comments, request_comments, comment, cid ;
+            var in_mutual_friends, user_id ;
+            var gift_clone, error, comment_clone ;
+            var invalid_gift_gids = [], not_mutual_gids = [], not_mutual_cids = [] ;
+
+            for (i=0 ; i<gifts.length ; i++) {
+                gift = gifts[i] ;
+                gid = gift.gid ;
+
+                // any send/request gift/comment message(s) for this gift?
+                send_gift = (mailbox.send_gifts.indexOf(gid) != -1) ;
+                request_gift = (mailbox.request_gifts.indexOf(gid) != -1) ;
+                send_comments = [] ;
+                request_comments = [] ;
+                if (gift.hasOwnProperty('comments')) {
+                    for (j=0 ; j<gift.comments.length ; j++) {
+                        comment = gift.comments[j] ;
+                        cid = comment.cid ;
+                        if (mailbox.send_comments.indexOf(cid) != -1) {
+                            // must include gift in send_gifts message
+                            send_gift = true ;
+                            send_comments.push(comment) ;
+                        }
+                        if (mailbox.request_comments.indexOf(cid) != -1) request_comments.push(cid) ;
+                    } // for j (comments loop)
+                } // if
+                if (!send_gift && !request_gift && (send_comments.length == 0) && (request_comments.length == 0)) continue ; // next gift
+
+                // recheck mutual friends. has already been checked once in verify_gifts_response and verify_comments response
+                in_mutual_friends = false;
+                if (gift.hasOwnProperty('giver_user_ids')) {
+                    for (k = 0; k < gift.giver_user_ids.length; k++) {
+                        user_id = gift.giver_user_ids[k];
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
+                    } // for k
+                } // if
+                if (gift.hasOwnProperty('receiver_user_ids')) {
+                    for (k = 0; k < gift.receiver_user_ids.length; k++) {
+                        user_id = gift.receiver_user_ids[k];
+                        if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
+                    } // for k
+                } // if
+                if (!in_mutual_friends) {
+                    console.log(pgm + 'Warning. Found messages in mailbox for gift ' + gid + ' but without any mutual friends') ;
+                                                     console.log(pgm + 'mailbox          = ' + JSON.stringify(mailbox)) ;
+                    if (send_gift)                   console.log(pgm + 'send_gift        = ' + send_gift) ;
+                    if (request_gift)                console.log(pgm + 'request_gift     = ' + request_gift) ;
+                    if (send_comments.length > 0)    console.log(pgm + 'send_comments    = ' + JSON.stringify(send_comments)) ;
+                    if (request_comments.length > 0) console.log(pgm + 'request_comments = ' + JSON.stringify(request_comments)) ;
+                    // save gid and cids for warning/error report
+                    if (send_gift || request_gift) not_mutual_gids.push(gid) ;
+                    for (j=0 ; j<send_comments.length ; j++) not_mutual_cids.push(send_comments[j]) ;
+                    for (j=0 ; j<request_comments.length ; j++) not_mutual_cids.push(request_comments[j]) ;
+                    continue ; // next gift
+                } // if
+
+                // build sync_gifts sub messages (send_gifts, request_gifts and/or request_comments) for other device
+
+                if (send_gift) {
+                    gift_clone = make_gift_clone(gift);
+                    // validate gift_clone before adding to send_gifts sub message
+                    error = invalid_gift(gift_clone, [], 'send', mailbox);
+                    if (error) {
+                        console.log(pgm + 'Warning. Invalid gift was not added to send_gifts sub message.');
+                        console.log(pgm + 'Gift ' + gift_clone.gid + ': ' + JSON.stringify(gift_clone));
+                        console.log(pgm + 'Error message: ' + error);
+                        invalid_gift_gids.push(cid);
+                        continue;
+                    }
+                    // save relevant userids in gift_users buffer
+                    add_user_ids_to_array(gift.giver_user_ids, send_gifts_users, false);
+                    add_user_ids_to_array(gift.receiver_user_ids, send_gifts_users, false);
+                    // add gift to send gifts message
+                    send_gifts_sub_message.gifts.push(gift_clone);
+                } // if send_gift
+                else gift_clone = null ;
+
+                if (request_gift) request_gifts_sub_message.gifts.push(gid) ;
+
+                if (send_comments.length > 0) {
+                    for (j=0 ; j<send_comments.length ; j++) {
+                        comment = send_comments[j] ;
+                        comment_clone = make_comment_clone(comment);
+                        add_user_ids_to_array(comment_clone.user_ids, send_gifts_users, false);
+                        add_user_ids_to_array(comment_clone.new_deal_action_by_user_ids, send_gifts_users, false);
+                        if (!gift_clone.hasOwnProperty('comments')) gift_clone.comments = [] ;
+                        gift_clone.comments.push(comment_clone);
+                    } // j (send_comments loop)
+                } // if send_comments
+
+                if (request_comments.length > 0) {
+                    for (j=0 ; j<request_comments.length ; j++) {
+                        comment = request_comments[j] ;
+                        cid = comment.cid ;
+                        request_comments_sub_message.comments.push(cid) ;
+                    } // for j (send_comments loop)
+                } // if request_comments
+
+            } // for i (gifts loop)
+
+            // error and warnings
+            if (invalid_gift_gids.length > 0) console.log(pgm + 'Error. Invalid gifts: ' + invalid_gift_gids.join(', ')) ;
+            if (not_mutual_gids.length > 0) console.log(pgm + 'Warning. Gifts without mutual friends: ' + not_mutual_gids.join(', ')) ;
+            if (not_mutual_cids.length > 0) console.log(pgm + 'Warning. Comments without mutual friends: ' + not_mutual_cids.join(', ')) ;
+            if (send_gifts_sub_message.gifts.length == 0) send_gifts_sub_message = null ;
+            if (request_gifts_sub_message.gifts.length == 0) request_gifts_sub_message = null ;
+            if (request_comments_sub_message.comments.length == 0) request_comments_sub_message = null ;
+            // empty arrays before exit
+            mailbox.send_gifts = [] ;
+            mailbox.request_gifts = [] ;
+            mailbox.send_comments = [] ;
+            mailbox.request_comments = [] ;
+            if (!send_gifts_sub_message && !request_gifts_sub_message && !request_comments_sub_message) {
+                console.log(pgm + 'No message was sent to other device. Mailbox = ' + JSON.stringify(mailbox)) ;
+                return ;
+            }
+
+            // create sync gifts message with one or more sub messages
+            var sync_gifts_message =
+            {
+                mid: Gofreerev.get_new_uid(), // envelope mid
+                request_mid: null, // this sync_gifts message is NOT a response to an other incoming client to client message
+                msgtype: 'sync_gifts',
+                mutual_friends: Gofreerev.clone_array(mailbox.mutual_friends)
+            };
+            if (send_gifts_sub_message) sync_gifts_message.send_gifts = send_gifts_sub_message ;
+            if (request_gifts_sub_message) sync_gifts_message.request_gifts = request_gifts_sub_message ;
+            if (request_comments_sub_message) sync_gifts_message.request_comments = request_comments_sub_message ;
+
+            // prepare and validate sync_gifts message for send
+            // pseudo msg. used in validations and error messages.
+            var msg = {
+                mid: 'no mid',
+                msgtype: 'no msgtype'
+            };
+            console.log(pgm + 'sync_gifts_message = ' + JSON.stringify(sync_gifts_message)) ;
+
+            // translate user ids and server_ids before sending outgoing remote sync_gifts message to client on other Gofreerev server
+            // ids are translated to sha256 signatures when communicating with clients on other Gofreerev servers (mailbox.server_id != null)
+            // false: errors has already been written to log and send in a error message to other client
+            if (!sync_gifts_translate_ids(msg, sync_gifts_message, mailbox)) return;
+
+            // JS validate sync_gifts message before placing message in outbox
+            if (Gofreerev.is_json_message_invalid(pgm, sync_gifts_message, 'sync_gifts', '')) {
+                // error message has already been written to log
+                // send error message to other device
+                var json_error = JSON.parse(JSON.stringify(tv4.error));
+                delete json_error.stack;
+                var json_errors = JSON.stringify(json_error);
+                var error = 'Could not send sync_gifts message. JSON schema validation error in sync_gifts message: ' + json_errors;
+                console.log(pgm + error + ' msg = ' + JSON.stringify(msg));
+                return;
+            }
+
+            // check sync_gifts message for logical errors before placing message in outbox
+
+            // 1) check sub message send_gifts for logical errors
+            if (sync_gifts_message.send_gifts) {
+                // logical validate send_gifts sub messsage before sending sync_gifts message
+                error = validate_send_gifts_message(mailbox, sync_gifts_message.send_gifts, 'send');
+                if (error) {
+                    var error = 'Could not send sync_gifts message. Logical error in sync_gifts send_gifts sub message : ' + error;
+                    console.log(pgm + error);
+                    return;
+                }
+            }
+
+            // 2) check sub message request_gifts for logical errors
+            if (sync_gifts_message.request_gifts) {
+                // logical validate request_gifts sub messsage before sending sync_gifts message
+                error = validate_request_gifts_message(mailbox, sync_gifts_message.request_gifts, 'send');
+                if (error) {
+                    var error = 'Could not send sync_gifts message. Logical error in sync_gifts request_gifts sub message : ' + error;
+                    console.log(pgm + error);
+                    return;
+                }
+            }
+
+            // todo: 3) check sub message request_comments for logical errors
+            // validate_request_comms_message
+            if (sync_gifts_message.request_comments) {
+                // logical validate request_comments sub messsage before sending sync_gifts message
+                error = validate_request_comms_message(mailbox, sync_gifts_message.request_comments, 'send');
+                if (error) {
+                    var error = 'Could not send sync_gifts message. Logical error in sync_gifts request_comments sub message : ' + error;
+                    console.log(pgm + error);
+                    return;
+                }
+            }
+            
+            // send sync_gifts message
+            console.log(pgm + 'send sync_gifts message ' + JSON.stringify(sync_gifts_message)) ;
+            mailbox.outbox.push(sync_gifts_message);
+
+        } ; // send_and_request_gids_and_cids
+
+
         // send/receive messages to/from other devices
         var send_messages = function () {
             var pgm = service + '.send_messages: ';
@@ -3434,8 +3716,12 @@ angular.module('gifts')
                     console.log(pgm + 'Wait. Public key has not yet been received for device ' + did);
                     continue;
                 }
-                encrypt.setPublicKey(devices[did].pubkey);
+
+                // any changed or out of date gifts and comments for this mailbox
+                if (mailbox.online) send_and_request_gids_and_cids(mailbox) ;
+
                 if (mailbox.outbox.length == 0) continue; // no new messages for this mailbox
+                encrypt.setPublicKey(devices[did].pubkey);
 
                 // send continue with symmetric key communication
                 // console.log(pgm + 'send messages in outbox for device ' + mailbox.did + ' with key ' + mailbox.key);
@@ -3491,7 +3777,7 @@ angular.module('gifts')
                 };
                 console.log(pgm + 'unencrypted message = ' + JSON.stringify(message));
 
-                // encrypt message in mailbox using mix encryption
+                // encrypt message in mailbox using mix encryption (rsa encrypted key and symmetric encrypted message)
                 random_password = Gofreerev.generate_random_password(200);
                 key = encrypt.encrypt(random_password);
                 message_with_envelope = {
@@ -3565,9 +3851,15 @@ angular.module('gifts')
         var move_previous_message = function (pgm, mailbox, request_mid, response_msgtype, done) {
             var pgm = service + '.move_previous_message: ' ;
             if (!request_mid) {
-                console.log(pgm + 'no previous message');
-                return false ;
-            }
+                if (response_msgtype == 'sync_gifts') {
+                    console.log(pgm + 'warning. no previous message. must be a sync_gifts message sent from send_and_request_gids_and_cids (small gifts and comments transactions)');
+                    return true ;
+                }
+                else {
+                    console.log(pgm + 'error. no previous message') ;
+                    return false ;
+                }
+            } // if
             // request/response matrix. request message should be in sent folder
             var request_msgtypes ;
             switch (response_msgtype) {
@@ -6602,7 +6894,6 @@ angular.module('gifts')
                         invalid_gids.push(gid);
                         continue;
                     }
-                    ;
 
                     // check if gift is from a mutual friend. todo: remove. there is a multiple friends check in invalid_gifts
                     in_mutual_friends = false;
@@ -6612,21 +6903,18 @@ angular.module('gifts')
                             if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
 
                         } // for k
-                    }
-                    ; // if
+                    } // if
                     if (gift.hasOwnProperty('receiver_user_ids')) {
                         for (k = 0; k < gift.receiver_user_ids.length; k++) {
                             user_id = gift.receiver_user_ids[k];
                             if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
 
                         } // for k
-                    }
-                    ; // if
+                    } // if
                     if (!in_mutual_friends) {
                         not_mutual_friends_gids.push(cid);
                         continue;
                     }
-                    ;
 
                     // gift ok and from a mutual friend. Add to send_gifts sub message
                     // save relevant userids in gift_users buffer

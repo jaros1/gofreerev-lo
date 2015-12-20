@@ -1009,6 +1009,8 @@ JSON_SCHEMA = {
             # mid - unique message id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
             :mid => {:type => 'string', :pattern => uid_pattern},
             # request_mid - unique message id - reference to previous gifts_sha256 message - see client to client communication step 3
+            # request_mid is null for small gifts and comments transactions s(new or changed gifts and comments)
+            # ( see verify_gifts_response, verify_comments_response and send_and_request_gids_and_cids)
             :request_mid => {:type => 'string', :pattern => uid_pattern},
             # msgtype = sync_gifts
             :msgtype => {:type => 'string', :pattern => '^sync_gifts$'},
@@ -1304,7 +1306,7 @@ JSON_SCHEMA = {
             # optional warning. write warning in log and continue with sync_gifts sub messages
             :warning => { :type => 'string' }
         },
-        :required => %w(mid request_mid msgtype mutual_friends),
+        :required => %w(mid msgtype mutual_friends),
         :additionalProperties => false
     },
 

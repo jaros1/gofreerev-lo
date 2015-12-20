@@ -1134,8 +1134,13 @@ class Comment < ActiveRecord::Base
       # calculate and check sha256_action signature from information received in verify comments request
       sha256_action_client = verify_comment["sha256_action"]
       if sha256_action_client.to_s != ''
-        # sha256_action in request. must be a previously cancelled, accepted or rejected new deal proposal or a new cancel, accept or reject new deal proposal action
-        if !comment.sha256_action and !%w(cancel accept reject).index(action)
+        # sha256_action in request.
+        # must be a previously cancelled, accepted or rejected new deal proposal (sha256_action signature must be identical)
+        # or a new cancel, accept or reject new deal proposal action (calculate and save sha256_action signature)
+        if action == 'create'
+          Raise "system error. create new comment + sha256_action in request has already been checked. See comment_create_sha256_action check previously in this method"
+        end
+        if !comment.sha256_action and %w(verify delete).index(action)
           error = "#{action_failed}. sha256_action signature in request but comment does not have a sha256_action signature on server"
           logger.warn2 "Cid #{cid} : #{error}"
           Gift.client_response_array_add(
@@ -1156,18 +1161,43 @@ class Comment < ActiveRecord::Base
         # todo: use new_deal_action_by_user_ids instead of user_ids in sha256_action signature?
         sha256_action_input = ([cid, sha256_action_client] + user_ids).join(',')
         sha256_action_calc = Base64.encode64(Digest::SHA256.digest(sha256_action_input))
-        if !((comment.sha256_action == sha256_action_calc) or (!comment.sha256_action and %w(cancel accept reject).index(action)))
+        if !comment.sha256_action
+          # ok. must be a new cancel, reject or accept new deal proposal request
+        elsif comment.sha256_action != sha256_action_calc
+          # invalid sha256_action signature
+          #  1) a verify or a delete comment request with invalid sha256_action in request (system error)
+          #  2) a cancel, reject or accept new deal proposal with invalid sha256_action (crossed transactions - cancel by client a, reject by client b)
           error = "#{action_failed}. Invalid sha256_action signature"
           logger.warn2 "Cid #{cid} : #{error}. new sha256_action calculation = #{sha256_action_calc}. old sha256_action on server = #{comment.sha256_action if comment}."
-          Gift.client_response_array_add(
-              client_response_array,
-              { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_sha256_action', :options => { :action => action } },
-              client_sid, verify_comment)
+          if %w(verify delete).index(action)
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_sha256_action_syserr', :options => { :action => action } },
+                client_sid, verify_comment)
+          else
+            Gift.client_response_array_add(
+                client_response_array,
+                { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_sha256_action_cross', :options => { :action => action } },
+                client_sid, verify_comment)
+          end
           next
-        end
-        if %w(cancel accept reject).index(action) and comment.sha256_action
+        else
           logger.warn2 "warning. action is #{action} but cid #{cid} has already been #{action}-ed. continuing with validations only"
         end
+
+        # if !((comment.sha256_action == sha256_action_calc) or (!comment.sha256_action and %w(cancel accept reject).index(action)))
+        #   error = "#{action_failed}. Invalid sha256_action signature"
+        #   logger.warn2 "Cid #{cid} : #{error}. new sha256_action calculation = #{sha256_action_calc}. old sha256_action on server = #{comment.sha256_action if comment}."
+        #   Gift.client_response_array_add(
+        #       client_response_array,
+        #       { :seq => seq, :cid => cid, :verified_at_server => false, :error => error, :key => 'comment_sha256_action', :options => { :action => action } },
+        #       client_sid, verify_comment)
+        #   next
+        # end
+        # if %w(cancel accept reject).index(action) and comment.sha256_action
+        #   logger.warn2 "warning. action is #{action} but cid #{cid} has already been #{action}-ed. continuing with validations only"
+        # end
+
       else
         # blank sha256_action in request.
         # ok for create and verify. not ok for cancel, accept and reject but this has already been tested. not ok to delete a cancelled, accepted or rejected new deal proposal without a sha256_action signature in request
@@ -1261,8 +1291,11 @@ class Comment < ActiveRecord::Base
     logger.debug2 "server_verify_comms_requests = #{server_verify_comms_requests}"
 
     # send any server to server verify comments messages (comment on remote server)
-    # todo: add json error handling. see how it is done for verify gifts messages
     server_verify_comms_requests.each do |server_id, server_requests_hash|
+
+      cids = server_requests_hash[:server_requests].collect { |sr| sr[:cid] }
+      logger.debug2 "forwarding verify comment actions for comments #{cids.join(', ')} to Gofreerev server #{servers[server_id].site_url}"
+
       # translate login user uds to sha256 signatures (verified server users) or negative user ids (unknown users)
       login_user_ids = []
       login_users.each do |login_user|

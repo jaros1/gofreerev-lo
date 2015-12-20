@@ -1858,7 +1858,7 @@
      verify_comment cannot complete in 1 (local only) or 2 (local+remote) server steps. Must have a additional check gift and authorization step
      a) server 1: create gift
         server 2: create new deal proposal
-        server 3: reject new deal proposal
+        server 3: reject new deal proposal (must have one or more identical login users with server 1)
         server 3: remote validate reject new deal proposal request
         server 3: send reject new deal proposal to server 2 (server to server message)
         server 2: receive reject new deal proposal request from server 3
@@ -1885,6 +1885,10 @@
 
 447) giftsController. check all giftService.verify_gifts_add calls. Should check for error. see giftController.cancel_new_deal
      ok but not tested
+
+470) check all verify_gift_add calls (giftService etc). must check for error.
+
+471) check all verify_comment_add calls (giftService etc). must check for error.
 
 448) sync gifts between clients
      don't include actions in progress in client side sha256 signatures and sync gifts operation
@@ -1940,9 +1944,12 @@
      d) custom currency. create, select from other user, select from location, select from tag cloud
 
 455) way to connect with other devices without using friend lists / api logins
-     most deals will be done with other then api friends and oauth login cannot be used in a single page app
+     most deals will be done with other then api friends and oauth login cannot be used in a native single page app
      a) share location with app. share location between Gofreerev servers, show nearby users
      b) connect to other user with a user id, user name, phone nummer etc.
+     allow device to device friendship. Request + allow/reject
+     add name and profile picture to device
+     add some kind of id to a device (username, mobile number)
 
 456) change app to a "payment" app with custom currencies
 
@@ -2026,9 +2033,6 @@
 462) only return direction in simple verify gifts server to server request (authorization check started from verify comments) -
      do not return direction in client verify gifts request (normal verify gifts request started from verify gifts)
 
-463) oauth login (redirect) can not be used in native a single page app
-     allow device to device friendship. Request + allow/reject
-
 464) allow non friend transactions. For example payments with a phone number, user name or ?
      an accepted gift is a payment operation. You get x and pay with y.
 
@@ -2053,10 +2057,22 @@
      add msg.verifying_gifts and msg.verifying_comments array
      delete gifts and comments from verify buffers before ending send_gifts message passing
 
-470) check all verify_gift_add calls. must check for error.
-
-471) check all verify_comment_add calls. must check for error.
-
 473) add verify gift timeout detection to receive_message_invalid_gifts
 
-select next issue to solve: (rand*473).floor+1
+474) client new deal action failed with invalid sha256_action signature
+     actions: cancel, reject or accept
+     "reject new deal proposal failed. error message was reject new deal proposal failed. Invalid sha256_action signature"
+     must be out of date comment status on client - crossed client transactions (canceled by a, rejected by b)
+     rollback new deal action and sent request_comments message to mutual friends with this gift
+     client with ok new deal action must sent a send_gifts message to mutual friends with this gift
+
+475) giftService.verify_comments_response
+     send and request comments to/from online mutual friends:
+     if (send_cids.length > 0) console.log(pgm + 'todo: send new or changed comments to online mutual friend. send_cids = ' + JSON.stringify(send_cids)) ;
+     if (request_cids.length > 0) console.log(pgm + 'todo: request possible out off date comments from online mutual friend. request_cids = ' + JSON.stringify(request_cids)) ;
+     more general: send/request gifts and comments after completed (ok or failure) verify gift and verify comment transactions
+     detected in ping response. Messages must be sent to relevant online clients in next ping request
+     collect send/receive gift and comment info in ping response
+     make and send sync gifts message in next ping request
+
+select next issue to solve: (rand*475).floor+1

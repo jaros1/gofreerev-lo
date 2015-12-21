@@ -136,7 +136,12 @@ COUNTRY_TO_CURRENCY = {"ad" => "eur", "ae" => "aed", "af" => "afn", "ag" => "xcd
                        "za" => "zar", "zm" => "zmk", "zw" => "zwd"};
 
 # check if dalli memcache is available. Used for private key password temporary storage in memory
-raise "Please install dalli memcache: 'sudo apt-get install memcached'" unless Rails.cache.write "x", true
+if Rails.cache.write "x", true
+  MEMCACHE = true
+else
+  MEMCACHE = false
+  puts "Dalli memcache was not found. Please install dalli memcache: 'sudo apt-get install memcached'"
+end
 
 # server to server communication. setup private key protection. Use 1-5 of the following encryption options
 # the keys offers no protection if unauthorized user has access to rails console on server
@@ -166,8 +171,12 @@ rescue Errno::ENOENT
   text = nil
 end
 PK_PASS_4_FILE = text
-Rails.cache.write('private_key_password', String.generate_random_string(80), :unless_exist => true)
-PK_PASS_5_MEM = Rails.cache.fetch('private_key_password')
+if MEMCACHE
+  Rails.cache.write('private_key_password', String.generate_random_string(80), :unless_exist => true)
+  PK_PASS_5_MEM = Rails.cache.fetch('private_key_password')
+else
+  PK_PASS_5_MEM = "Dalli memcache was not found"
+end
 
 # check/regenerate private key
 begin

@@ -1703,20 +1703,19 @@ angular.module('gifts')
         }; // sha256_to_server_id
 
 
-        // todo: refactor all mutual_friend checks
+        // gift with mutual friends? for example send/receive gift to/from mailbox with one or more mutual friends
         var is_gift_from_mutual_friend = function (gift, mutual_friends) {
-            var in_mutual_friends, k, user_id ;
-            in_mutual_friends = false;
+            var k, user_id ;
             if (gift.hasOwnProperty('giver_user_ids')) {
                 for (k = 0; k < gift.giver_user_ids.length; k++) {
                     user_id = gift.giver_user_ids[k];
-                    if (mailbox.mutual_friends.indexOf(user_id) != -1) return true;
+                    if (mutual_friends.indexOf(user_id) != -1) return true;
                 } // for k
             } // if
             if (gift.hasOwnProperty('receiver_user_ids')) {
                 for (k = 0; k < gift.receiver_user_ids.length; k++) {
                     user_id = gift.receiver_user_ids[k];
-                    if (mailbox.mutual_friends.indexOf(user_id) != -1) return true;
+                    if (mutual_friends.indexOf(user_id) != -1) return true;
 
                 } // for k
             } // if
@@ -1739,7 +1738,7 @@ angular.module('gifts')
             if (send_cids.length > 0) console.log(pgm + 'cids for new or changed comments. send_cids = ' + JSON.stringify(send_cids)) ;
             if (request_cids.length > 0) console.log(pgm + 'cids for possible out off date comments. request_cids = ' + JSON.stringify(request_cids)) ;
 
-            var i, j, k, gift, gid, send_gid, request_gid, comment, cid, send_cid, request_cid, mailbox, in_mutual_friends, user_id ;
+            var i, j, k, gift, gid, send_gid, request_gid, comment, cid, send_cid, request_cid, mailbox ;
             for (i=0 ; i<gifts.length ; i++) {
                 gift = gifts[i] ;
                 gid = gift.gid ;
@@ -1787,7 +1786,7 @@ angular.module('gifts')
             if (mailbox.send_gifts.length + mailbox.request_gifts.length + mailbox.send_comments.length + mailbox.request_comments.length == 0) return ; // no gids or cids for this mailbox
             // console.log(pgm + 'mailbox = ' + JSON.stringify(mailbox)) ;
 
-            var i, j, k, gift, gid, comment, cid, in_mutual_friends, user_id, gift_clone, error, comment_clone ;
+            var i, j, k, gift, gid, comment, cid, gift_clone, error, comment_clone ;
 
             var send_gift, // true/false for actual gift
                 request_gift, // true/false for actual gift
@@ -1840,20 +1839,7 @@ angular.module('gifts')
                 if (!send_gift && !request_gift && (send_comments.length == 0) && (request_comments.length == 0)) continue ; // next gift
 
                 // recheck mutual friends. has already been checked once in verify_gifts_response and verify_comments response - see gids_and_cids_to_mailboxes
-                in_mutual_friends = false;
-                if (gift.hasOwnProperty('giver_user_ids')) {
-                    for (k = 0; k < gift.giver_user_ids.length; k++) {
-                        user_id = gift.giver_user_ids[k];
-                        if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
-                    } // for k
-                } // if
-                if (gift.hasOwnProperty('receiver_user_ids')) {
-                    for (k = 0; k < gift.receiver_user_ids.length; k++) {
-                        user_id = gift.receiver_user_ids[k];
-                        if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
-                    } // for k
-                } // if
-                if (!in_mutual_friends) {
+                if (!is_gift_from_mutual_friend(gift, mailbox.mutual_friends)) {
                     console.log(pgm + 'Warning. Found messages in mailbox for gift ' + gid + ' but no mutual friends') ;
                     console.log(pgm + 'mailbox          = ' + JSON.stringify(mailbox)) ;
                     console.log(pgm + 'gift             = ' + JSON.stringify(gift)) ;
@@ -6924,14 +6910,13 @@ angular.module('gifts')
                     users: []
                 };
                 var send_gifts_users = [];
-                var i, gid, gift, gift_clone, in_mutual_friends, j, k, user_id, comment_clone;
+                var i, gid, gift, gift_clone, j, k, user_id, comment_clone;
                 for (i = 0; i < msg.gifts.length; i++) {
                     gid = msg.gifts[i];
                     if (!gid_to_gifts_index.hasOwnProperty(gid)) {
                         unknown_gids.push(gid);
                         continue;
                     }
-                    ;
                     gift = gifts[gid_to_gifts_index[gid]];
 
                     // gift has found. clone gift and validate. dont't send invalid gifts to other client
@@ -6946,22 +6931,7 @@ angular.module('gifts')
                     }
 
                     // check if gift is from a mutual friend. todo: remove. there is a multiple friends check in invalid_gifts
-                    in_mutual_friends = false;
-                    if (gift.hasOwnProperty('giver_user_ids')) {
-                        for (k = 0; k < gift.giver_user_ids.length; k++) {
-                            user_id = gift.giver_user_ids[k];
-                            if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
-
-                        } // for k
-                    } // if
-                    if (gift.hasOwnProperty('receiver_user_ids')) {
-                        for (k = 0; k < gift.receiver_user_ids.length; k++) {
-                            user_id = gift.receiver_user_ids[k];
-                            if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
-
-                        } // for k
-                    } // if
-                    if (!in_mutual_friends) {
+                    if (!is_gift_from_mutual_friend(gift, mailbox.mutual_friends)) {
                         not_mutual_friends_gids.push(cid);
                         continue;
                     }
@@ -7758,7 +7728,7 @@ angular.module('gifts')
                 var gid_to_send_gifts_index = {}; // from gid to index in send_gifts_sub_message.gifts array
 
                 // find gifts and comments and validate message. Gifts (giver/receiver) must be from mutual friends (mailbox.mutual_friends)
-                var i, gift, gid, j, comment, cid, in_mutual_friends, k, user_id, index, gift_clone, error, comment_clone;
+                var i, gift, gid, j, comment, cid, k, user_id, index, gift_clone, error, comment_clone;
                 for (i = 0; i < gifts.length; i++) {
                     gift = gifts[i]; // xxx
                     gid = gift.gid;
@@ -7778,31 +7748,12 @@ angular.module('gifts')
                             invalid_comment_cids.push(gid);
                             continue;
                         }
-                        ;
 
                         // check if gift is from a mutual friend
-                        in_mutual_friends = false;
-                        if (gift.hasOwnProperty('giver_user_ids')) {
-                            for (k = 0; k < gift.giver_user_ids.length; k++) {
-                                user_id = gift.giver_user_ids[k];
-                                if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
-
-                            } // for k
-                        }
-                        ; // if
-                        if (gift.hasOwnProperty('receiver_user_ids')) {
-                            for (k = 0; k < gift.receiver_user_ids.length; k++) {
-                                user_id = gift.receiver_user_ids[k];
-                                if (mailbox.mutual_friends.indexOf(user_id) != -1) in_mutual_friends = true;
-
-                            } // for k
-                        }
-                        ; // if
-                        if (!in_mutual_friends) {
+                        if (!is_gift_from_mutual_friend(gift, mailbox.mutual_friends)) {
                             not_mutual_friends_cids.push(cid);
                             continue;
                         }
-                        ;
 
                         // gift is from a mutual friend. find or clone gift for send_gifts message
                         if (gid_to_send_gifts_index.hasOwnProperty(gid)) {

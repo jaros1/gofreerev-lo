@@ -2084,10 +2084,9 @@
      slow servers should be clients in server to server communication
      secure servers (htts) should be servers in server to server communication
      unsecure servers (http) should be clients in server to server communication
+     private servers on lan must be clients in server to server communication
+     public serrvers on internet can be servers or clients in server to server communication
      make stat for each server and make stat for current server
      stat for last hour, last 5 minutes, last minute, timeouts, errors
-
-478) refactor all mutual_friend checks
-     see giftService.is_gift_from_mutual_friend
 
 select next issue to solve: (rand*478).floor+1

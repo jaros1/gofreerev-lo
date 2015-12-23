@@ -2601,10 +2601,7 @@ class Server < ActiveRecord::Base
     end
   end # receive_verify_comments_msg
   
-  
-  
-  
-  
+
   # return array with messages to server or nil
   # pseudo_user_ids: hash with user_ids in users message (if any). user_ids is checked when receiving response to users message
   # in memory hash only relevant in direct server to server user messages. cannot be used in forwarded user messages
@@ -2810,7 +2807,9 @@ class Server < ActiveRecord::Base
 
   def ping_test_loop
     self.login
+    res = {}
     loop do
+      self.login if res[:error] == 'ping error from server: Not logged in' # not logged in error from previous ping response!
       res = self.ping
       logger.debug2 "res = #{res}"
       self.reload

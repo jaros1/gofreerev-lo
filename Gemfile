@@ -227,3 +227,21 @@ gem 'dalli' # https://github.com/mperham/dalli
 # https://github.com/ludicast/yaml_db
 # https://github.com/ludicast/yaml_db/pull/45
 # gem 'yaml_db'
+
+# libv8 deploy problems (libv8 -v '3.16.14.13') on CuBox-i4Pro with ubuntu 12.04
+#   /usr/include/features.h:324:26: fatal error: bits/predefs.h: No such file or directory
+#   compilation terminated.
+#       make[1]: *** [/mnt/plugdisk/railsapps/gofreerev-lo/shared/bundle/ruby/2.0.0/gems/libv8-3.16.14.13/vendor/v8/out/arm.release/obj.target/preparser_lib/src/allocation.o] Error 1
+#   make: *** [arm.release] Error 2
+#   /mnt/plugdisk/railsapps/gofreerev-lo/shared/bundle/ruby/2.0.0/gems/libv8-3.16.14.13/ext/libv8/location.rb:36:in `block in verify_installation!': libv8 did not install properly, expected binary v8 archive '/mnt/plugdisk/railsapps/gofreerev-lo/shared/bundle/ruby/2.0.0/gems/libv8-3.16.14.13/vendor/v8/out/arm.release/obj.target/tools/gyp/libv8_base.a'to exist, but it was not found (Libv8::Location::Vendor::ArchiveNotFound)
+#   	from /mnt/plugdisk/railsapps/gofreerev-lo/shared/bundle/ruby/2.0.0/gems/libv8-3.16.14.13/ext/libv8/location.rb:35:in `each'
+#   	from /mnt/plugdisk/railsapps/gofreerev-lo/shared/bundle/ruby/2.0.0/gems/libv8-3.16.14.13/ext/libv8/location.rb:35:in `verify_installation!'
+#   from /mnt/plugdisk/railsapps/gofreerev-lo/shared/bundle/ruby/2.0.0/gems/libv8-3.16.14.13/ext/libv8/location.rb:26:in `install!'
+#   	from extconf.rb:7:in `<main>'
+# solution can be found here:
+#   https://github.com/cowboyd/libv8/tree/3.11#bring-your-own-v8
+#   bundle config build.libv8 --with-system-v8
+#   https://github.com/cowboyd/therubyracer/issues/215
+#   gem 'libv8', '3.11.8.3'
+# gem 'libv8', '3.11.8.3', :platform => :ruby
+gem "libv8", git: "git://github.com/cowboyd/libv8.git", submodules: true

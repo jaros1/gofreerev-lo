@@ -8,6 +8,13 @@ GIT
       oauth2 (>= 0.8.1)
       xml-simple (~> 1.1)
 
+GIT
+  remote: git://github.com/cowboyd/libv8.git
+  revision: 78ee2548a0b157a8716a052ef7234e8236e7ce75
+  submodules: true
+  specs:
+    libv8 (3.16.14.13)
+
 PATH
   remote: vendor/gems/vkontakte-0.0.3
   specs:
@@ -71,8 +78,8 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.10.0)
-    colorize (0.7.7)
     columnize (0.9.0)
+    commonjs (0.2.7)
     countries (1.2.2)
       currencies (~> 0.4.2)
       i18n_data (~> 0.7.0)
@@ -80,7 +87,7 @@ GEM
       activerecord (>= 3.0, < 4.1)
       activesupport (>= 3.0, < 4.1)
     currencies (0.4.2)
-    dalli (2.7.4)
+    dalli (2.7.5)
     debugger (1.6.8)
       columnize (>= 0.3.1)
       debugger-linecache (~> 1.2.0)
@@ -92,16 +99,16 @@ GEM
     encrypted_strings (0.3.3)
     equalizer (0.0.10)
     erubis (2.7.0)
-    exception_notification (4.1.1)
-      actionmailer (>= 3.0.4)
-      activesupport (>= 3.0.4)
+    exception_notification (4.1.3)
+      actionmailer (~> 4.0)
+      activesupport (~> 4.0)
     execjs (2.6.0)
     extlib (0.9.16)
     faraday (0.9.2)
       multipart-post (>= 1.2, < 3)
     faraday_middleware (0.9.2)
       faraday (>= 0.7.4, < 0.10)
-    fastimage (1.8.0)
+    fastimage (1.8.1)
       addressable (~> 2.3, >= 2.3.5)
     flickraw (0.9.8)
     foursquare2 (2.0.2)
@@ -121,13 +128,13 @@ GEM
       signet (~> 0.6)
     google_currency (3.0.0)
       money (~> 5.1.1)
-    googleauth (0.4.2)
+    googleauth (0.5.0)
       faraday (~> 0.9)
       jwt (~> 1.4)
       logging (~> 2.0)
       memoist (~> 0.12)
       multi_json (~> 1.11)
-      signet (~> 0.6)
+      signet (~> 0.7)
     hashie (2.1.2)
     hike (1.2.3)
     http (0.9.8)
@@ -165,8 +172,8 @@ GEM
     jquery-ui-rails (4.0.5)
       railties (>= 3.1.0)
     json (1.8.3)
-    json-schema (2.5.1)
-      addressable (~> 2.3.7)
+    json-schema (2.5.2)
+      addressable (~> 2.3.8)
     jwt (1.5.2)
     koala (2.2.0)
       addressable
@@ -174,7 +181,13 @@ GEM
       multi_json
     launchy (2.4.3)
       addressable (~> 2.3)
-    libv8 (3.16.14.13)
+    less (2.6.0)
+      commonjs (~> 0.2.7)
+    less-rails (2.7.0)
+      actionpack (>= 4.0)
+      less (~> 2.6.0)
+      sprockets (> 2, < 4)
+      tilt
     little-plugger (1.1.4)
     logging (2.0.0)
       little-plugger (~> 1.1)
@@ -182,11 +195,11 @@ GEM
     mail (2.5.4)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
-    memoist (0.12.0)
+    memoist (0.14.0)
     memoizable (0.4.2)
       thread_safe (~> 0.3, >= 0.3.1)
     mime-types (1.25.1)
-    mini_portile (0.6.2)
+    mini_portile2 (2.0.0)
     minitest (4.7.5)
     minitest-reporters (0.14.24)
       ansi
@@ -204,8 +217,8 @@ GEM
       net-ssh (>= 2.6.5)
     net-ssh (3.0.1)
     netrc (0.11.0)
-    nokogiri (1.6.6.2)
-      mini_portile (~> 0.6.0)
+    nokogiri (1.6.7.1)
+      mini_portile2 (~> 2.0.0.rc2)
     oauth (0.4.7)
     oauth2 (1.0.0)
       faraday (>= 0.8, < 0.10)
@@ -213,9 +226,9 @@ GEM
       multi_json (~> 1.3)
       multi_xml (~> 0.5)
       rack (~> 1.2)
-    omniauth (1.2.2)
+    omniauth (1.3.1)
       hashie (>= 1.2, < 4)
-      rack (~> 1.0)
+      rack (>= 1.0, < 3)
     omniauth-facebook (3.0.0)
       omniauth-oauth2 (~> 1.2)
     omniauth-flickr (0.0.19)
@@ -230,9 +243,9 @@ GEM
       multi_json (~> 1.3)
       omniauth (>= 1.1.1)
       omniauth-oauth2 (~> 1.3.1)
-    omniauth-instagram (1.0.1)
-      omniauth (~> 1.0)
-      omniauth-oauth2 (~> 1.0)
+    omniauth-instagram (1.0.2)
+      omniauth (~> 1)
+      omniauth-oauth2 (~> 1)
     omniauth-linkedin-oauth2 (0.1.5)
       omniauth (~> 1.0)
       omniauth-oauth2
@@ -254,8 +267,7 @@ GEM
       addressable
       nokogiri
     polyglot (0.3.5)
-    powerbar (1.0.12)
-      ansi (~> 1.5.0)
+    powerbar (1.0.16)
       hashie (>= 1.1.0)
     rack (1.5.5)
     rack-test (0.6.3)
@@ -277,7 +289,7 @@ GEM
       rake (>= 0.8.7)
       thor (>= 0.18.1, < 2.0)
     rake (10.4.2)
-    rdoc (4.2.0)
+    rdoc (4.2.1)
       json (~> 1.4)
     ref (2.0.0)
     rest-client (1.7.3)
@@ -297,9 +309,8 @@ GEM
       rdoc (~> 4.0)
     session_off (0.5.1)
       actionpack (>= 2.3)
-    signet (0.6.1)
+    signet (0.7.2)
       addressable (~> 2.3)
-      extlib (~> 0.9)
       faraday (~> 0.9)
       jwt (~> 1.5)
       multi_json (~> 1.10)
@@ -316,9 +327,8 @@ GEM
       actionpack (>= 3.0)
       activesupport (>= 3.0)
       sprockets (~> 2.8)
-    sshkey (1.7.0)
-    sshkit (1.7.1)
-      colorize (>= 0.7.0)
+    sshkey (1.8.0)
+    sshkit (1.8.1)
       net-scp (>= 1.1.2)
       net-ssh (>= 2.8.0)
     therubyracer (0.12.2)
@@ -343,12 +353,12 @@ GEM
       memoizable (~> 0.4.0)
       naught (~> 1.0)
       simple_oauth (~> 0.3.0)
-    twitter-bootstrap-rails (2.2.8)
+    twitter-bootstrap-rails (3.2.2)
       actionpack (>= 3.1)
-      execjs
-      rails (>= 3.1)
+      execjs (>= 2.2.2, >= 2.2)
+      less-rails (>= 2.5.0)
       railties (>= 3.1)
-    tzinfo (0.3.45)
+    tzinfo (0.3.46)
     uglifier (2.7.2)
       execjs (>= 0.3.0)
       json (>= 1.8.0)
@@ -388,6 +398,7 @@ DEPENDENCIES
   jquery-ui-rails (~> 4.0.4)
   json-schema
   koala
+  libv8!
   linkedin-oauth2!
   minitest
   minitest-reporters (>= 0.5.0)

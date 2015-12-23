@@ -244,4 +244,4 @@ gem 'dalli' # https://github.com/mperham/dalli
 #   https://github.com/cowboyd/therubyracer/issues/215
 #   gem 'libv8', '3.11.8.3'
 # gem 'libv8', '3.11.8.3', :platform => :ruby
-gem "libv8", git: "git://github.com/cowboyd/libv8.git", submodules: true
+gem "libv8", git: "git://github.com/cowboyd/libv8.git", branch: '3.11.8.16', submodules: true

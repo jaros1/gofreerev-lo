@@ -149,7 +149,7 @@ gem 'google_currency', '~> 3.0.0'
 # rails-i18n (4.0.0.pre) - example yml files for many languages
 gem 'rails-i18n', '~> 4.0.0.pre'
 
-gem 'debugger'
+# gem 'debugger'
 
 group :test do
   if RUBY_PLATFORM =~ /(win32|w32)/

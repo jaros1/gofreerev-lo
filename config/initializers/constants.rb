@@ -8,6 +8,7 @@ ENV_PREFIX = "#{ENV_APP_NAME}_#{ENV_RAILSENV}_" # GOFREEREV_LO_DEV_
 # name and url for this project
 APP_NAME     = 'Gofreerev'     # app name used in views and error messages
 SITE_URL     = ENV["#{ENV_PREFIX}SITE_URL"] # 'http://localhost/' # must start with https? and end with /
+raise "Environment variables #{ENV_PREFIX}* was not found (SITE_URL)" if !SITE_URL
 
 # max number of active users (last login within the last 24 hours)
 MAX_USERS     = ENV["#{ENV_PREFIX}MAX_USERS"].to_i # 100
@@ -162,25 +163,6 @@ rescue ActiveRecord::StatementInvalid => e
   # ignore missing SystemParameter table doing first deploy
   puts "Ignoring ActiveRecord::StatementInvalid: #{e.message} doing first deploy"
   pk_pass_3_db = nil
-rescue Mysql2::Error => e
-  # could by missing environment setup. Mysql2::Error: Access denied for user 'root'@'localhost' (using password: NO)
-  # development:
-  # adapter: mysql2
-  # database: <%= ENV["#{app_name}_DEV_MYSQL_DATABASE"] %>
-  # encoding: utf8
-  # collation: utf8_unicode_ci
-  # username: <%= ENV["#{app_name}_DEV_MYSQL_USERNAME"] %>
-  #     password: <%= ENV["#{app_name}_DEV_MYSQL_PASSWORD"] %>
-  # host: <%= ENV["#{app_name}_DEV_MYSQL_HOST"] %>
-  #     port: <%= ENV["#{app_name}_DEV_MYSQL_PORT"] %>
-  # socket: <%= ENV["#{app_name}_DEV_SOCKET"] %>
-  puts "Mysql2::Error: #{e.message}"
-  puts "checking environment:"
-  puts "database: ENV['#{ENV_PREFIX}MYSQL_DATABASE'] = " + ENV["#{ENV_PREFIX}MYSQL_DATABASE"]
-  puts "username: ENV['#{ENV_PREFIX}MYSQL_USERNAME'] = " + ENV["#{ENV_PREFIX}MYSQL_USERNAME"]
-  puts "host:     ENV['#{ENV_PREFIX}MYSQL_HOST']     = " + ENV["#{ENV_PREFIX}MYSQL_HOST"]
-  puts "socket:   ENV['#{ENV_PREFIX}MYSQL_SOCKET']   = " + ENV["#{ENV_PREFIX}MYSQL_SOCKET"]
-  raise
 end
 PK_PASS_3_DB = pk_pass_3_db
 text = nil

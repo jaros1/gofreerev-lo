@@ -149,8 +149,8 @@ end
 # public private key pair is regenerated if encryption password changes and old private key is lost
 PK_PASS_1_ENV = ENV["#{ENV_PREFIX}PK_PASS"]
 PK_PASS_2_RAILS = "rlKjLA1jgZNFQJ+z/WfNm2fID8k22y2IOi5c2mPtqlY=\n" # todo: please change string
-raise "OS environment variables #{ENV_PREFIX}* was not found (MYSQL_DATABASE)" if !ENV("#{ENV_PREFIX}MYSQL_DATABASE")
-raise "OS environment variables #{ENV_PREFIX}* was not found (MYSQL_USERNAME)" if !ENV("#{ENV_PREFIX}MYSQL_USERNAME")
+raise "OS environment variables #{ENV_PREFIX}* was not found (MYSQL_DATABASE)" if !ENV["#{ENV_PREFIX}MYSQL_DATABASE"]
+raise "OS environment variables #{ENV_PREFIX}* was not found (MYSQL_USERNAME)" if !ENV["#{ENV_PREFIX}MYSQL_USERNAME"]
 pk_pass_3_db = nil
 begin
   s = SystemParameter.find_by_name('private_key_password')

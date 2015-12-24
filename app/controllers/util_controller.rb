@@ -200,6 +200,13 @@ class UtilController < ApplicationController
     return [login_user, api_client, key, options] if key
     logger.secret2 "provider = #{provider}, token = #{token}"
 
+    # workaround for "SSL_connect returned=1 errno=0 state=SSLv3 read server certificate B: certificate verify failed (Faraday::SSLError)"
+    # https://github.com/google/google-api-ruby-client/issues/253
+    if !ENV['SSL_CERT_FILE']
+      cert_path = Gem.loaded_specs['google-api-client'].full_gem_path+'/lib/cacerts.pem'
+      ENV['SSL_CERT_FILE'] = cert_path
+    end
+
     key, options = init_api_client(provider, token) # returns [key, options] (error) or [api_client, nil] (ok)
     api_client, key = key, nil if key.class != String
     [login_user, api_client, key, options]

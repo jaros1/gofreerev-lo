@@ -8,13 +8,6 @@ GIT
       oauth2 (>= 0.8.1)
       xml-simple (~> 1.1)
 
-GIT
-  remote: git://github.com/cowboyd/libv8.git
-  revision: 78ee2548a0b157a8716a052ef7234e8236e7ce75
-  submodules: true
-  specs:
-    libv8 (3.16.14.13)
-
 PATH
   remote: vendor/gems/vkontakte-0.0.3
   specs:
@@ -291,7 +284,6 @@ GEM
     rake (10.4.2)
     rdoc (4.2.1)
       json (~> 1.4)
-    ref (2.0.0)
     rest-client (1.7.3)
       mime-types (>= 1.16, < 3.0)
       netrc (~> 0.7)
@@ -331,9 +323,6 @@ GEM
     sshkit (1.8.1)
       net-scp (>= 1.1.2)
       net-ssh (>= 2.8.0)
-    therubyracer (0.12.2)
-      libv8 (~> 3.16.14.0)
-      ref
     thor (0.19.1)
     thread_safe (0.3.5)
     tilt (1.4.1)
@@ -398,7 +387,6 @@ DEPENDENCIES
   jquery-ui-rails (~> 4.0.4)
   json-schema
   koala
-  libv8!
   linkedin-oauth2!
   minitest
   minitest-reporters (>= 0.5.0)
@@ -424,7 +412,6 @@ DEPENDENCIES
   session_off
   simple_form
   sshkey
-  therubyracer
   turbolinks
   twitter (>= 5.5.1)
   twitter-bootstrap-rails

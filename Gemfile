@@ -210,7 +210,7 @@ gem 'angular_rails_csrf'
 
 # fix for rake assets:precompile ExecJS::RuntimeError bootstrap.js.coffee
 # http://stackoverflow.com/questions/8362458/error-when-running-rails-app-execjsruntimeerror
-gem 'therubyracer'
+# gem 'therubyracer'
 
 # server side schema json validation. https://github.com/geraintluff/tv4 is used for client side schema json validation
 gem 'json-schema'
@@ -220,6 +220,7 @@ gem 'sshkey' # https://github.com/bensie/sshkey
 gem 'httpclient' # http://www.rubydoc.info/gems/httpclient/HTTPClient
 # gem 'http-cookie' # https://github.com/nahi/httpclient/issues/242 (tried to fix "Unknown key: max-age = 0")
 gem 'encrypted_strings' # https://github.com/pluginaweek/encrypted_strings
+
 # dalli memory cache - store private key password information temporary in memory (1 of 5 option for password)
 gem 'dalli' # https://github.com/mperham/dalli
 
@@ -244,4 +245,4 @@ gem 'dalli' # https://github.com/mperham/dalli
 #   https://github.com/cowboyd/therubyracer/issues/215
 #   gem 'libv8', '3.11.8.3'
 # gem 'libv8', '3.11.8.3', :platform => :ruby
-gem "libv8", git: "git://github.com/cowboyd/libv8.git", branch: '3.11.8.16', submodules: true
+# gem 'libv8', '3.11.8.16', :platform => :ruby

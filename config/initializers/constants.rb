@@ -8,7 +8,7 @@ ENV_PREFIX = "#{ENV_APP_NAME}_#{ENV_RAILSENV}_" # GOFREEREV_LO_DEV_
 # name and url for this project
 APP_NAME     = 'Gofreerev'     # app name used in views and error messages
 SITE_URL     = ENV["#{ENV_PREFIX}SITE_URL"] # 'http://localhost/' # must start with https? and end with /
-raise "Environment variables #{ENV_PREFIX}* was not found (SITE_URL)" if !SITE_URL
+raise "OS environment variables #{ENV_PREFIX}* was not found (SITE_URL)" if !SITE_URL
 
 # max number of active users (last login within the last 24 hours)
 MAX_USERS     = ENV["#{ENV_PREFIX}MAX_USERS"].to_i # 100
@@ -149,6 +149,8 @@ end
 # public private key pair is regenerated if encryption password changes and old private key is lost
 PK_PASS_1_ENV = ENV["#{ENV_PREFIX}PK_PASS"]
 PK_PASS_2_RAILS = "rlKjLA1jgZNFQJ+z/WfNm2fID8k22y2IOi5c2mPtqlY=\n" # todo: please change string
+raise "OS environment variables #{ENV_PREFIX}* was not found (MYSQL_DATABASE)" if !ENV("#{ENV_PREFIX}MYSQL_DATABASE")
+raise "OS environment variables #{ENV_PREFIX}* was not found (MYSQL_USERNAME)" if !ENV("#{ENV_PREFIX}MYSQL_USERNAME")
 pk_pass_3_db = nil
 begin
   s = SystemParameter.find_by_name('private_key_password')

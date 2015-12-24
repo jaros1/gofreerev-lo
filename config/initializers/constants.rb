@@ -153,7 +153,7 @@ begin
   s = SystemParameter.find_by_name('private_key_password')
   if !s
     s = SystemParameter.new
-    s.name = 'private_key_password'
+    s.name = 'private_key_pasSsword'
     s.value = String.generate_random_string(80)
     s.save!
   end
@@ -162,6 +162,25 @@ rescue ActiveRecord::StatementInvalid => e
   # ignore missing SystemParameter table doing first deploy
   puts "Ignoring ActiveRecord::StatementInvalid: #{e.message} doing first deploy"
   pk_pass_3_db = nil
+rescue Mysql2::Error => e
+  # could by missing environment setup. Mysql2::Error: Access denied for user 'root'@'localhost' (using password: NO)
+  # development:
+  # adapter: mysql2
+  # database: <%= ENV["#{app_name}_DEV_MYSQL_DATABASE"] %>
+  # encoding: utf8
+  # collation: utf8_unicode_ci
+  # username: <%= ENV["#{app_name}_DEV_MYSQL_USERNAME"] %>
+  #     password: <%= ENV["#{app_name}_DEV_MYSQL_PASSWORD"] %>
+  # host: <%= ENV["#{app_name}_DEV_MYSQL_HOST"] %>
+  #     port: <%= ENV["#{app_name}_DEV_MYSQL_PORT"] %>
+  # socket: <%= ENV["#{app_name}_DEV_SOCKET"] %>
+  puts "Mysql2::Error: #{e.message}"
+  puts "checking environment:"
+  puts "database: ENV['#{ENV_PREFIX}MYSQL_DATABASE'] = " + ENV["#{ENV_PREFIX}MYSQL_DATABASE"]
+  puts "username: ENV['#{ENV_PREFIX}MYSQL_USERNAME'] = " + ENV["#{ENV_PREFIX}MYSQL_USERNAME"]
+  puts "host:     ENV['#{ENV_PREFIX}MYSQL_HOST']     = " + ENV["#{ENV_PREFIX}MYSQL_HOST"]
+  puts "socket:   ENV['#{ENV_PREFIX}MYSQL_SOCKET']   = " + ENV["#{ENV_PREFIX}MYSQL_SOCKET"]
+  raise
 end
 PK_PASS_3_DB = pk_pass_3_db
 text = nil

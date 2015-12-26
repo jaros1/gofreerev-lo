@@ -508,7 +508,7 @@ class User < ActiveRecord::Base
   end
 
 
-  def self.find_or_create_dummy_user (provider)
+  def self.find_or_create_dummy_user (provider, is_request_ssl)
     user_id = "gofreerev/#{provider}"
     user = User.find_by_user_id(user_id)
     return user if user
@@ -520,14 +520,18 @@ class User < ActiveRecord::Base
       user.user_name = "#{APP_NAME} #{provider.camelize}"
     end
     user.currency = BASE_CURRENCY
-    # user.profile_picture_name = "#{provider}.png"
     user.api_profile_picture_url = "#{SITE_URL}/images/#{provider}.png".gsub('//images', '/images')
     user.balance = {BALANCE_KEY => 0.0}
     user.save!
+    if is_request_ssl
+      # use https
+      user.api_profile_picture_url = 'https' + user.api_profile_picture_url.from(4) if user.api_profile_picture_url =~ /^http:/
+    else
+      # use http
+      user.api_profile_picture_url = 'http' + user.api_profile_picture_url.from(5) if user.api_profile_picture_url =~ /^https:/
+    end
     user
-  end
-
-  # self.find_or_create_dummy_user
+  end # self.find_or_create_dummy_user
 
 
   # find and create or update user from hash

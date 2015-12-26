@@ -156,7 +156,7 @@ begin
   s = SystemParameter.find_by_name('private_key_password')
   if !s
     s = SystemParameter.new
-    s.name = 'private_key_pasSsword'
+    s.name = 'private_key_password'
     s.value = String.generate_random_string(80)
     s.save!
   end

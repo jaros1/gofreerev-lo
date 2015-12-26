@@ -2089,4 +2089,48 @@
      make stat for each server and make stat for current server
      stat for last hour, last 5 minutes, last minute, timeouts, errors
 
-select next issue to solve: (rand*478).floor+1
+479) dev4, dev6 & dev7: fix libc6 broken dependencies on debian squeeze
+     blocks for rvm install 2.0.0 and some ruby gems installs
+     root@dev7:/home/jro# apt-get -y install libc6-dev
+     The following packages have unmet dependencies:
+     libc6-dev : Depends: libc6 (= 2.11.3-4) but 2.19-12 is to be installed
+                 Depends: libc-dev-bin (= 2.11.3-4) but it is not going to be installed
+     debian squeeze not longer support and armel binaries must be googled on internet
+     download and run
+     1) downgrated and install libc6 2.11.3-4 (google and download binary armel packages)
+        dpkg -i libc-dev-bin_2.11.3-4_armel.deb libc6-dev_2.11.3-4_armel.deb libc6_2.11.3-4_armel.deb linux-libc-dev_2.6.32-48squeeze6_armel.deb
+     2) broken bash shell (-bash: /lib/libc.so.6: version `GLIBC_2.15' not found (required by -bash))
+        downloaded and compiled bash (bash_4.3.orig.tar.gz)
+     3) changed user shell to /usr/local/bin/bash (jro + root)
+     3b) rename /bin/bash and replace with soft link to /usr/local/bin/bash
+     4) installed downloaded deb packages + bash packages
+        dpkg -i libc-dev-bin_2.11.3-4_armel.deb libc6-dev_2.11.3-4_armel.deb libc6_2.11.3-4_armel.deb linux-libc-dev_2.6.32-48squeeze6_armel.deb bash-completion_1.2-3_all.deb bash_4.1-3_armel.deb
+     5) changed user shell back to /bin/bash (jro + root)
+        chsh: PAM authentication failed (google and fix)
+     6) rvm autolibs fail
+        rvm install 2.0.0
+     7) install missing packages (apt-get install and download binary armel packages from internet)
+     8) rvm install 2.0.0
+     9)
+
+480) make backup of 4 plug servers
+
+481) constants.rb
+     raise "OS environment variables #{ENV_PREFIX}* was not found (SITE_URL)" if !SITE_URL
+     output platform specific instructions about environment setup (linux, windows etc)?
+
+482) Ignoring ActiveRecord::StatementInvalid:
+     Mysql2::Error: Duplicate entry 'private_key_pasSsword' for key 'index_system_parameters_name': INSERT INTO `system_parameters` (`created_at`, `name`, `updated_at`, `value`) VALUES ('2015-12-26 10:55:43', 'private_key_pasSsword', '2015-12-26 10:55:43', 'MVQyS2ZWMkxtVllxa290VnE4a0JqR3QwVXJpbkRJbzAyM3ppczd5T2JMNUJz\neUF5Zml5Y0xPSGw0czFVcVdRWUR1QldZclp0ckFSQTdZYXU=\n')
+     doing first deploy
+     should remove doublet private_key_pasSsword
+
+483) dev3 after device login:
+     found a https image url in a http page
+     https://dev3.gofreerev.com/images/gofreerev.png
+     ok - ready for test - changed User.find_or_create_dummy_user
+
+484) firefox 43.0 first contact for new gofreerev server
+     no favion.ico in browser tab
+     device login not working - no errors but password warning in log - device login working after page reload
+
+select next issue to solve: (rand*484).floor+1

@@ -31,7 +31,7 @@ class ApplicationController < ActionController::Base
   # viewname=create, session[:language] = da => call create-da.html.erb if the page exists
   private
   def render_with_language(viewname)
-    language = set_session_value(:language)
+    language = get_session_value(:language)
     # logger.debug2  "language = #{language}"
     if !language or language == BASE_LANGUAGE
       # logger.debug2 "Render #{viewname}"
@@ -67,7 +67,7 @@ class ApplicationController < ActionController::Base
 
   private
   def add_dummy_user
-    @users << User.find_or_create_dummy_user('gofreerev') if @users.size == 0
+    @users << User.find_or_create_dummy_user('gofreerev', request.ssl?) if @users.size == 0
   end
 
   # split session storage in a section for each client userid

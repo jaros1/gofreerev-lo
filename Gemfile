@@ -87,6 +87,7 @@ gem 'uglifier', '>= 1.3.0'
 gem 'coffee-rails', '~> 4.0.0'
 
 # See https://github.com/sstephenson/execjs#readme for more supported runtimes
+# therubyracer removed. installation error on dev3 (cubox with ubuntu 12.04)
 # gem 'therubyracer', platforms: :ruby
 
 # Use jquery as the JavaScript library
@@ -249,3 +250,5 @@ gem 'dalli' # https://github.com/mperham/dalli
 #   gem 'libv8', '3.11.8.3'
 # gem 'libv8', '3.11.8.3', :platform => :ruby
 # gem 'libv8', '3.11.8.16', :platform => :ruby
+
+gem 'passenger'

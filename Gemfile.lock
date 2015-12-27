@@ -244,6 +244,9 @@ GEM
     opengraph_parser (0.2.3)
       addressable
       nokogiri
+    passenger (5.0.23)
+      rack
+      rake (>= 0.8.1)
     polyglot (0.3.5)
     powerbar (1.0.16)
       hashie (>= 1.1.0)
@@ -381,6 +384,7 @@ DEPENDENCIES
   omniauth-vkontakte
   open4
   opengraph_parser
+  passenger
   rails (= 4.0.0)
   rails-i18n (~> 4.0.0.pre)
   rest-client (= 1.7.3)

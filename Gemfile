@@ -78,7 +78,7 @@ gem 'vkontakte', '0.0.3' , :path => 'vendor/gems/vkontakte-0.0.3' # http://rubyg
 gem 'mysql2', '~> 0.3.18' # laptop and dev2 server
 
 # Use SCSS for stylesheets
-gem 'sass-rails', '~> 4.0.0'
+# gem 'sass-rails', '~> 4.0.0'
 
 # Use Uglifier as compressor for JavaScript assets
 gem 'uglifier', '>= 1.3.0'
@@ -87,7 +87,7 @@ gem 'uglifier', '>= 1.3.0'
 gem 'coffee-rails', '~> 4.0.0'
 
 # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-# gem 'therubyracer', platforms: :ruby
+gem 'therubyracer', platforms: :ruby
 
 # Use jquery as the JavaScript library
 gem 'jquery-rails'
@@ -201,7 +201,10 @@ gem 'exception_notification'
 gem "opengraph_parser"
 
 # http://www.jackiejohnston.us/blog/bootstrap-your-app/
-gem "twitter-bootstrap-rails"
+# broken bootstrap menu in witter-bootstrap-rails (3.2.2). ok menu in 2.2.8 (using css)
+# problems with "'twitter/bootstrap/bootstrap.less' wasn't found" in 3.2.2 (using less)
+gem "twitter-bootstrap-rails", '2.2.8'
+# gem "twitter-bootstrap-rails", '3.2.2'
 gem 'simple_form'
 
 # angularJS - fix for ActionController::InvalidAuthenticityToken

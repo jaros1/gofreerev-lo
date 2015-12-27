@@ -2088,6 +2088,10 @@
      public serrvers on internet can be servers or clients in server to server communication
      make stat for each server and make stat for current server
      stat for last hour, last 5 minutes, last minute, timeouts, errors
+     use server to server "ping" to test current server network setup
+     send ping to all direct connected servers. forward ping to other servers. return ping response to first server. collect request and response paths, server info, connection info and timestamps
+     use ping responses to move server to a better place in network
+     fast servers as network backbone. slow servers as
 
 479) dev4, dev6 & dev7: fix libc6 broken dependencies on debian squeeze
      blocks for rvm install 2.0.0 and some ruby gems installs
@@ -2115,22 +2119,19 @@
 
 480) make backup of 4 plug servers
 
-481) constants.rb
-     raise "OS environment variables #{ENV_PREFIX}* was not found (SITE_URL)" if !SITE_URL
-     output platform specific instructions about environment setup (linux, windows etc)?
-
-482) Ignoring ActiveRecord::StatementInvalid:
-     Mysql2::Error: Duplicate entry 'private_key_pasSsword' for key 'index_system_parameters_name': INSERT INTO `system_parameters` (`created_at`, `name`, `updated_at`, `value`) VALUES ('2015-12-26 10:55:43', 'private_key_pasSsword', '2015-12-26 10:55:43', 'MVQyS2ZWMkxtVllxa290VnE4a0JqR3QwVXJpbkRJbzAyM3ppczd5T2JMNUJz\neUF5Zml5Y0xPSGw0czFVcVdRWUR1QldZclp0ckFSQTdZYXU=\n')
-     doing first deploy
-     should remove doublet private_key_pasSsword
-
-483) dev3 after device login:
-     found a https image url in a http page
-     https://dev3.gofreerev.com/images/gofreerev.png
-     ok - ready for test - changed User.find_or_create_dummy_user
-
 484) firefox 43.0 first contact for new gofreerev server
      no favion.ico in browser tab
      device login not working - no errors but password warning in log - device login working after page reload
 
-select next issue to solve: (rand*484).floor+1
+485) add ssl certificates from Lets Encrypt to gofreerev test servers (laptop, laptop2, dev3, dev4, dev6 and dev7)
+
+486) check firehol on debian squeeze servers (dev4, dev6 and dev7)
+
+487) check apache on ubuntu server (dev3)
+
+488) fix broken bootstrap menu. could be changes in Gems file. Check older versions
+     20/11-15: twitter-bootstrap-rails (2.2.8) - ok menu - not using less-rails
+     27/12-15: twitter-bootstrap-rails (3.2.2) - broken menu - using less-rails
+     also a problem with 3.2.2 and 'twitter/bootstrap/bootstrap.less' wasn't found
+
+select next issue to solve: (rand*488).floor+1

@@ -511,18 +511,20 @@ class User < ActiveRecord::Base
   def self.find_or_create_dummy_user (provider, is_request_ssl)
     user_id = "gofreerev/#{provider}"
     user = User.find_by_user_id(user_id)
-    return user if user
-    user = User.new
-    user.user_id = user_id
-    if provider =~ /^google/
-      user.user_name = "#{APP_NAME} Google"
-    else
-      user.user_name = "#{APP_NAME} #{provider.camelize}"
+    if !user
+      user = User.new
+      user.user_id = user_id
+      if provider =~ /^google/
+        user.user_name = "#{APP_NAME} Google"
+      else
+        user.user_name = "#{APP_NAME} #{provider.camelize}"
+      end
+      user.currency = BASE_CURRENCY
+      user.api_profile_picture_url = "#{SITE_URL}/images/#{provider}.png".gsub('//images', '/images')
+      user.balance = {BALANCE_KEY => 0.0}
+      user.save!
     end
-    user.currency = BASE_CURRENCY
-    user.api_profile_picture_url = "#{SITE_URL}/images/#{provider}.png".gsub('//images', '/images')
-    user.balance = {BALANCE_KEY => 0.0}
-    user.save!
+    # fix protocol in user.api_profile_picture_url
     if is_request_ssl
       # use https
       user.api_profile_picture_url = 'https' + user.api_profile_picture_url.from(4) if user.api_profile_picture_url =~ /^http:/

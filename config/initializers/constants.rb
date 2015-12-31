@@ -83,7 +83,7 @@ PING_INTERVAL = 3000
 # server load average - number of cores - minus a constant 0.4
 # increase ping interval if load average > MAX_AVG_LOAD
 # decrease ping interval if load average < MAX_AVG_LOAD
-# see util/ping
+# see util_controller.ping (all client sessions must ping server once every "server ping cycle" interval)
 MAX_AVG_LOAD = `nproc`.to_i - 0.4 # 0.6, 1.6, 2.6, 3.6 etc
 
 # extract country to currency hash from country gem (https://github.com/hexorx/countries) - used as default currency for new users

@@ -380,7 +380,7 @@ JSON_SCHEMA = {
              {# client unix timestamp (10) with milliseconds (3) for previous ping request from same unique device (did or session_id + user_clientid)
               :old_client_timestamp => client_timestamp_type,
               # interval in milliseconds before next ping request from client. used when distribution client pings equal over time
-              :interval => {:type => 'integer', :minimum => 1000},
+              :interval => {:type => 'integer', :minimum => 100, :maximum => 60000},
               # array with online friends/devices - tells the client which devices are available for gift synchronization
               :online => {
                   :type => 'array',

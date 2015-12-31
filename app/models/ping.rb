@@ -1,15 +1,16 @@
 class Ping < ActiveRecord::Base
 
   # create_table "pings", force: true do |t|
-  # 1:  t.string   "session_id",    limit: 32
-  # 2:  t.integer  "client_userid"
-  # 3:  t.string   "client_sid",    limit: 20
-  # 4:  t.datetime "last_ping_at"
-  # 5:  t.datetime "next_ping_at"
-  # 6:  t.string   "did"
-  # 7:  t.text     "user_ids"
-  # 8:  t.string   "sha256",        limit: 45
-  # 9:  t.integer  "server_id"
+  #  1:  t.string   "session_id",    limit: 32
+  #  2:  t.integer  "client_userid"
+  #  3:  t.string   "client_sid",    limit: 20
+  #  4:  t.datetime "last_ping_at"
+  #  5:  t.datetime "next_ping_at"
+  #  6:  t.string   "did"
+  #  7:  t.text     "user_ids"
+  #  8:  t.string   "sha256",        limit: 45
+  #  9:  t.integer  "server_id"
+  # 10:  t.string   "adjust_intervals"
   # end
   # add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree
 
@@ -95,6 +96,9 @@ class Ping < ActiveRecord::Base
 
   # 9: server_id - used for pings received in server to server online users message
   # blank: session on this gofreerev server. not blank: session on other gofreerev server
+
+  # 10: micro_interval_adjustments - client server communication overhead - add a few milliseconds to the :interval returned to client
+  # yaml array - micro adjustment for the last 10 pings (milliseconds)
 
   # array with internal user ids - used in ping response (online devices)
   # replicate gifts for mutual friends between online devices

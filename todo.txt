@@ -776,18 +776,16 @@
      enable/disable x-server communication on gofreerev-lo server level - enable for one gofreerev-lo server / disable for other gofreerev-lo servers
 
 210) design 3 - ping
-     return list of online/active devices
-     return devices with one or more shared login users or friend of login users
-     if requested include a list of mutual friends for each device
-     that gives user ids for gifts relevant for sync between devices
+     return list of online/active devices (ok)
+     return devices with one or more shared login users or friend of login users (ok)
+     include a list of mutual friends for each device. that gives user ids for gifts relevant for sync between devices (ok)
      device to device sync:
-     - device a sends a list with a sha256 hash value for each gift to device b (login users and mutual friends)
-     - device b receives gifts list from device a and returns a corresponding gifts list
-     - device a and device b now have identified gifts relevant for sync between the two devices (create or update)
-     - list could be sorted with newest update first in list and oldest update in last of list (start with newest)
+     - device a sends a list with a sha256 hash value for each gift to device b (login users and mutual friends) - ok
+     - device b receives gifts list from device a and returns a corresponding gifts list - ok
+     - device a and device b now have identified gifts relevant for sync between the two devices (create or update) - ok
      - sync must merge changes. liked by users a, b, c. unliked by users x, y, z
      - shared login user: gift liked by user x on device a + gift unliked by user x on device b (compare )
-     - sync between devices can be done without gift meta-information on server
+     - sync between devices can be done without gift meta-information on server (sha256 signatures on server)
 
 211) security issue - users can change data in localStorage
      how to prevent users from changing data in localStorage? (change hosts file and run js script updates from a fake host)
@@ -871,13 +869,6 @@
      - filter notifications - what events to receive notifications for
 
 234) routes.rb - new default root url (/main/auth)
-
-235) design 4 - online devices
-     ping returns a list with online devices
-     check mutual friend in online devices response. should also be friends in users array
-     new online device. initialise a full gifts sync for all mutual friends
-     compare list with sha256 for each gift, send or request gift with sha256 difference, merge differences
-     added mutual friend for existing online device. initialise a full gift sync for mutual friend userid
 
 236) message buffer for device
      add an up-to-date of did for each userid
@@ -1030,23 +1021,6 @@
 272) maybe a minor problem in gift sha256 signature
      maybe giver and receiver user ids can be swapped without client sha256 signature or server sha256 signature changes
      but direction can not be changed and client should send correct user ids to server for server side sha256 validation
-
-273) cross server gift and comment signature check (verify_gifts and verify_clients)
-     server could return response for own gifts and comments to client and place messages for other gofreerev servers in a message queue
-     send request message to other server(s) in next server to server ping and receive response message from other gofreerev server(s)
-     return response to client in next ping when verification request is ready for remote gifts and comments
-     how to identify that a gift or a comment is from an other gofreerev server?
-     the client should allow delay in gift and comment verification for remote gift and comments
-     seq in verify_gifts and verify_clients request should be a client sequence and not start from 1 in every new request
-     that will allow server to respond immediately for some requests and later for other requests.
-
-274) add server id to gifts and comments.
-     there is immediate response for within server ping request/response
-     there is delayed response for cross server ping request/response
-     an example is verify gifts request/response
-     server can verify own gift sha256 server signature immediately
-     server must place verification for gift on other gofreerev servers in a message queue and response later
-     client should know whether server response is immediate or delayed
 
 275) add a remote (integer) field to gifts and comments if gifts or comments is from an other web server
      servers should agree about this integer
@@ -1210,9 +1184,6 @@
 307) add support for key+options in delete gifts response.
      use key+options for within site error message. use error for cross site error messages
      add delete_gifts wrapper for cross site delete gifts requests
-
-308) allow other servers to use "ping" to send and receive message
-     the cross server handshake could be implemented like client to client handshake
 
 309) handle "remote delete".
      created by user A on server A, replicated to user A on server B. deleted by under A on server B.
@@ -1448,9 +1419,13 @@
 
 364) server pings. must be external user id.
      2.0.0-p598 :004 > pings[0]
-      => #<Ping id: 224, session_id: "9c653cde5b1cd771756cf2dc49a1376d", client_userid: 1, client_sid: "14270197126896206557", last_ping_at: #<BigDecimal:7c73e70,'0.1427055769 598E10',27(27)>, next_ping_at: #<BigDecimal:7c73df8,'0.1427055771 598E10',27(27)>, did: "14252356907464191530", user_ids: "---\n- 1705481075/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: nil>
+      => #<Ping id: 224, session_id: "9c653cde5b1cd771756cf2dc49a1376d", client_userid: 1, client_sid: "14270197126896206557",
+                last_ping_at: #<BigDecimal:7c73e70,'0.1427055769 598E10',27(27)>, next_ping_at: #<BigDecimal:7c73df8,'0.1427055771 598E10',27(27)>, did: "14252356907464191530",
+                user_ids: "---\n- 1705481075/facebook\n", sha256: "0SumAAlBe/4vEMdftHU5puueYlccj0F50zDaUGkV4/Y=\n", server_id: nil>
      2.0.0-p598 :005 > pings[1]
-      => #<Ping id: 225, session_id: "2", client_userid: 1, client_sid: "2", last_ping_at: #<BigDecimal:7c73c90,'0.1427055767 296E10',27(27)>, next_ping_at: #<BigDecimal:7c73c18,'0.1458678170 387E10',27(27)>, did: "14259151245218705856", user_ids: "---\n- 1126\n", sha256: "RFknrRnG4TL+zhBkoTc2dgNkdFoIRMLxrOYduv3CKvQ=\n", server_id: 1>
+      => #<Ping id: 225, session_id: "2", client_userid: 1, client_sid: "2",
+                last_ping_at: #<BigDecimal:7c73c90,'0.1427055767 296E10',27(27)>, next_ping_at: #<BigDecimal:7c73c18,'0.1458678170 387E10',27(27)>, did: "14259151245218705856",
+                user_ids: "---\n- 1126\n", sha256: "RFknrRnG4TL+zhBkoTc2dgNkdFoIRMLxrOYduv3CKvQ=\n", server_id: 1>
 
 365) ok send a login request to an secure https gofreerev server
      not allowed for a secure https server to send a login request to an insecure http server
@@ -2092,42 +2067,25 @@
      send ping to all direct connected servers. forward ping to other servers. return ping response to first server. collect request and response paths, server info, connection info and timestamps
      use ping responses to move server to a better place in network
      fast servers as network backbone. slow servers as
+     number of server ping loops.
+     - 0 : only accept servers as clients
+     - 1 : one server ping loop. must be able to connect two an other server if faster connections are available in Gofreerev server network
+     - 2 : two server ping loops.
+     server must as client obey server ping interval(s) and ajust client ping interval accordingly.
+     any server pings in next client ping cycle? place client pings before or after server ping
+     do NOT schedule a client ping to the same moment as a server ping
 
-479) dev4, dev6 & dev7: fix libc6 broken dependencies on debian squeeze
-     blocks for rvm install 2.0.0 and some ruby gems installs
-     root@dev7:/home/jro# apt-get -y install libc6-dev
-     The following packages have unmet dependencies:
-     libc6-dev : Depends: libc6 (= 2.11.3-4) but 2.19-12 is to be installed
-                 Depends: libc-dev-bin (= 2.11.3-4) but it is not going to be installed
-     debian squeeze not longer support and armel binaries must be googled on internet
-     download and run
-     1) downgrated and install libc6 2.11.3-4 (google and download binary armel packages)
-        dpkg -i libc-dev-bin_2.11.3-4_armel.deb libc6-dev_2.11.3-4_armel.deb libc6_2.11.3-4_armel.deb linux-libc-dev_2.6.32-48squeeze6_armel.deb
-     2) broken bash shell (-bash: /lib/libc.so.6: version `GLIBC_2.15' not found (required by -bash))
-        downloaded and compiled bash (bash_4.3.orig.tar.gz)
-     3) changed user shell to /usr/local/bin/bash (jro + root)
-     3b) rename /bin/bash and replace with soft link to /usr/local/bin/bash
-     4) installed downloaded deb packages + bash packages
-        dpkg -i libc-dev-bin_2.11.3-4_armel.deb libc6-dev_2.11.3-4_armel.deb libc6_2.11.3-4_armel.deb linux-libc-dev_2.6.32-48squeeze6_armel.deb bash-completion_1.2-3_all.deb bash_4.1-3_armel.deb
-     5) changed user shell back to /bin/bash (jro + root)
-        chsh: PAM authentication failed (google and fix)
-     6) rvm autolibs fail
-        rvm install 2.0.0
-     7) install missing packages (apt-get install and download binary armel packages from internet)
-     8) rvm install 2.0.0
-     9)
-
-480) make backup of 4 plug servers
-
-484) firefox 43.0 first contact for new gofreerev server
-     no favion.ico in browser tab
-     device login not working - no errors but password warning in log - device login working after page reload
+480) make backup of 4 plug servers (dev3, dev4, dev6 and dev7)
 
 485) add ssl certificates from Lets Encrypt to gofreerev test servers (laptop, laptop2, dev3, dev4, dev6 and dev7)
+     laptop1 + laptop2 ok
+     dev2 (=dev3) (todo after 5/1-2016) - invalid certificate in firefox)
+     dev3 ok
+     letsencrypt-auto script cannot run on debian 6 (squeeze). problem with phyton 2.6. not easy to install phyton 2.7 on debian 6 (squeeze).
+     dev4 and de6 certs requested on laptop and copied to dev4 and dev6 servers
+     dev7 todo: request ssl certificate efter 5/1-2016: ./letsencrypt-auto --standalone certonly -d dev7.gofreerev.com
 
 486) check firehol on debian squeeze servers (dev4, dev6 and dev7)
-
-487) check apache on ubuntu server (dev3)
 
 488) fix broken bootstrap menu. could be changes in Gems file. Check older versions
      20/11-15: twitter-bootstrap-rails (2.2.8) - ok menu - not using less-rails

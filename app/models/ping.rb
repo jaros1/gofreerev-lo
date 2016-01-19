@@ -10,7 +10,9 @@ class Ping < ActiveRecord::Base
   #  7:  t.text     "user_ids"
   #  8:  t.string   "sha256",        limit: 45
   #  9:  t.integer  "server_id"
-  # 10:  t.string   "adjust_intervals"
+  # 10:  t.string   "micro_interval_adjustments"
+  # 11:  t.integer  "request_interval"
+  # 12:  t.string   "request_interval_stat"
   # end
   # add_index "pings", ["session_id", "client_userid", "client_sid"], name: "index_ping_pk", unique: true, using: :btree
 
@@ -97,8 +99,15 @@ class Ping < ActiveRecord::Base
   # 9: server_id - used for pings received in server to server online users message
   # blank: session on this gofreerev server. not blank: session on other gofreerev server
 
-  # 10: micro_interval_adjustments - client server communication overhead - add a few milliseconds to the :interval returned to client
-  # yaml array - micro adjustment for the last 10 pings (milliseconds)
+  # 10: micro_interval_adjustments - client server communication overhead - subtract a few milliseconds to the :interval returned to client
+  # yaml array - micro adjustment for the last 11 pings (milliseconds)
+
+  # 11: request_interval from client ping request. client request for a longer interval. primary used in server to server communication
+  # clear request_interval_stat when request_interval changes
+
+  # 12: request_interval_stat. yaml array with interval stat for the last <n> pings
+  # avg(request_interval_stat) should be as close to request_interval as possible
+  # see util_controller.ping for implememtation
 
   # array with internal user ids - used in ping response (online devices)
   # replicate gifts for mutual friends between online devices

@@ -222,6 +222,12 @@ JSON_SCHEMA = {
               # sid - unique session id - js unix timestamp (10) with milliseconds (3) and random numbers (7) - total 20 decimals
               :sid => {:type => 'string', :pattern => uid_pattern},
 
+              # interval in ping response is number of milliseconds before next ping request from client.
+              # used by server to distribute client pings equal over time (equalize server load)
+              # client can use interval in ping request to ask server for a longer ping interval
+              # primary used in server to server connections
+              :interval => {:type => 'integer', :minimum => 100, :maximum => 60000},
+
               # new_servers - array with sha256 signatures - request internal server id for new "unknown" Gofreerev servers
               # ( known servers are downloaded from /assets/ruby_to.js page at page load - Gofreerev.rails['SERVERS'] )
               :new_servers => {
@@ -379,8 +385,10 @@ JSON_SCHEMA = {
          :properties =>
              {# client unix timestamp (10) with milliseconds (3) for previous ping request from same unique device (did or session_id + user_clientid)
               :old_client_timestamp => client_timestamp_type,
-              # interval in milliseconds before next ping request from client. used when distribution client pings equal over time
+
+              # interval in milliseconds before next ping request from client. used to distribute client pings equal over time (equalize server load)
               :interval => {:type => 'integer', :minimum => 100, :maximum => 60000},
+
               # array with online friends/devices - tells the client which devices are available for gift synchronization
               :online => {
                   :type => 'array',

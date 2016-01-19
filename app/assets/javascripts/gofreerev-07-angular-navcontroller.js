@@ -42,6 +42,7 @@ angular.module('gifts')
                 client_userid: userid,
                 sid: sid,
                 client_timestamp: new_client_timestamp,
+                interval: 3000, // todo: test. remove
                 new_servers: giftService.new_servers_request(),
                 verify_gifts: giftService.verify_gifts_request(),
                 verify_comments: giftService.verify_comments_request(),

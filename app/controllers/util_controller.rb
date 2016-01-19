@@ -820,27 +820,28 @@ class UtilController < ApplicationController
         logger.debug2 "signature is ok"
       end
 
-      # check now >= ping.next_ping_at - force client to wait if server is called to early
+      # check ping too early (force client to wait) + calculate micro adjustments for more accurate pings
       sid = params[:sid]
       pings = Ping.where(:session_id => get_sessionid, :client_userid => get_client_userid, :client_sid => sid).order(:last_ping_at => :desc)
       logger.warn2 "Warning: #{pings.size} pings was found for sid #{sid}" if pings.size > 1
       ping = pings.first
       if ping
-        # get adjustment used in ping (milliseconds) - delay/overhead in milliseconds in client-server communication
+        # get micro adjustment used in ping (milliseconds) - overhead in milliseconds in client-server communication
         micro_interval_adjustments = YAML::load(ping.micro_interval_adjustments) if ping.micro_interval_adjustments
         micro_interval_adjustments = [] unless micro_interval_adjustments
         last_adjust_interval = micro_interval_adjustments.last
         last_adjust_interval = 0 unless last_adjust_interval
+        # check interval ( + micro adjustment). ping must never come before ping.next_ping_at
         now_adjusted = now + last_adjust_interval.to_f / 1000
         seconds_adjusted = now_adjusted - ping.next_ping_at # seconds with 3 decimals
         if seconds_adjusted < 0
           @json[:error] = "Ping too early. Please wait #{-seconds_adjusted} seconds."
-          logger.debug2 "micro_interval_adjustments = #{micro_interval_adjustments.join(', ')}"
-          logger.debug2 "last_adjust_interval       = #{last_adjust_interval}"
-          logger.debug2 "now                        = #{now.utc} (#{now.to_f})"
-          logger.debug2 "now_adjusted               = #{now_adjusted.utc} (#{now_adjusted.to_f})"
-          logger.debug2 "ping.next_ping_at          = #{ping.next_ping_at.utc} (#{ping.next_ping_at.to_f})"
-          logger.debug2 "seconds_adjusted           = #{seconds_adjusted}"
+          # logger.debug2 "micro_interval_adjustments = #{micro_interval_adjustments.join(', ')}"
+          # logger.debug2 "last_adjust_interval       = #{last_adjust_interval}"
+          # logger.debug2 "now                        = #{now.utc} (#{now.to_f})"
+          # logger.debug2 "now_adjusted               = #{now_adjusted.utc} (#{now_adjusted.to_f})"
+          # logger.debug2 "ping.next_ping_at          = #{ping.next_ping_at.utc} (#{ping.next_ping_at.to_f})"
+          # logger.debug2 "seconds_adjusted           = #{seconds_adjusted}"
           @json[:interval] = (-seconds_adjusted*1000).round - last_adjust_interval
           @json[:interval] = 100 if @json[:interval] < 100 # restriction in json schema :ping_response
           validate_json_response
@@ -848,23 +849,31 @@ class UtilController < ApplicationController
           logger.debug2 "@json = #{@json}"
           return
         end
+        # calc micro adjustment. avg  of 11 adjustments for 11 pings (this and 10 last pings from ping.micro_interval_adjustment array)
         seconds = now - ping.next_ping_at # seconds with 3 decimals
         logger.debug2 "now               = #{now.utc} (#{now.to_f})"
         logger.debug2 "ping.next_ping_at = #{ping.next_ping_at.utc} (#{ping.next_ping_at.to_f})"
         logger.debug2 "seconds           = #{seconds}"
         if seconds >= -0.5 and seconds < 0.5
-          # only small adjustments allowed - calc next adjustment - avg of last max 11 adjustments
-          logger.debug2 "ping #{(seconds*1000).round} milliseconds too late. must increase interval" if seconds > 0
-          logger.debug2 "ping #{(-seconds*1000).round} milliseconds too early. must decrease interval" if seconds < 0
+          # small adjustments - calc next adjustment - avg of last max 11 adjustments
+          logger.debug2 "ping #{(seconds*1000).round} milliseconds too late. using micro adjustments to increase interval" if seconds > 0
+          logger.debug2 "ping #{(-seconds*1000).round} milliseconds too early. using micro adjustments to  decrease interval" if seconds < 0
           next_adjust_interval = (micro_interval_adjustments + [(seconds*1000).round]).sum / (micro_interval_adjustments.length + 1)
           next_adjust_interval = next_adjust_interval.round
           micro_interval_adjustments << next_adjust_interval
           micro_interval_adjustments = micro_interval_adjustments.last(10)
         else
           # ignore big adjustments. can be offline users, interruption in internet etc
-          logger.debug2 "ping #{(seconds*1000).round} milliseconds too late" if seconds > 0
-          logger.debug2 "ping #{(-seconds*1000).round} milliseconds too early" if seconds < 0
+          logger.warn2 "ping #{(seconds*1000).round} milliseconds too late. skipping micro adjustments" if seconds > 0
+          logger.warn2 "ping #{(-seconds*1000).round} milliseconds too early. skipping micro adjustments" if seconds < 0
+          # next ping without micro adjustment. use only ping.next_ping_at and @json[:interval]
           next_adjust_interval = 0
+          if micro_interval_adjustments.length == 0
+            micro_interval_adjustments = [next_adjust_interval] # 0
+          elsif skipping micro adjustments.last != 0
+            micro_interval_adjustments << next_adjust_interval
+            micro_interval_adjustments = micro_interval_adjustments.last(10)
+          end
         end
       else
         next_adjust_interval = 0
@@ -873,6 +882,7 @@ class UtilController < ApplicationController
       logger.debug2 "micro_interval_adjustments = #{micro_interval_adjustments.join(', ')}"
 
       # all client sessions must ping server once every "server ping cycle" interval
+      # exception if clients have requested a longer ping interval (primary used in server to server communication)
       # use server load average the last 5 minutes and increase/decrease server ping cycle
       # MAX_AVG_LOAD = number of cores - minus a constant 0.4. That is 0.6, 1.6, 2.6, 3.6 etc
       s = Sequence.get_server_ping_cycle
@@ -881,10 +891,15 @@ class UtilController < ApplicationController
       if s.updated_at < 30.seconds.ago(now) and (((avg5 < MAX_AVG_LOAD - 0.1) and (s.value >= 3000)) or (avg5 > MAX_AVG_LOAD + 0.1))
         # only adjust server_ping_interval once every 30 seconds
         if avg5 < MAX_AVG_LOAD
-          # low server load average - decrease interval between pings
+          # low server load average:
+          #  a) decrease interval between client pings
+          #  b) todo: increase Gofreerev server to server communication
           s.value = s.value - 1000
         else
-          # height server load average - increase interval between pings
+          # height server load average:
+          #  a) increase interval between client pings
+          #  b) todo 1: decrease Gofreerev server to server communication
+          #  c) todo 2: check for pings with a disproportionately high load (could be comminication errors) - report error and disconnect
           s.value = s.value + 1000
         end
         s.save!
@@ -895,6 +910,7 @@ class UtilController < ApplicationController
       max_server_ping_cycle = [old_server_ping_cycle, new_server_ping_cycle].max + 2000;
       no_active_client_sessions = Ping.where('last_ping_at >= ? and server_id is null', (max_server_ping_cycle/1000).seconds.ago(now).to_f).count
       no_active_client_sessions = 1 if no_active_client_sessions == 0
+      # todo: check number of server to server pings in this server ping cycle where this server is a client. used in avg_ping_interval calc
       avg_ping_interval = new_server_ping_cycle.to_f / 1000 / no_active_client_sessions
 
       # keep track of pings. used when adjusting pings for individual sessions
@@ -922,6 +938,24 @@ class UtilController < ApplicationController
       logger.debug2 "session.did = ping.did = #{ping.did}"
       logger.debug2 "get_session_value(:did) = #{get_session_value(:did)}"
       @json[:error] = 'Did (unique device id) was not found.' unless ping.did
+
+      # todo: move ping_timeline and ping.next_ping_at calc to end of ping methods. client transactions (verify gifts, verify comments + send/receive messages can take some time)
+
+      # initialize timeline with scheduled client and server pings.
+      # used for new avg_ping_interval calculation based on this session ping and scheduled pings for sessions
+      # used when scheduling next ping for this session
+      ping_timeline = [ [0, ping] ] # now = this ping
+      Ping.where('next_ping_at >= ? and id <> ? and server_id is null', ping.next_ping_at.to_f, ping.id).order(:next_ping_at).each do |p|
+        milliseconds = ((p.next_ping_at - ping.next_ping_at)*1000).round
+        ping_timeline << [milliseconds, p]
+      end
+      Server.where('next_ping_at >= ?', ping.next_ping_at.to_f).order(:next_ping_at).each do |s|
+        # logger.debug2 "s = #{s.to_json}"
+        milliseconds = ((s.next_ping_at - ping.next_ping_at)*1000).round
+        ping_timeline << [milliseconds, s]
+      end
+      ping_timeline.sort_by! { |x| x.first }
+      logger.debug2 "ping_timeline = #{ping_timeline.to_json}"
 
       # check for expired api access tokens + refresh google+ access token
       if !params.has_key?(:oauths)
@@ -958,7 +992,6 @@ class UtilController < ApplicationController
       @json[:old_client_timestamp] = old_timestamp if old_timestamp and old_timestamp >= JSON_SCHEMA[:ping_response][:properties][:old_client_timestamp][:minimum] # some sometime old timestamp after server restart
       new_timestamp = params[:client_timestamp].to_s.to_i
       set_session_value(:client_timestamp, new_timestamp)
-      dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
 
       # adjust next ping for this session
       # (median of previous and next ping from other sessions - ignore old pings - ignore sessions on other servers)
@@ -987,12 +1020,15 @@ class UtilController < ApplicationController
       ping.next_ping_at = (@json[:interval] / 1000).seconds.since(now)
       ping.micro_interval_adjustments = micro_interval_adjustments.to_yaml
       ping.save!
+      # subtract next_adjust_interval- estimated client server overhead in milliseconds - from @json[:interval]
+      # the result is that next client ping arrives at server at "ping.next_ping_at" give or take a few milliseconds
       @json[:interval] = @json[:interval] - next_adjust_interval
       @json[:interval] = 100 if @json[:interval] < 100
 
       if !@json[:error]
 
         # ping stat
+        dif = new_timestamp - old_timestamp if new_timestamp and old_timestamp
         logger.debug2 "old client timestamp = #{old_timestamp}, new client timestamp = #{new_timestamp}, dif = #{dif}"
         logger.debug2 "previous_ping_interval = #{previous_ping_interval}, next_ping_interval = #{next_ping_interval}, avg_ping_interval2 = #{avg_ping_interval2}, adjust_this_ping = #{adjust_this_ping}"
 
@@ -1256,6 +1292,7 @@ class UtilController < ApplicationController
         logger.debug2 "@json = #{@json}"
       end
 
+      # todo: save elapsed time for ping request?
       validate_json_response
       format_response
     rescue => e
@@ -1264,6 +1301,7 @@ class UtilController < ApplicationController
       error = t '.exception', :error => e.message
       @json[:error] = @json[:error] ? "#{@json[:error]}, #{error}" : error
       @json[:interval] = 60000 unless @json[:interval] # wait 60 seconds after fatal errors
+      # todo: save elapsed time for ping request?
       format_response
     end
   end # ping

@@ -2069,7 +2069,7 @@
      fast servers as network backbone. slow servers as
      number of server ping loops.
      - 0 : only accept servers as clients
-     - 1 : one server ping loop. must be able to connect two an other server if faster connections are available in Gofreerev server network
+     - 1 : one server ping loop. must be able to connect to an other server if faster connections are available in Gofreerev server network
      - 2 : two server ping loops.
      server must as client obey server ping interval(s) and ajust client ping interval accordingly.
      any server pings in next client ping cycle? place client pings before or after server ping
@@ -2092,4 +2092,38 @@
      27/12-15: twitter-bootstrap-rails (3.2.2) - broken menu - using less-rails
      also a problem with 3.2.2 and 'twitter/bootstrap/bootstrap.less' wasn't found
 
-select next issue to solve: (rand*488).floor+1
+489) add interval in ping request. ask server for a longer ping interval.
+     server A is connected as client to server B (server ping cycle b) and server C (server ping cycle c).
+     server A will some times come into a situation with ping requests to B and C at the same moment
+     added request_interval and request_interval_stat to pings table
+     request_interval should in client server to server connection be a multiply of  clients "server ping cycle"
+     server ping cycle = 2000. use request_interval 2000, 4000, 6000 in ping requests to other Gofreerev servers
+
+490) save elapsed time for ping requests
+     - ingoing pings in util_controller.ping
+     - outgoing pings in server.ping
+     the server may come into in a situation to prioritize between ping processes
+     change ping interval(s) or change the connection(s) to Gofreerev server network
+
+491) try a web server install on an old smartphone
+     could maybe used instead of plug computers
+     maybe as an app ready to be downloaded
+     that is Gofreerev server as an app and Gofreerev client as an app
+     http://www.makeuseof.com/tag/turn-android-device-web-server/
+     https://play.google.com/store/apps/details?id=org.xeustechnologies.android.kws
+     http://android.stackexchange.com/questions/45324/can-i-install-ruby-and-ruby-on-rails-on-an-android
+
+492) inspired from new money for a new world
+     each user should have a wallet with:
+     - local currency (usd, eur, dkk etc) / standard mainstream currency
+     - one or more complementary currencies
+     use local and/or complementary currency in accepted deals = new balance in wallet
+
+493) check blockchain in ruby / rails
+
+494) check blockchain in javascript
+     http://bitcoinjs.org/
+
+495) check wallets on smartphones
+
+select next issue to solve: (rand*495).floor+1

@@ -2651,16 +2651,16 @@ class Server < ActiveRecord::Base
     # secret must exists. Used in users sync between servers
     return {:error => 'Cannot send ping request. No secret was found for server id #{self.id}. Please log in'} unless self.secret
 
-    # time calc with milliseconds
-    now = Time.zone.now.round(3)
+    now = Time.zone.now.round(3) # time with milliseconds (now and next_ping_at)
     if self.next_ping_at and now < self.next_ping_at
       seconds = (self.next_ping_at-now)
       return { :error => "Ping too early. Please wait #{seconds} seconds.", :interval => (seconds*1000).round }
     end
-    default_interval = 60 # default 60 seconds is used as start and fallback value for interval between pings
-    old_interval = self.next_ping_at - self.last_ping_at if self.last_ping_at and self.next_ping_at
-    old_interval = default_interval unless old_interval
-    logger.debug "old interval = #{old_interval}"
+
+    # default_interval = 60 # default 60 seconds is used as start and fallback value for interval between pings
+    # old_interval = self.next_ping_at - self.last_ping_at if self.last_ping_at and self.next_ping_at
+    # old_interval = default_interval unless old_interval
+    # logger.debug "old interval = #{old_interval}"
 
     site_url = self.site_url
     site_url = 'https' + site_url.from(4) if secure
@@ -2712,11 +2712,11 @@ class Server < ActiveRecord::Base
     json_errors = JSON::Validator.fully_validate(JSON_SCHEMA[json_schema], ping_request)
     return { :error => "Invalid ping json request: #{json_errors.join(', ')}" } unless json_errors.size == 0
 
-    # update timestamp before ping
-    logger.debug2 "now = #{now} (#{now.class})"
-    self.last_ping_at = now
-    self.next_ping_at = now + default_interval
-    self.save!
+    # # update timestamp before ping
+    # logger.debug2 "now = #{now} (#{now.class})"
+    # self.last_ping_at = now
+    # self.next_ping_at = now + default_interval
+    # self.save!
 
     # sign ping request - called gofreerev server must validate signature for incoming ping request
     # did is included in ping signature - error "signature ...  was not valid" is returned if did was changed without a new login
@@ -2730,6 +2730,7 @@ class Server < ActiveRecord::Base
     # send ping request
     logger.warn2 "unsecure post #{url}" unless secure
     res = client.post(url, :body => ping_request.to_json, :header => header)
+    now = Time.zone.now.round(3)
     logger.debug2 "res = #{res}" # todo: only dump res and res.body in log if JSON.parse fails
     FileUtils.rm signature_filename
     return { :error => "post #{url.to_s} failed with status #{res.status}" } unless res.status == 200
@@ -2751,6 +2752,7 @@ class Server < ActiveRecord::Base
 
     # process ping response from other Gofreerev server
     # 1) interval in milliseconds between ping requests
+    self.last_ping_at = self.next_ping_at
     self.next_ping_at = now + ping_response["interval"]/1000
     self.save!
     # 2) receive and process any messages
